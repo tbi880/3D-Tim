@@ -1,0 +1,59 @@
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* 在CSS文件中添加 */
+.story {
+  font-size: 16px;
+  /* 默认字体大小 */
+  animation: fadeIn 2s ease-out;
+}
+
+@media (min-width: 600px) {
+  .story {
+    font-size: 18px;
+    /* 较大屏幕上的字体大小 */
+  }
+}
+
+@media (min-width: 1000px) {
+  .story {
+    font-size: 20px;
+    /* 更大屏幕上的字体大小 */
+  }
+}
+
+/* 增加全局样式以调整标题和加载提示的大小 */
+h1,
+h2 {
+  font-size: 40px;
+  /* 调整为所需大小 */
+}
+
+.loading {
+  font-size: 18px;
+  /* 调整为所需大小 */
+}
+
+/* global.css */
+body {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 400;
+  /* 你可以根据需要选择从400到900的任意值 */
+}
