@@ -10,7 +10,7 @@ import * as THREE from 'three';
 
 
 const ShipOutside = () => {
-    const shipModel = useGLTF("./oas.glb", true, true);
+    const shipModel = useGLTF("https://f005.backblazeb2.com/file/tim3Dweb/oas.glb", true, true);
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     // const { animations, scene } = shipModel;
     // const { actions } = useAnimations(animations, scene);
@@ -52,5 +52,5 @@ const ShipOutside = () => {
     );
 }
 
-useGLTF.preload("./oas.glb");
+useGLTF.preload("https://f005.backblazeb2.com/file/tim3Dweb/oas.glb");
 export default ShipOutside;

@@ -9,7 +9,7 @@ const animationNames = ["CINEMA_4D_Main"];
 
 
 function Arrow({ screenTitle, isNext, position, rotation, sequence, stopPoints }) {
-    const arrowModel = useGLTF("./arrow.glb", true, true);
+    const arrowModel = useGLTF("https://f005.backblazeb2.com/file/tim3Dweb/arrow.glb", true, true);
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const { animations, scene } = arrowModel;
     const { actions } = useAnimations(animations, scene);
@@ -27,8 +27,8 @@ function Arrow({ screenTitle, isNext, position, rotation, sequence, stopPoints }
         }
     }, [sequence, stopPoints]);
 
-    // const [hovered, hover] = useState(false);
-    // useCursor(hovered);
+    const [hovered, hover] = useState(false);
+    useCursor(hovered);
 
 
 
@@ -76,9 +76,10 @@ function Arrow({ screenTitle, isNext, position, rotation, sequence, stopPoints }
 
 
     return (
-        <>                {/* <e.mesh theatreKey={theatreKey} scale={0.01} position={position} rotation={rotation} onClick={play} onPointerOver={(e) => (e.stopPropagation(), hover(true))} onPointerOut={() => hover(false)}  */}
+        <>
+            {/* <e.mesh theatreKey={theatreKey} scale={0.01} position={position} rotation={rotation} onClick={play} */}
+            <e.mesh theatreKey={theatreKey} scale={0.01} position={position} rotation={rotation} onClick={play} onPointerOver={(e) => (e.stopPropagation(), hover(true))} onPointerOut={() => hover(false)}
 
-            <e.mesh theatreKey={theatreKey} scale={0.01} position={position} rotation={rotation} onClick={play}
                 additionalProps={{
                     opacity: types.number(opacity, {
                         range: [0, 1],
@@ -92,12 +93,12 @@ function Arrow({ screenTitle, isNext, position, rotation, sequence, stopPoints }
                 <primitive object={arrowModel.scene} />
             </e.mesh>
             {/* Additional Sphere for easier clicking */}
-            {/* <e.mesh theatreKey={theatreKey + " sphereBG"} ref={sphereRef} position={position}
-                scale={[1, 1, 1]}
-                onClick={play} onPointerOver={() => hover(true)} onPointerOut={() => hover(false)}> */}
             <e.mesh theatreKey={theatreKey + " sphereBG"} ref={sphereRef} position={position}
                 scale={[1, 1, 1]}
-                onClick={play} >
+                onClick={play} onPointerOver={() => hover(true)} onPointerOut={() => hover(false)}>
+                {/* <e.mesh theatreKey={theatreKey + " sphereBG"} ref={sphereRef} position={position}
+                scale={[1, 1, 1]}
+                onClick={play} > */}
                 <sphereGeometry args={[10, 32, 32]} />
                 <meshStandardMaterial color="skyblue" transparent opacity={0} /> {/* 透明度设置为1（不透明）每次复制记得调整这个数字！！！不然看不见！！！ */}
             </e.mesh>
@@ -105,5 +106,5 @@ function Arrow({ screenTitle, isNext, position, rotation, sequence, stopPoints }
     );
 }
 
-useGLTF.preload("./arrow.glb");
+useGLTF.preload("https://f005.backblazeb2.com/file/tim3Dweb/arrow.glb");
 export default Arrow;

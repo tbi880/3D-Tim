@@ -4,7 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import { useRef } from 'react';
 
 function Galaxy({ sequence, onSequencePass }) {
-    const galaxyModel = useGLTF("./galaxy.glb", true, true)
+    const galaxyModel = useGLTF("https://f005.backblazeb2.com/file/tim3Dweb/galaxy.glb", true, true)
     const checkPoint = useRef(true);
 
     useFrame(() => {
@@ -26,5 +26,5 @@ function Galaxy({ sequence, onSequencePass }) {
     </>
     )
 }
-useGLTF.preload("./galaxy.glb")
+useGLTF.preload("https://f005.backblazeb2.com/file/tim3Dweb/galaxy.glb")
 export default Galaxy

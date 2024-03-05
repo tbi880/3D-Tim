@@ -6,7 +6,7 @@ const animationnames = ["Animation"]
 
 
 const StrangerStar = () => {
-    const starModel = useGLTF("./stranger_star.glb", true, true)
+    const starModel = useGLTF("https://f005.backblazeb2.com/file/tim3Dweb/stranger_star.glb", true, true)
 
     const animation1 = useAnimations(starModel.animations, starModel.scene)
     const action1 = animation1.actions[animationnames[0]]
@@ -25,6 +25,6 @@ const StrangerStar = () => {
     )
 }
 
-useGLTF.preload("./stranger_star.glb")
+useGLTF.preload("https://f005.backblazeb2.com/file/tim3Dweb/stranger_star.glb")
 export default StrangerStar
 

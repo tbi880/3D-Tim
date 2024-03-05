@@ -12,7 +12,7 @@ import Arrow from './Arrow';
 const animationnames = ["Take 001"]
 
 function InfoScreenDisplay({ title, content, sequence, stopPoints, loadPoints, unloadPoints, onSequencePass }) {
-    const screenModel = useGLTF("./sci_fi_monitor.glb", true, true);
+    const screenModel = useGLTF("https://f005.backblazeb2.com/file/tim3Dweb/sci_fi_monitor.glb", true, true);
     const [opacity, setOpacity] = useState(1);
     const theatreKey = "InfoScreenDisplay: " + title
 
@@ -210,5 +210,5 @@ function InfoScreenDisplay({ title, content, sequence, stopPoints, loadPoints, u
     );
 }
 
-useGLTF.preload("./sci_fi_monitor.glb");
+useGLTF.preload("https://f005.backblazeb2.com/file/tim3Dweb/sci_fi_monitor.glb");
 export default InfoScreenDisplay;

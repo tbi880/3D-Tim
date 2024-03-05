@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+
 import { Helmet } from 'react-helmet';
 
 
@@ -10,9 +10,6 @@ const PreloadAssets = () => {
         <Helmet>
             <link rel="preload" href="fonts/Play_Regular.json" as="fetch" type="application/json" crossorigin="anonymous"></link>
             <link rel="preload" href="fonts/Orbitron_Bold.json" as="fetch" type="application/json" crossorigin="anonymous"></link>
-
-            <link rel="preload" href='music/bgm1.mp3' as="fetch" type="audio/mpeg" crossorigin="anonymous" />
-
         </Helmet >
     </>);
 };

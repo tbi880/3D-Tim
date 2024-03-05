@@ -10,7 +10,7 @@ const animationNames = ["Armature|off state"];
 
 
 function ViewPort({ screenTitle, position, rotation, sequence, stopPoint, unloadPoint, onSequencePass }) {
-    const ViewPortModel = useGLTF("./viewport.glb", true, true);
+    const ViewPortModel = useGLTF("https://f005.backblazeb2.com/file/tim3Dweb/viewport.glb", true, true);
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const { animations, scene } = ViewPortModel;
     const { actions } = useAnimations(animations, scene);
@@ -50,14 +50,15 @@ function ViewPort({ screenTitle, position, rotation, sequence, stopPoint, unload
 
     }, [sequence, stopPoint]);
 
-    // const [hovered, hover] = useState(false);
-    // useCursor(hovered);
+    const [hovered, hover] = useState(false);
+    useCursor(hovered);
 
     return (
         <>
-            {/* <e.mesh theatreKey={theatreKey} scale={0.00001} position={position} rotation={rotation} onClick={play} onPointerOver={(e) => (e.stopPropagation(), hover(true))} additionalProps={{ */}
 
-            <e.mesh theatreKey={theatreKey} scale={0.00001} position={position} rotation={rotation} onClick={play} additionalProps={{
+            {/* <e.mesh theatreKey={theatreKey} scale={0.00001} position={position} rotation={rotation} onClick={play} additionalProps={{ */}
+            <e.mesh theatreKey={theatreKey} scale={0.00001} position={position} rotation={rotation} onClick={play} onPointerOver={(e) => (e.stopPropagation(), hover(true))} additionalProps={{
+
                 opacity: types.number(opacity, {
                     range: [0, 1],
                 }),
@@ -72,8 +73,8 @@ function ViewPort({ screenTitle, position, rotation, sequence, stopPoint, unload
             {/* Additional Sphere for easier clicking */}
             <e.mesh theatreKey={theatreKey + " sphereBG"} ref={sphereRef} position={position}
                 scale={[1, 1, 1]}
-                // onClick={play} onPointerOver={() => hover(true)} onPointerOut={() => hover(false)}>
-                onClick={play}>
+                onClick={play} onPointerOver={() => hover(true)} onPointerOut={() => hover(false)}>
+                {/* onClick={play}> */}
                 <sphereGeometry args={[10, 32, 32]} />
                 <meshStandardMaterial color="skyblue" transparent opacity={0} />
             </e.mesh>
@@ -81,5 +82,5 @@ function ViewPort({ screenTitle, position, rotation, sequence, stopPoint, unload
     );
 }
 
-useGLTF.preload("./viewport.glb");
+useGLTF.preload("https://f005.backblazeb2.com/file/tim3Dweb/viewport.glb");
 export default ViewPort;

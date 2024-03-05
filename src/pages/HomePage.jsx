@@ -7,8 +7,8 @@ import TextTitle from '../modelComponents/TextTitle';
 import InfoScreenDisplay from '../modelComponents/InfoScreenDisplay';
 import InfoScreenDisplayStarShipInfoLoadManager from '../modelComponents/infoScreenDisplayStarShipInfoLoadManager';
 import ViewPort from '../modelComponents/ViewPort';
-import Music from '../modelComponents/Music';
-import { Suspense, useState, useCallback, useEffect } from 'react';
+import AsyncMusic, { createAudioLoader } from '../modelComponents/AsyncMusic';
+import { Suspense, useState, useCallback } from 'react';
 import projectState from '../theatre-project-state5.json'
 
 import PreloadAssets from '../modelComponents/preloadAssets';
@@ -30,7 +30,7 @@ import { editable as e, PerspectiveCamera, SheetProvider } from '@theatre/r3f'
 
 
 
-
+const audioResource = createAudioLoader('https://f005.backblazeb2.com/file/tim3Dweb/bgm1.mp3');
 
 function HomePage() {
     const [year, setYear] = useState(new Date().getFullYear());
@@ -74,7 +74,7 @@ function HomePage() {
 
                 <SheetProvider sheet={holoSheet}>
                     <Suspense fallback={<Loader />}>
-                        <Music sequence={holoSheet.sequence} lowVolumePoints={[30]} highVolumePoints={[0.034, 33]} />
+                        <AsyncMusic audioResource={audioResource} sequence={holoSheet.sequence} lowVolumePoints={[30]} highVolumePoints={[0.034, 33]} />
                         <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault position={[498, -19, -61]} rotation={[0, 1.55, 0]} fov={75} near={0.01} />
                         <ambientLight />
                         <ambientLight />
@@ -82,7 +82,6 @@ function HomePage() {
 
                         <ambientLight />
 
-                        {/* <Axes /> */}
                         <Galaxy />
                         <StrangerStar />
                         <ShipOutside sequence={holoSheet.sequence} onSequencePass={() => toggleComponentDisplay('shipOutside')} />
@@ -97,10 +96,6 @@ function HomePage() {
                         <InfoScreenDisplayStarShipInfoLoadManager sequence={holoSheet.sequence} onSequencePass={() => toggleComponentDisplay('infoScreenDisplayStarShipInfo')} />
                         {showComponents.infoScreenDisplayStarShipInfo && (<InfoScreenDisplay title={"Starship Info"} content={screenStarShipInfo} sequence={holoSheet.sequence} stopPoints={[30.5, 31, 31.5, 32, 32.5, 39]} loadPoints={[29.5, 30.5, 31, 31.5, 32, 32.5]} unloadPoints={[30.5, 31, 31.5, 32, 32.5, 37]} onSequencePass={() => toggleComponentDisplay('infoScreenDisplayStarShipInfo')} />)}
                     </Suspense>
-
-
-                    {/* <ShipInsideLoadManager sequence={holoSheet.sequence} onSequencePass={() => toggleComponentDisplay('shipInside')} />
-                    {showComponents.shipInside && (<ShipInside sequence={holoSheet.sequence} unloadPoint={60} onSequencePass={() => toggleComponentDisplay('shipInside')} />)} */}
 
 
                 </SheetProvider>

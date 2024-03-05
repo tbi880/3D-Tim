@@ -27,7 +27,7 @@ function Loader() {
                     return prevIndex;
                 }
             });
-        }, 3000); // 每3秒增加一个故事
+        }, 500); // 每3秒增加一个故事
 
         return () => clearInterval(storyTimer);
     }, []);
@@ -38,7 +38,7 @@ function Loader() {
         if (simulatedProgress < actualProgress) {
             const timerId = setTimeout(() => {
                 setSimulatedProgress(prevProgress => Math.min(prevProgress + 1, actualProgress));
-            }, 100); // 每100毫秒模拟进度增加1%
+            }, 20); // 每100毫秒模拟进度增加1%
             return () => clearTimeout(timerId);
         }
 
