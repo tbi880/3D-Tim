@@ -3,13 +3,14 @@ import { useGLTF, useAnimations, useCursor } from '@react-three/drei';
 import { editable as e } from '@theatre/r3f';
 import { types } from '@theatre/core';
 import * as THREE from 'three';
+import { bucketURL } from '../Settings';
 
 
 const animationNames = ["CINEMA_4D_Main"];
 
 
 function Arrow({ screenTitle, isNext, position, rotation, sequence, stopPoints }) {
-    const arrowModel = useGLTF("https://f005.backblazeb2.com/file/tim3Dweb/arrow.glb", true, true);
+    const arrowModel = useGLTF(bucketURL + "arrow.glb", true, true);
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const { animations, scene } = arrowModel;
     const { actions } = useAnimations(animations, scene);
@@ -106,5 +107,5 @@ function Arrow({ screenTitle, isNext, position, rotation, sequence, stopPoints }
     );
 }
 
-useGLTF.preload("https://f005.backblazeb2.com/file/tim3Dweb/arrow.glb");
+useGLTF.preload(bucketURL + "arrow.glb");
 export default Arrow;

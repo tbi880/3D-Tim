@@ -4,11 +4,11 @@ import { editable as e } from '@theatre/r3f';
 import { types } from '@theatre/core';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-
+import { bucketURL } from '../Settings';
 
 
 function ShipInside({ sequence, unloadPoint, onSequencePass }) {
-    const { scene } = useGLTF("https://f005.backblazeb2.com/file/tim3Dweb/shipinside.glb", true, true);
+    const { scene } = useGLTF(bucketURL + "shipinside.glb", true, true);
     const [opacity, setOpacity] = useState(0); // 初始透明度设置为1（不透明）
 
     useEffect(() => {
@@ -47,5 +47,5 @@ function ShipInside({ sequence, unloadPoint, onSequencePass }) {
     );
 }
 
-useGLTF.preload("https://f005.backblazeb2.com/file/tim3Dweb/shipinside.glb");
+useGLTF.preload(bucketURL + "shipinside.glb");
 export default ShipInside;

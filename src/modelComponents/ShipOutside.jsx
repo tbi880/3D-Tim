@@ -3,14 +3,14 @@ import { useGLTF } from '@react-three/drei';
 import { editable as e } from '@theatre/r3f';
 import { types } from '@theatre/core';
 import * as THREE from 'three';
-
+import { bucketURL } from '../Settings';
 
 
 // const animationNames = ["Animation"];
 
 
 const ShipOutside = () => {
-    const shipModel = useGLTF("https://f005.backblazeb2.com/file/tim3Dweb/oas.glb", true, true);
+    const shipModel = useGLTF(bucketURL + "oas.glb", true, true);
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     // const { animations, scene } = shipModel;
     // const { actions } = useAnimations(animations, scene);
@@ -52,5 +52,5 @@ const ShipOutside = () => {
     );
 }
 
-useGLTF.preload("https://f005.backblazeb2.com/file/tim3Dweb/oas.glb");
+useGLTF.preload(bucketURL + "oas.glb");
 export default ShipOutside;

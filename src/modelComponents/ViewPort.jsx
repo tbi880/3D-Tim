@@ -4,13 +4,13 @@ import { editable as e } from '@theatre/r3f';
 import { types } from '@theatre/core';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-
+import { bucketURL } from '../Settings';
 
 const animationNames = ["Armature|off state"];
 
 
 function ViewPort({ screenTitle, position, rotation, sequence, stopPoint, unloadPoint, onSequencePass }) {
-    const ViewPortModel = useGLTF("https://f005.backblazeb2.com/file/tim3Dweb/viewport.glb", true, true);
+    const ViewPortModel = useGLTF(bucketURL + "viewport.glb", true, true);
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const { animations, scene } = ViewPortModel;
     const { actions } = useAnimations(animations, scene);
@@ -82,5 +82,5 @@ function ViewPort({ screenTitle, position, rotation, sequence, stopPoint, unload
     );
 }
 
-useGLTF.preload("https://f005.backblazeb2.com/file/tim3Dweb/viewport.glb");
+useGLTF.preload(bucketURL + "viewport.glb");
 export default ViewPort;

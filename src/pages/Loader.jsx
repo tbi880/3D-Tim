@@ -49,7 +49,6 @@ function Loader() {
     }, [simulatedProgress, actualProgress]);
 
 
-
     return (
         <Html center>
             <div style={{
@@ -58,6 +57,7 @@ function Loader() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 width: '100vw',
+                padding: '10px',
             }}>
 
                 <h1 style={{ fontSize: '4vw' }}>Welcome to Tim's world.</h1>

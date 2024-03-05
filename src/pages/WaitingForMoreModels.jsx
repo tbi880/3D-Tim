@@ -33,6 +33,8 @@ function WaitingForMoreModels() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 width: '100vw',
+                backgroundColor: 'white',
+                padding: '10px',
             }}>
                 <h1 style={{ fontSize: '4vw' }}>Loading For More Context...</h1>
                 <h1 style={{ fontSize: '4vw' }}>You won't see this if you have better internet so go blame yourself for this</h1>

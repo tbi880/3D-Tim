@@ -2,9 +2,10 @@ import { useGLTF } from '@react-three/drei'
 import { editable as e } from '@theatre/r3f';
 import { useFrame } from '@react-three/fiber';
 import { useRef } from 'react';
+import { bucketURL } from '../Settings';
 
 function Galaxy({ sequence, onSequencePass }) {
-    const galaxyModel = useGLTF("https://f005.backblazeb2.com/file/tim3Dweb/galaxy.glb", true, true)
+    const galaxyModel = useGLTF(bucketURL + "galaxy.glb", true, true)
     const checkPoint = useRef(true);
 
     useFrame(() => {
@@ -26,5 +27,5 @@ function Galaxy({ sequence, onSequencePass }) {
     </>
     )
 }
-useGLTF.preload("https://f005.backblazeb2.com/file/tim3Dweb/galaxy.glb")
+useGLTF.preload(bucketURL + "galaxy.glb")
 export default Galaxy
