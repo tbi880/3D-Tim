@@ -1,13 +1,14 @@
-import scene1State from '../theatre-project-state5.json'
-import { getProject } from '@theatre/core'
+import scene1State from '../scene1.json';
+import scene2State from '../scene2.json'
+import { getProject } from '@theatre/core';
 import { Canvas } from '@react-three/fiber';
-import { SheetProvider } from '@theatre/r3f'
+import { SheetProvider } from '@theatre/r3f';
 import SceneOne from './SceneOne';
 import SceneTwo from './SceneTwo';
 import { useCallback, useState, useEffect } from 'react';
 
 export const scene1Sheet = getProject('Scene1 Sheet', { state: scene1State }).sheet('Scene1 Sheet')
-export const scene2Sheet = getProject('Scene2 Sheet').sheet('Scene2 Sheet')
+export const scene2Sheet = getProject('Scene2 Sheet', { state: scene2State }).sheet('Scene2 Sheet')
 
 
 function SceneManager() {
@@ -40,7 +41,7 @@ function SceneManager() {
             [componentKey]: !prev[componentKey],
             ...(nextKey && { [nextKey]: !prev[nextKey] }), // 切换下一个组件状态
         }));
-        console.log('toggled!!!!!!!!!');
+
 
     }, []);
 

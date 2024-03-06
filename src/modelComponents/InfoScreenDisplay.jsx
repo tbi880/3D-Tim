@@ -15,10 +15,12 @@ const animationnames = ["Take 001"]
 function InfoScreenDisplay({ title, content, sequence, stopPoints, loadPoints, unloadPoints, onSequencePass }) {
     const screenModel = useGLTF(bucketURL + "sci_fi_monitor.glb", true, true);
     const [opacity, setOpacity] = useState(1);
-    const theatreKey = "InfoScreenDisplay: " + title
+    const theatreKey = ("InfoScreenDisplay: " + title).trim();
 
     const animation1 = useAnimations(screenModel.animations, screenModel.scene)
     const action1 = animation1.actions[animationnames[0]]
+
+
 
     useFrame(() => {
         action1.play();
@@ -54,7 +56,7 @@ function InfoScreenDisplay({ title, content, sequence, stopPoints, loadPoints, u
     }, [camera]);
 
     const [pages, setPages] = useState([]); // 二维数组，保存页和行
-
+    // console.log('you need pages of ', pages);
     // 将文本分割为页和行的函数
     const splitTextIntoPagesAndLines = (text, maxCharsPerLine = 15, maxLinesPerPage = 14) => {
         const words = text.split(' ');

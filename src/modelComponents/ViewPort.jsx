@@ -17,7 +17,7 @@ function ViewPort({ screenTitle, position, rotation, sequence, stopPoint, unload
     const sphereRef = useRef(); // Ref for the clickable sphere
 
 
-    const theatreKey = "ViewPort: " + screenTitle;
+    const theatreKey = ("ViewPort: " + screenTitle).trim();
 
     useEffect(() => {
         ViewPortModel.scene.traverse((child) => {

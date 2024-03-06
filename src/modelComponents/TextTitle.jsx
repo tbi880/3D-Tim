@@ -18,7 +18,7 @@ function TextTitle({ text, color, size, position = [0, 0, 0], rotation = [0, 0, 
         // 这里不需要额外操作，因为透明度将通过Theatre.js动态控制
     }, [font]);
 
-    const theatreKeyText = "TextTitle: " + text.substring(0, 20);
+    const theatreKeyText = "TextTitle: " + text.substring(0, 20).trim();
 
 
     useFrame(() => {

@@ -18,7 +18,7 @@ function TextContent({ title, order, lines, color, size, position = [0, 0, 0], r
         // 这里不需要额外操作，因为透明度将通过Theatre.js动态控制
     }, [font]);
 
-    const theatreKeyText = "TextContent: " + title + order;
+    const theatreKeyText = ("TextContent: " + title + order).trim();
 
 
 

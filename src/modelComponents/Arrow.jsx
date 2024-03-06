@@ -14,7 +14,7 @@ function Arrow({ screenTitle, isNext, position, rotation, sequence, stopPoints }
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const { animations, scene } = arrowModel;
     const { actions } = useAnimations(animations, scene);
-    const theatreKey = "arrow: " + screenTitle + (isNext ? " Next" : " Back");
+    const theatreKey = ("arrow: " + screenTitle + (isNext ? " Next" : " Back")).trim();
     const sphereRef = useRef(); // Ref for the clickable sphere
 
 

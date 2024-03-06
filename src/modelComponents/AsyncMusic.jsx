@@ -30,7 +30,7 @@ export function createAudioLoader(url) {
 
 
 
-function AsyncMusic({ audioResource, sequence, lowVolumePoints, highVolumePoints }) {
+function AsyncMusic({ audioResource, sequence, startPoint, lowVolumePoints, highVolumePoints, maxVolume }) {
     const audioBuffer = audioResource.read(); // 从资源读取音频缓冲区
     const audioContextRef = useRef(null);
     const gainNodeRef = useRef(null);
@@ -49,6 +49,7 @@ function AsyncMusic({ audioResource, sequence, lowVolumePoints, highVolumePoints
 
         audioContextRef.current = audioContext;
         gainNodeRef.current = gainNode;
+        gainNodeRef.current.gain.value = maxVolume;
         audioBufferSourceNodeRef.current = audioBufferSourceNode;
 
         // 组件卸载时的清理工作
@@ -64,7 +65,7 @@ function AsyncMusic({ audioResource, sequence, lowVolumePoints, highVolumePoints
         const currentTime = sequence.position; // 假设sequence.position反映了当前的播放时间
         const fadeDuration = 2; // 渐变持续时间（秒）
 
-        if (sequence.position >= 0.07 && !isPlayingRef.current) {
+        if (sequence.position >= startPoint && !isPlayingRef.current) {
             audioBufferSourceNodeRef.current.start(0);
             isPlayingRef.current = true;
             setVolumeTransition('idle');
@@ -78,7 +79,7 @@ function AsyncMusic({ audioResource, sequence, lowVolumePoints, highVolumePoints
             gainNodeRef.current.gain.linearRampToValueAtTime(0.2, audioContextRef.current.currentTime + fadeDuration);
             setVolumeTransition('down');
         } else if (shouldRaiseVolume && volumeTransition !== 'up') {
-            gainNodeRef.current.gain.linearRampToValueAtTime(1, audioContextRef.current.currentTime + fadeDuration);
+            gainNodeRef.current.gain.linearRampToValueAtTime(maxVolume, audioContextRef.current.currentTime + fadeDuration);
             setVolumeTransition('up');
         }
     });

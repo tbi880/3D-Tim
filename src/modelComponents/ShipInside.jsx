@@ -8,8 +8,8 @@ import { bucketURL } from '../Settings';
 
 
 function ShipInside({ sequence, unloadPoint, onSequencePass }) {
-    const { scene } = useGLTF(bucketURL + "shipinside.glb", true, true);
-    const [opacity, setOpacity] = useState(0); // 初始透明度设置为1（不透明）
+    const { scene } = useGLTF(bucketURL + "shipinside-transformed.glb", true, true);
+    const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
 
     useEffect(() => {
         scene.traverse((child) => {
@@ -21,12 +21,12 @@ function ShipInside({ sequence, unloadPoint, onSequencePass }) {
     }, [scene, opacity]);
 
 
-    useFrame(() => {
-        // 当sequence.position超过结束点时触发
-        if (sequence && sequence.position > unloadPoint) {
-            onSequencePass();
-        }
-    });
+    // useFrame(() => {
+    //     // 当sequence.position超过结束点时触发
+    //     if (sequence && sequence.position > unloadPoint) {
+    //         onSequencePass();
+    //     }
+    // });
 
 
     return (
@@ -47,5 +47,5 @@ function ShipInside({ sequence, unloadPoint, onSequencePass }) {
     );
 }
 
-useGLTF.preload(bucketURL + "shipinside.glb");
+useGLTF.preload(bucketURL + "shipinside-transformed.glb");
 export default ShipInside;

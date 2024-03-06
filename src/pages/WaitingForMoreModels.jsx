@@ -1,6 +1,9 @@
 import { Html, useProgress } from '@react-three/drei';
 import { useEffect, useState } from 'react';
 
+const codelineOne = "if (userHasInternetHoweverItIsNotFast){"
+const codelineTwo = "    return ThisPageThatYouAreLookingAtRightNow;"
+const codelineThree = "}"
 
 function WaitingForMoreModels() {
     const { progress: actualProgress } = useProgress(); // 实际加载进度
@@ -37,7 +40,9 @@ function WaitingForMoreModels() {
                 padding: '10px',
             }}>
                 <h1 style={{ fontSize: '4vw' }}>Loading For More Context...</h1>
-                <h1 style={{ fontSize: '4vw' }}>You won't see this if you have better internet so go blame yourself for this</h1>
+                <h1 style={{ fontSize: '4vw' }}>{codelineOne}</h1>
+                <h1 style={{ fontSize: '4vw' }}>{codelineTwo}</h1>
+                <h1 style={{ fontSize: '4vw' }}>{codelineThree}</h1>
                 <div className="loading" style={{ fontSize: '5vw' }}>{Math.ceil(simulatedProgress)} % loaded</div>
             </div>
         </Html>
