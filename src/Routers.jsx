@@ -4,9 +4,10 @@ import NotFoundPage from './pages/NotFoundPage'
 
 function Routers() {
     return (
-        // <Router>
+        // <Router basename="/tim">
 
-        <Router basename="/tim">
+        <Router>
+
             <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="*" element={<NotFoundPage />} />

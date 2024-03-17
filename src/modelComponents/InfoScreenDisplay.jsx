@@ -12,14 +12,26 @@ import { bucketURL } from '../Settings';
 
 const animationnames = ["Take 001"]
 
-function InfoScreenDisplay({ title, content, sequence, stopPoints, loadPoints, unloadPoints, onSequencePass }) {
-    const screenModel = useGLTF(bucketURL + "sci_fi_monitor.glb", true, true);
+
+function InfoScreenDisplay({ title, content, sequence, stopPoints = [], loadPoints = [], unloadPoints = [], onSequencePass }) {
+    const screenModel = useGLTF(bucketURL + "sci_fi_monitor-transformed.glb", true, true);
     const [opacity, setOpacity] = useState(1);
     const theatreKey = ("InfoScreenDisplay: " + title).trim();
-
+    const [pages, setPages] = useState([]); // 二维数组，保存页和行
     const animation1 = useAnimations(screenModel.animations, screenModel.scene)
     const action1 = animation1.actions[animationnames[0]]
 
+    function checkForHowManyPagesAreNeeded() {
+        console.log('you need pages of ', pages.length);
+    }
+
+    useEffect(() => {
+        if (stopPoints.length === 0 || loadPoints.length === 0 || unloadPoints.length === 0) {
+            checkForHowManyPagesAreNeeded();
+            // throw new Error('stopPoints, loadPoints, unloadPoints are not provided');
+
+        }
+    }, [pages.length]);
 
 
     useFrame(() => {
@@ -55,8 +67,8 @@ function InfoScreenDisplay({ title, content, sequence, stopPoints, loadPoints, u
         setRotationInFrontOfCameraForTextTitle([rotation.x, rotation.y, rotation.z]);
     }, [camera]);
 
-    const [pages, setPages] = useState([]); // 二维数组，保存页和行
-    // console.log('you need pages of ', pages);
+
+
     // 将文本分割为页和行的函数
     const splitTextIntoPagesAndLines = (text, maxCharsPerLine = 15, maxLinesPerPage = 14) => {
         const words = text.split(' ');
@@ -213,5 +225,5 @@ function InfoScreenDisplay({ title, content, sequence, stopPoints, loadPoints, u
     );
 }
 
-useGLTF.preload(bucketURL + "sci_fi_monitor.glb");
+useGLTF.preload(bucketURL + "sci_fi_monitor-transformed.glb");
 export default InfoScreenDisplay;

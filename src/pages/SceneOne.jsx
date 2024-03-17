@@ -1,26 +1,25 @@
-import { Canvas, useFrame } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 import Loader from './Loader';
 import StrangerStar from '../modelComponents/StrangerStar';
 import ShipOutside from '../modelComponents/ShipOutside';
 import Galaxy from '../modelComponents/Galaxy';
 import TextTitle from '../modelComponents/TextTitle';
 import InfoScreenDisplay from '../modelComponents/InfoScreenDisplay';
-import InfoScreenDisplayStarShipInfoLoadManager from '../modelComponents/infoScreenDisplayStarShipInfoLoadManager';
+import SingleLoadManager from '../modelComponents/SingleLoadManager';
 import ViewPort from '../modelComponents/ViewPort';
-import AsyncMusic, { createAudioLoader } from '../modelComponents/AsyncMusic';
-import { Suspense, useState, useCallback } from 'react';
+// import AsyncMusic, { createAudioLoader } from '../modelComponents/AsyncMusic';
+import { Suspense, useState, useCallback, useEffect } from 'react';
 import PreloadAssets from '../modelComponents/preloadAssets';
-import { editable as e, PerspectiveCamera, SheetProvider } from '@theatre/r3f'
+import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { scene1Sheet } from "./SceneManager";
 import { bucketURL } from '../Settings';
+import StreamMusic from '../modelComponents/StreamMusic';
 
-// our Theatre.js project sheet, we'll use this later
 
-
-const audioResourceForScene1 = createAudioLoader(bucketURL + 'music/bgm1.mp3');
 
 
 function SceneOne({ unloadPoint, onSequencePass }) {
+    const musicUrl = bucketURL + 'music/bgm1.mp3';
     const [year, setYear] = useState(new Date().getFullYear());
     const [month, setMonth] = useState(new Date().getMonth());
     const monthNames = ["January", "February", "March", "April", "May", "June",
@@ -61,21 +60,46 @@ function SceneOne({ unloadPoint, onSequencePass }) {
     });
 
 
+    // const [audioBuffer, setAudioBuffer] = useState(null);
+
+    // useEffect(() => {
+    //     createAudioLoader(musicUrl).then(buffer => {
+    //         setAudioBuffer(buffer);
+    //     }).catch(console.error);
+    // }, [musicUrl]);
+
+    // useEffect(() => {
+
+    //     return () => {
+    //         if (audioBuffer) {
+    //             setAudioBuffer(null);
+    //         }
+    //     }
+    // }, [audioBuffer]);
+    const [audioElement, setAudioElement] = useState(null); // 用于存储<audio>元素的状态
+
+    useEffect(() => {
+        // console.log('Parent useEffect - Creating <audio> element');
+        const audio = new Audio(musicUrl);
+        audio.crossOrigin = "anonymous";
+        setAudioElement(audio); // 设置状态以存储<audio>元素
+    }, [musicUrl]);
+
+
     return (
         <>
             {/* <Canvas gl={{ preserveDrawingBuffer: true }} >
                 <SheetProvider sheet={scene1Sheet}> */}
             <PreloadAssets />
-
-
             <Suspense fallback={<Loader />}>
-                <AsyncMusic audioResource={audioResourceForScene1} sequence={scene1Sheet.sequence} startPoint={0.07} lowVolumePoints={[30]} highVolumePoints={[0.034, 33]} maxVolume={1} />
+                {audioElement && <StreamMusic audioElement={audioElement} sequence={scene1Sheet.sequence} startPoint={0.07} lowVolumePoints={[30]} highVolumePoints={[0.034, 33]} maxVolume={1} />}
+                {/* <AsyncMusic audioBuffer={audioBuffer} sequence={scene1Sheet.sequence} startPoint={0.07} lowVolumePoints={[30]} highVolumePoints={[0.034, 33]} maxVolume={1} /> */}
                 <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault position={[498, -19, -61]} rotation={[0, 1.55, 0]} fov={75} near={0.01} />
-                <ambientLight />
-                <ambientLight />
+                <ambientLight intensity={5} />
+
                 <color attach='background' args={['black']} />
 
-                <ambientLight />
+
 
                 <Galaxy />
                 <StrangerStar />
@@ -88,7 +112,7 @@ function SceneOne({ unloadPoint, onSequencePass }) {
                 {showComponents.textTitleApproximately && (<TextTitle text="Approximately 18,000 light years from Earth" color="#FFD700" size={1} sequence={scene1Sheet.sequence} unloadPoint={15} onSequencePass={() => toggleComponentDisplay('textTitleApproximately')} />)}
 
                 {showComponents.viewPortStarShipInfo && (<ViewPort screenTitle={"StarShip Info"} position={[745, -16, 38]} rotation={[-1.13, -0.654, 5.2]} sequence={scene1Sheet.sequence} stopPoint={30} unloadPoint={37} onSequencePass={() => toggleComponentDisplay('viewPortStarShipInfo')} />)}
-                <InfoScreenDisplayStarShipInfoLoadManager sequence={scene1Sheet.sequence} onSequencePass={() => toggleComponentDisplay('infoScreenDisplayStarShipInfo')} />
+                <SingleLoadManager loadPoint={29.5} sequence={scene1Sheet.sequence} onSequencePass={() => toggleComponentDisplay('infoScreenDisplayStarShipInfo')} />
                 {showComponents.infoScreenDisplayStarShipInfo && (<InfoScreenDisplay title={"Starship Info"} content={screenStarShipInfo} sequence={scene1Sheet.sequence} stopPoints={[30.5, 31, 31.5, 32, 32.5, 39]} loadPoints={[29.5, 30.5, 31, 31.5, 32, 32.5]} unloadPoints={[30.5, 31, 31.5, 32, 32.5, 37]} onSequencePass={() => toggleComponentDisplay('infoScreenDisplayStarShipInfo')} />)}
             </Suspense>
 

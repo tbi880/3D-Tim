@@ -5,11 +5,12 @@ import { types } from '@theatre/core';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { bucketURL } from '../Settings';
+import { setNextScene, setNextSceneStartPoint } from '../pages/Status';
 
 const animationNames = ["Armature|off state"];
 
 
-function ViewPort({ screenTitle, position, rotation, sequence, stopPoint, unloadPoint, onSequencePass }) {
+function ViewPort({ screenTitle, position, rotation, sequence, stopPoint, unloadPoint, onSequencePass, isSetNextScene, nextScene, nextSceneStartPoint = 0 }) {
     const ViewPortModel = useGLTF(bucketURL + "viewport.glb", true, true);
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const { animations, scene } = ViewPortModel;
@@ -46,6 +47,13 @@ function ViewPort({ screenTitle, position, rotation, sequence, stopPoint, unload
 
         if (currentTimePosition < stopPoint) {
             sequence.play({ range: [currentTimePosition, stopPoint] });
+        }
+
+        if (isSetNextScene) {
+            setNextScene(nextScene);
+            setNextSceneStartPoint(nextSceneStartPoint);
+            console.log("Next Scene: " + nextScene + " Start Point: " + nextSceneStartPoint);
+
         }
 
     }, [sequence, stopPoint]);

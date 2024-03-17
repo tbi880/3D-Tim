@@ -17,7 +17,9 @@ function WaitingForMoreModels() {
             const timerId = setTimeout(() => {
                 setSimulatedProgress(prevProgress => Math.min(prevProgress + 1, actualProgress));
             }, 100); // 每100毫秒模拟进度增加1%
-            return () => clearTimeout(timerId);
+            return () => {
+                clearTimeout(timerId);
+            }
         }
 
         // 如果模拟进度已经达到100%，但实际加载进度尚未完成，可以选择保持模拟进度在99%，给用户一个正在完成加载的感觉
@@ -40,9 +42,9 @@ function WaitingForMoreModels() {
                 padding: '10px',
             }}>
                 <h1 style={{ fontSize: '4vw' }}>Loading For More Context...</h1>
-                <h1 style={{ fontSize: '4vw' }}>{codelineOne}</h1>
-                <h1 style={{ fontSize: '4vw' }}>{codelineTwo}</h1>
-                <h1 style={{ fontSize: '4vw' }}>{codelineThree}</h1>
+                <h1 style={{ fontSize: '4vw', padding: '10px' }}>{codelineOne}</h1>
+                <h1 style={{ fontSize: '4vw', padding: '10px' }}>{codelineTwo}</h1>
+                <h1 style={{ fontSize: '4vw', padding: '10px' }}>{codelineThree}</h1>
                 <div className="loading" style={{ fontSize: '5vw' }}>{Math.ceil(simulatedProgress)} % loaded</div>
             </div>
         </Html>

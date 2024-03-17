@@ -10,7 +10,7 @@ import { useAnimations } from "@react-three/drei";
 const animation = "Scene";
 
 function Robots({ title, position, rotation, sequence, unloadPoint, onSequencePass }) {
-    const robotModel = useGLTF(bucketURL + "robot.glb", true, true);
+    const robotModel = useGLTF(bucketURL + "robot-transformed.glb", true, true);
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const theatreKey = ("Robots-" + title).trim();
     const animation1 = useAnimations(robotModel.animations, robotModel.scene)
@@ -59,5 +59,5 @@ function Robots({ title, position, rotation, sequence, unloadPoint, onSequencePa
 
 
 }
-useGLTF.preload(bucketURL + "robot.glb");
+// useGLTF.preload(bucketURL + "robot-transformed.glb");
 export default Robots;

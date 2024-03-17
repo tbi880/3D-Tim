@@ -6,7 +6,7 @@ const animationnames = ["Animation"]
 
 
 const StrangerStar = () => {
-    const starModel = useGLTF(bucketURL + "stranger_star.glb", true, true)
+    const starModel = useGLTF(bucketURL + "stranger_star-transformed.glb", true, true)
 
     const animation1 = useAnimations(starModel.animations, starModel.scene)
     const action1 = animation1.actions[animationnames[0]]
@@ -25,6 +25,6 @@ const StrangerStar = () => {
     )
 }
 
-useGLTF.preload(bucketURL + "stranger_star.glb")
+useGLTF.preload(bucketURL + "stranger_star-transformed.glb")
 export default StrangerStar
 

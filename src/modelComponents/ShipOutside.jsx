@@ -15,7 +15,38 @@ const ShipOutside = () => {
     // const { animations, scene } = shipModel;
     // const { actions } = useAnimations(animations, scene);
 
+    useEffect(() => {
+        // 组件卸载时的清理逻辑
+        return () => {
+            // 遍历并清理几何体
+            if (shipModel.nodes) {
+                Object.values(shipModel.nodes).forEach(node => {
+                    if (node.geometry) {
+                        node.geometry.dispose();
+                    }
+                });
+            }
 
+            // 遍历并清理材质
+            if (shipModel.materials) {
+                Object.values(shipModel.materials).forEach(material => {
+                    if (material.dispose) {
+                        material.dispose();
+                    }
+                });
+            }
+
+            // 如果有纹理，也应该进行遍历和清理
+            if (shipModel.textures) {
+                Object.values(shipModel.textures).forEach(texture => {
+                    if (texture.dispose) {
+                        texture.dispose();
+                    }
+                });
+            }
+        };
+
+    }, [shipModel]);
 
 
     useEffect(() => {

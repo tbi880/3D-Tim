@@ -3,9 +3,6 @@
     "Scene1 Sheet": {
       "staticOverrides": {
         "byObject": {
-          "ShipInside": {
-            "opacity": 0
-          },
           "FirstPersonCamera": {
             "position": {
               "y": -19,
@@ -39,13 +36,6 @@
               "y": 1.379999999999999
             }
           },
-          "TextTitle: 无敌的Tim哥": {
-            "position": {
-              "x": 594.490000000001,
-              "y": -21.14000000000002,
-              "z": -65
-            }
-          },
           "TextTitle: AD 32101": {
             "position": {
               "x": 605,
@@ -65,63 +55,6 @@
               "z": -67,
               "y": -20,
               "x": 609
-            }
-          },
-          "InfoScreenDisplay: screentest": {
-            "opacity": 1,
-            "position": {
-              "x": 556.8704689864157,
-              "y": -48.00495265134185,
-              "z": -98.94880344638057
-            },
-            "rotation": {
-              "y": 0.33,
-              "x": 0,
-              "z": 1.57
-            },
-            "scale": {
-              "x": 10,
-              "y": 10,
-              "z": 10
-            }
-          },
-          "InfoScreenDisplay: screenshow1": {
-            "position": {
-              "x": 600,
-              "y": 20,
-              "z": -63
-            }
-          },
-          "InfoScreenDisplay: screenshow": {
-            "position": {
-              "x": 600,
-              "y": 20,
-              "z": -63
-            }
-          },
-          "InfoScreenDisplay: screentesting": {
-            "opacity": 0.39240506329113933,
-            "position": {
-              "y": 20.02000000000002
-            }
-          },
-          "TextTitle: screentesting": {
-            "position": {
-              "y": 21.020000000000024,
-              "x": 598.9099999999996,
-              "z": -62.7
-            }
-          },
-          "InfoScreenDisplay: screentesting2": {
-            "position": {
-              "x": 746.0473523442957
-            }
-          },
-          "arrow: screentesting Next": {
-            "position": {
-              "x": 599.8700000000001,
-              "z": -63,
-              "y": 19.04999999999998
             }
           },
           "TextContent: Welcome0": {
@@ -172,13 +105,6 @@
               "x": 838.5999999999993,
               "z": -67.93642557719033,
               "y": -63.27000000000002
-            }
-          },
-          "pointLight": {
-            "position": {
-              "x": 0,
-              "y": 0,
-              "z": 0
             }
           },
           "InfoScreenDisplay: Starship Info": {

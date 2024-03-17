@@ -1,45 +1,57 @@
 import { useEffect, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 
+
 export function createAudioLoader(url) {
-    let status = 'pending';
-    let result;
-    let suspender = fetch(url)
+    return fetch(url)
         .then(response => response.arrayBuffer())
-        .then(arrayBuffer => new AudioContext().decodeAudioData(arrayBuffer))
-        .then(audioBuffer => {
-            status = 'success';
-            result = audioBuffer;
-        }, err => {
-            status = 'error';
-            result = err;
+        .then(arrayBuffer => {
+            const audioContext = new AudioContext();
+            return audioContext.decodeAudioData(arrayBuffer);
         });
-
-    return {
-        read() {
-            if (status === 'pending') {
-                throw suspender;
-            } else if (status === 'error') {
-                throw result;
-            }
-            return result;
-        }
-    };
 }
+// export function createAudioLoader(url) {
+//     let status = 'pending';
+//     let result;
+//     let suspender = fetch(url)
+//         .then(response => response.arrayBuffer())
+//         .then(arrayBuffer => new AudioContext().decodeAudioData(arrayBuffer))
+//         .then(audioBuffer => {
+//             status = 'success';
+//             result = audioBuffer;
+//         }, err => {
+//             status = 'error';
+//             result = err;
+//         });
+
+//     return {
+//         read() {
+//             if (status === 'pending') {
+//                 throw suspender;
+//             } else if (status === 'error') {
+//                 throw result;
+//             }
+//             return result;
+//         }
+//     };
+// }
 
 
 
 
-function AsyncMusic({ audioResource, sequence, startPoint, lowVolumePoints, highVolumePoints, maxVolume }) {
-    const audioBuffer = audioResource.read(); // 从资源读取音频缓冲区
-    const audioContextRef = useRef(null);
+function AsyncMusic({ audioBuffer, sequence, startPoint, lowVolumePoints, highVolumePoints, maxVolume, isLoaded }) {
+    // const [audioBuffer, setAudioBuffer] = useState(null);
+    const audioContextRef = useRef(new AudioContext());
     const gainNodeRef = useRef(null);
     const audioBufferSourceNodeRef = useRef(null);
     const isPlayingRef = useRef(false);
     const [volumeTransition, setVolumeTransition] = useState('idle');
 
 
+
     useEffect(() => {
+
+
         const audioContext = new AudioContext();
         const gainNode = audioContext.createGain();
         gainNode.connect(audioContext.destination);
@@ -54,8 +66,21 @@ function AsyncMusic({ audioResource, sequence, startPoint, lowVolumePoints, high
 
         // 组件卸载时的清理工作
         return () => {
-            audioBufferSourceNode.stop();
-            audioContext.close();
+            if (audioBufferSourceNodeRef.current) {
+                if (isPlayingRef.current) {
+                    // 如果音频正在播放，则停止播放
+                    audioBufferSourceNodeRef.current.stop();
+                }
+                // 释放audioBufferSourceNode引用
+                audioBufferSourceNodeRef.current = null;
+            }
+            if (audioContextRef.current) {
+                audioContextRef.current.close(); // 关闭AudioContext
+                audioContextRef.current = null;  // 释放AudioContext引用
+            }
+            // 释放GainNode引用
+            gainNodeRef.current = null;
+
         };
     }, [audioBuffer]);
 

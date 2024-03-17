@@ -10,7 +10,7 @@ const animationNames = ["CINEMA_4D_Main"];
 
 
 function Arrow({ screenTitle, isNext, position, rotation, sequence, stopPoints }) {
-    const arrowModel = useGLTF(bucketURL + "arrow.glb", true, true);
+    const arrowModel = useGLTF(bucketURL + "arrow-transformed.glb", true, true);
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const { animations, scene } = arrowModel;
     const { actions } = useAnimations(animations, scene);
@@ -107,5 +107,5 @@ function Arrow({ screenTitle, isNext, position, rotation, sequence, stopPoints }
     );
 }
 
-useGLTF.preload(bucketURL + "arrow.glb");
+useGLTF.preload(bucketURL + "arrow-transformed.glb");
 export default Arrow;
