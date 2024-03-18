@@ -8,15 +8,15 @@ import { useCursor } from '@react-three/drei';
 import { useCallback } from 'react';
 
 
-export function Iphone14pro({ title, sequence }) {
+export function Iphone14pro({ title, clickablePoint, sequence }) {
   const { nodes, materials, scene } = useGLTF(bucketURL + 'iphone14pro-transformed.glb');
   const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
 
   const play = useCallback(() => {
-    if (sequence && sequence.position === 31) {
+    if (sequence && sequence.position === clickablePoint) {
       sequence.play({ range: [31, 50] });
     }
-  }, [sequence]);
+  }, [sequence, clickablePoint]);
 
   const [hovered, hover] = useState(false);
   useCursor(hovered);

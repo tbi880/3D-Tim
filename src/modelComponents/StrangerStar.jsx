@@ -25,6 +25,6 @@ const StrangerStar = () => {
     )
 }
 
-useGLTF.preload(bucketURL + "stranger_star-transformed.glb")
+// useGLTF.preload(bucketURL + "stranger_star-transformed.glb")
 export default StrangerStar
 

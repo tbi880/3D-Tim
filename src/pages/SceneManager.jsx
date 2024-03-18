@@ -7,14 +7,16 @@ import { SheetProvider } from '@theatre/r3f';
 import SceneOne from './SceneOne';
 import SceneTwo from './SceneTwo';
 import SceneThree from './SceneThree';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getNextScene, getNextSceneStartPoint } from './Status';
 
 
-export const scene1Sheet = getProject('Scene1 Sheet', { state: scene1State }).sheet('Scene1 Sheet')
-export const scene2Sheet = getProject('Scene2 Sheet', { state: scene2State }).sheet('Scene2 Sheet')
-export const scene3Project = getProject('Scene3 Sheet', { state: scene3State })
-export const scene3Sheet = scene3Project.sheet('Scene3 Sheet')
+
+export const scene1Sheet = getProject('Scene1 Sheet', { state: scene1State }).sheet('Scene1 Sheet');
+export const scene2Project = getProject('Scene2 Sheet', { state: scene2State });
+export const scene2Sheet = scene2Project.sheet('Scene2 Sheet');
+export const scene3Project = getProject('Scene3 Sheet', { state: scene3State });
+export const scene3Sheet = scene3Project.sheet('Scene3 Sheet');
 
 function SceneManager() {
 
@@ -23,6 +25,19 @@ function SceneManager() {
         sceneTwo: false,
         screenThree: false,
     });
+
+    useEffect(() => {
+        const nextScene = getNextScene();
+        const newShowScenes = Object.keys(showScenes).reduce((acc, scene) => {
+            acc[scene] = false;
+            return acc;
+        }, {});
+
+
+        newShowScenes[nextScene] = true;
+
+        setShowScenes(newShowScenes);
+    }, []);
 
     // const [scenesSheetStopPoints, setScenesSheetStopPoints] = useState({
     //     sceneOne: 39,
@@ -38,14 +53,20 @@ function SceneManager() {
     // 创建一个通用的切换函数
     const toggleSceneDisplay = useCallback((componentKey) => {
         const nextKey = getNextScene();
-
-
-
+        console.log(nextKey);
         setShowScenes((prev) => ({
             ...prev,
             [componentKey]: !prev[componentKey],
             ...(nextKey && { [nextKey]: !prev[nextKey] }), // 切换下一个组件状态
         }));
+        // 检测屏幕是否为手机竖屏模式，即高度大于宽度
+        const isPortraitPhoneScreen = window.innerHeight > window.innerWidth;
+
+        // 如果是手机竖屏模式，执行逻辑
+        if (isPortraitPhoneScreen) {
+            console.log('Detected portrait phone screen, refreshing...');
+            window.location.reload();
+        }
 
 
     }, []);

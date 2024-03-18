@@ -83,5 +83,5 @@ const ShipOutside = () => {
     );
 }
 
-useGLTF.preload(bucketURL + "oas.glb");
+// useGLTF.preload(bucketURL + "oas.glb");
 export default ShipOutside;

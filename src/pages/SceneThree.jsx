@@ -220,14 +220,14 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
                 {showComponents.textTitle_15yearsOldTim && <TextTitle text="15 years old tim: gonna make some cool things in visual basic." color="#000000" size={0.15} position={[0, 0, 0]} rotation={[0, 0, 0]} sequence={scene3Sheet.sequence} unloadPoint={20} onSequencePass={() => { toggleComponentDisplay("textTitle_15yearsOldTim") }} />}
 
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={18} onSequencePass={() => { toggleComponentDisplay("programmingOffice") }} />
-                {showComponents.programmingOffice && <><ProgrammingOffice position={[0, 0, 0]} rotation={[0, 0, 0]} sequence={scene3Sheet.sequence} unloadPoint={32} onSequencePass={() => { toggleComponentDisplay("programmingOffice") }} /></>}
+                {showComponents.programmingOffice && <><ProgrammingOffice position={[0, 0, 0]} rotation={[0, 0, 0]} sequence={scene3Sheet.sequence} unloadPoint={31.75} onSequencePass={() => { toggleComponentDisplay("programmingOffice") }} /></>}
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={20} onSequencePass={() => { toggleComponentDisplay("textTitle_18yearsOldTim") }} />
                 {showComponents.textTitle_18yearsOldTim && <TextTitle text="18 years old tim during covid19: I am so happy to join this company as a paid intern after 3 rounds of competing with graduates." color="#000000" size={0.15} position={[0, 0, 0]} rotation={[0, 0, 0]} sequence={scene3Sheet.sequence} unloadPoint={30} onSequencePass={() => { toggleComponentDisplay("textTitle_18yearsOldTim") }} />}
 
-                {showComponents.programmingOffice && <Iphone14pro title={"email"} sequence={scene3Sheet.sequence} />}
+                {showComponents.programmingOffice && <Iphone14pro title={"email"} clickablePoint={31} sequence={scene3Sheet.sequence} />}
 
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={29} onSequencePass={() => { toggleComponentDisplay("viewport_iphone") }} />
-                {showComponents.viewport_iphone && <ViewPort screenTitle={"iphone"} position={[0.11, 0.8, -4.88]} rotation={[0, 0, 0]} stopPoint={31} sequence={scene3Sheet.sequence} unloadPoint={31} onSequencePass={() => { toggleComponentDisplay("viewport_iphone") }} isSetNextScene={true} nextScene={"sceneTwo"} nextSceneStartPoint={22} />}
+                {showComponents.viewport_iphone && <ViewPort screenTitle={"iphone"} position={[0.11, 0.8, -4.88]} rotation={[0, 0, 0]} stopPoint={31} sequence={scene3Sheet.sequence} unloadPoint={30.75} onSequencePass={() => { toggleComponentDisplay("viewport_iphone") }} isSetNextScene={true} nextScene={"sceneTwo"} nextSceneStartPoint={22} />}
 
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={31.5} onSequencePass={() => { toggleComponentDisplay("auckland") }} />
                 {showComponents.auckland && <Auckland sequence={scene3Sheet.sequence} unloadPoint={41} onSequencePass={() => { toggleComponentDisplay("auckland") }} />}

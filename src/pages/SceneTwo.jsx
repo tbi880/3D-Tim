@@ -1,4 +1,4 @@
-import { getRootAccess, shipHangerHasBeenAccessed } from './Status';
+import { getRootAccess, getShipHangerHasBeenAccessed } from './Status';
 import WaitingForMoreModels from './WaitingForMoreModels';
 import StrangerStar from '../modelComponents/StrangerStar';
 import ShipInside from '../modelComponents/ShipInside';
@@ -13,7 +13,7 @@ import Robots from '../modelComponents/Robot';
 import { Suspense, useState, useCallback, useEffect } from 'react';
 import PreloadAssets from '../modelComponents/preloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
-import { scene2Sheet } from "./SceneManager";
+import { scene2Sheet, scene2Project } from "./SceneManager";
 import { bucketURL } from '../Settings';
 import Loading from '../modelComponents/Loading';
 
@@ -27,9 +27,11 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass }) {
     const musicUrl = bucketURL + 'music/bgm2.mp3';
 
     useEffect(() => {
-        if (startPoint != 0) {
-            scene2Sheet.sequence.play({ range: [startPoint, startPoint + 0.5] });
-        }
+        scene2Project.ready.then(() => {
+            if (startPoint != 0) {
+                scene2Sheet.sequence.play({ range: [startPoint, startPoint + 0.5] });
+            }
+        });
     }, []);
 
     useEffect(() => {
@@ -120,7 +122,7 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass }) {
                 <SingleLoadManager loadPoint={22} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('textTitleGetROOTACCESS')} />
                 {showComponents.textTitleGetROOTACCESS && <TextTitle text="Where to get the ROOT ACCESS?" color="#99CCFF" size={1} sequence={scene2Sheet.sequence} unloadPoint={24} onSequencePass={() => toggleComponentDisplay('textTitleGetROOTACCESS')} />}
                 <SingleLoadManager loadPoint={22} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOShipHangar')} />
-                {showComponents.buttonForGOTOShipHangar && !(shipHangerHasBeenAccessed) && <Button title={"To the ship hanger"} position={[490, -23.5, -60]} rotation={[0, 0, 0]} clickablePoint={22.5} jumpToPoint={22.5} stopPoint={33} unloadPoint={24} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOShipHangar')} />}
+                {showComponents.buttonForGOTOShipHangar && !(getShipHangerHasBeenAccessed()) && <Button title={"To the ship hanger"} position={[490, -23.5, -60]} rotation={[0, 0, 0]} clickablePoint={22.5} jumpToPoint={22.5} stopPoint={33} unloadPoint={24} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOShipHangar')} />}
                 <SingleLoadManager loadPoint={22} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOEngineering')} />
                 {showComponents.buttonForGOTOEngineering && <Button title={"To the engineering"} position={[490, -23.5, -60]} rotation={[0, 0, 0]} clickablePoint={22.5} jumpToPoint={22.5} stopPoint={23} unloadPoint={24} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOEngineering')} alertAndNoPlay={!getRootAccess()} alertMessage={"Under development..."} />}
                 <SingleLoadManager loadPoint={22} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOCaptainsChamber')} />
