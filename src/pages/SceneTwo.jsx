@@ -49,11 +49,20 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass }) {
     const [audioElement, setAudioElement] = useState(null); // 用于存储<audio>元素的状态
 
     useEffect(() => {
-        console.log('Parent useEffect - Creating <audio> element');
+        // console.log('Parent useEffect - Creating <audio> element');
         const audio = new Audio(musicUrl);
         audio.crossOrigin = "anonymous";
         setAudioElement(audio); // 设置状态以存储<audio>元素
     }, [musicUrl]);
+
+    useEffect(() => {
+
+        return () => {
+            if (audioElement) {
+                setAudioElement(null);
+            }
+        }
+    }, [audioElement]);
 
     // const screenStarShipInfo = "This starship, laden with humanity's hopes, pioneers space exploration with true self-learning, multi-purpose AI robots. Each AI holds a unique role: service AIs cater to the needs of all on board, maintenance AIs ensure the ship's upkeep, and research AIs delve into cutting-edge theories, transforming them into technologies that not only prevent the ship from deteriorating over its millennia-long journey but also significantly enhance its capabilities through expansions and upgrades. This visionary approach originated from the ship's first captain,whose name is Tim Bi(2001-21??), a renowned computer scientist on Earth whose early life remains largely unknown. His obscure past forms the basis of the root access questions for the ship's control system, without which altering the ship's course or initiating emergency stops is impossible. As the ship's chief engineer, it falls to you to unearth these ancient records to avert a catastrophic fate from powerful gravitational forces."
     // 使用一个对象来管理多个组件的初始显示状态

@@ -21,6 +21,38 @@ function Robots({ title, position, rotation, sequence, unloadPoint, onSequencePa
         action1.timeScale = 1;
     })
 
+    useEffect(() => {
+        // 组件卸载时的清理逻辑
+        return () => {
+            // 遍历并清理几何体
+            if (robotModel.nodes) {
+                Object.values(robotModel.nodes).forEach(node => {
+                    if (node.geometry) {
+                        node.geometry.dispose();
+                    }
+                });
+            }
+
+            // 遍历并清理材质
+            if (robotModel.materials) {
+                Object.values(robotModel.materials).forEach(material => {
+                    if (material.dispose) {
+                        material.dispose();
+                    }
+                });
+            }
+
+            // 如果有纹理，也应该进行遍历和清理
+            if (robotModel.textures) {
+                Object.values(robotModel.textures).forEach(texture => {
+                    if (texture.dispose) {
+                        texture.dispose();
+                    }
+                });
+            }
+        };
+
+    }, [robotModel]);
 
     useEffect(() => {
         robotModel.scene.traverse((child) => {

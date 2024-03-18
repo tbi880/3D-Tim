@@ -50,7 +50,9 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
 
 
     const initialShowComponents = {
-        viewpoer_start: true,
+        lightings: true,
+        pointlight: false,
+        viewPort_start: true,
         programmingHome: true,
         textTitle_12yearsOldTim: true,
         textTitle_mumsAsleep: true,
@@ -64,13 +66,16 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
         year2024: false,
         tunnel: false,
         galaxy: false,
+        techs: false,
         year2099: false,
         resumeScreen: false,
         loading: false,
     }
     // 使用一个对象来管理多个组件的初始显示状态,加载的时候先全部挂载，然后替换成上面的真实加载情况
     const [showComponents, setShowComponents] = useState({
-        viewpoer_start: true,
+        lightings: true,
+        pointlight: true,
+        viewPort_start: true,
         programmingHome: true,
         textTitle_12yearsOldTim: true,
         textTitle_mumsAsleep: true,
@@ -84,6 +89,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
         year2024: true,
         tunnel: true,
         galaxy: true,
+        techs: true,
         year2099: true,
         resumeScreen: true,
         loading: true,
@@ -96,7 +102,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
     useEffect(() => {
         scene3Project.ready.then(() => {
             scene3Sheet.sequence.position = startPoint;
-            console.log("Scene 3 Start Point: " + startPoint);
+            // console.log("Scene 3 Start Point: " + startPoint);
         });
     }, []);
 
@@ -111,7 +117,6 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
             setBackgroundColor("white");
         }
 
-
         if (componentKey === "auckland" && scene3Sheet.sequence.position >= 40) {
             setBackgroundColor("black");
             shipHangerAccess();
@@ -123,12 +128,19 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
     const [audioElement, setAudioElement] = useState(null); // 用于存储<audio>元素的状态
 
     useEffect(() => {
-        console.log('Parent useEffect - Creating <audio> element');
+        // console.log('Parent useEffect - Creating <audio> element');
         const audio = new Audio(musicUrl);
         audio.crossOrigin = "anonymous";
         setAudioElement(audio); // 设置状态以存储<audio>元素
     }, [musicUrl]);
 
+    useEffect(() => {
+        return () => {
+            if (audioElement) {
+                setAudioElement(null);
+            }
+        }
+    }, [audioElement]);
 
     return (
         <>
@@ -138,14 +150,12 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
 
 
             <Suspense fallback={<WaitingForMoreModels />}>
-                {audioElement && <StreamMusic audioElement={audioElement} sequence={scene3Sheet.sequence} startPoint={0.02} lowVolumePoints={[31, 50]} highVolumePoints={[32, 52]} maxVolume={0.5} />}
+                {audioElement && <StreamMusic audioElement={audioElement} sequence={scene3Sheet.sequence} startPoint={0.02} lowVolumePoints={[31, 50]} highVolumePoints={[32, 52]} maxVolume={1} />}
 
                 {/* <AsyncMusic audioBuffer={audioBuffer} sequence={scene3Sheet.sequence} startPoint={0.02} lowVolumePoints={[31, 50]} highVolumePoints={[32, 52]} maxVolume={0.75} /> */}
-                {showComponents.viewpoer_start && <ViewPort screenTitle={"start"} position={[-3.3, 1.82, -4.88]} rotation={[0, 0, 0]} stopPoint={30} sequence={scene3Sheet.sequence} onSequencePass={() => { toggleComponentDisplay("viewpoer_start") }} unloadPoint={1} isSetNextScene={false} />}
+                {showComponents.viewPort_start && <ViewPort screenTitle={"start"} position={[-3.3, 1.82, -4.88]} rotation={[0, 0, 0]} stopPoint={30} sequence={scene3Sheet.sequence} onSequencePass={() => { toggleComponentDisplay("viewPort_start") }} unloadPoint={1} isSetNextScene={false} />}
                 <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault position={[0, 0, 0]} rotation={[0, 0, 0]} fov={75} near={0.01} />
                 <color attach='background' args={[backgroundColor]} />
-
-
                 {showComponents.programmingHome && <ProgrammingHome position={[0, 0, 0]} rotation={[0, 0, 0]} sequence={scene3Sheet.sequence} unloadPoint={21} onSequencePass={() => { toggleComponentDisplay("programmingHome") }} />}
                 <e.mesh theatreKey='ambient light' additionalProps={{
                     intensity: types.number(ambientIntensity, {
@@ -160,45 +170,50 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
                     }} >
                     <ambientLight color="white" intensity={ambientIntensity} />
                 </e.mesh>
-                <e.mesh theatreKey='point light' additionalProps={{
-                    intensity: types.number(pointIntensity, {
-                        range: [0, 100],
-                    }),
-                }}
-                    objRef={(theatreObject) => {
-                        // 监听Theatre.js中透明度的变化
-                        theatreObject.onValuesChange((newValues) => {
-                            setPointIntensity(newValues.intensity);
-                        });
-                    }}>
-                    <pointLight color="white" intensity={pointIntensity} />
-                </e.mesh>
-                <e.mesh theatreKey='spot light' additionalProps={{
-                    intensity: types.number(spotIntensity, {
-                        range: [0, 10],
-                    }),
-                }}
-                    objRef={(theatreObject) => {
-                        // 监听Theatre.js中透明度的变化
-                        theatreObject.onValuesChange((newValues) => {
-                            setSpotIntensity(newValues.intensity);
-                        });
-                    }}>
-                    <spotLight position={[0, 0, 0]} intensity={spotIntensity} />
-                </e.mesh>
-                <e.mesh theatreKey='rectArea light' additionalProps={{
-                    intensity: types.number(rectAreaIntensity, {
-                        range: [0, 10],
-                    }),
-                }}
-                    objRef={(theatreObject) => {
+                {/* <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={11} onSequencePass={() => { toggleComponentDisplay("pointlight") }} />
+                <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={21} onSequencePass={() => { toggleComponentDisplay("pointlight") }} />
+                {showComponents.pointlight && <>
+                    <e.mesh theatreKey='point light' additionalProps={{
+                        intensity: types.number(pointIntensity, {
+                            range: [0, 100],
+                        }),
+                    }}
+                        objRef={(theatreObject) => {
+                            // 监听Theatre.js中透明度的变化
+                            theatreObject.onValuesChange((newValues) => {
+                                setPointIntensity(newValues.intensity);
+                            });
+                        }}>
+                        <pointLight color="white" intensity={pointIntensity} />
+                    </e.mesh> </>} */}
+                <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={15} onSequencePass={() => { toggleComponentDisplay("lightings") }} />
+                {showComponents.lightings && <>
+                    <e.mesh theatreKey='spot light' additionalProps={{
+                        intensity: types.number(spotIntensity, {
+                            range: [0, 10],
+                        }),
+                    }}
+                        objRef={(theatreObject) => {
+                            // 监听Theatre.js中透明度的变化
+                            theatreObject.onValuesChange((newValues) => {
+                                setSpotIntensity(newValues.intensity);
+                            });
+                        }}>
+                        <spotLight position={[0, 0, 0]} intensity={spotIntensity} />
+                    </e.mesh>
+                    <e.mesh theatreKey='rectArea light' additionalProps={{
+                        intensity: types.number(rectAreaIntensity, {
+                            range: [0, 10],
+                        }),
+                    }}
+                        objRef={(theatreObject) => {
 
-                        theatreObject.onValuesChange((newValues) => {
-                            setRectAreaIntensity(newValues.intensity);
-                        });
-                    }}>
-                    <rectAreaLight width={5} height={0.5} intensity={rectAreaIntensity} />
-                </e.mesh>
+                            theatreObject.onValuesChange((newValues) => {
+                                setRectAreaIntensity(newValues.intensity);
+                            });
+                        }}>
+                        <rectAreaLight width={5} height={0.5} intensity={rectAreaIntensity} />
+                    </e.mesh></>}
                 {showComponents.textTitle_mumsAsleep && <TextTitle text="Mum's finally asleep. It's time for some PVZ, LOL and EVE online." color="#000000" size={0.15} position={[0, 0, 0]} rotation={[0, 0, 0]} sequence={scene3Sheet.sequence} unloadPoint={12} onSequencePass={() => { toggleComponentDisplay("textTitle_mumsAsleep") }} />}
                 {showComponents.textTitle_12yearsOldTim && <TextTitle text="12 years old Tim:" color="#000000" size={0.15} position={[0, 0, 0]} rotation={[0, 0, 0]} sequence={scene3Sheet.sequence} unloadPoint={5.5} onSequencePass={() => { toggleComponentDisplay("textTitle_12yearsOldTim") }} />}
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={12} onSequencePass={() => { toggleComponentDisplay("textTitle_15yearsOldTim") }} />
@@ -239,8 +254,8 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={48.5} onSequencePass={() => { toggleComponentDisplay("resumeScreen") }} />
                 {showComponents.resumeScreen && <InfoScreenDisplay title={"Resume2024"} content={resumeString} sequence={scene3Sheet.sequence} loadPoints={[49.5, 50, 50.5, 51]} stopPoints={[50.5, 51, 51.5, 64]} unloadPoints={[50.5, 51, 51.5, 52]} onSequencePass={() => { toggleComponentDisplay("resumeScreen") }} />}
 
-
-                {showComponents.galaxy && <>
+                <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={43.5} onSequencePass={() => { toggleComponentDisplay("techs") }} />
+                {showComponents.techs && <>
                     <Technology title={"react"} imagePath={bucketURL + "tech/reactjs.png"} />
                     <Technology title={"nodejs"} imagePath={bucketURL + "tech/nodejs.png"} />
                     <Technology title={"docker"} imagePath={bucketURL + "tech/docker.png"} />

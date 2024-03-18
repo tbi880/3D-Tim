@@ -52,14 +52,14 @@ function SceneManager() {
 
     function findCurrentScene() {
         const currentScene = Object.keys(showScenes).find((scene) => showScenes[scene]);
-        console.log('Current Scene:', currentScene);
+        // console.log('Current Scene:', currentScene);
         return currentScene;
 
     }
 
     function findCurrentSceneSheet() {
         const sheet = scenesSheets[findCurrentScene()];
-        console.log('Current Scene Sheet:', sheet);
+        // console.log('Current Scene Sheet:', sheet);
         if (!sheet) {
             throw new Error('Sheet is undefined. This will cause an error in SheetProvider.');
         }

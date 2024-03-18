@@ -57,13 +57,6 @@
               "x": 609
             }
           },
-          "arrow: screentesting Next": {
-            "position": {
-              "x": 599.8700000000001,
-              "z": -63,
-              "y": 19.04999999999998
-            }
-          },
           "TextContent: Welcome0": {
             "position": {
               "x": 599.175,
@@ -6181,7 +6174,6 @@
   },
   "definitionVersion": "0.4.0",
   "revisionHistory": [
-    "PMWkc_XWTquL8H2v",
     "KbK8g7Ze7RKnBj2f",
     "1NkFlCKMY8mYAA5L",
     "E4csbwuRzQtHmne_",

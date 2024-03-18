@@ -40,6 +40,9 @@ function Button({ title, position, rotation, clickablePoint, jumpToPoint, stopPo
 
 
 
+
+
+
     return (
         <e.mesh
             theatreKey={theatreKey}

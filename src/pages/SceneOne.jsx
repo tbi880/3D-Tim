@@ -25,6 +25,7 @@ function SceneOne({ unloadPoint, onSequencePass }) {
     const monthNames = ["January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"];
     const monthName = monthNames[month];
+    const [audioElement, setAudioElement] = useState(null); // 用于存储<audio>元素的状态
 
     const screenWelcomeContent = "You are about to awaken on a starship that has been voyaging for centuries. The course has been mysteriously affected by an external force. Please click on the 'Next' button down below(>>>).        Good! Now you have a basic idea of how to use this 3D website. Please enjoy the trip. Hopefully, we can see each other face to face in AD " + year + " " + monthName + " in NZ on earth!";
 
@@ -68,15 +69,15 @@ function SceneOne({ unloadPoint, onSequencePass }) {
     //     }).catch(console.error);
     // }, [musicUrl]);
 
-    // useEffect(() => {
+    useEffect(() => {
 
-    //     return () => {
-    //         if (audioBuffer) {
-    //             setAudioBuffer(null);
-    //         }
-    //     }
-    // }, [audioBuffer]);
-    const [audioElement, setAudioElement] = useState(null); // 用于存储<audio>元素的状态
+        return () => {
+            if (audioElement) {
+                setAudioElement(null);
+            }
+        }
+    }, [audioElement]);
+
 
     useEffect(() => {
         // console.log('Parent useEffect - Creating <audio> element');
@@ -84,6 +85,8 @@ function SceneOne({ unloadPoint, onSequencePass }) {
         audio.crossOrigin = "anonymous";
         setAudioElement(audio); // 设置状态以存储<audio>元素
     }, [musicUrl]);
+
+
 
 
     return (

@@ -28,12 +28,20 @@ function StreamMusic({ audioElement, sequence, startPoint, lowVolumePoints, high
         sourceNodeRef.current = sourceNode;
 
 
+    }, [audioElement]);
+
+    useEffect(() => {
 
         return () => {
+            // 清理函数
+            if (audioElement) { // 直接使用传入的audioElement
+                audioElement.pause(); // 停止音频播放
+                audioElement.src = ''; // 释放音频资源
+            }
             // console.log('Cleanup triggered for Audio Element');
             if (audioElementRef.current) {
                 audioElementRef.current.pause();
-                audioElementRef.current.src = '';
+                audioElementRef.current = null;
             }
             if (sourceNodeRef.current) {
                 sourceNodeRef.current.disconnect();
@@ -43,6 +51,9 @@ function StreamMusic({ audioElement, sequence, startPoint, lowVolumePoints, high
             }
             if (audioContextRef.current) {
                 audioContextRef.current.close();
+            }
+            if (isPlayingRef.current) {
+                isPlayingRef.current = null;
             }
         };
     }, [audioElement]);
