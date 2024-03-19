@@ -9,7 +9,7 @@ import SceneTwo from './SceneTwo';
 import SceneThree from './SceneThree';
 import { useCallback, useEffect, useState } from 'react';
 import { getNextScene, getNextSceneStartPoint } from './Status';
-
+import { stageOfENV } from '../Settings';
 
 
 export const scene1Sheet = getProject('Scene1 Sheet', { state: scene1State }).sheet('Scene1 Sheet');
@@ -21,22 +21,25 @@ export const scene3Sheet = scene3Project.sheet('Scene3 Sheet');
 function SceneManager() {
 
     const [showScenes, setShowScenes] = useState({
-        sceneOne: true,
+        sceneOne: false,
         sceneTwo: false,
-        screenThree: false,
+        screenThree: true,
     });
 
     useEffect(() => {
-        const nextScene = getNextScene();
-        const newShowScenes = Object.keys(showScenes).reduce((acc, scene) => {
-            acc[scene] = false;
-            return acc;
-        }, {});
+        if (stageOfENV != "building") {
+            const nextScene = getNextScene();
+            const newShowScenes = Object.keys(showScenes).reduce((acc, scene) => {
+                acc[scene] = false;
+                return acc;
+            }, {});
 
 
-        newShowScenes[nextScene] = true;
+            newShowScenes[nextScene] = true;
 
-        setShowScenes(newShowScenes);
+            setShowScenes(newShowScenes);
+
+        }
     }, []);
 
     // const [scenesSheetStopPoints, setScenesSheetStopPoints] = useState({

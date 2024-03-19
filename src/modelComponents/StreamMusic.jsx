@@ -67,7 +67,7 @@ function StreamMusic({ audioElement, sequence, startPoint, lowVolumePoints, high
         const currentTime = sequence.position; // 假设sequence.position反映了当前的播放时间
         const fadeDuration = 2; // 渐变持续时间（秒）
 
-        if (sequence.position >= startPoint && !isPlayingRef.current) {
+        if (!isPlayingRef.current && sequence.position >= startPoint) {
             if (audioContextRef.current.state !== 'running') {
                 audioContextRef.current.resume().then(() => {
                     // console.log('AudioContext activated');
@@ -86,15 +86,17 @@ function StreamMusic({ audioElement, sequence, startPoint, lowVolumePoints, high
             });
         }
 
-        const shouldLowerVolume = lowVolumePoints.some(point => Math.abs(currentTime - point) < 0.1);
-        const shouldRaiseVolume = highVolumePoints.some(point => Math.abs(currentTime - point) < 0.1);
+        if (lowVolumePoints && highVolumePoints) {
+            const shouldLowerVolume = lowVolumePoints.some(point => Math.abs(currentTime - point) < 0.1);
+            const shouldRaiseVolume = highVolumePoints.some(point => Math.abs(currentTime - point) < 0.1);
 
-        if (shouldLowerVolume && volumeTransition !== 'down') {
-            gainNodeRef.current.gain.linearRampToValueAtTime(0.2, audioContextRef.current.currentTime + fadeDuration);
-            setVolumeTransition('down');
-        } else if (shouldRaiseVolume && volumeTransition !== 'up') {
-            gainNodeRef.current.gain.linearRampToValueAtTime(maxVolume, audioContextRef.current.currentTime + fadeDuration);
-            setVolumeTransition('up');
+            if (shouldLowerVolume && volumeTransition !== 'down') {
+                gainNodeRef.current.gain.linearRampToValueAtTime(0.2, audioContextRef.current.currentTime + fadeDuration);
+                setVolumeTransition('down');
+            } else if (shouldRaiseVolume && volumeTransition !== 'up') {
+                gainNodeRef.current.gain.linearRampToValueAtTime(maxVolume, audioContextRef.current.currentTime + fadeDuration);
+                setVolumeTransition('up');
+            }
         }
     });
 

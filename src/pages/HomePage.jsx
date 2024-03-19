@@ -5,7 +5,7 @@ import { stageOfENV } from '../Settings';
 import studio from '@theatre/studio'
 import extension from '@theatre/r3f/dist/extension'
 
-if (stageOfENV === "dev") {
+if (stageOfENV != "prod") {
 
     studio.initialize()
     studio.extend(extension)

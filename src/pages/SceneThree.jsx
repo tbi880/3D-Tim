@@ -150,13 +150,14 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
 
 
             <Suspense fallback={<WaitingForMoreModels />}>
-                {audioElement && <StreamMusic audioElement={audioElement} sequence={scene3Sheet.sequence} startPoint={0.02} lowVolumePoints={[31, 50]} highVolumePoints={[32, 52]} maxVolume={1} />}
+                {audioElement && <StreamMusic audioElement={audioElement} sequence={scene3Sheet.sequence} startPoint={0.02} maxVolume={1} />}
 
                 {/* <AsyncMusic audioBuffer={audioBuffer} sequence={scene3Sheet.sequence} startPoint={0.02} lowVolumePoints={[31, 50]} highVolumePoints={[32, 52]} maxVolume={0.75} /> */}
                 {showComponents.viewPort_start && <ViewPort screenTitle={"start"} position={[-3.3, 1.82, -4.88]} rotation={[0, 0, 0]} stopPoint={30} sequence={scene3Sheet.sequence} onSequencePass={() => { toggleComponentDisplay("viewPort_start") }} unloadPoint={1} isSetNextScene={false} />}
                 <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault position={[0, 0, 0]} rotation={[0, 0, 0]} fov={75} near={0.01} />
                 <color attach='background' args={[backgroundColor]} />
                 {showComponents.programmingHome && <ProgrammingHome position={[0, 0, 0]} rotation={[0, 0, 0]} sequence={scene3Sheet.sequence} unloadPoint={21} onSequencePass={() => { toggleComponentDisplay("programmingHome") }} />}
+
                 <e.mesh theatreKey='ambient light' additionalProps={{
                     intensity: types.number(ambientIntensity, {
                         range: [0, 10],
@@ -213,7 +214,8 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
                             });
                         }}>
                         <rectAreaLight width={5} height={0.5} intensity={rectAreaIntensity} />
-                    </e.mesh></>}
+                    </e.mesh>
+                </>}
                 {showComponents.textTitle_mumsAsleep && <TextTitle text="Mum's finally asleep. It's time for some PVZ, LOL and EVE online." color="#000000" size={0.15} position={[0, 0, 0]} rotation={[0, 0, 0]} sequence={scene3Sheet.sequence} unloadPoint={12} onSequencePass={() => { toggleComponentDisplay("textTitle_mumsAsleep") }} />}
                 {showComponents.textTitle_12yearsOldTim && <TextTitle text="12 years old Tim:" color="#000000" size={0.15} position={[0, 0, 0]} rotation={[0, 0, 0]} sequence={scene3Sheet.sequence} unloadPoint={5.5} onSequencePass={() => { toggleComponentDisplay("textTitle_12yearsOldTim") }} />}
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={12} onSequencePass={() => { toggleComponentDisplay("textTitle_15yearsOldTim") }} />
