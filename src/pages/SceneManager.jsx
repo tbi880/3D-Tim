@@ -21,9 +21,9 @@ export const scene3Sheet = scene3Project.sheet('Scene3 Sheet');
 function SceneManager() {
 
     const [showScenes, setShowScenes] = useState({
-        sceneOne: true,
+        sceneOne: false,
         sceneTwo: false,
-        screenThree: false,
+        screenThree: true,
     });
 
     useEffect(() => {

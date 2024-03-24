@@ -13,14 +13,14 @@ function ProgrammingHome({ position, rotation, sequence, unloadPoint, onSequence
     const homeModel = useGLTF(bucketURL + "home_setup.glb", true, true);
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const theatreKey = "Home scene";
-    const animation1 = useAnimations(homeModel.animations, homeModel.scene)
-    const action1 = animation1.actions[animations[0]]
-    const action2 = animation1.actions[animations[1]]
+    // const animation1 = useAnimations(homeModel.animations, homeModel.scene)
+    // const action1 = animation1.actions[animations[0]]
+    // const action2 = animation1.actions[animations[1]]
 
-    useFrame(() => {
-        action1.play()
-        action2.play()
-    })
+    // useFrame(() => {
+    //     action1.play()
+    //     action2.play()
+    // })
 
 
     useEffect(() => {

@@ -10,7 +10,7 @@ import { useAnimations } from '@react-three/drei';
 const animationName = "Take 01";
 
 function Tunnel({ unloadPoint, sequence, onSequencePass }) {
-    const tunnelModel = useGLTF(bucketURL + "tunnel2.glb", true, true)
+    const tunnelModel = useGLTF(bucketURL + "tunnel-transformed.glb", true, true)
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const animation1 = useAnimations(tunnelModel.animations, tunnelModel.scene)
     const action1 = animation1.actions[animationName]

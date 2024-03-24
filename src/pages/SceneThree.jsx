@@ -66,6 +66,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
         year2024: false,
         tunnel: false,
         galaxy: false,
+        programmingFuture: false,
         techs: false,
         year2099: false,
         resumeScreen: false,
@@ -89,6 +90,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
         year2024: true,
         tunnel: true,
         galaxy: true,
+        programmingFuture: true,
         techs: true,
         year2099: true,
         resumeScreen: true,
@@ -232,7 +234,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
                 {showComponents.viewport_iphone && <ViewPort screenTitle={"iphone"} position={[0.11, 0.8, -4.88]} rotation={[0, 0, 0]} stopPoint={31} sequence={scene3Sheet.sequence} unloadPoint={30.75} onSequencePass={() => { toggleComponentDisplay("viewport_iphone") }} isSetNextScene={true} nextScene={"sceneTwo"} nextSceneStartPoint={22} />}
 
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={31.5} onSequencePass={() => { toggleComponentDisplay("auckland") }} />
-                {showComponents.auckland && <Auckland sequence={scene3Sheet.sequence} unloadPoint={41} onSequencePass={() => { toggleComponentDisplay("auckland") }} />}
+                {showComponents.auckland && <Auckland sequence={scene3Sheet.sequence} unloadPoint={39.75} onSequencePass={() => { toggleComponentDisplay("auckland") }} />}
 
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={32} onSequencePass={() => { toggleComponentDisplay("year2022") }} />
                 {showComponents.year2022 && <TextTitle text="2022" color="#000000" size={1} position={[0, 0, 0]} rotation={[0, 0.32, 0]} sequence={scene3Sheet.sequence} unloadPoint={34} onSequencePass={() => { toggleComponentDisplay("year2022") }} />}
@@ -244,11 +246,13 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
                 {showComponents.year2024 && <TextTitle text="2024" color="#000000" size={1} position={[-150, 167, -2000]} rotation={[0, 3.14, 0]} sequence={scene3Sheet.sequence} unloadPoint={39} onSequencePass={() => { toggleComponentDisplay("year2024") }} />}
 
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={38} onSequencePass={() => { toggleComponentDisplay("tunnel") }} />
-                {showComponents.tunnel && <Tunnel unloadPoint={43} sequence={scene3Sheet.sequence} onSequencePass={() => { toggleComponentDisplay("tunnel") }} />}
+                {showComponents.tunnel && <Tunnel unloadPoint={42.75} sequence={scene3Sheet.sequence} onSequencePass={() => { toggleComponentDisplay("tunnel") }} />}
 
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={41} onSequencePass={() => { toggleComponentDisplay("galaxy") }} />
                 {showComponents.galaxy && <Galaxy />}
-                {showComponents.galaxy && <ProgrammingFuture />}
+
+                <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={43} onSequencePass={() => { toggleComponentDisplay("programmingFuture") }} />
+                {showComponents.programmingFuture && <ProgrammingFuture />}
 
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={45} onSequencePass={() => { toggleComponentDisplay("year2099") }} />
                 {showComponents.year2099 && <TextTitle text="2099" color="#FFFFFF" size={0.1} position={[0, 0, 0]} rotation={[0, 3.14, 0]} sequence={scene3Sheet.sequence} unloadPoint={47} onSequencePass={() => { toggleComponentDisplay("year2099") }} />}

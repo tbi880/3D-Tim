@@ -14,7 +14,7 @@ const animationnames = ["Take 001"]
 
 
 function InfoScreenDisplay({ title, content, sequence, stopPoints = [], loadPoints = [], unloadPoints = [], onSequencePass }) {
-    const screenModel = useGLTF(bucketURL + "sci_fi_monitor-transformed.glb", true, true);
+    const screenModel = useGLTF(bucketURL + "sci-fi-screen-transformed.glb", true, true);
     const [opacity, setOpacity] = useState(1);
     const theatreKey = ("InfoScreenDisplay: " + title).trim();
     const [pages, setPages] = useState([]); // 二维数组，保存页和行
@@ -225,5 +225,5 @@ function InfoScreenDisplay({ title, content, sequence, stopPoints = [], loadPoin
     );
 }
 
-useGLTF.preload(bucketURL + "sci_fi_monitor-transformed.glb");
+useGLTF.preload(bucketURL + "sci-fi-screen-transformed.glb");
 export default InfoScreenDisplay;

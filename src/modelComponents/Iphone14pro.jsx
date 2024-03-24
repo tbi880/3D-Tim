@@ -9,7 +9,7 @@ import { useCallback } from 'react';
 
 
 export function Iphone14pro({ title, clickablePoint, sequence }) {
-  const { nodes, materials, scene } = useGLTF(bucketURL + 'iphone14pro-transformed.glb');
+  const { nodes, materials, scene } = useGLTF(bucketURL + 'iphone-transformed.glb');
   const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
 
   const play = useCallback(() => {
