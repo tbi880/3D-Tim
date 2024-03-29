@@ -10,6 +10,8 @@ const PreloadAssets = () => {
         <Helmet>
             <link rel="preload" href="fonts/Play_Regular.json" as="fetch" type="application/json" crossorigin="anonymous"></link>
             <link rel="preload" href="fonts/Orbitron_Bold.json" as="fetch" type="application/json" crossorigin="anonymous"></link>
+            <link rel="preload" href="fonts/ZCOOL%20KuaiLe_Regular.json" as="fetch" type="application/json" crossorigin="anonymous"></link>
+
         </Helmet >
     </>);
 };

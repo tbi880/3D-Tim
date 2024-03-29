@@ -107,5 +107,5 @@ function Arrow({ screenTitle, isNext, position, rotation, sequence, stopPoints }
     );
 }
 
-useGLTF.preload(bucketURL + "arrow-transformed.glb");
+
 export default Arrow;

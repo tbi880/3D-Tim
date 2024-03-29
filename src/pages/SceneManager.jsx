@@ -1,6 +1,7 @@
 import scene1State from '../scene1.json';
 import scene2State from '../scene2.json';
 import scene3State from '../scene3.json';
+import sceneJessieState from '../sceneJessie.json';
 import { getProject } from '@theatre/core';
 import { Canvas } from '@react-three/fiber';
 import { SheetProvider } from '@theatre/r3f';
@@ -12,18 +13,23 @@ import { getNextScene, getNextSceneStartPoint } from './Status';
 import { stageOfENV } from '../Settings';
 
 
+
 export const scene1Sheet = getProject('Scene1 Sheet', { state: scene1State }).sheet('Scene1 Sheet');
 export const scene2Project = getProject('Scene2 Sheet', { state: scene2State });
 export const scene2Sheet = scene2Project.sheet('Scene2 Sheet');
 export const scene3Project = getProject('Scene3 Sheet', { state: scene3State });
 export const scene3Sheet = scene3Project.sheet('Scene3 Sheet');
+export const sceneJessieProject = getProject('SceneJessie', { state: sceneJessieState });
+export const sceneJessieSheet = sceneJessieProject.sheet('SceneJessie');
+
 
 function SceneManager() {
 
     const [showScenes, setShowScenes] = useState({
-        sceneOne: false,
+        sceneOne: true,
         sceneTwo: false,
-        screenThree: true,
+        screenThree: false,
+        // screenJessie: true,
     });
 
     useEffect(() => {
@@ -51,6 +57,7 @@ function SceneManager() {
         sceneOne: scene1Sheet,
         screenTwo: scene2Sheet,
         screenThree: scene3Sheet,
+        screenJessie: sceneJessieSheet,
     });
 
     // 创建一个通用的切换函数
@@ -102,6 +109,9 @@ function SceneManager() {
 
                 {showScenes.screenThree && <SheetProvider sheet={scene3Sheet}>
                     <SceneThree startPoint={getNextSceneStartPoint()} onSequencePass={() => toggleSceneDisplay("screenThree")} unloadPoint={64} /></SheetProvider>}
+
+                {/* {showScenes.screenJessie &&
+                    <SceneJessie startPoint={0} />} */}
             </Canvas>
         </>
     )

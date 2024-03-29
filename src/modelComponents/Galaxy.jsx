@@ -27,5 +27,5 @@ function Galaxy({ sequence, onSequencePass }) {
     </>
     )
 }
-useGLTF.preload(bucketURL + "galaxy.glb")
+
 export default Galaxy

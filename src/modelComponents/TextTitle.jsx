@@ -9,8 +9,8 @@ const fontFile = "fonts/Orbitron_Bold.json";
 extend({ TextGeometry });
 
 
-function TextTitle({ text, color, size, position = [0, 0, 0], rotation = [0, 0, 0], sequence, unloadPoint, onSequencePass }) {
-    const font = useLoader(FontLoader, fontFile); // 使用useLoader来加载字体
+function TextTitle({ text, fontURL, color, size, position = [0, 0, 0], rotation = [0, 0, 0], sequence, unloadPoint, onSequencePass }) {
+    const font = useLoader(FontLoader, (fontURL ? fontURL : fontFile)); // 使用useLoader来加载字体
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const theatreKeyText = "TextTitle: " + text.substring(0, 20).trim();
     const meshRef = useRef();

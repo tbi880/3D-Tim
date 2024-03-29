@@ -47,5 +47,5 @@ function ShipInside({ sequence, unloadPoint, onSequencePass }) {
     );
 }
 
-useGLTF.preload(bucketURL + "shipinside-transformed.glb");
+
 export default ShipInside;

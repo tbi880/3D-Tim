@@ -14,7 +14,7 @@ import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { scene1Sheet } from "./SceneManager";
 import { bucketURL } from '../Settings';
 import StreamMusic from '../modelComponents/StreamMusic';
-
+import { useGLTF } from '@react-three/drei';
 
 
 
@@ -61,13 +61,12 @@ function SceneOne({ unloadPoint, onSequencePass }) {
     });
 
 
-    // const [audioBuffer, setAudioBuffer] = useState(null);
-
-    // useEffect(() => {
-    //     createAudioLoader(musicUrl).then(buffer => {
-    //         setAudioBuffer(buffer);
-    //     }).catch(console.error);
-    // }, [musicUrl]);
+    useEffect(() => {
+        useGLTF.preload(bucketURL + "arrow-transformed.glb");
+        useGLTF.preload(bucketURL + "galaxy.glb");
+        useGLTF.preload(bucketURL + "sci-fi-screen-transformed.glb");
+        useGLTF.preload(bucketURL + "shipinside-transformed.glb");
+    }, []);
 
     useEffect(() => {
 

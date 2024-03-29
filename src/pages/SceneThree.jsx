@@ -28,7 +28,7 @@ import { scene3Project } from './SceneManager';
 function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
     const musicUrl = bucketURL + 'music/bgm3.mp3';
     const [ambientIntensity, setAmbientIntensity] = useState(5);
-    const [pointIntensity, setPointIntensity] = useState(5);
+    // const [pointIntensity, setPointIntensity] = useState(5);
     const [spotIntensity, setSpotIntensity] = useState(5);
     const [rectAreaIntensity, setRectAreaIntensity] = useState(5);
     const [backgroundColor, setBackgroundColor] = useState("black"); // 状态管理背景颜色
@@ -119,7 +119,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
             setBackgroundColor("white");
         }
 
-        if (componentKey === "auckland" && scene3Sheet.sequence.position >= 40) {
+        if (componentKey === "galaxy" && scene3Sheet.sequence.position >= 40) {
             setBackgroundColor("black");
             shipHangerAccess();
         }

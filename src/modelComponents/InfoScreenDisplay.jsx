@@ -225,5 +225,5 @@ function InfoScreenDisplay({ title, content, sequence, stopPoints = [], loadPoin
     );
 }
 
-useGLTF.preload(bucketURL + "sci-fi-screen-transformed.glb");
+
 export default InfoScreenDisplay;

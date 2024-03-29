@@ -16,7 +16,7 @@ import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { scene2Sheet, scene2Project } from "./SceneManager";
 import { bucketURL } from '../Settings';
 import Loading from '../modelComponents/Loading';
-
+import { useGLTF } from '@react-three/drei';
 
 
 // const audioResourceForScene2 = createAudioLoader(bucketURL + 'music/bgm2.mp3');
@@ -27,6 +27,8 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass }) {
     const musicUrl = bucketURL + 'music/bgm2.mp3';
 
     useEffect(() => {
+        useGLTF.preload(bucketURL + 'loading.glb');
+
         scene2Project.ready.then(() => {
             if (startPoint != 0) {
                 scene2Sheet.sequence.play({ range: [startPoint, startPoint + 0.5] });

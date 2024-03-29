@@ -62,5 +62,5 @@ export function Loading({ title, lines, position, rotation, sequence, onSequence
   )
 }
 
-useGLTF.preload(bucketURL + 'loading.glb')
+
 export default Loading;
