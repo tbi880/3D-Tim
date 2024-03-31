@@ -1,13 +1,27 @@
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import NotFoundPage from './pages/NotFoundPage'
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { stageOfENV } from './Settings';
 import SceneJessie from './pages/SceneJessie';
 
 function Routers() {
 
+    const [isWeChatBrowser, setIsWeChatBrowser] = useState(false);
+
     useEffect(() => {
+        function checkBrowser() {
+            const ua = navigator.userAgent;
+            if (ua.includes('MicroMessenger')) {
+                // 微信内置浏览器中打开
+                setIsWeChatBrowser(true);
+                alert('请不要使用微信浏览器来打开本页面，由于性能限制，网页可能存在性能瓶颈导致错误。\n在Safari或Chrome内核浏览器中打开本页面。');
+                // 或者你可以设置状态来控制渲染不同的组件或元素
+            }
+        }
+
+        checkBrowser();
+
         // 定义进入全屏的函数
         if (stageOfENV === "prod") {
             const requestFullscreen = () => {
@@ -38,6 +52,11 @@ function Routers() {
             };
         }
     }, []);
+
+
+    if (isWeChatBrowser) {
+        return <>微信内置浏览器限制性能，我也很难受。。。还是劳烦您手动复制到浏览器打开吧</>
+    }
 
 
     return (
