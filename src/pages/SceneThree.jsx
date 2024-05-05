@@ -148,10 +148,11 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
         <>
             {/* <Canvas gl={{ preserveDrawingBuffer: true }} >
                 <SheetProvider sheet={scene1Sheet}> */}
-            <PreloadAssets />
+
 
 
             <Suspense fallback={<WaitingForMoreModels />}>
+                <PreloadAssets />
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene3Sheet.sequence} startPoint={0.02} maxVolume={1} />}
 
                 {/* <AsyncMusic audioBuffer={audioBuffer} sequence={scene3Sheet.sequence} startPoint={0.02} lowVolumePoints={[31, 50]} highVolumePoints={[32, 52]} maxVolume={0.75} /> */}

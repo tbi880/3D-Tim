@@ -8,6 +8,8 @@ function importantNotice() {
         '1225': ['Tim wishes you a marry xmas! 圣诞节快乐！', 'https://www.bty.co.nz'],
     };
 
+    const defaultNotice = ['Welcome to Tim Bi\'s world! 欢迎来到Tim Bi的世界！ Recent notice happened around Tim: ' + noticeMap["0402"][0], 'https://www.bty.co.nz/jessie'];
+
     const today = new Date();
     let closestNotice = null;
     let minDifference = Infinity; // 用于找出最接近今天的通知
@@ -30,7 +32,7 @@ function importantNotice() {
         }
     });
 
-    return closestNotice ? closestNotice : { noticeContent: '', noticeLink: '' };
+    return closestNotice ? closestNotice : { noticeContent: defaultNotice[0], noticeLink: defaultNotice[1] };
 }
 
 

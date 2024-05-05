@@ -66,8 +66,8 @@ function Routers() {
 
             <Routes>
                 <Route path="/" element={<HomePage />} />
-                <Route path="*" element={<NotFoundPage />} />
                 <Route path="/jessie" element={<SceneJessie startPoint={0} />} />
+                <Route path="*" element={<NotFoundPage />} />
             </Routes>
         </Router>
     );

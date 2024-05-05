@@ -8,6 +8,7 @@ import { stageOfENV } from '../Settings';
 import studio from '@theatre/studio'
 import extension from '@theatre/r3f/dist/extension'
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { Helmet } from 'react-helmet';
 
 if (stageOfENV != "prod") {
 
@@ -35,6 +36,16 @@ function HomePage() {
 
     return (
         <>
+            <Helmet>
+                <title>Welcome to Tim Bi's world - 2024</title>
+                <meta name="description" content="Ready for a 3D ride in Tim Bi's universe? I think you would know me very well after you finish this 'adventure'" />
+                <meta name="keywords" content="Tim Bi, 毕天元" />
+                <meta property="og:title" content="Welcome to Tim Bi's world - 2024" />
+                <meta property="og:description" content="Ready for a 3D ride in Tim Bi's universe? I think you would know me very well after you finish this 'adventure'" />
+                <meta property="og:type" content="website" />
+                <meta property="og:url" content="https://www.bty.co.nz/" />
+                <link rel="canonical" href="https://www.bty.co.nz/" />
+            </Helmet>
             {showComponents.header && (getNextScene() == "sceneOne") && <Header onAnimationEnd={() => toggleComponentDisplay("header")} />}
             <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
                 <SceneManager />

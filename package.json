@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint src --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "generate-sitemap": "node generate-sitemap.js"
   },
   "dependencies": {
     "@react-three/drei": "^9.102.6",
@@ -16,10 +17,11 @@
     "@theatre/r3f": "^0.7.0",
     "@theatre/studio": "^0.7.0",
     "bootstrap": "^5.3.3",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "react-helmet": "^6.1.0",
     "react-router-dom": "^6.22.1",
+    "sitemap": "^7.1.1",
     "three": "^0.161.0"
   },
   "devDependencies": {

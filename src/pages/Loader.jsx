@@ -60,7 +60,7 @@ function Loader() {
                 padding: '10px',
             }}>
 
-                <h1 style={{ fontSize: '4vw' }}>Welcome to Tim's world.</h1>
+                <h1 style={{ fontSize: '4vw' }}>Welcome to Tim Bi's world.</h1>
                 <h2 style={{ fontSize: '3vw' }}>Ready for a 3D ride in my universe?</h2>
                 <h2 style={{ fontSize: '3vw', padding: '10px' }}>I think you would know me very well after you finish this "adventure"</h2>
                 <h2 style={{ fontSize: '3vw', padding: '10px' }}>please be patient. The first time access would take approximately 20 secounds.</h2>

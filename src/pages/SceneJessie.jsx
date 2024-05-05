@@ -1,6 +1,6 @@
 import AnyModel from '../modelComponents/AnyModel';
 import SingleLoadManager from '../modelComponents/SingleLoadManager';
-import { Suspense, useState, useCallback, useEffect, useRef } from 'react';
+import { Suspense, useState, useCallback, useEffect } from 'react';
 import TextTitle from '../modelComponents/TextTitle';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { bucketURL } from '../Settings';
@@ -15,6 +15,7 @@ import TextTitle_v2 from '../modelComponents/TextTitle_v2';
 import WaitingJessie from './WaitingJessie';
 import PreloadAssets from '../modelComponents/preloadAssets';
 import { useGLTF } from '@react-three/drei';
+import { Helmet } from 'react-helmet';
 
 
 function SceneJessie({ startPoint }) {
@@ -126,6 +127,16 @@ function SceneJessie({ startPoint }) {
 
     return (
         <>
+            <Helmet>
+                <title>Jessie Li Happy Birthday!!! - Welcome to Tim Bi's world</title>
+                <meta name="description" content="Tim Bi's friend Jessie is having her 23th birthday! Let's wish her a happy birthday and have a look of what Tim prepared for her as her birthday gift!" />
+                <meta name="keywords" content="Tim Bi, Jessie" />
+                <meta property="og:title" content="Jessie Li Happy Birthday!!! - Welcome to Tim Bi's world" />
+                <meta property="og:description" content="Tim's friend Jessie is having her 23th birthday! Let's wish her a happy birthday and have a look of what Tim prepared for her as her birthday gift!" />
+                <meta property="og:type" content="website" />
+                <meta property="og:url" content="https://www.bty.co.nz/jessie" />
+                <link rel="canonical" href="https://www.bty.co.nz/jessie" />
+            </Helmet>
             <Canvas gl={{ preserveDrawingBuffer: true }} >
                 <SheetProvider sheet={sceneJessieSheet}>
                     <Suspense fallback={<WaitingJessie />}>
