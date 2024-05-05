@@ -26,9 +26,9 @@ export const sceneJessieSheet = sceneJessieProject.sheet('SceneJessie');
 function SceneManager() {
 
     const [showScenes, setShowScenes] = useState({
-        sceneOne: true,
+        sceneOne: false,
         sceneTwo: false,
-        screenThree: false,
+        screenThree: true,
         // screenJessie: true,
     });
 
@@ -101,11 +101,11 @@ function SceneManager() {
     return (
         <>
             <Canvas gl={{ preserveDrawingBuffer: true }} >
-                {showScenes.sceneOne && <SheetProvider sheet={scene1Sheet}>
+                {/* {showScenes.sceneOne && <SheetProvider sheet={scene1Sheet}>
                     <SceneOne unloadPoint={39} onSequencePass={() => toggleSceneDisplay("sceneOne")} /></SheetProvider>}
 
                 {showScenes.sceneTwo && <SheetProvider sheet={scene2Sheet}>
-                    <SceneTwo startPoint={getNextSceneStartPoint()} unloadPoints={[38]} onSequencePass={() => toggleSceneDisplay("sceneTwo")} /></SheetProvider>}
+                    <SceneTwo startPoint={getNextSceneStartPoint()} unloadPoints={[38]} onSequencePass={() => toggleSceneDisplay("sceneTwo")} /></SheetProvider>} */}
 
                 {showScenes.screenThree && <SheetProvider sheet={scene3Sheet}>
                     <SceneThree startPoint={getNextSceneStartPoint()} onSequencePass={() => toggleSceneDisplay("screenThree")} unloadPoint={64} /></SheetProvider>}

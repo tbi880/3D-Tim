@@ -32,7 +32,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
     const [spotIntensity, setSpotIntensity] = useState(5);
     const [rectAreaIntensity, setRectAreaIntensity] = useState(5);
     const [backgroundColor, setBackgroundColor] = useState("black"); // 状态管理背景颜色
-    const resumeString = "I embarked on my tech journey at the age of 15, contributing to four commercial projects since then. During my previous work, I encompassed practical skills from developing applications and websites to manage my own server. In addition, my experience as a stage performing keyboardist has sharpened my teamwork skills and stress handling. I am a diligent professional with extensive experience in the field of software engineering, who likes details and always looks for runtime optimizations. I am currently seeking a graduates opportunity to further develop my skills following my grad- uation in July 2024.";
+    const resumeString = "I embarked on my tech journey at the age of 15, contributing to four commercial projects since then. During my previous work, I encompassed practical skills from developing applications and websites to manage my own server. In addition, my experience as a stage performing keyboardist has sharpened my teamwork skills and stress handling. I am a diligent professional with extensive experience in the field of software engineering, who likes details and always looks for runtime optimizations. I am currently seeking a graduates opportunity to further develop my skills following my graduation in July 2024.";
 
     useEffect(() => {
         // 设置定时器，每秒执行一次
@@ -261,7 +261,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={48.5} onSequencePass={() => { toggleComponentDisplay("resumeScreen") }} />
                 {showComponents.resumeScreen && <InfoScreenDisplay title={"Resume2024"} content={resumeString} sequence={scene3Sheet.sequence} loadPoints={[49.5, 50, 50.5, 51]} stopPoints={[50.5, 51, 51.5, 64]} unloadPoints={[50.5, 51, 51.5, 52]} onSequencePass={() => { toggleComponentDisplay("resumeScreen") }} />}
 
-                <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={43.5} onSequencePass={() => { toggleComponentDisplay("techs") }} />
+                <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={52} onSequencePass={() => { toggleComponentDisplay("techs") }} />
                 {showComponents.techs && <>
                     <Technology title={"react"} imagePath={bucketURL + "tech/reactjs.png"} />
                     <Technology title={"nodejs"} imagePath={bucketURL + "tech/nodejs.png"} />
