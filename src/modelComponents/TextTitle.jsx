@@ -11,7 +11,7 @@ extend({ TextGeometry });
 
 
 function TextTitle({ text, fontURL, color, size, position = [0, 0, 0], rotation = [0, 0, 0], sequence, unloadPoint, onSequencePass }) {
-    const font = useLoader(FontLoader, (fontURL ? fontURL : fontFile)); // 使用useLoader来加载字体
+    const font = useLoader(FontLoader, (fontURL ? bucketURL + fontURL : fontFile)); // 使用useLoader来加载字体
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const theatreKeyText = "TextTitle: " + text.substring(0, 20).trim();
     const meshRef = useRef();

@@ -5,6 +5,7 @@ import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry';
 import { editable as e } from '@theatre/r3f';
 import { types } from '@theatre/core';
 import { bucketURL } from '../Settings';
+import { bucketURL } from '../Settings';
 
 const fontFile = bucketURL + "fonts/Orbitron_Bold.json";
 extend({ TextGeometry });
@@ -12,7 +13,7 @@ extend({ TextGeometry });
 
 function TextTitle_v2({ theatreKey, text, fontURL, color, size, position = [0, 0, 0], rotation = [0, 0, 0], sequence, unloadPoint, onSequencePass }) {
 
-    const font = useLoader(FontLoader, (fontURL ? fontURL : fontFile)); // 使用useLoader来加载字体
+    const font = useLoader(FontLoader, (fontURL ? bucketURL + fontURL : fontFile)); // 使用useLoader来加载字体
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const theatreKeyText = "TextTitle_v2: " + theatreKey;
     const meshRef = useRef();
