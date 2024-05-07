@@ -1,5 +1,6 @@
 import { Html, useProgress } from '@react-three/drei';
 import { useEffect, useState } from 'react';
+import JessiePreAlert from '../modelComponents/JessiePreAlert';
 
 const codelineOne = "耐心等待哦"
 const codelineTwo = "嘻嘻嘻"
@@ -14,7 +15,26 @@ function WaitingJessie() {
     const { progress: actualProgress } = useProgress(); // 实际加载进度
     const [simulatedProgress, setSimulatedProgress] = useState(0); // 模拟的进度
 
+    const [isCrawler, setIsCrawler] = useState(false);
 
+    useEffect(() => {
+        const userAgent = navigator.userAgent;
+        const crawlers = [
+            'Googlebot', // 谷歌爬虫
+            'Bingbot',   // 必应爬虫
+            'Slurp',     // 雅虎爬虫
+            'DuckDuckBot', // DuckDuckGo爬虫
+            'Baiduspider', // 百度爬虫
+            'YandexBot', // Yandex爬虫
+            'Sogou',     // 搜狗爬虫
+            'Exabot',    // Exalead爬虫
+            'facebot',   // Facebook爬虫
+            'ia_archiver' // Alexa爬虫
+        ];
+
+        // 检查User-Agent是否匹配上述爬虫之一
+        setIsCrawler(crawlers.some(crawler => userAgent.includes(crawler)));
+    }, []);
 
     useEffect(() => {
         // 如果模拟进度小于实际进度，则逐渐增加模拟进度
@@ -60,6 +80,7 @@ function WaitingJessie() {
                 <h1 style={{ fontSize: '4vw', padding: '10px' }}>{codelineEight}</h1>
                 <div className="loading" style={{ fontSize: '5vw' }}>{Math.ceil(simulatedProgress)} % loaded</div>
             </div>
+            {!isCrawler && <JessiePreAlert />}
         </Html >
     );
 }

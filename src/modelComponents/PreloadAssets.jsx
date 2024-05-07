@@ -1,16 +1,20 @@
 
 import { Helmet } from 'react-helmet';
-
+import { bucketURL } from '../Settings';
 
 // PreloadAssets组件
 const PreloadAssets = () => {
 
+    const fontFile1 = bucketURL + "fonts/Play_Regular.json";
+    const fontFile2 = bucketURL + "fonts/Orbitron_Bold.json";
+    const fontFile3 = bucketURL + "fonts/ZCOOL%20KuaiLe_Regular.json";
+
 
     return (<>
         <Helmet>
-            <link rel="preload" href="fonts/Play_Regular.json" as="fetch" type="application/json" crossorigin="anonymous"></link>
-            <link rel="preload" href="fonts/Orbitron_Bold.json" as="fetch" type="application/json" crossorigin="anonymous"></link>
-            <link rel="preload" href="fonts/ZCOOL%20KuaiLe_Regular.json" as="fetch" type="application/json" crossorigin="anonymous"></link>
+            <link rel="preload" href={fontFile1} as="fetch" type="application/json" crossorigin="anonymous"></link>
+            <link rel="preload" href={fontFile2} as="fetch" type="application/json" crossorigin="anonymous"></link>
+            <link rel="preload" href={fontFile3} as="fetch" type="application/json" crossorigin="anonymous"></link>
 
         </Helmet >
     </>);

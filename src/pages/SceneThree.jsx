@@ -24,7 +24,6 @@ import { types } from '@theatre/core';
 import { scene3Project } from './SceneManager';
 
 
-
 function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
     const musicUrl = bucketURL + 'music/bgm3.mp3';
     const [ambientIntensity, setAmbientIntensity] = useState(5);
@@ -148,11 +147,9 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
         <>
             {/* <Canvas gl={{ preserveDrawingBuffer: true }} >
                 <SheetProvider sheet={scene1Sheet}> */}
-
-
-
+            <PreloadAssets />
             <Suspense fallback={<WaitingForMoreModels />}>
-                <PreloadAssets />
+
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene3Sheet.sequence} startPoint={0.02} maxVolume={1} />}
 
                 {/* <AsyncMusic audioBuffer={audioBuffer} sequence={scene3Sheet.sequence} startPoint={0.02} lowVolumePoints={[31, 50]} highVolumePoints={[32, 52]} maxVolume={0.75} /> */}
@@ -274,10 +271,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
                 {showComponents.loading && <Loading title="loading" lines={["Disconnected", "from Tim's", "namespace"]} position={[0, 0, 0]} rotation={[0, 0, 0]} sequence={scene3Sheet.sequence} unloadPoint={66} onSequencePass={() => { toggleComponentDisplay("loading") }} />}
 
 
-
-
             </Suspense>
-
         </>
     )
 }

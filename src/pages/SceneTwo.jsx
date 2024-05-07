@@ -101,9 +101,9 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass }) {
                 <SheetProvider sheet={scene1Sheet}> */}
 
 
-
+            <PreloadAssets />
             <Suspense fallback={<WaitingForMoreModels />}>
-                <PreloadAssets />
+
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene2Sheet.sequence} startPoint={0.5} lowVolumePoints={[1]} highVolumePoints={[3]} maxVolume={0.75} />}
                 {/* <AsyncMusic audioBuffer={audioBuffer} sequence={scene2Sheet.sequence} startPoint={0.5} lowVolumePoints={[1]} highVolumePoints={[3]} maxVolume={0.75} /> */}
                 <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault position={[498, -19, -61]} rotation={[0, 1.55, 0]} fov={75} near={0.01} />
