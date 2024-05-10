@@ -60,7 +60,6 @@ function Routers() {
 
 
     return (
-        // <Router basename="/tim">
 
         <Router>
 

@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "@react-three/drei": "^9.105.6",
-    "@react-three/fiber": "^8.16.3",
+    "@react-three/fiber": "^8.16.5",
+    "@react-three/xr": "^5.7.1",
     "@theatre/core": "^0.7.0",
     "@theatre/r3f": "^0.7.0",
     "@theatre/studio": "^0.7.0",

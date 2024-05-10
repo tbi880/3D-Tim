@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite'
+import fs from 'fs';
 import react from '@vitejs/plugin-react'
 import { terser } from 'rollup-plugin-terser';
 import compressPlugin from 'vite-plugin-compression';
@@ -7,6 +8,13 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  server: {
+    https: {
+      key: fs.readFileSync('/Users/tianyuanbi/Downloads/3D Tim/localhost.key'),
+      cert: fs.readFileSync('/Users/tianyuanbi/Downloads/3D Tim/localhost.crt')
+    },
+    host: true  // 允许局域网访问
+  },
 
   plugins: [
     react()

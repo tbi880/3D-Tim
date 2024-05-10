@@ -4,21 +4,32 @@ import StrangerStar from '../modelComponents/StrangerStar';
 import ShipOutside from '../modelComponents/ShipOutside';
 import Galaxy from '../modelComponents/Galaxy';
 import TextTitle from '../modelComponents/TextTitle';
+import TextTitle_v2 from '../modelComponents/TextTitle_v2';
 import InfoScreenDisplay from '../modelComponents/InfoScreenDisplay';
 import SingleLoadManager from '../modelComponents/SingleLoadManager';
 import ViewPort from '../modelComponents/ViewPort';
 // import AsyncMusic, { createAudioLoader } from '../modelComponents/AsyncMusic';
-import { Suspense, useState, useCallback, useEffect } from 'react';
+import { Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import PreloadAssets from '../modelComponents/preloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { scene1Sheet } from "./SceneManager";
 import { bucketURL } from '../Settings';
 import StreamMusic from '../modelComponents/StreamMusic';
 import { useGLTF } from '@react-three/drei';
+import { useXR, useXREvent } from '@react-three/xr';
 
 
 
 function SceneOne({ unloadPoint, onSequencePass }) {
+    const [vrSupported, setVrSuppoerted] = useState(false);
+    const { player, isPresenting } = useXR(); // This gives us access to the VR player context
+    const [VRCordinate, setVRCordinate] = useState({
+        0: [600, 19, -61],
+        1: [0, 20, -61],
+        2: [750, -19, -45]
+    });
+    const [currentVRCordinate, setCurrentVRCordinate] = useState(0);
+    const firstPersonCamera = useRef();
     const musicUrl = bucketURL + 'music/bgm1.mp3';
     const [year, setYear] = useState(new Date().getFullYear());
     const [month, setMonth] = useState(new Date().getMonth());
@@ -40,6 +51,7 @@ function SceneOne({ unloadPoint, onSequencePass }) {
         shipOutside: true,
         viewPortStarShipInfo: true,
         infoScreenDisplayStarShipInfo: false,
+        textTitleVRVIEWPORT: true,
         // 可以添加更多组件的初始显示状态
         // 例如: otherComponent: true,
     });
@@ -52,6 +64,37 @@ function SceneOne({ unloadPoint, onSequencePass }) {
         }));
 
     }, []);
+
+    useEffect(() => {
+        if (navigator.xr) {
+            navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+                if (supported) {
+                    setVrSuppoerted(true);
+                }
+            });
+        }
+
+    }, []);
+
+
+    useFrame(() => {
+        if (vrSupported) {
+            if (isPresenting) {
+                player.position.set(VRCordinate[currentVRCordinate][0], VRCordinate[currentVRCordinate][1], VRCordinate[currentVRCordinate][2]);
+            } else {
+                player.position.set(0, 0, 0);
+            }
+        }
+    });
+
+    //前往下一个VR坐标
+    useXREvent('squeeze', (event) => {
+        setCurrentVRCordinate((prev) => {
+            return prev < Object.keys(VRCordinate).length - 1 ? prev + 1 : 0;
+        })
+
+    });
+
 
     useFrame(() => {
         // 当sequence.position超过结束点时触发
@@ -87,7 +130,6 @@ function SceneOne({ unloadPoint, onSequencePass }) {
 
 
 
-
     return (
         <>
             {/* <Canvas gl={{ preserveDrawingBuffer: true }} >
@@ -97,22 +139,25 @@ function SceneOne({ unloadPoint, onSequencePass }) {
 
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene1Sheet.sequence} startPoint={0.07} lowVolumePoints={[30]} highVolumePoints={[0.034, 33]} maxVolume={1} />}
                 {/* <AsyncMusic audioBuffer={audioBuffer} sequence={scene1Sheet.sequence} startPoint={0.07} lowVolumePoints={[30]} highVolumePoints={[0.034, 33]} maxVolume={1} /> */}
-                <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault position={[498, -19, -61]} rotation={[0, 1.55, 0]} fov={75} near={0.01} />
+                <PerspectiveCamera ref={firstPersonCamera} theatreKey="FirstPersonCamera" makeDefault position={[600, 20, -61]} rotation={[0, 0.33, 0]} fov={75} near={0.01} />
                 <ambientLight intensity={5} />
 
                 <color attach='background' args={['black']} />
 
-
-
                 <Galaxy />
                 <StrangerStar />
                 <ShipOutside sequence={scene1Sheet.sequence} onSequencePass={() => toggleComponentDisplay('shipOutside')} />
-                {showComponents.infoScreenWelcome && (<InfoScreenDisplay title="Welcome" content={screenWelcomeContent} sequence={scene1Sheet.sequence} stopPoints={[0.034, 27.5]} loadPoints={[0, 0.033]} unloadPoints={[0.034, 2.5]} onSequencePass={() => toggleComponentDisplay('infoScreenWelcome')} />)}
 
+                {vrSupported && isPresenting && <TextTitle_v2 theatreKey={"_VR_WELCOME"} text="Try to squeeze one of your controller" color="#FFFFFF" size={1} sequence={scene1Sheet.sequence} position={[580, 25, -75]} rotation={[0, 0.33, 0]} />}
+
+
+                {showComponents.infoScreenWelcome && (<InfoScreenDisplay title="Welcome" content={screenWelcomeContent} sequence={scene1Sheet.sequence} stopPoints={[0.034, 27.5]} loadPoints={[0, 0.033]} unloadPoints={[0.034, 2.5]} onSequencePass={() => toggleComponentDisplay('infoScreenWelcome')} />)}
 
                 {showComponents.textTitleAD32101 && (<TextTitle text="AD 32101" color="#FFD700" size={1} sequence={scene1Sheet.sequence} unloadPoint={5} onSequencePass={() => toggleComponentDisplay('textTitleAD32101')} />)}
                 {showComponents.textTitleOuterArm && (<TextTitle text="Outer arm of the galaxy" color="#FFD700" size={1} sequence={scene1Sheet.sequence} unloadPoint={9} onSequencePass={() => toggleComponentDisplay('textTitleOuterArm')} />)}
                 {showComponents.textTitleApproximately && (<TextTitle text="Approximately 18,000 light years from Earth" color="#FFD700" size={1} sequence={scene1Sheet.sequence} unloadPoint={15} onSequencePass={() => toggleComponentDisplay('textTitleApproximately')} />)}
+
+                {vrSupported && showComponents.textTitleVRVIEWPORT && <TextTitle_v2 theatreKey={"_VR_VIEWPORT"} text="Come back here again when you see the VIEWPORT" color="#FFFFFF" size={1} sequence={scene1Sheet.sequence} unloadPoint={25} position={[725, -19, -60]} onSequencePass={() => toggleComponentDisplay('textTitleVRVIEWPORT')} />}
 
                 {showComponents.viewPortStarShipInfo && (<ViewPort screenTitle={"StarShip Info"} position={[745, -16, 38]} rotation={[-1.13, -0.654, 5.2]} sequence={scene1Sheet.sequence} stopPoint={30} unloadPoint={37} onSequencePass={() => toggleComponentDisplay('viewPortStarShipInfo')} isSetNextScene={true} nextScene={"sceneTwo"} />)}
                 <SingleLoadManager loadPoint={29.5} sequence={scene1Sheet.sequence} onSequencePass={() => toggleComponentDisplay('infoScreenDisplayStarShipInfo')} />

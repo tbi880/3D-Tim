@@ -11,10 +11,11 @@ import SceneThree from './SceneThree';
 import { useCallback, useEffect, useState } from 'react';
 import { getNextScene, getNextSceneStartPoint } from './Status';
 import { stageOfENV } from '../Settings';
+import { Controllers, Hands, XR, VRButton } from '@react-three/xr';
+import '@react-three/fiber'
 
-
-
-export const scene1Sheet = getProject('Scene1 Sheet', { state: scene1State }).sheet('Scene1 Sheet');
+export const scene1Project = getProject('Scene1 Sheet', { state: scene1State });
+export const scene1Sheet = scene1Project.sheet('Scene1 Sheet');
 export const scene2Project = getProject('Scene2 Sheet', { state: scene2State });
 export const scene2Sheet = scene2Project.sheet('Scene2 Sheet');
 export const scene3Project = getProject('Scene3 Sheet', { state: scene3State });
@@ -100,19 +101,27 @@ function SceneManager() {
 
     return (
         <>
-
+            <VRButton />
             <Canvas gl={{ preserveDrawingBuffer: true }} >
-                {showScenes.sceneOne && <SheetProvider sheet={scene1Sheet}>
-                    <SceneOne unloadPoint={39} onSequencePass={() => toggleSceneDisplay("sceneOne")} /></SheetProvider>}
+                <XR>
+                    <Controllers rayMaterial={{ color: '#99FFFF' }} />
+                    <Hands />
+                    {showScenes.sceneOne && <SheetProvider sheet={scene1Sheet}>
+                        <SceneOne unloadPoint={39} onSequencePass={() => toggleSceneDisplay("sceneOne")} /></SheetProvider>}
 
-                {showScenes.sceneTwo && <SheetProvider sheet={scene2Sheet}>
-                    <SceneTwo startPoint={getNextSceneStartPoint()} unloadPoints={[38]} onSequencePass={() => toggleSceneDisplay("sceneTwo")} /></SheetProvider>}
+                    {showScenes.sceneTwo && <SheetProvider sheet={scene2Sheet}>
+                        <SceneTwo startPoint={getNextSceneStartPoint()} unloadPoints={[38]} onSequencePass={() => toggleSceneDisplay("sceneTwo")} /></SheetProvider>}
 
-                {showScenes.screenThree && <SheetProvider sheet={scene3Sheet}>
-                    <SceneThree startPoint={getNextSceneStartPoint()} onSequencePass={() => toggleSceneDisplay("screenThree")} unloadPoint={64} /></SheetProvider>}
+                    {showScenes.screenThree && <SheetProvider sheet={scene3Sheet}>
+                        <SceneThree startPoint={getNextSceneStartPoint()} onSequencePass={() => toggleSceneDisplay("screenThree")} unloadPoint={64} /></SheetProvider>}
 
-                {/* {showScenes.screenJessie &&
-                    <SceneJessie startPoint={0} />} */}
+
+                    {/* {showScenes.screenJessie &&
+                <SceneJessie startPoint={0} />} */}
+                </XR>
+
+
+
             </Canvas>
 
         </>
