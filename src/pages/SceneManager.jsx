@@ -14,6 +14,7 @@ import { stageOfENV } from '../Settings';
 import { Controllers, Hands, XR, VRButton } from '@react-three/xr';
 import '@react-three/fiber'
 
+
 export const scene1Project = getProject('Scene1 Sheet', { state: scene1State });
 export const scene1Sheet = scene1Project.sheet('Scene1 Sheet');
 export const scene2Project = getProject('Scene2 Sheet', { state: scene2State });
@@ -29,8 +30,8 @@ function SceneManager() {
     const [showScenes, setShowScenes] = useState({
         sceneOne: true,
         sceneTwo: false,
-        screenThree: false,
-        // screenJessie: true,
+        sceneThree: false,
+        // sceneJessie: true,
     });
 
     useEffect(() => {
@@ -56,9 +57,9 @@ function SceneManager() {
 
     const [scenesSheets, setScenesSheets] = useState({
         sceneOne: scene1Sheet,
-        screenTwo: scene2Sheet,
-        screenThree: scene3Sheet,
-        screenJessie: sceneJessieSheet,
+        sceneTwo: scene2Sheet,
+        sceneThree: scene3Sheet,
+        // sceneJessie: sceneJessieSheet,
     });
 
     // 创建一个通用的切换函数
@@ -75,7 +76,6 @@ function SceneManager() {
 
         // 如果是手机竖屏模式，执行逻辑
         if (isPortraitPhoneScreen) {
-            console.log('Detected portrait phone screen, refreshing...');
             window.location.reload();
         }
 
@@ -112,11 +112,11 @@ function SceneManager() {
                     {showScenes.sceneTwo && <SheetProvider sheet={scene2Sheet}>
                         <SceneTwo startPoint={getNextSceneStartPoint()} unloadPoints={[38]} onSequencePass={() => toggleSceneDisplay("sceneTwo")} /></SheetProvider>}
 
-                    {showScenes.screenThree && <SheetProvider sheet={scene3Sheet}>
-                        <SceneThree startPoint={getNextSceneStartPoint()} onSequencePass={() => toggleSceneDisplay("screenThree")} unloadPoint={64} /></SheetProvider>}
+                    {showScenes.sceneThree && <SheetProvider sheet={scene3Sheet}>
+                        <SceneThree startPoint={getNextSceneStartPoint()} onSequencePass={() => toggleSceneDisplay("sceneThree")} unloadPoint={64} /></SheetProvider>}
 
 
-                    {/* {showScenes.screenJessie &&
+                    {/* {showScenes.sceneJessie &&
                 <SceneJessie startPoint={0} />} */}
                 </XR>
 

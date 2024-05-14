@@ -26,7 +26,9 @@ function SceneOne({ unloadPoint, onSequencePass }) {
     const [VRCordinate, setVRCordinate] = useState({
         0: [600, 19, -61],
         1: [0, 20, -61],
-        2: [750, -19, -45]
+        2: [750, -19, -45],
+        3: [750, -19, -40],
+        4: [750, -19, -35],
     });
     const [currentVRCordinate, setCurrentVRCordinate] = useState(0);
     const firstPersonCamera = useRef();
@@ -87,13 +89,21 @@ function SceneOne({ unloadPoint, onSequencePass }) {
         }
     });
 
+    //前往上一个VR坐标
+    useXREvent('squeeze', (event) => {
+        setCurrentVRCordinate((prev) => {
+            return prev === 0 ? Object.keys(VRCordinate).length - 1 : prev - 1;
+        })
+
+    }, { handedness: 'left' });
+
     //前往下一个VR坐标
     useXREvent('squeeze', (event) => {
         setCurrentVRCordinate((prev) => {
             return prev < Object.keys(VRCordinate).length - 1 ? prev + 1 : 0;
         })
 
-    });
+    }, { handedness: 'right' });
 
 
     useFrame(() => {
@@ -132,8 +142,7 @@ function SceneOne({ unloadPoint, onSequencePass }) {
 
     return (
         <>
-            {/* <Canvas gl={{ preserveDrawingBuffer: true }} >
-                <SheetProvider sheet={scene1Sheet}> */}
+
             <PreloadAssets />
             <Suspense fallback={<Loader />}>
 
@@ -164,12 +173,6 @@ function SceneOne({ unloadPoint, onSequencePass }) {
                 {showComponents.infoScreenDisplayStarShipInfo && (<InfoScreenDisplay title={"Starship Info"} content={screenStarShipInfo} sequence={scene1Sheet.sequence} stopPoints={[30.5, 31, 31.5, 32, 32.5, 39]} loadPoints={[29.5, 30.5, 31, 31.5, 32, 32.5]} unloadPoints={[30.5, 31, 31.5, 32, 32.5, 37]} onSequencePass={() => toggleComponentDisplay('infoScreenDisplayStarShipInfo')} />)}
             </Suspense>
 
-            {/* 
-                </SheetProvider>
-
-
-
-            </Canvas > */}
         </>
     )
 }

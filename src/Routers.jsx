@@ -25,15 +25,22 @@ function Routers() {
         // 定义进入全屏的函数
         if (stageOfENV === "prod") {
             const requestFullscreen = () => {
-                if (document.documentElement.requestFullscreen) {
-                    document.documentElement.requestFullscreen();
-                } else if (document.documentElement.mozRequestFullScreen) { /* Firefox */
-                    document.documentElement.mozRequestFullScreen();
-                } else if (document.documentElement.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
-                    document.documentElement.webkitRequestFullscreen();
-                } else if (document.documentElement.msRequestFullscreen) { /* IE/Edge */
-                    document.documentElement.msRequestFullscreen();
+                if (navigator.xr) {
+                    navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+                        if (!supported) {
+                            if (document.documentElement.requestFullscreen) {
+                                document.documentElement.requestFullscreen();
+                            } else if (document.documentElement.mozRequestFullScreen) { /* Firefox */
+                                document.documentElement.mozRequestFullScreen();
+                            } else if (document.documentElement.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
+                                document.documentElement.webkitRequestFullscreen();
+                            } else if (document.documentElement.msRequestFullscreen) { /* IE/Edge */
+                                document.documentElement.msRequestFullscreen();
+                            }
+                        }
+                    });
                 }
+
             };
 
             // 定义处理第一次用户交互的事件处理器
