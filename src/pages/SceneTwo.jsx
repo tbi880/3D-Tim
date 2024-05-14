@@ -178,7 +178,7 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isVRSupported }) {
  这里开始是去ship hanger的部分
  */}
                 <SingleLoadManager loadPoint={33} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('viewPortShipHanger')} />
-                {showComponents.viewPortShipHanger && <ViewPort screenTitle="Ship Hanger" position={[470, -21, -5.5]} rotation={[0, -1.57, 0]} sequence={scene2Sheet.sequence} stopPoint={38} unloadPoint={35} onSequencePass={() => toggleComponentDisplay('viewPortShipHanger')} isSetNextScene={true} nextScene={"screenThree"} nextSceneStartPoint={0} />}
+                {showComponents.viewPortShipHanger && <ViewPort screenTitle="Ship Hanger" position={[470, -21, -5.5]} rotation={[0, -1.57, 0]} sequence={scene2Sheet.sequence} stopPoint={38} unloadPoint={35} onSequencePass={() => toggleComponentDisplay('viewPortShipHanger')} isSetNextScene={true} nextScene={"sceneThree"} nextSceneStartPoint={0} />}
                 <SingleLoadManager loadPoint={35} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('loadingForShipHanger')} />
                 {showComponents.loadingForShipHanger && <Loading title="ship hanger" lines={["Connecting", "to Tim's", "namespace"]} position={[470, -21, -5.5]} rotation={[0, 0, 0]} sequence={scene2Sheet.sequence} unloadPoint={38.5} onSequencePass={() => toggleComponentDisplay('loadingForShipHanger')} />}
 
