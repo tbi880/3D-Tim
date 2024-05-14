@@ -17,6 +17,8 @@ import { scene2Sheet, scene2Project } from "./SceneManager";
 import { bucketURL } from '../Settings';
 import Loading from '../modelComponents/Loading';
 import { useGLTF } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
+import { useXR, useXREvent } from '@react-three/xr';
 
 
 // const audioResourceForScene2 = createAudioLoader(bucketURL + 'music/bgm2.mp3');
@@ -25,6 +27,19 @@ import { useGLTF } from '@react-three/drei';
 function SceneTwo({ startPoint, unloadPoints, onSequencePass }) {
     const screenIntro = "You finally awaken, chief designer! Our ship is about to enter the strange red giant ahead of us. The ship is damaged quite severe due to the strong gravitational force. As AI, we cannot change the course of the ship because the first captain, Tim Bi, set it up millennia ago. Additionally, we have been blocked from answering the questions to unlock the captain's chamber. We need your help to find the answers to the root access questions so we can alter the ship's course or initiate an emergency stop. Please follow me to the bridge. Let's start by checking the structure of the ship first. This will probably help you to rewind your memory about the ship.";
     const musicUrl = bucketURL + 'music/bgm2.mp3';
+    const [vrSupported, setVrSuppoerted] = useState(false);
+    const { player, isPresenting } = useXR(); // This gives us access to the VR player context
+    const [VRCordinate, setVRCordinate] = useState({
+        0: [499, -24, -60],
+        1: [630, -18, -106],
+        2: [565, -18, -106],
+        3: [668, -21.3, 0.3],
+        4: [562, -19, 65],
+        5: [505, -27, 22.5],
+        6: [552, 7, 16],
+        7: [526, -16, -20],
+    });
+    const [currentVRCordinate, setCurrentVRCordinate] = useState(0);
 
     useEffect(() => {
         useGLTF.preload(bucketURL + 'loading.glb');
@@ -93,6 +108,44 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass }) {
         }));
 
     }, []);
+
+    useEffect(() => {
+        if (navigator.xr) {
+            navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+                if (supported) {
+                    setVrSuppoerted(true);
+                }
+            });
+        }
+
+    }, []);
+
+
+    useFrame(() => {
+        if (vrSupported) {
+            if (isPresenting) {
+                player.position.set(VRCordinate[currentVRCordinate][0], VRCordinate[currentVRCordinate][1], VRCordinate[currentVRCordinate][2]);
+            } else {
+                player.position.set(0, 0, 0);
+            }
+        }
+    });
+
+    //前往上一个VR坐标
+    useXREvent('squeeze', (event) => {
+        setCurrentVRCordinate((prev) => {
+            return prev === 0 ? Object.keys(VRCordinate).length - 1 : prev - 1;
+        })
+
+    }, { handedness: 'left' });
+
+    //前往下一个VR坐标
+    useXREvent('squeeze', (event) => {
+        setCurrentVRCordinate((prev) => {
+            return prev < Object.keys(VRCordinate).length - 1 ? prev + 1 : 0;
+        })
+
+    }, { handedness: 'right' });
 
 
     return (

@@ -22,9 +22,21 @@ import { bucketURL } from '../Settings';
 import Loading from '../modelComponents/Loading';
 import { types } from '@theatre/core';
 import { scene3Project } from './SceneManager';
+import { useFrame } from '@react-three/fiber';
+import { useXR } from '@react-three/xr';
 
 
 function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
+    const [vrSupported, setVrSuppoerted] = useState(false);
+    const { player, isPresenting } = useXR(); // This gives us access to the VR player context
+    const [VRCordinate, setVRCordinate] = useState({ // mapped by sequence position to coordinates
+        0: [0, 0, 0],
+        20: [0.1, -0.4, -4.25],
+        32: [105, 75, -1100],
+        42: [0.18, -1.25, -0.2]
+    });
+    const VRCordinateKeysArray = Object.keys(VRCordinate);
+    const [currentVRCordinate, setCurrentVRCordinate] = useState(0);
     const musicUrl = bucketURL + 'music/bgm3.mp3';
     const [ambientIntensity, setAmbientIntensity] = useState(5);
     // const [pointIntensity, setPointIntensity] = useState(5);
@@ -142,6 +154,33 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
             }
         }
     }, [audioElement]);
+
+    useEffect(() => {
+        if (navigator.xr) {
+            navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+                if (supported) {
+                    setVrSuppoerted(true);
+                }
+            });
+        }
+
+    }, []);
+
+    useFrame(() => {
+        if (vrSupported) {
+            if (isPresenting) {
+                const nextSwitchPointIndex = ((VRCordinateKeysArray.indexOf(String(currentVRCordinate))) < (VRCordinateKeysArray.length - 1)) ? VRCordinateKeysArray.indexOf(String(currentVRCordinate)) + 1 : VRCordinateKeysArray.indexOf(String(currentVRCordinate));
+                const nextSwitchPoint = Number(VRCordinateKeysArray[nextSwitchPointIndex]);
+                if (scene3Sheet.sequence.position >= nextSwitchPoint) {
+                    setCurrentVRCordinate(nextSwitchPoint);
+                }
+                player.position.set(VRCordinate[currentVRCordinate][0], VRCordinate[currentVRCordinate][1], VRCordinate[currentVRCordinate][2]);
+            } else {
+                player.position.set(0, 0, 0);
+            }
+        }
+    }
+    );
 
     return (
         <>

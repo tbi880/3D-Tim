@@ -31,7 +31,6 @@ function SceneOne({ unloadPoint, onSequencePass }) {
         4: [750, -19, -35],
     });
     const [currentVRCordinate, setCurrentVRCordinate] = useState(0);
-    const firstPersonCamera = useRef();
     const musicUrl = bucketURL + 'music/bgm1.mp3';
     const [year, setYear] = useState(new Date().getFullYear());
     const [month, setMonth] = useState(new Date().getMonth());
@@ -132,7 +131,6 @@ function SceneOne({ unloadPoint, onSequencePass }) {
 
 
     useEffect(() => {
-        // console.log('Parent useEffect - Creating <audio> element');
         const audio = new Audio(musicUrl);
         audio.crossOrigin = "anonymous";
         setAudioElement(audio); // 设置状态以存储<audio>元素
@@ -148,7 +146,7 @@ function SceneOne({ unloadPoint, onSequencePass }) {
 
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene1Sheet.sequence} startPoint={0.07} lowVolumePoints={[30]} highVolumePoints={[0.034, 33]} maxVolume={1} />}
                 {/* <AsyncMusic audioBuffer={audioBuffer} sequence={scene1Sheet.sequence} startPoint={0.07} lowVolumePoints={[30]} highVolumePoints={[0.034, 33]} maxVolume={1} /> */}
-                <PerspectiveCamera ref={firstPersonCamera} theatreKey="FirstPersonCamera" makeDefault position={[600, 20, -61]} rotation={[0, 0.33, 0]} fov={75} near={0.01} />
+                <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault position={[600, 20, -61]} rotation={[0, 0.33, 0]} fov={75} near={0.01} />
                 <ambientLight intensity={5} />
 
                 <color attach='background' args={['black']} />
