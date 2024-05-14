@@ -158,7 +158,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isVRSupported }) 
 
 
     useFrame(() => {
-        if (isisVRSupported) {
+        if (isVRSupported) {
             if (isPresenting) {
                 const nextSwitchPointIndex = ((VRCordinateKeysArray.indexOf(String(currentVRCordinate))) < (VRCordinateKeysArray.length - 1)) ? VRCordinateKeysArray.indexOf(String(currentVRCordinate)) + 1 : VRCordinateKeysArray.indexOf(String(currentVRCordinate));
                 const nextSwitchPoint = Number(VRCordinateKeysArray[nextSwitchPointIndex]);
