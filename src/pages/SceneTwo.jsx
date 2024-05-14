@@ -24,10 +24,9 @@ import { useXR, useXREvent } from '@react-three/xr';
 // const audioResourceForScene2 = createAudioLoader(bucketURL + 'music/bgm2.mp3');
 
 
-function SceneTwo({ startPoint, unloadPoints, onSequencePass }) {
+function SceneTwo({ startPoint, unloadPoints, onSequencePass, isVRSupported }) {
     const screenIntro = "You finally awaken, chief designer! Our ship is about to enter the strange red giant ahead of us. The ship is damaged quite severe due to the strong gravitational force. As AI, we cannot change the course of the ship because the first captain, Tim Bi, set it up millennia ago. Additionally, we have been blocked from answering the questions to unlock the captain's chamber. We need your help to find the answers to the root access questions so we can alter the ship's course or initiate an emergency stop. Please follow me to the bridge. Let's start by checking the structure of the ship first. This will probably help you to rewind your memory about the ship.";
     const musicUrl = bucketURL + 'music/bgm2.mp3';
-    const [vrSupported, setVrSuppoerted] = useState(false);
     const { player, isPresenting } = useXR(); // This gives us access to the VR player context
     const [VRCordinate, setVRCordinate] = useState({
         0: [499, -24, -60],
@@ -49,6 +48,7 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass }) {
                 scene2Sheet.sequence.play({ range: [startPoint, startPoint + 0.5] });
             }
         });
+        player.position.set(499, -24, -60);
     }, []);
 
     useEffect(() => {
@@ -109,20 +109,9 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass }) {
 
     }, []);
 
-    useEffect(() => {
-        if (navigator.xr) {
-            navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
-                if (supported) {
-                    setVrSuppoerted(true);
-                }
-            });
-        }
-
-    }, []);
-
 
     useFrame(() => {
-        if (vrSupported) {
+        if (isVRSupported) {
             if (isPresenting) {
                 player.position.set(VRCordinate[currentVRCordinate][0], VRCordinate[currentVRCordinate][1], VRCordinate[currentVRCordinate][2]);
             } else {

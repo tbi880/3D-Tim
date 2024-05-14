@@ -26,8 +26,7 @@ import { useFrame } from '@react-three/fiber';
 import { useXR } from '@react-three/xr';
 
 
-function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
-    const [vrSupported, setVrSuppoerted] = useState(false);
+function SceneThree({ startPoint, unloadPoint, onSequencePass, isVRSupported }) {
     const { player, isPresenting } = useXR(); // This gives us access to the VR player context
     const [VRCordinate, setVRCordinate] = useState({ // mapped by sequence position to coordinates
         0: [0, 0, 0],
@@ -110,6 +109,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
 
     useEffect(() => {
         setShowComponents(initialShowComponents);
+        player.position.set(0, 0, 0);
     }, []);
 
     useEffect(() => {
@@ -155,19 +155,10 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
         }
     }, [audioElement]);
 
-    useEffect(() => {
-        if (navigator.xr) {
-            navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
-                if (supported) {
-                    setVrSuppoerted(true);
-                }
-            });
-        }
 
-    }, []);
 
     useFrame(() => {
-        if (vrSupported) {
+        if (isisVRSupported) {
             if (isPresenting) {
                 const nextSwitchPointIndex = ((VRCordinateKeysArray.indexOf(String(currentVRCordinate))) < (VRCordinateKeysArray.length - 1)) ? VRCordinateKeysArray.indexOf(String(currentVRCordinate)) + 1 : VRCordinateKeysArray.indexOf(String(currentVRCordinate));
                 const nextSwitchPoint = Number(VRCordinateKeysArray[nextSwitchPointIndex]);

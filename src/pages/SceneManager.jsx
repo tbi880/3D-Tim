@@ -26,7 +26,7 @@ export const sceneJessieSheet = sceneJessieProject.sheet('SceneJessie');
 
 
 function SceneManager() {
-
+    const [vrSupported, setVrSuppoerted] = useState(false);
     const [showScenes, setShowScenes] = useState({
         sceneOne: true,
         sceneTwo: false,
@@ -50,10 +50,16 @@ function SceneManager() {
         }
     }, []);
 
-    // const [scenesSheetStopPoints, setScenesSheetStopPoints] = useState({
-    //     sceneOne: 39,
+    useEffect(() => {
+        if (navigator.xr) {
+            navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+                if (supported) {
+                    setVrSuppoerted(true);
+                }
+            });
+        }
 
-    // });
+    }, []);
 
     const [scenesSheets, setScenesSheets] = useState({
         sceneOne: scene1Sheet,
@@ -75,7 +81,7 @@ function SceneManager() {
         const isPortraitPhoneScreen = window.innerHeight > window.innerWidth;
 
         // 如果是手机竖屏模式，执行逻辑
-        if (isPortraitPhoneScreen) {
+        if (isPortraitPhoneScreen || vrSupported) {
             window.location.reload();
         }
 
@@ -107,13 +113,13 @@ function SceneManager() {
                     <Controllers rayMaterial={{ color: '#99FFFF' }} />
                     <Hands />
                     {showScenes.sceneOne && <SheetProvider sheet={scene1Sheet}>
-                        <SceneOne unloadPoint={39} onSequencePass={() => toggleSceneDisplay("sceneOne")} /></SheetProvider>}
+                        <SceneOne unloadPoint={39} onSequencePass={() => toggleSceneDisplay("sceneOne")} isVRSupported={vrSupported} /></SheetProvider>}
 
                     {showScenes.sceneTwo && <SheetProvider sheet={scene2Sheet}>
-                        <SceneTwo startPoint={getNextSceneStartPoint()} unloadPoints={[38]} onSequencePass={() => toggleSceneDisplay("sceneTwo")} /></SheetProvider>}
+                        <SceneTwo startPoint={getNextSceneStartPoint()} unloadPoints={[38]} onSequencePass={() => toggleSceneDisplay("sceneTwo")} isVRSupported={vrSupported} /></SheetProvider>}
 
                     {showScenes.sceneThree && <SheetProvider sheet={scene3Sheet}>
-                        <SceneThree startPoint={getNextSceneStartPoint()} onSequencePass={() => toggleSceneDisplay("sceneThree")} unloadPoint={64} /></SheetProvider>}
+                        <SceneThree startPoint={getNextSceneStartPoint()} onSequencePass={() => toggleSceneDisplay("sceneThree")} unloadPoint={64} isVRSupported={vrSupported} /></SheetProvider>}
 
 
                     {/* {showScenes.sceneJessie &&
