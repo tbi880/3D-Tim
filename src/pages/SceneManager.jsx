@@ -83,10 +83,11 @@ function SceneManager() {
         // 如果是手机竖屏模式，执行逻辑
         if (isPortraitPhoneScreen || vrSupported) {
             window.location.reload();
+
         }
 
 
-    }, []);
+    }, [vrSupported]);
 
     function findCurrentScene() {
         const currentScene = Object.keys(showScenes).find((scene) => showScenes[scene]);
