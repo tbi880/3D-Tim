@@ -20,7 +20,7 @@ if (stageOfENV != "prod") {
 
 
 
-function HomePage() {
+function HomePage({ isPortraitPhoneScreen, vrSupported }) {
 
     const [showComponents, setShowComponents] = useState({
         header: true,
@@ -44,11 +44,15 @@ function HomePage() {
                 <meta property="og:description" content="Ready for a 3D ride in Tim Bi's universe? I think you would know me very well after you finish this 'adventure'" />
                 <meta property="og:type" content="website" />
                 <meta property="og:url" content="https://www.bty.co.nz/" />
+                <meta property="og:image" content="https://www.bty.co.nz/Tim%20Bi.webp" />
+                <meta property="og:site_name" content="Tim Bi's World" />
                 <link rel="canonical" href="https://www.bty.co.nz/" />
+                <meta name="author" content="Tim Bi" />
+
             </Helmet>
             {showComponents.header && (getNextScene() == "sceneOne") && <Header onAnimationEnd={() => toggleComponentDisplay("header")} />}
             <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
-                <SceneManager />
+                <SceneManager vrSupported={vrSupported} isPortraitPhoneScreen={isPortraitPhoneScreen} />
             </div>
             <Status />
         </>

@@ -13,6 +13,9 @@ import { getNextScene, getNextSceneStartPoint } from './Status';
 import { stageOfENV } from '../Settings';
 import { Controllers, Hands, XR, VRButton } from '@react-three/xr';
 import '@react-three/fiber'
+import SceneOne_mobile from './SceneOne_mobile';
+import SceneTwo_mobile from './SceneTwo_mobile';
+import SceneThree_mobile from './SceneThree_mobile';
 
 
 export const scene1Project = getProject('Scene1 Sheet', { state: scene1State });
@@ -25,8 +28,7 @@ export const sceneJessieProject = getProject('SceneJessie', { state: sceneJessie
 export const sceneJessieSheet = sceneJessieProject.sheet('SceneJessie');
 
 
-function SceneManager() {
-    const [vrSupported, setVrSuppoerted] = useState(false);
+function SceneManager({ vrSupported, isPortraitPhoneScreen }) {
     const [showScenes, setShowScenes] = useState({
         sceneOne: true,
         sceneTwo: false,
@@ -50,16 +52,7 @@ function SceneManager() {
         }
     }, []);
 
-    useEffect(() => {
-        if (navigator.xr) {
-            navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
-                if (supported) {
-                    setVrSuppoerted(true);
-                }
-            });
-        }
 
-    }, []);
 
     const [scenesSheets, setScenesSheets] = useState({
         sceneOne: scene1Sheet,
@@ -71,23 +64,20 @@ function SceneManager() {
     // 创建一个通用的切换函数
     const toggleSceneDisplay = useCallback((componentKey) => {
         const nextKey = getNextScene();
-        console.log(nextKey);
+        // console.log(nextKey);
         setShowScenes((prev) => ({
             ...prev,
             [componentKey]: !prev[componentKey],
             ...(nextKey && { [nextKey]: !prev[nextKey] }), // 切换下一个组件状态
         }));
-        // 检测屏幕是否为手机竖屏模式，即高度大于宽度
-        const isPortraitPhoneScreen = window.innerHeight > window.innerWidth;
 
         // 如果是手机竖屏模式，执行逻辑
-        if (isPortraitPhoneScreen || vrSupported) {
+        if (vrSupported || isPortraitPhoneScreen) {
             window.location.reload();
-
         }
 
 
-    }, [vrSupported]);
+    }, [vrSupported, isPortraitPhoneScreen]);
 
     function findCurrentScene() {
         const currentScene = Object.keys(showScenes).find((scene) => showScenes[scene]);
@@ -106,8 +96,8 @@ function SceneManager() {
     }
 
 
-    return (
-        <>
+    return (<>
+        {!isPortraitPhoneScreen && <>
             <VRButton />
             <Canvas gl={{ preserveDrawingBuffer: true }} >
                 <XR>
@@ -131,7 +121,22 @@ function SceneManager() {
 
             </Canvas>
 
-        </>
+        </>}
+
+        {isPortraitPhoneScreen &&
+            <Canvas gl={{ preserveDrawingBuffer: true }} >
+                {showScenes.sceneOne && <SheetProvider sheet={scene1Sheet}>
+                    <SceneOne_mobile unloadPoint={39} onSequencePass={() => toggleSceneDisplay("sceneOne")} /></SheetProvider>}
+
+                {showScenes.sceneTwo && <SheetProvider sheet={scene2Sheet}>
+                    <SceneTwo_mobile startPoint={getNextSceneStartPoint()} unloadPoints={[38]} onSequencePass={() => toggleSceneDisplay("sceneTwo")} /></SheetProvider>}
+
+                {showScenes.sceneThree && <SheetProvider sheet={scene3Sheet}>
+                    <SceneThree_mobile startPoint={getNextSceneStartPoint()} onSequencePass={() => toggleSceneDisplay("sceneThree")} unloadPoint={64} /></SheetProvider>}
+
+
+            </Canvas>}
+    </>
     )
 }
 

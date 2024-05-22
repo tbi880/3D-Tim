@@ -123,6 +123,7 @@ function SceneJessie({ startPoint }) {
                 <meta property="og:type" content="website" />
                 <meta property="og:url" content="https://www.bty.co.nz/jessie" />
                 <link rel="canonical" href="https://www.bty.co.nz/jessie" />
+                <meta name="author" content="Tim Bi" />
             </Helmet>
             <Canvas gl={{ preserveDrawingBuffer: true }} >
                 <SheetProvider sheet={sceneJessieSheet}>

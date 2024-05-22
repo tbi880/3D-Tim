@@ -16,20 +16,10 @@ import { scene1Sheet } from "./SceneManager";
 import { bucketURL } from '../Settings';
 import StreamMusic from '../modelComponents/StreamMusic';
 import { useGLTF } from '@react-three/drei';
-import { useXR, useXREvent } from '@react-three/xr';
 
 
 
-function SceneOne({ unloadPoint, onSequencePass, isVRSupported }) {
-    const { player, isPresenting } = useXR(); // This gives us access to the VR player context
-    const [VRCordinate, setVRCordinate] = useState({
-        0: [600, 19, -61],
-        1: [0, 20, -61],
-        2: [750, -19, -45],
-        3: [750, -19, -40],
-        4: [750, -19, -35],
-    });
-    const [currentVRCordinate, setCurrentVRCordinate] = useState(0);
+function SceneOne_mobile({ unloadPoint, onSequencePass }) {
     const musicUrl = bucketURL + 'music/bgm1.mp3';
     const [year, setYear] = useState(new Date().getFullYear());
     const [month, setMonth] = useState(new Date().getMonth());
@@ -64,35 +54,6 @@ function SceneOne({ unloadPoint, onSequencePass, isVRSupported }) {
         }));
 
     }, []);
-
-
-
-
-    useFrame(() => {
-        if (isVRSupported) {
-            if (isPresenting) {
-                player.position.set(VRCordinate[currentVRCordinate][0], VRCordinate[currentVRCordinate][1], VRCordinate[currentVRCordinate][2]);
-            } else {
-                player.position.set(0, 0, 0);
-            }
-        }
-    });
-
-    //前往上一个VR坐标
-    useXREvent('squeeze', (event) => {
-        setCurrentVRCordinate((prev) => {
-            return prev === 0 ? Object.keys(VRCordinate).length - 1 : prev - 1;
-        })
-
-    }, { handedness: 'left' });
-
-    //前往下一个VR坐标
-    useXREvent('squeeze', (event) => {
-        setCurrentVRCordinate((prev) => {
-            return prev < Object.keys(VRCordinate).length - 1 ? prev + 1 : 0;
-        })
-
-    }, { handedness: 'right' });
 
 
     useFrame(() => {
@@ -145,16 +106,11 @@ function SceneOne({ unloadPoint, onSequencePass, isVRSupported }) {
                 <StrangerStar />
                 <ShipOutside sequence={scene1Sheet.sequence} onSequencePass={() => toggleComponentDisplay('shipOutside')} />
 
-                {isVRSupported && isPresenting && <TextTitle_v2 theatreKey={"_VR_WELCOME"} text="Try to squeeze one of your controller" color="#FFFFFF" size={1} sequence={scene1Sheet.sequence} position={[580, 25, -75]} rotation={[0, 0.33, 0]} />}
-
-
                 {showComponents.infoScreenWelcome && (<InfoScreenDisplay title="Welcome" content={screenWelcomeContent} sequence={scene1Sheet.sequence} stopPoints={[0.034, 27.5]} loadPoints={[0, 0.033]} unloadPoints={[0.034, 2.5]} onSequencePass={() => toggleComponentDisplay('infoScreenWelcome')} />)}
 
                 {showComponents.textTitleAD32101 && (<TextTitle text="AD 32101" color="#FFD700" size={1} sequence={scene1Sheet.sequence} unloadPoint={5} onSequencePass={() => toggleComponentDisplay('textTitleAD32101')} />)}
                 {showComponents.textTitleOuterArm && (<TextTitle text="Outer arm of the galaxy" color="#FFD700" size={1} sequence={scene1Sheet.sequence} unloadPoint={9} onSequencePass={() => toggleComponentDisplay('textTitleOuterArm')} />)}
                 {showComponents.textTitleApproximately && (<TextTitle text="Approximately 18,000 light years from Earth" color="#FFD700" size={1} sequence={scene1Sheet.sequence} unloadPoint={15} onSequencePass={() => toggleComponentDisplay('textTitleApproximately')} />)}
-
-                {isVRSupported && showComponents.textTitleVRVIEWPORT && <TextTitle_v2 theatreKey={"_VR_VIEWPORT"} text="Come back here again when you see the VIEWPORT" color="#FFFFFF" size={1} sequence={scene1Sheet.sequence} unloadPoint={25} position={[725, -19, -60]} onSequencePass={() => toggleComponentDisplay('textTitleVRVIEWPORT')} />}
 
                 {showComponents.viewPortStarShipInfo && (<ViewPort screenTitle={"StarShip Info"} position={[745, -16, 38]} rotation={[-1.13, -0.654, 5.2]} sequence={scene1Sheet.sequence} stopPoint={30} unloadPoint={37} onSequencePass={() => toggleComponentDisplay('viewPortStarShipInfo')} isSetNextScene={true} nextScene={"sceneTwo"} />)}
                 <SingleLoadManager loadPoint={29.5} sequence={scene1Sheet.sequence} onSequencePass={() => toggleComponentDisplay('infoScreenDisplayStarShipInfo')} />
@@ -165,4 +121,4 @@ function SceneOne({ unloadPoint, onSequencePass, isVRSupported }) {
     )
 }
 
-export default SceneOne;
+export default SceneOne_mobile;

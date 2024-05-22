@@ -4,10 +4,25 @@ import NotFoundPage from './pages/NotFoundPage'
 import { useEffect, useState } from 'react';
 import { stageOfENV } from './Settings';
 import SceneJessie from './pages/SceneJessie';
+import Bridge from './pages/Bridge';
 
 function Routers() {
-
+    const [vrSupported, setVrSuppoerted] = useState(false);
     const [isWeChatBrowser, setIsWeChatBrowser] = useState(false);
+    // 检测屏幕是否为手机竖屏模式，即高度大于宽度
+    const [isPortraitPhoneScreen, setIsPortraitPhoneScreen] = useState(false);
+
+    useEffect(() => {
+        if (navigator.xr) {
+            navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+                if (supported) {
+                    setVrSuppoerted(true);
+                }
+            });
+        }
+
+    }, []);
+
 
     useEffect(() => {
         function checkBrowser() {
@@ -18,12 +33,15 @@ function Routers() {
                 alert('请不要使用微信浏览器来打开本页面，由于性能限制，网页可能存在性能瓶颈导致错误。\n在Safari或Chrome内核浏览器中打开本页面。');
                 // 或者你可以设置状态来控制渲染不同的组件或元素
             }
+            if (window.innerHeight > window.innerWidth) {
+                setIsPortraitPhoneScreen(true);
+            }
         }
 
         checkBrowser();
 
         // 定义进入全屏的函数
-        if (stageOfENV === "prod") {
+        if (stageOfENV === "prod" && !isPortraitPhoneScreen) {
             const requestFullscreen = () => {
                 if (navigator.xr) {
                     navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
@@ -71,7 +89,8 @@ function Routers() {
         <Router>
 
             <Routes>
-                <Route path="/" element={<HomePage />} />
+                <Route path="/" element={<HomePage isPortraitPhoneScreen={isPortraitPhoneScreen} vrSupported={vrSupported} />} />
+                <Route path="/bridge" element={<Bridge isPortraitPhoneScreen={isPortraitPhoneScreen} vrSupported={vrSupported} />} />
                 <Route path="/jessie" element={<SceneJessie startPoint={0} />} />
                 <Route path="*" element={<NotFoundPage />} />
             </Routes>

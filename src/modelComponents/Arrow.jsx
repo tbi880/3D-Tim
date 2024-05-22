@@ -20,6 +20,9 @@ function Arrow({ screenTitle, isNext, position, rotation, sequence, stopPoints }
 
     const play = useCallback(() => {
         let currentTimePosition = sequence.position;
+        if (!stopPoints.includes(currentTimePosition) && currentTimePosition !== 0 && currentTimePosition !== stopPoints[0] - 0.5) {
+            return;
+        }
         for (let i = 0; i < stopPoints.length; i++) {
             if (currentTimePosition < stopPoints[i]) {
                 sequence.play({ range: [currentTimePosition, stopPoints[i]] });

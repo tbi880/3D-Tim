@@ -52,7 +52,7 @@ function ViewPort({ screenTitle, position, rotation, sequence, stopPoint, unload
         if (isSetNextScene) {
             setNextScene(nextScene);
             setNextSceneStartPoint(nextSceneStartPoint);
-            console.log("Next Scene: " + nextScene + " Start Point: " + nextSceneStartPoint);
+            // console.log("Next Scene: " + nextScene + " Start Point: " + nextSceneStartPoint);
 
         }
 
