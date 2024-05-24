@@ -1,5 +1,5 @@
 
-import Status, { getNextSceneStartPoint } from './Status';
+import Status, { getNextScene, getNextSceneStartPoint, jumpToTheNextScene } from './Status';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
 import { Controllers, Hands, VRButton, XR } from '@react-three/xr';
@@ -34,14 +34,14 @@ function Bridge({ vrSupported, isPortraitPhoneScreen }) {
 
             <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
 
-                {!isPortraitPhoneScreen && <>
+                {vrSupported && <>
                     <VRButton />
                     <Canvas gl={{ preserveDrawingBuffer: true }} >
                         <XR>
                             <Controllers rayMaterial={{ color: '#99FFFF' }} />
                             <Hands />
                             <SheetProvider sheet={scene2Sheet}>
-                                <SceneTwo isVRSupported={vrSupported} /></SheetProvider>
+                                <SceneTwo startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoints={[38]} onSequencePass={() => jumpToTheNextScene(getNextScene())} /></SheetProvider>
 
                         </XR>
 
@@ -51,10 +51,10 @@ function Bridge({ vrSupported, isPortraitPhoneScreen }) {
 
                 </>}
 
-                {isPortraitPhoneScreen &&
+                {!vrSupported &&
                     <Canvas gl={{ preserveDrawingBuffer: true }} >
                         <SheetProvider sheet={scene2Sheet}>
-                            <SceneTwo_mobile /></SheetProvider>
+                            <SceneTwo_mobile startPoint={getNextSceneStartPoint()} unloadPoints={[38]} onSequencePass={() => jumpToTheNextScene(getNextScene())} /></SheetProvider>
 
                     </Canvas>}
 

@@ -1,0 +1,43 @@
+/* Menu.css */
+.menu-item {
+    position: relative;
+}
+
+.menu-item:hover {
+    color: #add8e6;
+    /* 浅蓝色 */
+}
+
+.lock-icon {
+    margin-right: 8px;
+    /* 设置图标和文字之间的间隔 */
+}
+
+.menu-link {
+    color: inherit;
+    /* 继承父元素的颜色 */
+    text-decoration: none;
+    /* 去除下划线 */
+    cursor: pointer;
+}
+
+.menu-link:hover {
+    color: inherit;
+    /* 悬停时的浅蓝色 */
+}
+
+.menu-link.locked {
+    pointer-events: none;
+    /* 禁用点击 */
+    color: gray;
+    /* 灰色表示禁用状态 */
+}
+
+.vr-icon {
+    margin-right: 8px;
+    /* 设置VR图标和文字之间的间隔 */
+}
+
+.vr-container {
+    margin-top: 10%;
+}

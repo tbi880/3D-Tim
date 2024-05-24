@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { stageOfENV } from './Settings';
 import SceneJessie from './pages/SceneJessie';
 import Bridge from './pages/Bridge';
+import ShipHanger from './pages/ShipHanger';
+import Menu from './Tools/Menu';
 
 function Routers() {
     const [vrSupported, setVrSuppoerted] = useState(false);
@@ -87,10 +89,11 @@ function Routers() {
     return (
 
         <Router>
-
+            <Menu isPortraitPhoneScreen={isPortraitPhoneScreen} />
             <Routes>
                 <Route path="/" element={<HomePage isPortraitPhoneScreen={isPortraitPhoneScreen} vrSupported={vrSupported} />} />
                 <Route path="/bridge" element={<Bridge isPortraitPhoneScreen={isPortraitPhoneScreen} vrSupported={vrSupported} />} />
+                <Route path="/ship_hanger" element={<ShipHanger isPortraitPhoneScreen={isPortraitPhoneScreen} vrSupported={vrSupported} />} />
                 <Route path="/jessie" element={<SceneJessie startPoint={0} />} />
                 <Route path="*" element={<NotFoundPage />} />
             </Routes>

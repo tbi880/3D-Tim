@@ -5,7 +5,7 @@ import { types } from '@theatre/core';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { bucketURL } from '../Settings';
-import { setNextScene, setNextSceneStartPoint } from '../pages/Status';
+import { getNextScene, getNextSceneStartPoint, setNextScene, setNextSceneStartPoint, unlockScene } from '../pages/Status';
 
 const animationNames = ["Armature|off state"];
 
@@ -52,7 +52,8 @@ function ViewPort({ screenTitle, position, rotation, sequence, stopPoint, unload
         if (isSetNextScene) {
             setNextScene(nextScene);
             setNextSceneStartPoint(nextSceneStartPoint);
-            // console.log("Next Scene: " + nextScene + " Start Point: " + nextSceneStartPoint);
+            unlockScene(nextScene);
+            // console.log("Next Scene: " + getNextScene() + " Start Point: " + getNextSceneStartPoint());
 
         }
 

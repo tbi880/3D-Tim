@@ -1,7 +1,6 @@
 
-import SceneManager from './SceneManager';
 import { useState, useCallback } from 'react';
-import { getNextScene } from './Status';
+import { getNextScene, getNextSceneStartPoint, jumpToTheNextScene } from './Status';
 import Header from '../Tools/Header';
 import Status from './Status';
 import { stageOfENV } from '../Settings';
@@ -9,6 +8,12 @@ import studio from '@theatre/studio'
 import extension from '@theatre/r3f/dist/extension'
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
+import SceneOne from './SceneOne';
+import SceneOne_mobile from './SceneOne_mobile';
+import { SheetProvider } from '@theatre/r3f';
+import { Canvas } from '@react-three/fiber';
+import { Controllers, Hands, VRButton, XR } from '@react-three/xr';
+import { scene1Sheet } from './SceneManager';
 
 if (stageOfENV != "prod") {
 
@@ -52,10 +57,36 @@ function HomePage({ isPortraitPhoneScreen, vrSupported }) {
             </Helmet>
             {showComponents.header && (getNextScene() == "sceneOne") && <Header onAnimationEnd={() => toggleComponentDisplay("header")} />}
             <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
-                <SceneManager vrSupported={vrSupported} isPortraitPhoneScreen={isPortraitPhoneScreen} />
+
+                {vrSupported && <>
+                    <VRButton />
+                    <Canvas gl={{ preserveDrawingBuffer: true }} >
+                        <XR>
+                            <Controllers rayMaterial={{ color: '#99FFFF' }} />
+                            <Hands />
+                            <SheetProvider sheet={scene1Sheet}>
+                                <SceneOne startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoint={39} onSequencePass={() => jumpToTheNextScene(getNextScene())} /></SheetProvider>
+
+                        </XR>
+
+
+
+                    </Canvas>
+
+                </>}
+
+                {!vrSupported &&
+                    <Canvas gl={{ preserveDrawingBuffer: true }} >
+                        <SheetProvider sheet={scene1Sheet}>
+                            <SceneOne_mobile startPoint={getNextSceneStartPoint()} unloadPoint={39} onSequencePass={() => jumpToTheNextScene(getNextScene())} /></SheetProvider>
+
+                    </Canvas>}
+
+
             </div>
             <Status />
         </>
+
     )
 
 }

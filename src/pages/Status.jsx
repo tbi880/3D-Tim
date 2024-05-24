@@ -4,6 +4,46 @@ let engineeringHasBeenAccessed = JSON.parse(sessionStorage.getItem('engineeringH
 let shipHangerHasBeenAccessed = JSON.parse(sessionStorage.getItem('shipHangerHasBeenAccessed')) || false;
 let rootAccess = JSON.parse(sessionStorage.getItem('rootAccess')) || false;
 
+export const scene_uri_map = {
+    "sceneOne": "/",
+    "sceneTwo": "/bridge",
+    "sceneThree": "/ship_hanger",
+}
+
+// Initial scene menu lock map
+const scene_menu_lock_map = {
+    "sceneOne": false,
+    "sceneTwo": true,
+    "sceneThree": true,
+};
+
+
+function saveMapToSessionStorage(map) {
+    sessionStorage.setItem('scene_menu_lock_map', JSON.stringify(map));
+}
+
+
+export function getMenuLockMapFromSessionStorage() {
+    const map = sessionStorage.getItem('scene_menu_lock_map');
+    return map ? JSON.parse(map) : null;
+}
+
+
+if (!getMenuLockMapFromSessionStorage()) {
+    saveMapToSessionStorage(scene_menu_lock_map);
+}
+
+
+export function unlockScene(scene) {
+    const map = getMenuLockMapFromSessionStorage();
+    if (map) {
+        map[scene] = false;
+        saveMapToSessionStorage(map);
+    } else {
+        console.error("Failed to retrieve the map from sessionStorage.");
+    }
+}
+
 export function getNextScene() {
     return sessionStorage.getItem('nextScene') || "sceneOne";
 }
@@ -46,7 +86,10 @@ export function checkStauts() {
     }
 }
 
-
+export function jumpToTheNextScene(nextScene) {
+    //reload current page to the new uri which maps to the next scene
+    window.location.href = scene_uri_map[nextScene];
+}
 
 export function getRootAccess() {
     // console.log(rootAccess);

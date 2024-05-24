@@ -75,7 +75,9 @@ function SceneManager({ vrSupported, isPortraitPhoneScreen }) {
         if (vrSupported || isPortraitPhoneScreen) {
             window.location.reload();
         }
+        // console.log(showScenes);
 
+        // window.location.reload();
 
     }, [vrSupported, isPortraitPhoneScreen]);
 
