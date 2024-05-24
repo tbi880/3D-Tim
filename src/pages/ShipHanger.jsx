@@ -1,5 +1,5 @@
 
-import Status, { getNextScene, jumpToTheNextScene } from './Status';
+import Status, { getNextScene, getNextSceneStartPoint, jumpToTheNextScene } from './Status';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
 import { Controllers, Hands, VRButton, XR } from '@react-three/xr';
@@ -41,7 +41,7 @@ function ShipHanger({ vrSupported, isPortraitPhoneScreen }) {
                             <Controllers rayMaterial={{ color: '#99FFFF' }} />
                             <Hands />
                             <SheetProvider sheet={scene3Sheet}>
-                                <SceneThree isVRSupported={vrSupported} unloadPoint={64} onSequencePass={() => jumpToTheNextScene(getNextScene())} /></SheetProvider>
+                                <SceneThree startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoint={64} onSequencePass={() => jumpToTheNextScene(getNextScene())} /></SheetProvider>
 
                         </XR>
 
@@ -54,7 +54,7 @@ function ShipHanger({ vrSupported, isPortraitPhoneScreen }) {
                 {!vrSupported &&
                     <Canvas gl={{ preserveDrawingBuffer: true }} >
                         <SheetProvider sheet={scene3Sheet}>
-                            <SceneThree_mobile unloadPoint={64} onSequencePass={() => jumpToTheNextScene(getNextScene())} /></SheetProvider>
+                            <SceneThree_mobile startPoint={getNextSceneStartPoint()} unloadPoint={64} onSequencePass={() => jumpToTheNextScene(getNextScene())} /></SheetProvider>
 
                     </Canvas>}
 
