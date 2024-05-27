@@ -68,7 +68,7 @@ function SceneOne_mobile({ unloadPoint, onSequencePass }) {
         useGLTF.preload(bucketURL + "arrow-transformed.glb");
         useGLTF.preload(bucketURL + "galaxy.glb");
         useGLTF.preload(bucketURL + "sci-fi-screen-transformed.glb");
-        useGLTF.preload(bucketURL + "shipinside-transformed.glb");
+        // useGLTF.preload(bucketURL + "shipinside-transformed.glb");
     }, []);
 
     useEffect(() => {

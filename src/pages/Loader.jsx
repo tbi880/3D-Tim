@@ -1,6 +1,37 @@
 import { Html, useProgress } from '@react-three/drei';
 import { useEffect, useState } from 'react';
 
+export function Notification({ message, show }) {
+
+    // Add the following CSS to style the notification
+    const style = document.createElement('style');
+    style.innerHTML = `
+.notification {
+    position: fixed;
+    bottom: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 1.5vw;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+    z-index: 1000;
+}
+
+.notification.show {
+    opacity: 1;
+}
+`;
+    document.head.appendChild(style);
+    return (
+        <div className={`notification ${show ? 'show' : ''}`}>
+            {message}
+        </div>
+    );
+}
 
 function Loader() {
     const stories = [
@@ -48,6 +79,43 @@ function Loader() {
         }
     }, [simulatedProgress, actualProgress]);
 
+    const [showNotification, setShowNotification] = useState(false);
+
+    useEffect(() => {
+        let timer;
+        const checkProgress = () => {
+            if (simulatedProgress === actualProgress) {
+                timer = setTimeout(() => {
+                    if (simulatedProgress === actualProgress) {
+                        setShowNotification(true);
+                    }
+                }, 5000);
+                timer = setTimeout(() => {
+                    if (simulatedProgress === actualProgress) {
+                        window.location.reload();
+                    } else {
+                        setShowNotification(false);
+                    }
+                }, 8000); // 8秒后检查进度是否更新
+            }
+        };
+
+        checkProgress();
+
+        window.addEventListener('online', checkProgress);
+        window.addEventListener('offline', () => {
+            window.location.reload();
+        });
+
+        return () => {
+            clearTimeout(timer);
+            window.removeEventListener('online', checkProgress);
+            window.removeEventListener('offline', () => {
+                window.location.reload();
+            });
+        };
+    }, [simulatedProgress, actualProgress]);
+
 
     return (
         <Html center>
@@ -70,9 +138,11 @@ function Loader() {
                         <p key={index} className="story" style={{ animation: `fadeIn 2s ease-out`, fontSize: '2.5vw' }}>{story}</p>
                     ))}
                 </div>
+                <Notification message="Please check your network connection and try again. The page will reload in 3 seconds if the progress remains unchanged." show={showNotification} />
             </div>
         </Html>
     );
 }
 
 export default Loader;
+

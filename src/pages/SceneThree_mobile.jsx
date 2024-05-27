@@ -39,7 +39,17 @@ function SceneThree_mobile({ startPoint, unloadPoint, onSequencePass }) {
         const checkForUnload = setInterval(() => {
 
             if (scene3Sheet.sequence && scene3Sheet.sequence.position === unloadPoint) {
-                onSequencePass();
+                // Display a confirmation dialog
+                const userConfirmed = confirm("Do you want to download Tim's resume as a software developer?");
+
+                // Check if the user confirmed the download
+                if (userConfirmed) {
+                    // Open the URL in a new tab
+                    window.location.href = "https://www.bty.co.nz/Tim_Bi_resume.pdf";
+                } else {
+                    onSequencePass();
+                }
+
 
             }
         }, 2000); // 1000毫秒 = 1秒

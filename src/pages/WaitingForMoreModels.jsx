@@ -1,5 +1,6 @@
 import { Html, useProgress } from '@react-three/drei';
 import { useEffect, useState } from 'react';
+import { Notification } from './Loader';
 
 const codelineOne = "if (userHasInternetHoweverItIsNotFast){"
 const codelineTwo = "    return ThisPageThatYouAreLookingAtRightNow;"
@@ -28,6 +29,43 @@ function WaitingForMoreModels() {
         }
     }, [simulatedProgress, actualProgress]);
 
+    const [showNotification, setShowNotification] = useState(false);
+
+    useEffect(() => {
+        let timer;
+        const checkProgress = () => {
+            if (simulatedProgress === actualProgress) {
+                timer = setTimeout(() => {
+                    if (simulatedProgress === actualProgress) {
+                        setShowNotification(true);
+                    }
+                }, 5000);
+                timer = setTimeout(() => {
+                    if (simulatedProgress === actualProgress) {
+                        window.location.reload();
+                    } else {
+                        setShowNotification(false);
+                    }
+                }, 8000); // 8秒后检查进度是否更新
+            }
+        };
+
+        checkProgress();
+
+        window.addEventListener('online', checkProgress);
+        window.addEventListener('offline', () => {
+            window.location.reload();
+        });
+
+        return () => {
+            clearTimeout(timer);
+            window.removeEventListener('online', checkProgress);
+            window.removeEventListener('offline', () => {
+                window.location.reload();
+            });
+        };
+    }, [simulatedProgress, actualProgress]);
+
 
 
     return (
@@ -46,6 +84,8 @@ function WaitingForMoreModels() {
                 <h1 style={{ fontSize: '4vw', padding: '10px' }}>{codelineTwo}</h1>
                 <h1 style={{ fontSize: '4vw', padding: '10px' }}>{codelineThree}</h1>
                 <div className="loading" style={{ fontSize: '5vw' }}>{Math.ceil(simulatedProgress)} % loaded</div>
+                <Notification message="Please check your network connection and try again. The page will reload in 3 seconds if the progress remains unchanged." show={showNotification} />
+
             </div>
         </Html>
     );

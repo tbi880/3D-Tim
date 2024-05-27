@@ -2,11 +2,11 @@ import { useState } from "react";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronRight, faChevronLeft, faLock, faVrCardboard } from '@fortawesome/free-solid-svg-icons';
 import "./css/menu.css";
-import { getMenuLockMapFromSessionStorage } from "../pages/Status";
+import { getMenuLockMapFromLocalStorage } from "../pages/Status";
 
 function Menu({ isPortraitPhoneScreen }) {
     const [showMenu, setShowMenu] = useState(false);
-    const scene_menu_lock_map = getMenuLockMapFromSessionStorage();
+    const scene_menu_lock_map = getMenuLockMapFromLocalStorage();
 
     const handleClick = (e, isLocked) => {
         if (isLocked) {
@@ -27,7 +27,7 @@ function Menu({ isPortraitPhoneScreen }) {
         zIndex: 9999,
         width: isPortraitPhoneScreen ? '100%' : '50%',
         height: '100%',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backgroundColor: isPortraitPhoneScreen ? 'black' : 'rgba(0, 0, 0, 0.5)',
         transition: 'transform 0.5s ease',
         transform: showMenu ? 'translateX(0)' : 'translateX(-100%)'
     };
@@ -74,19 +74,19 @@ function Menu({ isPortraitPhoneScreen }) {
                 <ul style={{ padding: 0, listStyleType: 'none' }}>
 
                     <li style={listItemStyle} className="menu-item">
-                        <a href="/" className="menu-link">Scene1: Introduction</a>
+                        <a href="/" className="menu-link" target="_blank" rel="noopener noreferrer">Scene1: Introduction</a>
                         <div style={dividerStyle} ></div>
                     </li>
 
                     <li style={listItemStyle} className="menu-item">
-                        <a href="/bridge" className={`menu-link ${scene_menu_lock_map.sceneTwo ? 'locked' : ''}`} onClick={(e) => handleClick(e, scene_menu_lock_map.sceneTwo)}>
+                        <a href="/bridge" className={`menu-link ${scene_menu_lock_map.sceneTwo ? 'locked' : ''}`} onClick={(e) => handleClick(e, scene_menu_lock_map.sceneTwo)} target="_blank" rel="noopener noreferrer">
                             {!scene_menu_lock_map.sceneTwo ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
                             Scene2: Ship's bridge</a>
                         <div style={dividerStyle} ></div>
                     </li>
 
                     <li style={listItemStyle} className="menu-item">
-                        <a href="/ship_hanger" className={`menu-link ${scene_menu_lock_map.sceneThree ? 'locked' : ''}`} onClick={(e) => handleClick(e, scene_menu_lock_map.sceneThree)}>
+                        <a href="/ship_hanger" className={`menu-link ${scene_menu_lock_map.sceneThree ? 'locked' : ''}`} onClick={(e) => handleClick(e, scene_menu_lock_map.sceneThree)} target="_blank" rel="noopener noreferrer">
                             {!scene_menu_lock_map.sceneThree ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
                             Scene3: Ship hanger</a>
                         <div style={dividerStyle} ></div>
