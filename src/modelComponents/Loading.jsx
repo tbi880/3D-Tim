@@ -6,18 +6,18 @@ import { useGLTF, useAnimations, RoundedBox } from '@react-three/drei'
 import TextTitle from './TextTitle';
 import * as THREE from 'three';
 import { types } from '@theatre/core';
+import TextTitle_v2 from './TextTitle_v2';
 
 
 const animationNames = ["Take 01"];
 
-export function Loading({ title, lines, position, rotation, sequence, onSequencePass, unloadPoint }) {
+export function Loading({ THkey, title, lines, position, rotation, sequence, onSequencePass, unloadPoint }) {
   const loadingModel = useGLTF(bucketURL + "loading.glb")
   const { animations, scene } = loadingModel;
   const { actions } = useAnimations(animations, scene);
-  const theatreKey = ("Loading: " + title).trim();
+
+  const theatreKey = THkey ? THkey : ("Loading: " + title).trim();
   const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
-
-
 
   useFrame(() => {
     const action = actions[animationNames[0]];
@@ -37,10 +37,14 @@ export function Loading({ title, lines, position, rotation, sequence, onSequence
     <e.mesh theatreKey={theatreKey} scale={0.5} position={position} rotation={rotation} >
       <primitive object={loadingModel.scene} />
     </e.mesh>
-
-    <TextTitle text={lines[0]} color="#00FFFF" size={0.1} position={position} rotation={rotation} />
-    <TextTitle text={lines[1]} color="#00FFFF" size={0.1} position={[position[0], position[1] - 0.5, position[2]]} rotation={rotation} />
-    <TextTitle text={lines[2]} color="#00FFFF" size={0.1} position={[position[0], position[1] - 1, position[2]]} rotation={rotation} />
+    {theatreKey === "Loading: ship hanger" && <><TextTitle text={lines[0]} color="#00FFFF" size={0.1} position={position} rotation={rotation} />
+      <TextTitle text={lines[1]} color="#00FFFF" size={0.1} position={[position[0], position[1] - 0.5, position[2]]} rotation={rotation} />
+      <TextTitle text={lines[2]} color="#00FFFF" size={0.1} position={[position[0], position[1] - 1, position[2]]} rotation={rotation} />
+    </>}
+    {theatreKey != "Loading: ship hanger" && <><TextTitle_v2 theatreKey={(THkey + " " + lines[0]).trim()} text={lines[0]} color="#00FFFF" size={0.1} position={position} rotation={rotation} />
+      <TextTitle_v2 theatreKey={(THkey + " " + lines[1]).trim()} text={lines[1]} color="#00FFFF" size={0.1} position={[position[0], position[1] - 0.5, position[2]]} rotation={rotation} />
+      <TextTitle_v2 theatreKey={(THkey + " " + lines[2]).trim()} text={lines[2]} color="#00FFFF" size={0.1} position={[position[0], position[1] - 1, position[2]]} rotation={rotation} />
+    </>}
     <e.mesh theatreKey={'screen blocker' + title} additionalProps={{
       opacity: types.number(opacity, {
         range: [0, 1],

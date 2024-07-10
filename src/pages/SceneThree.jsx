@@ -25,7 +25,6 @@ import { scene3Project } from './SceneManager';
 import { useFrame } from '@react-three/fiber';
 import { useXR } from '@react-three/xr';
 
-
 function SceneThree({ startPoint, unloadPoint, onSequencePass, isVRSupported }) {
     const { player, isPresenting } = useXR(); // This gives us access to the VR player context
     const [VRCordinate, setVRCordinate] = useState({ // mapped by sequence position to coordinates
@@ -123,7 +122,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isVRSupported }) 
 
     useEffect(() => {
         scene3Project.ready.then(() => {
-            scene3Sheet.sequence.position = startPoint;
+            scene3Sheet.sequence.position = 0;
             // console.log("Scene 3 Start Point: " + startPoint);
         });
     }, []);

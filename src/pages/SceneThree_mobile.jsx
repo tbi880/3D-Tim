@@ -24,7 +24,6 @@ import { types } from '@theatre/core';
 import { scene3Project } from './SceneManager';
 
 
-
 function SceneThree_mobile({ startPoint, unloadPoint, onSequencePass }) {
     const musicUrl = bucketURL + 'music/bgm3.mp3';
     const [ambientIntensity, setAmbientIntensity] = useState(5);
@@ -113,7 +112,7 @@ function SceneThree_mobile({ startPoint, unloadPoint, onSequencePass }) {
 
     useEffect(() => {
         scene3Project.ready.then(() => {
-            scene3Sheet.sequence.position = startPoint;
+            scene3Sheet.sequence.position = 0;
             // console.log("Scene 3 Start Point: " + startPoint);
         });
     }, []);

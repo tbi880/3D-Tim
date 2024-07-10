@@ -4,7 +4,7 @@ import { types } from '@theatre/core';
 import { editable as e } from '@theatre/r3f';
 import { useFrame } from '@react-three/fiber';
 
-function Button({ title, position, rotation, clickablePoint, jumpToPoint, stopPoint, unloadPoint, sequence, onSequencePass, alertAndNoPlay, alertMessage }) {
+function Button({ title, position, rotation, clickablePoint, IsPreJump, jumpToPoint, stopPoint, unloadPoint, sequence, onSequencePass, alertAndNoPlay, alertMessage }) {
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const theatreKey = ("Button-" + title).trim();
 
@@ -29,7 +29,12 @@ function Button({ title, position, rotation, clickablePoint, jumpToPoint, stopPo
         }
 
         if (jumpToPoint && jumpToPoint < stopPoint) {
-            sequence.play({ range: [jumpToPoint, stopPoint] });
+            if (IsPreJump) {
+                sequence.play({ range: [clickablePoint, clickablePoint + 0.5] }).then(() => sequence.play({ range: [jumpToPoint, stopPoint] }));
+
+            } else {
+                sequence.play({ range: [jumpToPoint, stopPoint] });
+            }
         }
 
     }, [jumpToPoint, stopPoint]);

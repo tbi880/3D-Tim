@@ -85,32 +85,11 @@ export function checkStauts() {
 
     }
 }
-let waitingTime = 0;
-let lock = false;
+
 
 export function jumpToTheNextScene(nextScene) {
-    // 检查并等待锁可用
-    if (lock) {
-        setTimeout(() => jumpToTheNextScene(nextScene), 100);
-        return;
-    }
-
-    // 获取锁
-    lock = true;
-
-    // sleep waitingTime 秒
-    setTimeout(() => {
-        // 修改等待时间
-        waitingTime++;
-
-        // 释放锁
-        lock = false;
-
-        console.log(waitingTime);
-
-        // 重新加载当前页面到映射到下一个场景的新 URI
-        window.location.href = scene_uri_map[nextScene];
-    }, waitingTime * 1000);
+    // 重新加载当前页面到映射到下一个场景的新 URI
+    window.location.href = scene_uri_map[nextScene];
 }
 
 export function getRootAccess() {

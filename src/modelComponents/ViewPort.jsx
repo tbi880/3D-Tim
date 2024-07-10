@@ -85,7 +85,7 @@ function ViewPort({ screenTitle, position, rotation, sequence, stopPoint, unload
                 onClick={play} onPointerOver={() => hover(true)} onPointerOut={() => hover(false)}>
                 {/* onClick={play}> */}
                 <sphereGeometry args={[10, 32, 32]} />
-                <meshStandardMaterial color="skyblue" transparent opacity={0} />
+                <meshStandardMaterial color="skyblue" transparent opacity={0} /> {/* 透明度设置为1（不透明）测试的时候可以设置，记得改回0 */}
             </e.mesh>
         </>
     );

@@ -100,6 +100,9 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isVRSupported }) {
 
         viewPortShipHanger: false,
         loadingForShipHanger: false,
+
+        viewPortEngineering: false,
+        loadingForEngineering: false,
     });
 
     // 创建一个通用的切换函数
@@ -170,7 +173,7 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isVRSupported }) {
                 <SingleLoadManager loadPoint={22} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOShipHangar')} />
                 {showComponents.buttonForGOTOShipHangar && !(getShipHangerHasBeenAccessed()) && <Button title={"To the ship hanger"} position={[490, -23.5, -60]} rotation={[0, 0, 0]} clickablePoint={22.5} jumpToPoint={22.5} stopPoint={33} unloadPoint={24} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOShipHangar')} />}
                 <SingleLoadManager loadPoint={22} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOEngineering')} />
-                {showComponents.buttonForGOTOEngineering && <Button title={"To the engineering"} position={[490, -23.5, -60]} rotation={[0, 0, 0]} clickablePoint={22.5} jumpToPoint={22.5} stopPoint={23} unloadPoint={24} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOEngineering')} alertAndNoPlay={!getRootAccess()} alertMessage={"Under development..."} />}
+                {showComponents.buttonForGOTOEngineering && <Button title={"To the engineering"} position={[490, -23.5, -60]} rotation={[0, 0, 0]} clickablePoint={22.5} IsPreJump={true} jumpToPoint={39} stopPoint={68} unloadPoint={24} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOEngineering')} />}
                 <SingleLoadManager loadPoint={22} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOCaptainsChamber')} />
                 {showComponents.buttonForGOTOCaptainsChamber && <Button title={"To Tim's chamber"} position={[490, -23.5, -60]} rotation={[0, 0, 0]} clickablePoint={22.5} jumpToPoint={22.5} stopPoint={23} unloadPoint={24} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOCaptainsChamber')} alertAndNoPlay={!getRootAccess()} alertMessage={"You are not authorized to go there! Please check the access level or answer the ROOT ACCESS questions."} />}
 
@@ -182,6 +185,15 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isVRSupported }) {
                 {showComponents.viewPortShipHanger && <ViewPort screenTitle="Ship Hanger" position={[470, -21, -5.5]} rotation={[0, -1.57, 0]} sequence={scene2Sheet.sequence} stopPoint={38} unloadPoint={35} onSequencePass={() => toggleComponentDisplay('viewPortShipHanger')} isSetNextScene={true} nextScene={"sceneThree"} nextSceneStartPoint={0} />}
                 <SingleLoadManager loadPoint={35} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('loadingForShipHanger')} />
                 {showComponents.loadingForShipHanger && <Loading title="ship hanger" lines={["Connecting", "to Tim's", "namespace"]} position={[470, -21, -5.5]} rotation={[0, 0, 0]} sequence={scene2Sheet.sequence} unloadPoint={38.5} onSequencePass={() => toggleComponentDisplay('loadingForShipHanger')} />}
+
+
+                {/*
+ 这里开始是去Engineering的部分
+ */}
+                <SingleLoadManager loadPoint={63} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('viewPortEngineering')} />
+                {showComponents.viewPortEngineering && <ViewPort screenTitle="EngineeringDept" position={[609, -20.8, -15.75]} rotation={[0, 0, 0]} sequence={scene2Sheet.sequence} stopPoint={72} unloadPoint={69} onSequencePass={() => toggleComponentDisplay('viewPortEngineering')} isSetNextScene={true} nextScene={"sceneFour"} nextSceneStartPoint={0} />}
+                <SingleLoadManager loadPoint={70} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('loadingForEngineering')} />
+                {showComponents.loadingForEngineering && <Loading THkey="Engineering" title="Engineering" lines={["Connecting ", "to Tim's ", "namespace "]} position={[609, -20.8, -15.75]} rotation={[0, 4.68, 0]} sequence={scene2Sheet.sequence} unloadPoint={73} onSequencePass={() => toggleComponentDisplay('loadingForEngineering')} />}
 
             </Suspense>
 
