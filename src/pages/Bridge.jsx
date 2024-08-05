@@ -41,7 +41,7 @@ function Bridge({ vrSupported, isPortraitPhoneScreen }) {
                             <Controllers rayMaterial={{ color: '#99FFFF' }} />
                             <Hands />
                             <SheetProvider sheet={scene2Sheet}>
-                                <SceneTwo startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoints={[38]} onSequencePass={() => jumpToTheNextScene(getNextScene())} /></SheetProvider>
+                                <SceneTwo startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoints={[38, 72]} onSequencePass={() => jumpToTheNextScene(getNextScene())} /></SheetProvider>
 
                         </XR>
 
@@ -54,7 +54,7 @@ function Bridge({ vrSupported, isPortraitPhoneScreen }) {
                 {!vrSupported &&
                     <Canvas gl={{ preserveDrawingBuffer: true }} >
                         <SheetProvider sheet={scene2Sheet}>
-                            <SceneTwo_mobile startPoint={getNextSceneStartPoint()} unloadPoints={[38]} onSequencePass={() => jumpToTheNextScene(getNextScene())} /></SheetProvider>
+                            <SceneTwo_mobile startPoint={getNextSceneStartPoint()} unloadPoints={[38, 72]} onSequencePass={() => jumpToTheNextScene(getNextScene())} /></SheetProvider>
 
                     </Canvas>}
 

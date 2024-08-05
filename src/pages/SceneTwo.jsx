@@ -193,7 +193,7 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isVRSupported }) {
                 <SingleLoadManager loadPoint={63} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('viewPortEngineering')} />
                 {showComponents.viewPortEngineering && <ViewPort screenTitle="EngineeringDept" position={[609, -20.8, -15.75]} rotation={[0, 0, 0]} sequence={scene2Sheet.sequence} stopPoint={72} unloadPoint={69} onSequencePass={() => toggleComponentDisplay('viewPortEngineering')} isSetNextScene={true} nextScene={"sceneFour"} nextSceneStartPoint={0} />}
                 <SingleLoadManager loadPoint={70} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('loadingForEngineering')} />
-                {showComponents.loadingForEngineering && <Loading THkey="Engineering" title="Engineering" lines={["Connecting ", "to Tim's ", "namespace "]} position={[609, -20.8, -15.75]} rotation={[0, 4.68, 0]} sequence={scene2Sheet.sequence} unloadPoint={73} onSequencePass={() => toggleComponentDisplay('loadingForEngineering')} />}
+                {showComponents.loadingForEngineering && <Loading THkey="Engineering" title="Engineering" lines={["Connecting ", "to Tim's ", "namespace "]} position={[609, -20.8, -15.75]} rotation={[0, 4.68, 0]} sequence={scene2Sheet.sequence} unloadPoint={73} onSequencePass={() => toggleComponentDisplay('loadingForEngineering')} textTitleVersion={2} />}
 
             </Suspense>
 

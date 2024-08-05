@@ -89,14 +89,14 @@ function Loader() {
                     if (simulatedProgress === actualProgress) {
                         setShowNotification(true);
                     }
-                }, 5000);
+                }, 7000);
                 timer = setTimeout(() => {
                     if (simulatedProgress === actualProgress) {
                         window.location.reload();
                     } else {
                         setShowNotification(false);
                     }
-                }, 8000); // 8秒后检查进度是否更新
+                }, 10000); // 10秒后检查进度是否更新
             }
         };
 
@@ -126,6 +126,7 @@ function Loader() {
                 justifyContent: 'center',
                 width: '100vw',
                 padding: '10px',
+                color: 'black',
             }}>
 
                 <h1 style={{ fontSize: '4vw' }}>Welcome to Tim Bi's world.</h1>

@@ -11,7 +11,7 @@ import TextTitle_v2 from './TextTitle_v2';
 
 const animationNames = ["Take 01"];
 
-export function Loading({ THkey, title, lines, position, rotation, sequence, onSequencePass, unloadPoint }) {
+export function Loading({ THkey, title, lines, position, rotation, sequence, onSequencePass, unloadPoint, textTitleVersion = 1 }) {
   const loadingModel = useGLTF(bucketURL + "loading.glb")
   const { animations, scene } = loadingModel;
   const { actions } = useAnimations(animations, scene);
@@ -37,11 +37,11 @@ export function Loading({ THkey, title, lines, position, rotation, sequence, onS
     <e.mesh theatreKey={theatreKey} scale={0.5} position={position} rotation={rotation} >
       <primitive object={loadingModel.scene} />
     </e.mesh>
-    {theatreKey === "Loading: ship hanger" && <><TextTitle text={lines[0]} color="#00FFFF" size={0.1} position={position} rotation={rotation} />
+    {textTitleVersion === 1 && <><TextTitle text={lines[0]} color="#00FFFF" size={0.1} position={position} rotation={rotation} />
       <TextTitle text={lines[1]} color="#00FFFF" size={0.1} position={[position[0], position[1] - 0.5, position[2]]} rotation={rotation} />
       <TextTitle text={lines[2]} color="#00FFFF" size={0.1} position={[position[0], position[1] - 1, position[2]]} rotation={rotation} />
     </>}
-    {theatreKey != "Loading: ship hanger" && <><TextTitle_v2 theatreKey={(THkey + " " + lines[0]).trim()} text={lines[0]} color="#00FFFF" size={0.1} position={position} rotation={rotation} />
+    {textTitleVersion === 2 && <><TextTitle_v2 theatreKey={(THkey + " " + lines[0]).trim()} text={lines[0]} color="#00FFFF" size={0.1} position={position} rotation={rotation} />
       <TextTitle_v2 theatreKey={(THkey + " " + lines[1]).trim()} text={lines[1]} color="#00FFFF" size={0.1} position={[position[0], position[1] - 0.5, position[2]]} rotation={rotation} />
       <TextTitle_v2 theatreKey={(THkey + " " + lines[2]).trim()} text={lines[2]} color="#00FFFF" size={0.1} position={[position[0], position[1] - 1, position[2]]} rotation={rotation} />
     </>}

@@ -93,9 +93,16 @@ function Menu({ isPortraitPhoneScreen }) {
                     </li>
 
                     <li style={listItemStyle} className="menu-item">
-                        <a href="/ship_hanger" className={`menu-link locked`} >
+                        <a href="/ship_engineering" className={`menu-link ${scene_menu_lock_map.sceneFour ? 'locked' : ''}`} onClick={(e) => handleClick(e, scene_menu_lock_map.sceneFour)} target="_blank" rel="noopener noreferrer">
+                            {!scene_menu_lock_map.sceneFour ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
+                            Scene4: Ship's Engineering</a>
+                        <div style={dividerStyle} ></div>
+                    </li>
+
+                    <li style={listItemStyle} className="menu-item">
+                        <a href="/tims-chamber" className={`menu-link locked`} >
                             <FontAwesomeIcon icon={faLock} className="lock-icon" />
-                            Scene4: Under development...</a>
+                            Scene5: Under development...</a>
                         <div style={dividerStyle} ></div>
                     </li>
 

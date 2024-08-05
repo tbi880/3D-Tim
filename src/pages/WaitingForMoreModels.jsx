@@ -6,7 +6,7 @@ const codelineOne = "if (userHasInternetHoweverItIsNotFast){"
 const codelineTwo = "    return ThisPageThatYouAreLookingAtRightNow;"
 const codelineThree = "}"
 
-function WaitingForMoreModels() {
+function WaitingForMoreModels({ textColor = "black" }) {
     const { progress: actualProgress } = useProgress(); // 实际加载进度
     const [simulatedProgress, setSimulatedProgress] = useState(0); // 模拟的进度
 
@@ -39,14 +39,14 @@ function WaitingForMoreModels() {
                     if (simulatedProgress === actualProgress) {
                         setShowNotification(true);
                     }
-                }, 5000);
+                }, 7000);
                 timer = setTimeout(() => {
                     if (simulatedProgress === actualProgress) {
                         window.location.reload();
                     } else {
                         setShowNotification(false);
                     }
-                }, 8000); // 8秒后检查进度是否更新
+                }, 10000); // 8秒后检查进度是否更新
             }
         };
 
@@ -79,11 +79,11 @@ function WaitingForMoreModels() {
                 backgroundColor: 'white',
                 padding: '10px',
             }}>
-                <h1 style={{ fontSize: '4vw' }}>Loading For More Context...</h1>
-                <h1 style={{ fontSize: '4vw', padding: '10px' }}>{codelineOne}</h1>
-                <h1 style={{ fontSize: '4vw', padding: '10px' }}>{codelineTwo}</h1>
-                <h1 style={{ fontSize: '4vw', padding: '10px' }}>{codelineThree}</h1>
-                <div className="loading" style={{ fontSize: '5vw' }}>{Math.ceil(simulatedProgress)} % loaded</div>
+                <h1 style={{ fontSize: '4vw', color: textColor }}>Loading For More Context...</h1>
+                <h1 style={{ fontSize: '4vw', padding: '10px', color: textColor }}>{codelineOne}</h1>
+                <h1 style={{ fontSize: '4vw', padding: '10px', color: textColor }}>{codelineTwo}</h1>
+                <h1 style={{ fontSize: '4vw', padding: '10px', color: textColor }}>{codelineThree}</h1>
+                <div className="loading" style={{ fontSize: '5vw', color: textColor }}>{Math.ceil(simulatedProgress)} % loaded</div>
                 <Notification message="Please check your network connection and try again. The page will reload in 3 seconds if the progress remains unchanged." show={showNotification} />
 
             </div>

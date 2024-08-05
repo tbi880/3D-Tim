@@ -64,14 +64,14 @@ function WaitingJessie() {
                     if (simulatedProgress === actualProgress) {
                         setShowNotification(true);
                     }
-                }, 5000);
+                }, 7000);
                 timer = setTimeout(() => {
                     if (simulatedProgress === actualProgress) {
                         window.location.reload();
                     } else {
                         setShowNotification(false);
                     }
-                }, 8000); // 8秒后检查进度是否更新
+                }, 10000); // 8秒后检查进度是否更新
             }
         };
 
