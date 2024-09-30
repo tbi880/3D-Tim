@@ -31,7 +31,7 @@ function SceneThree_mobile({ startPoint, unloadPoint, onSequencePass }) {
     const [spotIntensity, setSpotIntensity] = useState(5);
     const [rectAreaIntensity, setRectAreaIntensity] = useState(5);
     const [backgroundColor, setBackgroundColor] = useState("black"); // 状态管理背景颜色
-    const resumeString = "I embarked on my tech journey at the age of 15, contributing to four commercial projects since then. During my previous work, I encompassed practical skills from developing applications and websites to manage my own server. In addition, my experience as a stage performing keyboardist has sharpened my teamwork skills and stress handling. I am a diligent professional with extensive experience in the field of software engineering, who likes details and always looks for runtime optimizations. I am currently seeking a graduates opportunity to further develop my skills following my graduation in July 2024.";
+    const resumeString = "I embarked on my tech journey at the age of 15, contributing to four commercial projects since then. During my previous work, I encompassed practical skills from developing applications and websites to manage my own server. In addition, my experience as a stage performing keyboardist has sharpened my teamwork skills and stress handling. I am a diligent professional with extensive experience in the field of software engineering, who likes details and always looks for runtime optimizations. I am currently seeking a junior / intermediate level opportunity to further develop my skills.";
 
     useEffect(() => {
         // 设置定时器，每秒执行一次

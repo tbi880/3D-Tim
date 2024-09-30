@@ -9116,7 +9116,7 @@
                       0
                     ],
                     "type": "bezier",
-                    "value": -0.06999999999999999
+                    "value": 0.010000000000000024
                   }
                 ]
               },
@@ -9135,7 +9135,7 @@
                       0
                     ],
                     "type": "bezier",
-                    "value": -0.38000000000000006
+                    "value": -0.17999999999999977
                   }
                 ]
               },
@@ -9154,7 +9154,7 @@
                       0
                     ],
                     "type": "bezier",
-                    "value": 1.3500000000000008
+                    "value": 1.610000000000001
                   }
                 ]
               },
@@ -9325,6 +9325,19 @@
                     ],
                     "type": "bezier",
                     "value": 0.5700000000000001
+                  },
+                  {
+                    "id": "fEtbIkIXiK",
+                    "position": 50,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0.64
                   }
                 ]
               },
@@ -9537,7 +9550,7 @@
                       0
                     ],
                     "type": "bezier",
-                    "value": 0.7900000000000003
+                    "value": 0.87
                   }
                 ]
               },
@@ -9556,7 +9569,7 @@
                       0
                     ],
                     "type": "bezier",
-                    "value": 0.2699999999999999
+                    "value": 0.45
                   }
                 ]
               },
@@ -9575,7 +9588,7 @@
                       0
                     ],
                     "type": "bezier",
-                    "value": 0.9900000000000033
+                    "value": 1.28
                   }
                 ]
               },
@@ -9759,6 +9772,19 @@
                 "__debugName": "TextContent: Resume20241:[\"position\",\"x\"]",
                 "keyframes": [
                   {
+                    "id": "OmaoW6dAFe",
+                    "position": 50,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0.87
+                  },
+                  {
                     "id": "xZxeedVrVf",
                     "position": 50.5,
                     "connectedRight": true,
@@ -9769,7 +9795,7 @@
                       0
                     ],
                     "type": "bezier",
-                    "value": 0.7900000000000003
+                    "value": 0.87
                   }
                 ]
               },
@@ -9777,6 +9803,19 @@
                 "type": "BasicKeyframedTrack",
                 "__debugName": "TextContent: Resume20241:[\"position\",\"y\"]",
                 "keyframes": [
+                  {
+                    "id": "us8xUMzIZH",
+                    "position": 50,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0.45
+                  },
                   {
                     "id": "3WDBN8e5dL",
                     "position": 50.5,
@@ -9788,7 +9827,7 @@
                       0
                     ],
                     "type": "bezier",
-                    "value": 0.2699999999999999
+                    "value": 0.45
                   }
                 ]
               },
@@ -9796,6 +9835,19 @@
                 "type": "BasicKeyframedTrack",
                 "__debugName": "TextContent: Resume20241:[\"position\",\"z\"]",
                 "keyframes": [
+                  {
+                    "id": "gbov4r5nB7",
+                    "position": 50,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1.28
+                  },
                   {
                     "id": "rDZFn4rql8",
                     "position": 50.5,
@@ -9807,7 +9859,7 @@
                       0
                     ],
                     "type": "bezier",
-                    "value": 0.9900000000000033
+                    "value": 1.28
                   }
                 ]
               },
@@ -9991,6 +10043,19 @@
                 "__debugName": "TextContent: Resume20242:[\"position\",\"x\"]",
                 "keyframes": [
                   {
+                    "id": "X1CAbqqekj",
+                    "position": 50.5,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0.87
+                  },
+                  {
                     "id": "ZV2ZjTRAUP",
                     "position": 51,
                     "connectedRight": true,
@@ -10001,7 +10066,7 @@
                       0
                     ],
                     "type": "bezier",
-                    "value": 0.7900000000000003
+                    "value": 0.87
                   }
                 ]
               },
@@ -10009,6 +10074,19 @@
                 "type": "BasicKeyframedTrack",
                 "__debugName": "TextContent: Resume20242:[\"position\",\"y\"]",
                 "keyframes": [
+                  {
+                    "id": "oK-RyXk0x-",
+                    "position": 50.5,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0.45
+                  },
                   {
                     "id": "xxacbvpn0_",
                     "position": 51,
@@ -10020,7 +10098,7 @@
                       0
                     ],
                     "type": "bezier",
-                    "value": 0.2699999999999999
+                    "value": 0.45
                   }
                 ]
               },
@@ -10028,6 +10106,19 @@
                 "type": "BasicKeyframedTrack",
                 "__debugName": "TextContent: Resume20242:[\"position\",\"z\"]",
                 "keyframes": [
+                  {
+                    "id": "UIbTRaO8hl",
+                    "position": 50.5,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1.28
+                  },
                   {
                     "id": "waVveV8mIr",
                     "position": 51,
@@ -10039,7 +10130,7 @@
                       0
                     ],
                     "type": "bezier",
-                    "value": 0.9900000000000033
+                    "value": 1.28
                   }
                 ]
               },
@@ -10220,7 +10311,7 @@
                       0
                     ],
                     "type": "bezier",
-                    "value": 0.7900000000000003
+                    "value": 0.87
                   }
                 ]
               },
@@ -10239,7 +10330,7 @@
                       0
                     ],
                     "type": "bezier",
-                    "value": 0.2699999999999999
+                    "value": 0.45
                   }
                 ]
               },
@@ -10258,7 +10349,7 @@
                       0
                     ],
                     "type": "bezier",
-                    "value": 0.9900000000000033
+                    "value": 1.28
                   }
                 ]
               },
@@ -10484,7 +10575,7 @@
                       0
                     ],
                     "type": "bezier",
-                    "value": -0.8700000000000006
+                    "value": -0.6900000000000004
                   }
                 ]
               },
@@ -10503,7 +10594,7 @@
                       0
                     ],
                     "type": "bezier",
-                    "value": 0.7300000000000005
+                    "value": 0.8600000000000007
                   }
                 ]
               },
@@ -10570,29 +10661,15 @@
               "0kgvruLl7e": {
                 "type": "BasicKeyframedTrack",
                 "__debugName": "arrow: Resume2024 Next sphereBG:[\"position\",\"x\"]",
-                "keyframes": [
-                  {
-                    "id": "nXp4Qa2ZW_",
-                    "position": 51,
-                    "connectedRight": true,
-                    "handles": [
-                      0.5,
-                      1,
-                      0.5,
-                      0
-                    ],
-                    "type": "bezier",
-                    "value": 0.6904692883023136
-                  }
-                ]
+                "keyframes": []
               },
               "pxVWXBi7qw": {
                 "type": "BasicKeyframedTrack",
                 "__debugName": "arrow: Resume2024 Next sphereBG:[\"position\",\"y\"]",
                 "keyframes": [
                   {
-                    "id": "ftfPy_A33t",
-                    "position": 51,
+                    "id": "t1DyzM4cKw",
+                    "position": 50,
                     "connectedRight": true,
                     "handles": [
                       0.5,
@@ -10601,7 +10678,7 @@
                       0
                     ],
                     "type": "bezier",
-                    "value": -9.120378631873322
+                    "value": -6.310378631873329
                   }
                 ]
               },
@@ -10610,8 +10687,8 @@
                 "__debugName": "arrow: Resume2024 Next sphereBG:[\"position\",\"z\"]",
                 "keyframes": [
                   {
-                    "id": "XhMn8KzMeR",
-                    "position": 51,
+                    "id": "AKWzFmG3ce",
+                    "position": 50,
                     "connectedRight": true,
                     "handles": [
                       0.5,
@@ -10620,7 +10697,7 @@
                       0
                     ],
                     "type": "bezier",
-                    "value": 9.27275492527782
+                    "value": 9.38275492527781
                   }
                 ]
               },
@@ -13144,6 +13221,7 @@
   },
   "definitionVersion": "0.4.0",
   "revisionHistory": [
+    "1-DDsDjYBt1omm6X",
     "8rhtOArNLDDZFxKa",
     "DnWgPno82WDuZAYH",
     "1CqKatuWFTMK0D0C",

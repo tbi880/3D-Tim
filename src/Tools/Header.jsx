@@ -4,11 +4,11 @@ function importantNotice() {
     const noticeMap = {
         '0101': ['Tim wishes you a happy new year! 新年快乐！', 'https://www.bty.co.nz'],
         '0214': ['Tim wishes you have someone to hug with today! 情人节快乐！', 'https://www.bty.co.nz'],
-        '0402': ["Tim's friend Jessie is having her 23th birthday! Click here to wish her a happy birthday and have a look of what Tim prepared for her as her birthday gift!", 'https://www.bty.co.nz/jessie'],
+        '0714': ["Tim's girlfriend Sandra just had her 27th birthday! Click here to see the gift that Tim prepared for her", 'https://www.bty.co.nz/hb_to_qxl/index.html'],
         '1225': ['Tim wishes you a marry xmas! 圣诞节快乐！', 'https://www.bty.co.nz'],
     };
 
-    const defaultNotice = ['Welcome to Tim Bi\'s world! 欢迎来到Tim Bi的世界！ Recent notice happened around Tim: ' + noticeMap["0402"][0], 'https://www.bty.co.nz/jessie'];
+    const defaultNotice = ['Welcome to Tim Bi\'s world! 欢迎来到Tim Bi的世界！ Recent notice happened around Tim: ' + noticeMap["0714"][0], 'https://www.bty.co.nz/hb_to_qxl/index.html'];
 
     const today = new Date();
     let closestNotice = null;
