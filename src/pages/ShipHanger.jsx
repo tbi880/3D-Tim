@@ -8,12 +8,22 @@ import { SheetProvider } from '@theatre/r3f';
 import { scene3Sheet } from './SceneManager';
 import SceneThree_mobile from './SceneThree_mobile';
 import SceneThree from './SceneThree';
+import { useState } from 'react';
 
 
 
 
 
 function ShipHanger({ vrSupported, isPortraitPhoneScreen }) {
+
+    const [isJumping, setIsJumping] = useState(false);
+
+    function checkThenJumpToTheNextScene() {
+        if (!isJumping) {
+            setIsJumping(true);
+            jumpToTheNextScene(getNextScene());
+        }
+    }
 
     return (
         <>
@@ -41,7 +51,7 @@ function ShipHanger({ vrSupported, isPortraitPhoneScreen }) {
                             <Controllers rayMaterial={{ color: '#99FFFF' }} />
                             <Hands />
                             <SheetProvider sheet={scene3Sheet}>
-                                <SceneThree startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoint={64} onSequencePass={() => jumpToTheNextScene(getNextScene())} /></SheetProvider>
+                                <SceneThree startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
 
                         </XR>
 
@@ -54,7 +64,7 @@ function ShipHanger({ vrSupported, isPortraitPhoneScreen }) {
                 {!vrSupported &&
                     <Canvas gl={{ preserveDrawingBuffer: true }} >
                         <SheetProvider sheet={scene3Sheet}>
-                            <SceneThree_mobile startPoint={getNextSceneStartPoint()} unloadPoint={64} onSequencePass={() => jumpToTheNextScene(getNextScene())} /></SheetProvider>
+                            <SceneThree_mobile startPoint={getNextSceneStartPoint()} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
 
                     </Canvas>}
 

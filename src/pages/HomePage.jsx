@@ -39,6 +39,15 @@ function HomePage({ isPortraitPhoneScreen, vrSupported }) {
 
     }, []);
 
+    const [isJumping, setIsJumping] = useState(false);
+
+    function checkThenJumpToTheNextScene() {
+        if (!isJumping) {
+            setIsJumping(true);
+            jumpToTheNextScene(getNextScene());
+        }
+    }
+
     return (
         <>
             <Helmet>
@@ -65,7 +74,7 @@ function HomePage({ isPortraitPhoneScreen, vrSupported }) {
                             <Controllers rayMaterial={{ color: '#99FFFF' }} />
                             <Hands />
                             <SheetProvider sheet={scene1Sheet}>
-                                <SceneOne startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoint={39} onSequencePass={() => jumpToTheNextScene(getNextScene())} /></SheetProvider>
+                                <SceneOne startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoint={39} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
 
                         </XR>
 
@@ -78,7 +87,7 @@ function HomePage({ isPortraitPhoneScreen, vrSupported }) {
                 {!vrSupported &&
                     <Canvas gl={{ preserveDrawingBuffer: true }} >
                         <SheetProvider sheet={scene1Sheet}>
-                            <SceneOne_mobile startPoint={getNextSceneStartPoint()} unloadPoint={39} onSequencePass={() => jumpToTheNextScene(getNextScene())} /></SheetProvider>
+                            <SceneOne_mobile startPoint={getNextSceneStartPoint()} unloadPoint={39} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
 
                     </Canvas>}
 

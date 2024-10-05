@@ -8,12 +8,22 @@ import { SheetProvider } from '@theatre/r3f';
 import SceneTwo from './SceneTwo';
 import { scene2Sheet } from './SceneManager';
 import SceneTwo_mobile from './SceneTwo_mobile';
+import { useState } from 'react';
 
 
 
 
 
 function Bridge({ vrSupported, isPortraitPhoneScreen }) {
+
+    const [isJumping, setIsJumping] = useState(false);
+
+    function checkThenJumpToTheNextScene() {
+        if (!isJumping) {
+            setIsJumping(true);
+            jumpToTheNextScene(getNextScene());
+        }
+    }
 
     return (
         <>
@@ -41,7 +51,7 @@ function Bridge({ vrSupported, isPortraitPhoneScreen }) {
                             <Controllers rayMaterial={{ color: '#99FFFF' }} />
                             <Hands />
                             <SheetProvider sheet={scene2Sheet}>
-                                <SceneTwo startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoints={[38, 72]} onSequencePass={() => jumpToTheNextScene(getNextScene())} /></SheetProvider>
+                                <SceneTwo startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoints={[38, 72]} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
 
                         </XR>
 
@@ -54,7 +64,7 @@ function Bridge({ vrSupported, isPortraitPhoneScreen }) {
                 {!vrSupported &&
                     <Canvas gl={{ preserveDrawingBuffer: true }} >
                         <SheetProvider sheet={scene2Sheet}>
-                            <SceneTwo_mobile startPoint={getNextSceneStartPoint()} unloadPoints={[38, 72]} onSequencePass={() => jumpToTheNextScene(getNextScene())} /></SheetProvider>
+                            <SceneTwo_mobile startPoint={getNextSceneStartPoint()} unloadPoints={[38, 72]} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
 
                     </Canvas>}
 
