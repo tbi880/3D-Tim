@@ -71,7 +71,7 @@ function WaitingJessie() {
                     } else {
                         setShowNotification(false);
                     }
-                }, 10000); // 8秒后检查进度是否更新
+                }, 17000); // 10秒后检查进度是否更新
             }
         };
 
@@ -115,7 +115,7 @@ function WaitingJessie() {
                 <h1 style={{ fontSize: '4vw', padding: '10px' }}>{codelineSeven}</h1>
                 <h1 style={{ fontSize: '4vw', padding: '10px' }}>{codelineEight}</h1>
                 <div className="loading" style={{ fontSize: '5vw' }}>{Math.ceil(simulatedProgress)} % loaded</div>
-                <Notification message="Please check your network connection and try again. The page will reload in 3 seconds if the progress remains unchanged." show={showNotification} />
+                <Notification message="Your internet is tooooo slow!!! Please check your network connection and try again. The page will reload in 10 seconds if the progress remains unchanged." show={showNotification} />
 
             </div>
             {!isCrawler && <JessiePreAlert />}
