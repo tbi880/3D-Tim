@@ -1,3 +1,4 @@
+import { engineeringAccess } from './Status'
 import * as THREE from 'three'
 import { useEffect, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
@@ -12,6 +13,10 @@ import { bucketURL } from '../Settings'
 const GOLDENRATIO = 1.61803398875
 
 export const SceneFour = ({ images }) => {
+    useEffect(() => {
+        engineeringAccess();
+        console.log('Engineering has been accessed');
+    }, [])
 
     return (
 

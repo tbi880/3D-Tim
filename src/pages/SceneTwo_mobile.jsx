@@ -1,4 +1,4 @@
-import { getRootAccess, getShipHangerHasBeenAccessed } from './Status';
+import { getEngineeringHasBeenAccessed, getRootAccess, getShipHangerHasBeenAccessed } from './Status';
 import WaitingForMoreModels from './WaitingForMoreModels';
 import StrangerStar from '../modelComponents/StrangerStar';
 import ShipInside from '../modelComponents/ShipInside';
@@ -130,7 +130,7 @@ function SceneTwo_mobile({ startPoint, unloadPoints, onSequencePass }) {
                 <SingleLoadManager loadPoint={22} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOShipHangar')} />
                 {showComponents.buttonForGOTOShipHangar && !(getShipHangerHasBeenAccessed()) && <Button title={"To the ship hanger"} position={[490, -23.5, -60]} rotation={[0, 0, 0]} clickablePoint={22.5} jumpToPoint={22.5} stopPoint={33} unloadPoint={24} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOShipHangar')} />}
                 <SingleLoadManager loadPoint={22} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOEngineering')} />
-                {showComponents.buttonForGOTOEngineering && <Button title={"To the engineering"} position={[490, -23.5, -60]} rotation={[0, 0, 0]} clickablePoint={22.5} IsPreJump={true} jumpToPoint={39} stopPoint={68} unloadPoint={24} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOEngineering')} />}
+                {showComponents.buttonForGOTOEngineering && !(getEngineeringHasBeenAccessed()) && <Button title={"To the engineering"} position={[490, -23.5, -60]} rotation={[0, 0, 0]} clickablePoint={22.5} IsPreJump={true} jumpToPoint={39} stopPoint={68} unloadPoint={24} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOEngineering')} />}
                 <SingleLoadManager loadPoint={22} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOCaptainsChamber')} />
                 {showComponents.buttonForGOTOCaptainsChamber && <Button title={"To Tim's chamber"} position={[490, -23.5, -60]} rotation={[0, 0, 0]} clickablePoint={22.5} jumpToPoint={22.5} stopPoint={23} unloadPoint={24} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOCaptainsChamber')} alertAndNoPlay={!getRootAccess()} alertMessage={"You are not authorized to go there! Please check the access level or answer the ROOT ACCESS questions."} />}
 
