@@ -15,7 +15,6 @@ const GOLDENRATIO = 1.61803398875
 export const SceneFour = ({ images }) => {
     useEffect(() => {
         engineeringAccess();
-        console.log('Engineering has been accessed');
     }, [])
 
     return (
