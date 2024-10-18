@@ -10,7 +10,7 @@ import SceneTwo from './SceneTwo';
 import SceneThree from './SceneThree';
 import { useCallback, useEffect, useState } from 'react';
 import { getNextScene, getNextSceneStartPoint } from './Status';
-import { stageOfENV } from '../Settings';
+import { stageOfENV, webGLPreserveDrawingBuffer } from '../Settings';
 import { Controllers, Hands, XR, VRButton } from '@react-three/xr';
 import '@react-three/fiber'
 import SceneOne_mobile from './SceneOne_mobile';
@@ -102,7 +102,7 @@ function SceneManager({ vrSupported, isPortraitPhoneScreen }) {
     return (<>
         {!isPortraitPhoneScreen && <>
             <VRButton />
-            <Canvas gl={{ preserveDrawingBuffer: true }} >
+            <Canvas gl={{ preserveDrawingBuffer: webGLPreserveDrawingBuffer }} >
                 <XR>
                     <Controllers rayMaterial={{ color: '#99FFFF' }} />
                     <Hands />
@@ -127,7 +127,7 @@ function SceneManager({ vrSupported, isPortraitPhoneScreen }) {
         </>}
 
         {isPortraitPhoneScreen &&
-            <Canvas gl={{ preserveDrawingBuffer: true }} >
+            <Canvas gl={{ preserveDrawingBuffer: webGLPreserveDrawingBuffer }} >
                 {showScenes.sceneOne && <SheetProvider sheet={scene1Sheet}>
                     <SceneOne_mobile unloadPoint={39} onSequencePass={() => toggleSceneDisplay("sceneOne")} /></SheetProvider>}
 

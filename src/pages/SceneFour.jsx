@@ -1,4 +1,4 @@
-import { engineeringAccess } from './Status'
+import { engineeringAccess, getNextScene, jumpToTheNextScene, setNextScene, setNextSceneStartPoint } from './Status'
 import * as THREE from 'three'
 import { useEffect, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
@@ -13,7 +13,25 @@ import { bucketURL } from '../Settings'
 const GOLDENRATIO = 1.61803398875
 
 export const SceneFour = ({ images }) => {
+    const [visitedIds, setVisitedIds] = useState(new Set());
+
     useEffect(() => {
+        if (visitedIds.size === images.length) {
+            const timer = setTimeout(() => {
+                if (window.confirm("You have checked them all. Do you want to go back to the bridge?")) {
+                    jumpToTheNextScene(getNextScene());
+                }
+            }, 1500);
+
+            // 清理函数
+            return () => clearTimeout(timer);
+        }
+    }
+        , [visitedIds, images.length]);
+
+    useEffect(() => {
+        setNextScene("sceneTwo");
+        setNextSceneStartPoint(22);
         engineeringAccess();
     }, [])
 
@@ -25,7 +43,7 @@ export const SceneFour = ({ images }) => {
                 <color attach="background" args={['#191920']} />
                 <fog attach="fog" args={['#191920', 0, 15]} />
                 <group position={[0, -0.5, 0]}>
-                    <Frames images={images} />
+                    <Frames images={images} onVisit={(id) => setVisitedIds(new Set(visitedIds.add(id)))} />
                     <mesh rotation={[-Math.PI / 2, 0, 0]}>
                         <planeGeometry args={[50, 50]} />
                         <MeshReflectorMaterial
@@ -49,8 +67,7 @@ export const SceneFour = ({ images }) => {
 
     )
 }
-
-function Frames({ images, q = new THREE.Quaternion(), p = new THREE.Vector3() }) {
+function Frames({ images, onVisit, q = new THREE.Quaternion(), p = new THREE.Vector3() }) {
     const ref = useRef()
     const clicked = useRef()
     const [, params] = useRoute('/ship_engineering/item/:id')
@@ -66,6 +83,14 @@ function Frames({ images, q = new THREE.Quaternion(), p = new THREE.Vector3() })
             q.identity()
         }
     })
+
+    useEffect(() => {
+        clicked.current = ref.current.getObjectByName(params?.id)
+        if (clicked.current) {
+            onVisit(params?.id); // 标记此ID为已访问
+        }
+    }, [params?.id])
+
     useFrame((state, dt) => {
         easing.damp3(state.camera.position, p, 0.4, dt)
         easing.dampQ(state.camera.quaternion, q, 0.4, dt)
