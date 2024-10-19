@@ -89,7 +89,6 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isVRSupported }) {
     // 使用一个对象来管理多个组件的初始显示状态
     const [showComponents, setShowComponents] = useState({
         shipInside: true,
-        textTitle20minsAgo: true,
         robotIntro: true,
         viewPortIntro: true,
         screenIntro: true,
@@ -163,7 +162,6 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isVRSupported }) {
                 <StrangerStar />
 
                 <ShipInside sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('shipInside')} />
-                {showComponents.textTitle20minsAgo && <TextTitle text="20 mins ago, inside the ship" color="#FFFFFF" size={1} sequence={scene2Sheet.sequence} unloadPoint={1} onSequencePass={() => toggleComponentDisplay('textTitle20minsAgo')} />}
                 {showComponents.viewPortIntro && <ViewPort screenTitle="Intro" position={[613, -15.5, -106]} rotation={[0, 0, 0]} sequence={scene2Sheet.sequence} stopPoint={1} unloadPoint={1} onSequencePass={() => toggleComponentDisplay('viewPortIntro')} />}
                 {showComponents.robotIntro && <Robots title="Intro" position={[613, -15.5, -106]} rotation={[0, 0, 0]} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('robotIntro')} />}
                 {showComponents.screenIntro && <InfoScreenDisplay title="Conversation" content={screenIntro} sequence={scene2Sheet.sequence} stopPoints={[1.5, 2, 2.5, 22.5]} loadPoints={[0, 1, 1.5, 2]} unloadPoints={[2, 2.5, 3, 3.5]} onSequencePass={() => toggleComponentDisplay("screenIntro")} />}
