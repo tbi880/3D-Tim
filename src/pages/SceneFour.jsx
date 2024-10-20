@@ -22,7 +22,6 @@ export const SceneFourInsideOfCanvas = ({ images }) => {
     const startPosition = [0, 2, 15];
     const targetPosition = [0, 0, 5.5];
     const [showComponents, setShowComponents] = useState({
-        text_back_to_the_bridge: false,
         loading: false
     });
     const [loadingOpacity, setLoadingOpacity] = useState(0);
@@ -39,24 +38,23 @@ export const SceneFourInsideOfCanvas = ({ images }) => {
 
 
     useEffect(() => {
+        let opacityInterval; // 提升到 useEffect 作用域顶部
+        let intervalId; // 同样提升 intervalId
+
         if (visitedIds.size === images.length && cameraReached) {
-            if (!showComponents.text_back_to_the_bridge) {
-                toggleComponentDisplay("text_back_to_the_bridge");
-                setShowComponents((prev) => ({
-                    ...prev,
-                    loading: true
-                }));
+            if (!showComponents.loading) {
+                toggleComponentDisplay("loading");
                 let opacity = 0;
-                const opacityInterval = setInterval(() => {
+                opacityInterval = setInterval(() => {
                     opacity += 0.01;
                     setLoadingOpacity(opacity);
                     if (opacity >= 1) {
                         clearInterval(opacityInterval);
                     }
                 }, 20);
-
             }
-            const intervalId = setInterval(() => {
+
+            intervalId = setInterval(() => {
                 setCountDown((prev) => {
                     if (prev > 0) {
                         return prev - 1;
@@ -69,12 +67,12 @@ export const SceneFourInsideOfCanvas = ({ images }) => {
             }, 1000);
 
             return () => {
-                clearInterval(opacityInterval);
-                clearInterval(countDownInterval);
+                // 在清理函数中正确清理 interval
+                if (opacityInterval) clearInterval(opacityInterval);
+                if (intervalId) clearInterval(intervalId);
             };
         }
-    }
-        , [visitedIds, images.length, cameraReached]);
+    }, [visitedIds, images.length, cameraReached]);
 
     useEffect(() => {
         setNextScene("sceneTwo");
@@ -112,6 +110,7 @@ export const SceneFourInsideOfCanvas = ({ images }) => {
                 lineHeight={1}
                 anchorX="center"
                 anchorY="middle"
+                visible={!showComponents.loading}
             >
                 Welcome to my gallery
             </Text>
@@ -124,6 +123,7 @@ export const SceneFourInsideOfCanvas = ({ images }) => {
                 lineHeight={1}
                 anchorX="center"
                 anchorY="middle"
+                visible={!showComponents.loading}
             >
                 {"You have browsed " + (visitedIds.size + 1) + " out of " + (images.length + 1) + " websites that were built and designed by me."}
             </Text>
@@ -138,7 +138,7 @@ export const SceneFourInsideOfCanvas = ({ images }) => {
                 lineHeight={1}
                 anchorX="center"
                 anchorY="middle"
-                visible={showComponents.text_back_to_the_bridge}
+                visible={showComponents.loading}
             >
                 Time to head back to the bridge!
             </Text>
@@ -150,48 +150,53 @@ export const SceneFourInsideOfCanvas = ({ images }) => {
                 lineHeight={1}
                 anchorX="center"
                 anchorY="middle"
-                visible={showComponents.text_back_to_the_bridge}
+                visible={showComponents.loading}
             >
                 {"Head back in " + countDown + " seconds"}
             </Text>
 
             <Text
-                position={[0, 0.9, 0.1]}
+                position={[0, -0.1, 0.1]}
                 fontSize={0.4}
-                color="white"
+                color="#00FFFF"
                 maxWidth={200}
                 lineHeight={1}
                 anchorX="center"
                 anchorY="middle"
-                visible={showComponents.text_back_to_the_bridge}
+                visible={showComponents.loading}
             >
                 {"Disconnected\nfrom Tim's\nnamespace"}
             </Text>
 
 
-            <color attach="background" args={['#191920']} />
-            <fog attach="fog" args={['#191920', 0, 15]} />
-            {!showComponents.loading && <><group position={[0, -0.5, 0]}>
-                <Frames images={images} onVisit={(id) => setVisitedIds(new Set(visitedIds.add(id)))} />
-                <mesh rotation={[-Math.PI / 2, 0, 0]}>
-                    <planeGeometry args={[50, 50]} />
-                    <MeshReflectorMaterial
-                        blur={[300, 100]}
-                        resolution={2048}
-                        mixBlur={1}
-                        mixStrength={80}
-                        roughness={1}
-                        depthScale={1.2}
-                        minDepthThreshold={0.4}
-                        maxDepthThreshold={1.4}
-                        color="#050505"
-                        metalness={0.5}
-                    />
-                </mesh>
-            </group>
+
+            {!showComponents.loading && <>
+                <color attach="background" args={['#191920']} />
+                <fog attach="fog" args={['#191920', 0, 15]} />
+                <group position={[0, -0.5, 0]}>
+                    <Frames images={images} onVisit={(id) => setVisitedIds(new Set(visitedIds.add(id)))} />
+                    <mesh rotation={[-Math.PI / 2, 0, 0]}>
+                        <planeGeometry args={[50, 50]} />
+                        <MeshReflectorMaterial
+                            blur={[300, 100]}
+                            resolution={2048}
+                            mixBlur={1}
+                            mixStrength={80}
+                            roughness={1}
+                            depthScale={1.2}
+                            minDepthThreshold={0.4}
+                            maxDepthThreshold={1.4}
+                            color="#050505"
+                            metalness={0.5}
+                        />
+                    </mesh>
+                </group>
                 <Environment preset="city" /></>}
 
-            {showComponents.loading && <><AnyModel modelURL="loading.glb" useTheatre={false} position={[-1.5, 1, 8]} rotation={[0, 0, 0]} scale={0.4} opacity={loadingOpacity} animationNames={["Take 01"]} animationAutoStart={true} animationStartPoint={0} />
+            {showComponents.loading && <>
+                <color attach='background' args={["white"]} />
+
+                <AnyModel modelURL="loading.glb" useTheatre={false} position={[-1.5, 0, 8]} rotation={[0, 0, 0]} scale={0.4} opacity={loadingOpacity} animationNames={["Take 01"]} animationAutoStart={true} animationStartPoint={0} />
                 <ambientLight intensity={10} color={"white"} />
             </>
             }
