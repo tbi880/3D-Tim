@@ -66,11 +66,6 @@ export const SceneFourInsideOfCanvas = ({ images }) => {
                 });
             }, 1000);
 
-            return () => {
-                // 在清理函数中正确清理 interval
-                if (opacityInterval) clearInterval(opacityInterval);
-                if (intervalId) clearInterval(intervalId);
-            };
         }
     }, [visitedIds, images.length, cameraReached]);
 
