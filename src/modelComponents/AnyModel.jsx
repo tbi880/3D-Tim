@@ -11,15 +11,19 @@ function AnyModel(props) {
     /*
     传入的props参数：
     modelURL: 模型的URL后缀部分
+    useTheatre: 是否使用Theatre.js
     theatreKey: 模型的key（唯一）
     sequence: 用于播放动画的sequence
     stopPoints: 动画停止的点
     clickablePoint: 点击模型触发动画的点
     position: 模型的初始位置
     rotation: 模型的初始旋转
+    opacity: 模型的初始透明度
+    scale: 模型的初始缩放
     unloadPoint: 卸载模型的点
     onSequencePass: 用于卸载模型的函数
     animationNames: 动画的名称
+    animationAutoStart: 动画是否自动播放
     animationPlayTimes: 动画的播放次数
     animationSpeeds: 动画的速度
     animationStartPoint: 动画的开始点
@@ -28,7 +32,7 @@ function AnyModel(props) {
     ...
     */
     const anyModel = useGLTF(bucketURL + props.modelURL, true, true);
-    const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
+    const [opacity, setOpacity] = useState(props.opacity); // 初始透明度设置为1（不透明）
     const { animations, scene } = anyModel;
     const { actions } = useAnimations(animations, scene);
     const theatreKey = ("[ANY] " + props.theatreKey).trim();
@@ -57,7 +61,6 @@ function AnyModel(props) {
 
 
 
-
     const [hovered, hover] = useState(false);
     useCursor(hovered);
 
@@ -73,9 +76,27 @@ function AnyModel(props) {
     }, [anyModel.scene, opacity]);
 
 
+    useEffect(() => {
+        if (!props.useTheatre) {
+            // 当useTheatre为false时，监听props.opacity的变化
+            setOpacity(props.opacity);
+        }
+    }, [props.opacity, props.useTheatre]);
+
+
+
     useFrame(() => {
         if (!isPlaying) {
-            if (props.animationNames && props.animationNames.length != 0) {
+            if (props.animationAutoStart) {
+                const action = actions[props.animationNames[0]];
+                if (props.animationStartPoint) {
+
+                    action.time = props.animationStartPoint;
+                }
+                action.play();
+                setIsPlaying(true);
+            }
+            else if (props.animationNames && props.animationNames.length != 0) {
                 if (animationIsClicked) {
                     const action = actions[props.animationNames[0]];
                     if (props.animationStartPoint) {
@@ -104,7 +125,7 @@ function AnyModel(props) {
 
 
     return (
-        <>
+        <>{props.useTheatre ?
             <e.mesh theatreKey={theatreKey} scale={props.scale ? props.scale : 0.01} position={props.position} rotation={props.rotation} {...eventHandlers}
 
                 additionalProps={{
@@ -120,7 +141,24 @@ function AnyModel(props) {
                 < primitive key={props.key} object={props.isMultiple ? clone : anyModel.scene} />
 
             </e.mesh>
-            {/* Additional Sphere for easier clicking */}
+            :
+            <mesh scale={props.scale ? props.scale : 0.01}>
+                <primitive
+                    object={props.isMultiple ? clone : anyModel.scene}
+                    position={props.position}
+                    rotation={props.rotation}
+
+                />
+                <meshStandardMaterial
+                    attach="material"
+                    transparent
+                    opacity={opacity}
+                />
+            </mesh>
+
+        }
+
+
         </>
     );
 }

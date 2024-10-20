@@ -1,33 +1,80 @@
 import { engineeringAccess, getNextScene, jumpToTheNextScene, setNextScene, setNextSceneStartPoint } from './Status'
 import * as THREE from 'three'
 import { useEffect, useRef, useState } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
-import { useCursor, MeshReflectorMaterial, Image, Text, Environment } from '@react-three/drei'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { useCursor, MeshReflectorMaterial, Image, Text, Environment, Html } from '@react-three/drei'
 import { useRoute, useLocation } from 'wouter'
 import { easing } from 'maath'
 import getUuid from 'uuid-by-string'
 import { Suspense } from 'react'
 import WaitingForMoreModels from './WaitingForMoreModels';
 import { bucketURL } from '../Settings'
+import { useCallback } from 'react'
+import AnyModel from '../modelComponents/AnyModel'
 
 const GOLDENRATIO = 1.61803398875
 
-export const SceneFour = ({ images }) => {
+export const SceneFour = ({ images }) => { return <Canvas dpr={[1, 1.5]}><SceneFourInsideOfCanvas images={images} /></Canvas> }
+
+export const SceneFourInsideOfCanvas = ({ images }) => {
     const [visitedIds, setVisitedIds] = useState(new Set());
+    const [cameraReached, setCameraReached] = useState(false);
+    const startPosition = [0, 2, 15];
+    const targetPosition = [0, 0, 5.5];
+    const [showComponents, setShowComponents] = useState({
+        text_back_to_the_bridge: false,
+        loading: false
+    });
+    const [loadingOpacity, setLoadingOpacity] = useState(0);
+
+    const [countDown, setCountDown] = useState(3);
+
+    const toggleComponentDisplay = useCallback((componentKey) => {
+        setShowComponents((prev) => ({
+            ...prev,
+            [componentKey]: !prev[componentKey],
+
+        }));
+    }, []);
+
 
     useEffect(() => {
-        if (visitedIds.size === images.length) {
-            const timer = setTimeout(() => {
-                if (window.confirm("You have checked them all. Do you want to go back to the bridge?")) {
-                    jumpToTheNextScene(getNextScene());
-                }
-            }, 1500);
+        if (visitedIds.size === images.length && cameraReached) {
+            if (!showComponents.text_back_to_the_bridge) {
+                toggleComponentDisplay("text_back_to_the_bridge");
+                setShowComponents((prev) => ({
+                    ...prev,
+                    loading: true
+                }));
+                let opacity = 0;
+                const opacityInterval = setInterval(() => {
+                    opacity += 0.01;
+                    setLoadingOpacity(opacity);
+                    if (opacity >= 1) {
+                        clearInterval(opacityInterval);
+                    }
+                }, 20);
 
-            // 清理函数
-            return () => clearTimeout(timer);
+            }
+            const intervalId = setInterval(() => {
+                setCountDown((prev) => {
+                    if (prev > 0) {
+                        return prev - 1;
+                    } else {
+                        clearInterval(intervalId);
+                        jumpToTheNextScene(getNextScene());
+                        return 0;
+                    }
+                });
+            }, 1000);
+
+            return () => {
+                clearInterval(opacityInterval);
+                clearInterval(countDownInterval);
+            };
         }
     }
-        , [visitedIds, images.length]);
+        , [visitedIds, images.length, cameraReached]);
 
     useEffect(() => {
         setNextScene("sceneTwo");
@@ -35,35 +82,121 @@ export const SceneFour = ({ images }) => {
         engineeringAccess();
     }, [])
 
+    useFrame((state) => {
+        const position = [
+            state.camera.position.x,
+            state.camera.position.y,
+            state.camera.position.z,
+        ];
+
+        if (position[0] === targetPosition[0] && position[1] === targetPosition[1] && position[2] === targetPosition[2]) {
+            if (!cameraReached) {
+                setCameraReached(true);
+            }
+        } else {
+            if (cameraReached) {
+                setCameraReached(false);
+            }
+        }
+    });
+
     return (
 
-        <Canvas dpr={[1, 1.5]} camera={{ fov: 70, position: [0, 2, 15] }}>
-            <Suspense fallback={<WaitingForMoreModels />}>
+        <Suspense fallback={<WaitingForMoreModels />}>
+            <camera position={startPosition} />
+            <Text
+                position={[0, -0.4, 3.75]}
+                fontSize={0.1}
+                color="white"
+                maxWidth={200}
+                lineHeight={1}
+                anchorX="center"
+                anchorY="middle"
+            >
+                Welcome to my gallery
+            </Text>
 
-                <color attach="background" args={['#191920']} />
-                <fog attach="fog" args={['#191920', 0, 15]} />
-                <group position={[0, -0.5, 0]}>
-                    <Frames images={images} onVisit={(id) => setVisitedIds(new Set(visitedIds.add(id)))} />
-                    <mesh rotation={[-Math.PI / 2, 0, 0]}>
-                        <planeGeometry args={[50, 50]} />
-                        <MeshReflectorMaterial
-                            blur={[300, 100]}
-                            resolution={2048}
-                            mixBlur={1}
-                            mixStrength={80}
-                            roughness={1}
-                            depthScale={1.2}
-                            minDepthThreshold={0.4}
-                            maxDepthThreshold={1.4}
-                            color="#050505"
-                            metalness={0.5}
-                        />
-                    </mesh>
-                </group>
-                <Environment preset="city" />
-            </Suspense>
+            <Text
+                position={[0, 3, 0.1]}
+                fontSize={0.1}
+                color="white"
+                maxWidth={200}
+                lineHeight={1}
+                anchorX="center"
+                anchorY="middle"
+            >
+                {"You have browsed " + (visitedIds.size + 1) + " out of " + (images.length + 1) + " websites that were built and designed by me."}
+            </Text>
 
-        </Canvas>
+
+
+            <Text
+                position={[0, 2.5, 0.1]}
+                fontSize={0.2}
+                color="white"
+                maxWidth={200}
+                lineHeight={1}
+                anchorX="center"
+                anchorY="middle"
+                visible={showComponents.text_back_to_the_bridge}
+            >
+                Time to head back to the bridge!
+            </Text>
+            <Text
+                position={[0, 2, 0.1]}
+                fontSize={0.2}
+                color="white"
+                maxWidth={200}
+                lineHeight={1}
+                anchorX="center"
+                anchorY="middle"
+                visible={showComponents.text_back_to_the_bridge}
+            >
+                {"Head back in " + countDown + " seconds"}
+            </Text>
+
+            <Text
+                position={[0, 0.9, 0.1]}
+                fontSize={0.4}
+                color="white"
+                maxWidth={200}
+                lineHeight={1}
+                anchorX="center"
+                anchorY="middle"
+                visible={showComponents.text_back_to_the_bridge}
+            >
+                {"Disconnected\nfrom Tim's\nnamespace"}
+            </Text>
+
+
+            <color attach="background" args={['#191920']} />
+            <fog attach="fog" args={['#191920', 0, 15]} />
+            {!showComponents.loading && <><group position={[0, -0.5, 0]}>
+                <Frames images={images} onVisit={(id) => setVisitedIds(new Set(visitedIds.add(id)))} />
+                <mesh rotation={[-Math.PI / 2, 0, 0]}>
+                    <planeGeometry args={[50, 50]} />
+                    <MeshReflectorMaterial
+                        blur={[300, 100]}
+                        resolution={2048}
+                        mixBlur={1}
+                        mixStrength={80}
+                        roughness={1}
+                        depthScale={1.2}
+                        minDepthThreshold={0.4}
+                        maxDepthThreshold={1.4}
+                        color="#050505"
+                        metalness={0.5}
+                    />
+                </mesh>
+            </group>
+                <Environment preset="city" /></>}
+
+            {showComponents.loading && <><AnyModel modelURL="loading.glb" useTheatre={false} position={[-1.5, 1, 8]} rotation={[0, 0, 0]} scale={0.4} opacity={loadingOpacity} animationNames={["Take 01"]} animationAutoStart={true} animationStartPoint={0} />
+                <ambientLight intensity={10} color={"white"} />
+            </>
+            }
+
+        </Suspense>
 
     )
 }
