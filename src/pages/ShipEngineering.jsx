@@ -27,10 +27,10 @@ function ShipEngineering() {
         <>
             <Helmet>
                 <title>Welcome to Tim Bi's world - Scene4: Arrive at the ship's engineering</title>
-                <meta name="description" content="You choose to go to the ship's engineering and access Tim Bi's working experience gallery." />
+                <meta name="description" content="Let's go to the ship's engineering and access Tim Bi's working experience gallery." />
                 <meta name="keywords" content="Tim Bi, 毕天元" />
                 <meta property="og:title" content="Welcome to Tim Bi's world - Scene4: Arrive at the ship's engineering" />
-                <meta property="og:description" content="You choose to go to the ship's engineering and access Tim Bi's working experience gallery." />
+                <meta property="og:description" content="Let's go to the ship's engineering and access Tim Bi's working experience gallery." />
                 <meta property="og:type" content="website" />
                 <meta property="og:url" content="https://www.bty.co.nz/ship_engineering" />
                 <meta property="og:image" content="https://www.bty.co.nz/Tim%20Bi.webp" />

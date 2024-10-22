@@ -56,7 +56,7 @@ export function Loading({ THkey, title, lines, position, rotation, sequence, onS
           setOpacity(newValues.opacity);
         });
       }}>
-      <RoundedBox args={[10, 10, 0.1]} radius={0.01} smoothness={4} >
+      <RoundedBox args={[15, 15, 0.1]} radius={0.01} smoothness={4} >
         {/* 应用动态透明度到材质 */}
         <meshStandardMaterial attach="material" color={"white"} opacity={opacity} transparent={true} />
       </RoundedBox>
