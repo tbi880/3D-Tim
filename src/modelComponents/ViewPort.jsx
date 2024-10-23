@@ -5,7 +5,7 @@ import { types } from '@theatre/core';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { bucketURL } from '../Settings';
-import { getNextScene, getNextSceneStartPoint, setNextScene, setNextSceneStartPoint, unlockScene } from '../pages/Status';
+import { setNextScene, setNextSceneStartPoint, unlockScene } from '../pages/Status';
 
 const animationNames = ["Armature|off state"];
 

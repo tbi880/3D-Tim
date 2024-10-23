@@ -4,7 +4,6 @@ import StrangerStar from '../modelComponents/StrangerStar';
 import ShipOutside from '../modelComponents/ShipOutside';
 import Galaxy from '../modelComponents/Galaxy';
 import TextTitle from '../modelComponents/TextTitle';
-import TextTitle_v2 from '../modelComponents/TextTitle_v2';
 import InfoScreenDisplay from '../modelComponents/InfoScreenDisplay';
 import SingleLoadManager from '../modelComponents/SingleLoadManager';
 import ViewPort from '../modelComponents/ViewPort';

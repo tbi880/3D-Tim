@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import PropTypes from 'prop-types';
 import { useGLTF, useAnimations, useCursor } from '@react-three/drei';
 import { editable as e } from '@theatre/r3f';
 import { types } from '@theatre/core';
@@ -32,7 +33,7 @@ function AnyModel(props) {
     ...
     */
     const anyModel = useGLTF(bucketURL + props.modelURL, true, true);
-    const [opacity, setOpacity] = useState(props.opacity); // 初始透明度设置为1（不透明）
+    const [opacity, setOpacity] = useState(props.opacity !== undefined ? props.opacity : 1);
     const { animations, scene } = anyModel;
     const { actions } = useAnimations(animations, scene);
     const theatreKey = ("[ANY] " + props.theatreKey).trim();
@@ -162,5 +163,26 @@ function AnyModel(props) {
         </>
     );
 }
+AnyModel.propTypes = {
+    modelURL: PropTypes.string.isRequired,
+    useTheatre: PropTypes.bool,
+    theatreKey: PropTypes.string,
+    sequence: PropTypes.object,
+    stopPoints: PropTypes.array,
+    clickablePoint: PropTypes.number,
+    position: PropTypes.array,
+    rotation: PropTypes.array,
+    opacity: PropTypes.number,
+    scale: PropTypes.array,
+    unloadPoint: PropTypes.number,
+    onSequencePass: PropTypes.func,
+    animationNames: PropTypes.array,
+    animationAutoStart: PropTypes.bool,
+    animationPlayTimes: PropTypes.number,
+    animationSpeeds: PropTypes.number,
+    animationStartPoint: PropTypes.number,
+    animationOnClick: PropTypes.bool,
+    isMultiple: PropTypes.bool,
+};
 
 export default AnyModel;

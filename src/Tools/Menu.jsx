@@ -4,7 +4,7 @@ import { faChevronRight, faChevronLeft, faLock, faVrCardboard } from '@fortaweso
 import "./css/menu.css";
 import { getMenuLockMapFromLocalStorage } from "../pages/Status";
 
-function Menu({ isPortraitPhoneScreen }) {
+function Menu({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
     const [showMenu, setShowMenu] = useState(false);
     const scene_menu_lock_map = getMenuLockMapFromLocalStorage();
 
@@ -16,6 +16,11 @@ function Menu({ isPortraitPhoneScreen }) {
 
     const toggleMenu = () => {
         setShowMenu(!showMenu);
+        if (showMenu) {
+            openSettingOrMenuCallback("none");
+        } else {
+            openSettingOrMenuCallback("menu");
+        }
     };
 
     const menuStyle = {

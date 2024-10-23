@@ -1,10 +1,9 @@
 import { bucketURL } from '../Settings';
 import { editable as e } from '@theatre/r3f';
 import { useFrame } from '@react-three/fiber';
-import React, { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useGLTF, useAnimations, RoundedBox } from '@react-three/drei'
 import TextTitle from './TextTitle';
-import * as THREE from 'three';
 import { types } from '@theatre/core';
 import TextTitle_v2 from './TextTitle_v2';
 

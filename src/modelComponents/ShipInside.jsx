@@ -3,7 +3,6 @@ import { useGLTF } from '@react-three/drei';
 import { editable as e } from '@theatre/r3f';
 import { types } from '@theatre/core';
 import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
 import { bucketURL } from '../Settings';
 
 

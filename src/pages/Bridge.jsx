@@ -1,5 +1,5 @@
 
-import Status, { getNextScene, getNextSceneStartPoint, jumpToTheNextScene } from './Status';
+import Status, { getNextScene, getNextSceneStartPoint, getUserAntialias, getUserDpr, jumpToTheNextScene } from './Status';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
 import { Controllers, Hands, VRButton, XR } from '@react-three/xr';
@@ -9,6 +9,7 @@ import SceneTwo from './SceneTwo';
 import { scene2Sheet } from './SceneManager';
 import SceneTwo_mobile from './SceneTwo_mobile';
 import { useState } from 'react';
+import { webGLPreserveDrawingBuffer } from '../Settings';
 
 
 
@@ -46,12 +47,12 @@ function Bridge({ vrSupported, isPortraitPhoneScreen }) {
 
                 {vrSupported && <>
                     <VRButton />
-                    <Canvas gl={{ preserveDrawingBuffer: true }} >
+                    <Canvas gl={{ antialias: getUserAntialias(), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }}>
                         <XR>
                             <Controllers rayMaterial={{ color: '#99FFFF' }} />
                             <Hands />
                             <SheetProvider sheet={scene2Sheet}>
-                                <SceneTwo startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoints={[38, 72]} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
+                                <SceneTwo startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoints={[38, 72, 96]} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
 
                         </XR>
 
@@ -62,9 +63,9 @@ function Bridge({ vrSupported, isPortraitPhoneScreen }) {
                 </>}
 
                 {!vrSupported &&
-                    <Canvas gl={{ preserveDrawingBuffer: true }} >
+                    <Canvas gl={{ antialias: getUserAntialias(), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }}>
                         <SheetProvider sheet={scene2Sheet}>
-                            <SceneTwo_mobile startPoint={getNextSceneStartPoint()} unloadPoints={[38, 72]} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
+                            <SceneTwo_mobile startPoint={getNextSceneStartPoint()} unloadPoints={[38, 72, 96]} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
 
                     </Canvas>}
 

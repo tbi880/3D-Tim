@@ -1,11 +1,11 @@
 import { useGLTF } from "@react-three/drei";
 import * as THREE from 'three';
-import { Suspense, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { bucketURL } from '../Settings';
 import { useFrame } from '@react-three/fiber';
 import { editable as e } from '@theatre/r3f';
 import { types } from '@theatre/core';
-import Loader from "../pages/Loader";
+
 
 
 function ProgrammingOffice({ position, rotation, sequence, unloadPoint, onSequencePass }) {

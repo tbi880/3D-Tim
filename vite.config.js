@@ -41,6 +41,9 @@ export default defineConfig({
             description: 'Welcome to Tim\' world!',
             theme_color: '#ffffff',
           },
+          workbox: {
+            maximumFileSizeToCacheInBytes: 4000000, // 将限制增加到 4 MiB
+          },
         }),
       ],
     },

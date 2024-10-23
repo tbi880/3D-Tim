@@ -3,7 +3,7 @@ import SingleLoadManager from '../modelComponents/SingleLoadManager';
 import { Suspense, useState, useCallback, useEffect } from 'react';
 import TextTitle from '../modelComponents/TextTitle';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
-import { bucketURL } from '../Settings';
+import { bucketURL, webGLPreserveDrawingBuffer } from '../Settings';
 import { SheetProvider } from '@theatre/r3f';
 import { Canvas } from '@react-three/fiber';
 import { types } from '@theatre/core';
@@ -16,6 +16,7 @@ import WaitingJessie from './WaitingJessie';
 import PreloadAssets from '../modelComponents/preloadAssets';
 import { useGLTF } from '@react-three/drei';
 import { Helmet } from 'react-helmet';
+import { getUserAntialias, getUserDpr } from './Status';
 
 
 function SceneJessie({ startPoint }) {
@@ -125,7 +126,7 @@ function SceneJessie({ startPoint }) {
                 <link rel="canonical" href="https://www.bty.co.nz/jessie" />
                 <meta name="author" content="Tim Bi" />
             </Helmet>
-            <Canvas gl={{ preserveDrawingBuffer: true }} >
+            <Canvas gl={{ antialias: getUserAntialias(), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }}>
                 <SheetProvider sheet={sceneJessieSheet}>
                     <PreloadAssets />
                     <Suspense fallback={<WaitingJessie />}>

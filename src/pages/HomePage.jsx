@@ -1,9 +1,9 @@
 
 import { useState, useCallback } from 'react';
-import { getNextScene, getNextSceneStartPoint, jumpToTheNextScene } from './Status';
+import { getNextScene, getNextSceneStartPoint, getUserAntialias, getUserDpr, jumpToTheNextScene } from './Status';
 import Header from '../Tools/Header';
 import Status from './Status';
-import { stageOfENV } from '../Settings';
+import { stageOfENV, webGLPreserveDrawingBuffer } from '../Settings';
 import studio from '@theatre/studio'
 import extension from '@theatre/r3f/dist/extension'
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -26,7 +26,6 @@ if (stageOfENV != "prod") {
 
 
 function HomePage({ isPortraitPhoneScreen, vrSupported }) {
-
     const [showComponents, setShowComponents] = useState({
         header: true,
     });
@@ -69,7 +68,7 @@ function HomePage({ isPortraitPhoneScreen, vrSupported }) {
 
                 {vrSupported && <>
                     <VRButton />
-                    <Canvas gl={{ preserveDrawingBuffer: true }} >
+                    <Canvas gl={{ antialias: getUserAntialias(), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }}>
                         <XR>
                             <Controllers rayMaterial={{ color: '#99FFFF' }} />
                             <Hands />
@@ -85,7 +84,7 @@ function HomePage({ isPortraitPhoneScreen, vrSupported }) {
                 </>}
 
                 {!vrSupported &&
-                    <Canvas gl={{ preserveDrawingBuffer: true }} >
+                    <Canvas gl={{ antialias: getUserAntialias(), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }}>
                         <SheetProvider sheet={scene1Sheet}>
                             <SceneOne_mobile startPoint={getNextSceneStartPoint()} unloadPoint={39} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
 

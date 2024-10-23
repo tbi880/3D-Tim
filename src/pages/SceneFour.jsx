@@ -1,20 +1,21 @@
-import { engineeringAccess, getNextScene, jumpToTheNextScene, setNextScene, setNextSceneStartPoint } from './Status'
+import { engineeringAccess, getNextScene, getUserAntialias, getUserDpr, jumpToTheNextScene, setNextScene, setNextSceneStartPoint } from './Status'
 import * as THREE from 'three'
 import { useEffect, useRef, useState } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useCursor, MeshReflectorMaterial, Image, Text, Environment, Html } from '@react-three/drei'
+import { Canvas, useFrame } from '@react-three/fiber'
+import { useCursor, MeshReflectorMaterial, Image, Text, Environment, } from '@react-three/drei'
 import { useRoute, useLocation } from 'wouter'
 import { easing } from 'maath'
 import getUuid from 'uuid-by-string'
 import { Suspense } from 'react'
 import WaitingForMoreModels from './WaitingForMoreModels';
-import { bucketURL } from '../Settings'
 import { useCallback } from 'react'
 import AnyModel from '../modelComponents/AnyModel'
 
 const GOLDENRATIO = 1.61803398875
 
-export const SceneFour = ({ images }) => { return <Canvas dpr={[1, 1.5]}><SceneFourInsideOfCanvas images={images} /></Canvas> }
+export const SceneFour = ({ images }) => {
+    return <Canvas gl={{ antialias: getUserAntialias() }} dpr={getUserDpr()} performance={{ min: 0.5 }}> <SceneFourInsideOfCanvas images={images} /> </Canvas>
+}
 
 export const SceneFourInsideOfCanvas = ({ images }) => {
     const [visitedIds, setVisitedIds] = useState(new Set());
@@ -186,7 +187,7 @@ export const SceneFourInsideOfCanvas = ({ images }) => {
                         />
                     </mesh>
                 </group>
-                <Environment preset="city" /></>}
+                <Environment preset="city" background={false} /></>}
 
             {showComponents.loading && <>
                 <color attach='background' args={["white"]} />

@@ -5,9 +5,9 @@ import { bucketURL } from '../Settings';
 import { useFrame } from '@react-three/fiber';
 import { editable as e } from '@theatre/r3f';
 import { types } from '@theatre/core';
-import { useAnimations } from "@react-three/drei";
+// import { useAnimations } from "@react-three/drei";
 
-const animations = ["SPEAKER|defaultMaterialAction", "SPEAKER.001|defaultMaterialAction.002"];
+// const animations = ["SPEAKER|defaultMaterialAction", "SPEAKER.001|defaultMaterialAction.002"];
 
 function ProgrammingHome({ position, rotation, sequence, unloadPoint, onSequencePass }) {
     const homeModel = useGLTF(bucketURL + "home_setup.glb", true, true);

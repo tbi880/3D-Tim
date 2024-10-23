@@ -1,12 +1,11 @@
 import { useGLTF } from "@react-three/drei";
 import * as THREE from 'three';
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState } from 'react';
 import { bucketURL } from '../Settings';
 import { useFrame } from '@react-three/fiber';
 import { editable as e } from '@theatre/r3f';
 import { types } from '@theatre/core';
 import { useAnimations } from "@react-three/drei";
-import Loader from "../pages/Loader";
 
 const animationName = "Take 001";
 

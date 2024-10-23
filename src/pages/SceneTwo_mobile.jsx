@@ -16,7 +16,7 @@ import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { scene2Sheet, scene2Project } from "./SceneManager";
 import { bucketURL } from '../Settings';
 import Loading from '../modelComponents/Loading';
-import { useGLTF } from '@react-three/drei';
+import { Environment, useGLTF } from '@react-three/drei';
 
 
 // const audioResourceForScene2 = createAudioLoader(bucketURL + 'music/bgm2.mp3');
@@ -119,11 +119,18 @@ function SceneTwo_mobile({ startPoint, unloadPoints, onSequencePass }) {
 
                 <color attach='background' args={['black']} />
 
-                <ambientLight intensity={3} />
+                {/* <ambientLight intensity={3} /> */}
 
                 <Galaxy />
                 <StrangerStar />
 
+                <Environment
+                    preset="warehouse"
+                    resolution={1}
+                    intensity={2}
+                    backgroundIntensity={0}
+                    environmentIntensity={0}
+                />
                 <ShipInside sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('shipInside')} />
                 {showComponents.viewPortIntro && <ViewPort screenTitle="Intro" position={[613, -15.5, -106]} rotation={[0, 0, 0]} sequence={scene2Sheet.sequence} stopPoint={1} unloadPoint={1} onSequencePass={() => toggleComponentDisplay('viewPortIntro')} />}
                 {showComponents.robotIntro && <Robots title="Intro" position={[613, -15.5, -106]} rotation={[0, 0, 0]} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('robotIntro')} />}
