@@ -19,19 +19,24 @@ function GraphicSetting({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
         }
     };
 
+    useEffect(() => {
+        if (isPortraitPhoneScreen) {
+            setAntialias(false);
+            setUserAntialias(false);
+        }
+    }, [isPortraitPhoneScreen]);
+
 
     const handleDprChange = (e) => {
         const value = parseFloat(e.target.value);
         setDpr(value);
         setUserDpr(value);
-        console.log(getUserDpr());
     };
 
     const handleAntialiasToggle = () => {
         const newValue = !antialias;
         setAntialias(newValue);
         setUserAntialias(newValue);
-        console.log(getUserAntialias());
     };
 
     const showTooltip = (e, content) => {
@@ -178,8 +183,8 @@ function GraphicSetting({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
                     <div style={eachContainerStyle}>
                         <FontAwesomeIcon
                             icon={faQuestionCircle}
-                            onClick={(e) => handleTooltipClick(e, 'Turning antialias on improves edge smoothness but may impact performance.')}
-                            onMouseEnter={(e) => !isPortraitPhoneScreen && showTooltip(e, 'Turning antialias on improves edge smoothness but may impact performance.')}
+                            onClick={(e) => handleTooltipClick(e, 'Turning antialias on improves edge smoothness but may impact performance. IOS devices may not support antialias, do not turn it on!!!')}
+                            onMouseEnter={(e) => !isPortraitPhoneScreen && showTooltip(e, 'Turning antialias on improves edge smoothness but may impact performance. IOS devices may not support antialias, do not turn it on!!!')}
                             onMouseLeave={() => !isPortraitPhoneScreen && hideTooltip()}
                             style={{ cursor: 'pointer' }}
                         />

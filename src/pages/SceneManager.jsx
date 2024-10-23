@@ -2,6 +2,7 @@ import scene1State from '../scene1.json';
 import scene2State from '../scene2.json';
 import scene3State from '../scene3.json';
 import sceneJessieState from '../sceneJessie.json';
+import scene5State from '../scene5.json';
 import { getProject } from '@theatre/core';
 import { Canvas } from '@react-three/fiber';
 import { SheetProvider } from '@theatre/r3f';
@@ -26,7 +27,7 @@ export const scene3Project = getProject('Scene3 Sheet', { state: scene3State });
 export const scene3Sheet = scene3Project.sheet('Scene3 Sheet');
 export const sceneJessieProject = getProject('SceneJessie', { state: sceneJessieState });
 export const sceneJessieSheet = sceneJessieProject.sheet('SceneJessie');
-export const scene5Project = getProject('Scene5');
+export const scene5Project = getProject('Scene5', { state: scene5State });
 export const scene5Sheet = scene5Project.sheet('Scene5');
 
 

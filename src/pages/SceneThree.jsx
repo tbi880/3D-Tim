@@ -24,7 +24,6 @@ import { types } from '@theatre/core';
 import { scene3Project } from './SceneManager';
 import { useFrame } from '@react-three/fiber';
 import { useXR } from '@react-three/xr';
-import { Environment } from '@react-three/drei';
 
 function SceneThree({ startPoint, unloadPoint, onSequencePass, isVRSupported }) {
     const { player, isPresenting } = useXR(); // This gives us access to the VR player context
@@ -255,11 +254,6 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isVRSupported }) 
                         <rectAreaLight width={5} height={0.5} intensity={rectAreaIntensity} />
                     </e.mesh>
                 </>}
-                {!showComponents.lightings && <Environment
-                    preset="night"
-                    background={false}
-                    intensity={3.5}
-                />}
                 {showComponents.textTitle_mumsAsleep && <TextTitle text="Mum's finally asleep. It's time for some PVZ, LOL and EVE online." color="#000000" size={0.15} position={[0, 0, 0]} rotation={[0, 0, 0]} sequence={scene3Sheet.sequence} unloadPoint={12} onSequencePass={() => { toggleComponentDisplay("textTitle_mumsAsleep") }} />}
                 {showComponents.textTitle_12yearsOldTim && <TextTitle text="12 years old Tim:" color="#000000" size={0.15} position={[0, 0, 0]} rotation={[0, 0, 0]} sequence={scene3Sheet.sequence} unloadPoint={5.5} onSequencePass={() => { toggleComponentDisplay("textTitle_12yearsOldTim") }} />}
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={12} onSequencePass={() => { toggleComponentDisplay("textTitle_15yearsOldTim") }} />
