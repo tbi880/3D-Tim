@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCog, faTimes, faQuestionCircle } from '@fortawesome/free-solid-svg-icons';
-import "./css/menu.css";
+import { faCog, faCheck, faQuestionCircle } from '@fortawesome/free-solid-svg-icons';
+import { message } from 'antd';
 import { getUserAntialias, getUserDpr, setUserAntialias, setUserDpr } from '../pages/Status';
 
 function GraphicSetting({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
@@ -9,11 +9,13 @@ function GraphicSetting({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
     const [dpr, setDpr] = useState(() => getUserDpr() ?? 1.5);
     const [antialias, setAntialias] = useState(() => getUserAntialias() ?? true);
     const [tooltip, setTooltip] = useState({ visible: false, content: '', x: 0, y: 0 });
+    const [messageApi, contextHolder] = message.useMessage();
 
     const toggleSettings = () => {
         setShowSettings(!showSettings);
         if (showSettings) {
             openSettingOrMenuCallback("none");
+            saveSetting();
         } else {
             openSettingOrMenuCallback("setting");
         }
@@ -152,10 +154,20 @@ function GraphicSetting({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
         display: tooltip.visible ? 'block' : 'none',
     };
 
+    const saveSetting = () => {
+        messageApi.open({
+            type: 'success',
+            content: 'Settings saved, the canvas has been re-rendered!',
+            style: {
+                fontFamily: ['Orbitron', "sans-serif"],
+            },
+        });
+    };
+
     return (
-        <>
+        <>      {contextHolder}
             <button style={buttonStyle} onClick={toggleSettings}>
-                <FontAwesomeIcon icon={showSettings ? faTimes : faCog} size="2x" color="black" />
+                <FontAwesomeIcon icon={showSettings ? faCheck : faCog} size="2x" color="black" />
             </button>
             <div style={menuStyle}>
                 <h1 style={titleStyle}>Graphic Settings</h1>

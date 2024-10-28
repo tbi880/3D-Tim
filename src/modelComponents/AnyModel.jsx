@@ -20,6 +20,7 @@ function AnyModel(props) {
     position: 模型的初始位置
     rotation: 模型的初始旋转
     opacity: 模型的初始透明度
+    visible: 模型的初始可见性
     scale: 模型的初始缩放
     unloadPoint: 卸载模型的点
     onSequencePass: 用于卸载模型的函数
@@ -30,6 +31,7 @@ function AnyModel(props) {
     animationStartPoint: 动画的开始点
     animationOnClick: 是否点击模型触发动画播放
     isMultiple: 是否是多个相同的模型
+    modelNodeVisibility: 模型节点的可见性,传入一个map对象 类似{obj_name1:[unloadOrLoadTime1,unloadOrLoadTime2,unloadOrLoadTime3...]}
     ...
     */
     const anyModel = useGLTF(bucketURL + props.modelURL, true, true);
@@ -40,6 +42,43 @@ function AnyModel(props) {
     const [animationIsClicked, setAnimationIsClicked] = useState(props.animationOnClick ? false : true);
     const clone = useMemo(() => anyModel.scene.clone(), [anyModel]);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [timeBasedMapForModelNodeVisibility, setTimeBasedMapForModelNodeVisibility] = useState({});
+
+    useEffect(() => {
+        // 根据传入的controlSchedule对象构建time-based map
+        const newTimeBasedMap = {};
+
+        Object.entries(props.modelNodeVisibility).forEach(([objName, times]) => {
+            times.forEach((time) => {
+                if (!newTimeBasedMap[time]) {
+                    newTimeBasedMap[time] = [];
+                }
+                newTimeBasedMap[time].push(objName);
+            });
+        });
+
+        setTimeBasedMapForModelNodeVisibility(newTimeBasedMap);
+    }, [props.modelNodeVisibility]);
+
+
+    useFrame(() => {
+        if (props.sequence) {
+            const currentTimePosition = Math.round(props.sequence.position);
+            if (timeBasedMapForModelNodeVisibility[currentTimePosition]) {
+                for (let i = timeBasedMapForModelNodeVisibility[currentTimePosition].length - 1; i >= 0; i--) {
+                    const objName = timeBasedMapForModelNodeVisibility[currentTimePosition][i];
+                    const node = scene.getObjectByName(objName);
+                    if (node) {
+                        node.visible = !node.visible;
+                        timeBasedMapForModelNodeVisibility[currentTimePosition].pop();
+                        // console.log("Node visibility changed: ", node.visible);
+                    }
+
+                }
+            }
+        }
+    });
+
 
     const play = useCallback(() => {
         let currentTimePosition = props.sequence.position;
@@ -127,7 +166,7 @@ function AnyModel(props) {
 
     return (
         <>{props.useTheatre ?
-            <e.mesh theatreKey={theatreKey} scale={props.scale ? props.scale : 0.01} position={props.position} rotation={props.rotation} {...eventHandlers}
+            <e.mesh theatreKey={theatreKey} scale={props.scale ? props.scale : 0.01} position={props.position} rotation={props.rotation} visible={props.visible} {...eventHandlers}
 
                 additionalProps={{
                     opacity: types.number(opacity, {
@@ -143,12 +182,12 @@ function AnyModel(props) {
 
             </e.mesh>
             :
-            <mesh scale={props.scale ? props.scale : 0.01}>
+            <mesh scale={props.scale ? props.scale : 0.01} >
                 <primitive
                     object={props.isMultiple ? clone : anyModel.scene}
                     position={props.position}
                     rotation={props.rotation}
-
+                    visible={props.visible}
                 />
                 <meshStandardMaterial
                     attach="material"
@@ -173,6 +212,7 @@ AnyModel.propTypes = {
     position: PropTypes.array,
     rotation: PropTypes.array,
     opacity: PropTypes.number,
+    visible: PropTypes.bool,
     scale: PropTypes.array,
     unloadPoint: PropTypes.number,
     onSequencePass: PropTypes.func,
@@ -183,6 +223,30 @@ AnyModel.propTypes = {
     animationStartPoint: PropTypes.number,
     animationOnClick: PropTypes.bool,
     isMultiple: PropTypes.bool,
+    modelNodeVisibility: PropTypes.object,
+};
+
+AnyModel.defaultProps = {
+    useTheatre: false,
+    theatreKey: "",
+    sequence: {},
+    stopPoints: [],
+    clickablePoint: null,
+    position: [0, 0, 0],
+    rotation: [0, 0, 0],
+    opacity: 1,
+    visible: true,
+    scale: [1, 1, 1],
+    unloadPoint: Infinity,
+    onSequencePass: () => { },
+    animationNames: [],
+    animationAutoStart: false,
+    animationPlayTimes: 1,
+    animationSpeeds: 1,
+    animationStartPoint: 0,
+    animationOnClick: false,
+    isMultiple: false,
+    modelNodeVisibility: {},
 };
 
 export default AnyModel;

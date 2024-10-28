@@ -48,6 +48,11 @@ function TextContent({ title, order, lines, color, size, position = [0, 0, 0], r
             // 监听Theatre.js中透明度的变化
             theatreObject.onValuesChange((newValues) => {
                 setOpacity(newValues.opacity);
+                meshRefs.current.forEach(mesh => {
+                    if (mesh) {
+                        mesh.visible = newValues.opacity > 0;
+                    }
+                });
             });
         }}>
             {lines.map((line, index) => (

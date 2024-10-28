@@ -15,7 +15,7 @@ import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { scene1Sheet } from "./SceneManager";
 import { bucketURL } from '../Settings';
 import StreamMusic from '../modelComponents/StreamMusic';
-import { useGLTF } from '@react-three/drei';
+import { Environment, useGLTF } from '@react-three/drei';
 import { useXR, useXREvent } from '@react-three/xr';
 
 
@@ -143,6 +143,12 @@ function SceneOne({ unloadPoint, onSequencePass, isVRSupported }) {
 
                 <Galaxy />
                 <StrangerStar />
+                <Environment
+                    files={bucketURL + 'pic/space.exr'}
+                    background={false}
+                    intensity={3.5}
+                    environmentIntensity={1}
+                />
                 <ShipOutside sequence={scene1Sheet.sequence} onSequencePass={() => toggleComponentDisplay('shipOutside')} />
 
                 {isVRSupported && isPresenting && <TextTitle_v2 theatreKey={"_VR_WELCOME"} text="Try to squeeze one of your controller" color="#FFFFFF" size={1} sequence={scene1Sheet.sequence} position={[580, 25, -75]} rotation={[0, 0.33, 0]} />}

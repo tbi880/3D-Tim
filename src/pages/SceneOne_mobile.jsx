@@ -14,7 +14,7 @@ import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { scene1Sheet } from "./SceneManager";
 import { bucketURL } from '../Settings';
 import StreamMusic from '../modelComponents/StreamMusic';
-import { useGLTF } from '@react-three/drei';
+import { Environment, useGLTF } from '@react-three/drei';
 
 
 
@@ -103,6 +103,12 @@ function SceneOne_mobile({ unloadPoint, onSequencePass }) {
 
                 <Galaxy />
                 <StrangerStar />
+                <Environment
+                    files={bucketURL + 'pic/space.exr'}
+                    background={false}
+                    intensity={3.5}
+                    environmentIntensity={1}
+                />
                 <ShipOutside sequence={scene1Sheet.sequence} onSequencePass={() => toggleComponentDisplay('shipOutside')} />
 
                 {showComponents.infoScreenWelcome && (<InfoScreenDisplay title="Welcome" content={screenWelcomeContent} sequence={scene1Sheet.sequence} stopPoints={[0.034, 27.5]} loadPoints={[0, 0.033]} unloadPoints={[0.034, 2.5]} onSequencePass={() => toggleComponentDisplay('infoScreenWelcome')} />)}
