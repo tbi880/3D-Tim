@@ -1,16 +1,22 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { RoundedBox, Text, useCursor } from '@react-three/drei';
 import { types } from '@theatre/core';
 import { editable as e } from '@theatre/r3f';
 import { useFrame } from '@react-three/fiber';
 
-function Button({ title, position, rotation, clickablePoint, IsPreJump, jumpToPoint, stopPoint, unloadPoint, sequence, onSequencePass, alertAndNoPlay, alertMessage }) {
+function Button({ title, position, buttonLength, rotation, clickablePoint, IsPreJump, jumpToPoint, stopPoint, unloadPoint, sequence, onSequencePass, alertAndNoPlay, alertMessage }) {
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const theatreKey = ("Button-" + title).trim();
+    const [visible, setVisible] = useState(false);
+
+    useEffect(() => {
+        // 当opacity为0时设置visible为false，否则为true
+        setVisible(opacity !== 0);
+    }, [opacity]);
 
     useFrame(() => {
         // 当sequence.position超过结束点时触发
-        if (sequence && sequence.position > unloadPoint) {
+        if (sequence && sequence.position - unloadPoint < 1 && sequence.position > unloadPoint) {
             onSequencePass();
         }
     });
@@ -54,6 +60,7 @@ function Button({ title, position, rotation, clickablePoint, IsPreJump, jumpToPo
             position={position}
             rotation={rotation}
             scale={1}
+            visible={visible} // 应用动态visible属性
 
             additionalProps={{
                 opacity: types.number(opacity, {
@@ -67,7 +74,7 @@ function Button({ title, position, rotation, clickablePoint, IsPreJump, jumpToPo
                 });
             }}
         >
-            <RoundedBox args={[1, 0.2, 0.1]} radius={0.05} smoothness={4} onClick={play}
+            <RoundedBox args={[buttonLength ? buttonLength : 1, 0.2, 0.1]} radius={0.05} smoothness={4} onClick={play}
                 onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }} // 鼠标悬停时设置hovered为true
                 onPointerOut={(e) => { setHovered(false); }}
             >

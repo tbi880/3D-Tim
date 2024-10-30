@@ -10,6 +10,7 @@ import Menu from './Tools/Menu';
 import ShipEngineering from './pages/ShipEngineering';
 import ShipTimsChamber from './pages/ShipTimsChamber';
 import GraphicSetting from './Tools/GraphicSetting';
+import GlobalProviders from './GlobalProviders';
 
 function Routers() {
     const [vrSupported, setVrSuppoerted] = useState(false);
@@ -98,17 +99,19 @@ function Routers() {
     return (
 
         <Router>
-            {(settingOrMenuIsOn === "none" || settingOrMenuIsOn === "menu") && <Menu isPortraitPhoneScreen={isPortraitPhoneScreen} openSettingOrMenuCallback={openSettingOrMenu} />}
-            {(settingOrMenuIsOn === "none" || settingOrMenuIsOn === "setting") && <GraphicSetting isPortraitPhoneScreen={isPortraitPhoneScreen} openSettingOrMenuCallback={openSettingOrMenu} />}
-            <Routes>
-                <Route path="/" element={<HomePage isPortraitPhoneScreen={isPortraitPhoneScreen} vrSupported={vrSupported} />} />
-                <Route path="/bridge" element={<Bridge isPortraitPhoneScreen={isPortraitPhoneScreen} vrSupported={vrSupported} />} />
-                <Route path="/ship_hanger" element={<ShipHanger isPortraitPhoneScreen={isPortraitPhoneScreen} vrSupported={vrSupported} />} />
-                <Route path="/ship_engineering" element={<ShipEngineering />} />
-                <Route path="/ship_captains_chamber" element={<ShipTimsChamber isPortraitPhoneScreen={isPortraitPhoneScreen} vrSupported={vrSupported} />} />
-                <Route path="/jessie" element={<SceneJessie startPoint={0} />} />
-                <Route path="*" element={<NotFoundPage />} />
-            </Routes>
+            <GlobalProviders>
+                {(settingOrMenuIsOn === "none" || settingOrMenuIsOn === "menu") && <Menu isPortraitPhoneScreen={isPortraitPhoneScreen} openSettingOrMenuCallback={openSettingOrMenu} />}
+                {(settingOrMenuIsOn === "none" || settingOrMenuIsOn === "setting") && <GraphicSetting isPortraitPhoneScreen={isPortraitPhoneScreen} openSettingOrMenuCallback={openSettingOrMenu} />}
+                <Routes>
+                    <Route path="/" element={<HomePage isPortraitPhoneScreen={isPortraitPhoneScreen} vrSupported={vrSupported} />} />
+                    <Route path="/bridge" element={<Bridge isPortraitPhoneScreen={isPortraitPhoneScreen} vrSupported={vrSupported} />} />
+                    <Route path="/ship_hanger" element={<ShipHanger isPortraitPhoneScreen={isPortraitPhoneScreen} vrSupported={vrSupported} />} />
+                    <Route path="/ship_engineering" element={<ShipEngineering />} />
+                    <Route path="/ship_captains_chamber" element={<ShipTimsChamber isPortraitPhoneScreen={isPortraitPhoneScreen} vrSupported={vrSupported} />} />
+                    <Route path="/jessie" element={<SceneJessie startPoint={0} />} />
+                    <Route path="*" element={<NotFoundPage />} />
+                </Routes>
+            </GlobalProviders>
         </Router>
     );
 }

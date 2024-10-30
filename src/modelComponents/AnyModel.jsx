@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { useGLTF, useAnimations, useCursor } from '@react-three/drei';
 import { editable as e } from '@theatre/r3f';
@@ -31,7 +31,7 @@ function AnyModel(props) {
     animationStartPoint: 动画的开始点
     animationOnClick: 是否点击模型触发动画播放
     isMultiple: 是否是多个相同的模型
-    modelNodeVisibility: 模型节点的可见性,传入一个map对象 类似{obj_name1:[unloadOrLoadTime1,unloadOrLoadTime2,unloadOrLoadTime3...]}
+    modelNodeVisibility: 模型节点的可见性,传入一个usememo的map对象 类似{obj_name1:[unloadOrLoadTime1,unloadOrLoadTime2,unloadOrLoadTime3...]}
     ...
     */
     const anyModel = useGLTF(bucketURL + props.modelURL, true, true);
@@ -42,10 +42,38 @@ function AnyModel(props) {
     const [animationIsClicked, setAnimationIsClicked] = useState(props.animationOnClick ? false : true);
     const clone = useMemo(() => anyModel.scene.clone(), [anyModel]);
     const [isPlaying, setIsPlaying] = useState(false);
-    const [timeBasedMapForModelNodeVisibility, setTimeBasedMapForModelNodeVisibility] = useState({});
+    const timeBasedMapForModelNodeVisibilityRef = useRef({});
+    const nodesInTransition = useRef(new Map());
+
+    function setNodeOpacity(node, opacity) {
+        node.traverse((child) => {
+            if (child.isMesh) {
+                if (Array.isArray(child.material)) {
+                    child.material.forEach((material) => {
+                        material.opacity = opacity;
+                    });
+                } else if (child.material) {
+                    child.material.opacity = opacity;
+                }
+            }
+        });
+    }
+
+    function setNodeTransparent(node, transparent) {
+        node.traverse((child) => {
+            if (child.isMesh) {
+                if (Array.isArray(child.material)) {
+                    child.material.forEach((material) => {
+                        material.transparent = transparent;
+                    });
+                } else if (child.material) {
+                    child.material.transparent = transparent;
+                }
+            }
+        });
+    }
 
     useEffect(() => {
-        // 根据传入的controlSchedule对象构建time-based map
         const newTimeBasedMap = {};
 
         Object.entries(props.modelNodeVisibility).forEach(([objName, times]) => {
@@ -57,27 +85,82 @@ function AnyModel(props) {
             });
         });
 
-        setTimeBasedMapForModelNodeVisibility(newTimeBasedMap);
+        timeBasedMapForModelNodeVisibilityRef.current = newTimeBasedMap;
     }, [props.modelNodeVisibility]);
 
+    function toggleNodeVisibilityWithTransition(node) {
+        if (!node) return;
+
+        setNodeTransparent(node, true);
+
+        if (node.visible === false) {
+            setNodeOpacity(node, 0);
+            node.visible = true;
+
+            nodesInTransition.current.set(node, {
+                startTime: performance.now(),
+                duration: 1000,
+                fromOpacity: 0,
+                toOpacity: 1,
+            });
+        } else {
+            nodesInTransition.current.set(node, {
+                startTime: performance.now(),
+                duration: 1000,
+                fromOpacity: node.material.opacity || 1,
+                toOpacity: 0,
+            });
+        }
+    }
 
     useFrame(() => {
         if (props.sequence) {
             const currentTimePosition = Math.round(props.sequence.position);
-            if (timeBasedMapForModelNodeVisibility[currentTimePosition]) {
-                for (let i = timeBasedMapForModelNodeVisibility[currentTimePosition].length - 1; i >= 0; i--) {
-                    const objName = timeBasedMapForModelNodeVisibility[currentTimePosition][i];
+            const timeBasedMap = timeBasedMapForModelNodeVisibilityRef.current;
+            if (timeBasedMap[currentTimePosition]) {
+                const nodesToToggle = [...timeBasedMap[currentTimePosition]];
+                nodesToToggle.forEach((objName) => {
                     const node = scene.getObjectByName(objName);
                     if (node) {
-                        node.visible = !node.visible;
-                        timeBasedMapForModelNodeVisibility[currentTimePosition].pop();
-                        // console.log("Node visibility changed: ", node.visible);
+                        toggleNodeVisibilityWithTransition(node);
                     }
-
-                }
+                });
+                delete timeBasedMap[currentTimePosition];
             }
         }
+
+        const now = performance.now();
+        nodesInTransition.current.forEach((transition, node) => {
+            const elapsed = now - transition.startTime;
+            const t = Math.min(elapsed / transition.duration, 1);
+            const opacity = transition.fromOpacity + (transition.toOpacity - transition.fromOpacity) * t;
+            setNodeOpacity(node, opacity);
+
+            if (t >= 1) {
+                if (transition.toOpacity === 0) {
+                    node.visible = false;
+                    setNodeOpacity(node, 1);
+                }
+                nodesInTransition.current.delete(node);
+            }
+        });
     });
+
+    useEffect(() => {
+        anyModel.scene.traverse((child) => {
+            if (child.isMesh) {
+                if (Array.isArray(child.material)) {
+                    child.material.forEach((material) => {
+                        material.transparent = true;
+                        material.opacity = opacity;
+                    });
+                } else if (child.material) {
+                    child.material.transparent = true;
+                    child.material.opacity = opacity;
+                }
+            }
+        });
+    }, [anyModel.scene, opacity]);
 
 
     const play = useCallback(() => {

@@ -160,6 +160,8 @@ function GraphicSetting({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
             content: 'Settings saved, the canvas has been re-rendered!',
             style: {
                 fontFamily: ['Orbitron', "sans-serif"],
+                zIndex: 9999,
+
             },
         });
     };

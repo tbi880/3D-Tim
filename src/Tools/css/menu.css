@@ -41,3 +41,8 @@
 .vr-container {
     margin-top: 10%;
 }
+
+.ant-progress-text {
+    color: white !important;
+    /* 强制修改文字颜色 */
+}

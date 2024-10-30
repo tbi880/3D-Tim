@@ -104,7 +104,7 @@ function Arrow({ screenTitle, isNext, position, rotation, sequence, stopPoints }
                 scale={[1, 1, 1]}
                 onClick={play} > */}
                 <sphereGeometry args={[10, 32, 32]} />
-                <meshStandardMaterial color="skyblue" transparent opacity={0} /> {/* 透明度设置为1（不透明）每次复制记得调整这个数字！！！不然看不见！！！ */}
+                <meshStandardMaterial color="skyblue" transparent opacity={1} /> {/* 透明度设置为1（不透明）每次复制记得调整这个数字！！！不然看不见！！！ */}
             </e.mesh>
         </>
     );

@@ -4,16 +4,12 @@ import { editable as e } from '@theatre/r3f';
 import { types } from '@theatre/core';
 import * as THREE from 'three';
 import { bucketURL } from '../Settings';
+import { useFrame } from '@react-three/fiber';
 
 
-// const animationNames = ["Animation"];
-
-
-const ShipOutside = () => {
+function ShipOutside({ onSequencePass, unloadPoint, sequence }) {
     const shipModel = useGLTF(bucketURL + "oas.glb", true, true);
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
-    // const { animations, scene } = shipModel;
-    // const { actions } = useAnimations(animations, scene);
 
     useEffect(() => {
         // 组件卸载时的清理逻辑
@@ -58,12 +54,12 @@ const ShipOutside = () => {
         });
     }, [shipModel.scene, opacity]);
 
-    // useFrame(() => {
-    //     const action = actions[animationNames[0]];
-    //     action.play();
-    //     action.timeScale = 0.3;
-    // });
-
+    useFrame(() => {
+        // 当sequence.position超过结束点时触发
+        if (sequence && sequence.position > unloadPoint) {
+            onSequencePass();
+        }
+    });
 
     return (
         <>
