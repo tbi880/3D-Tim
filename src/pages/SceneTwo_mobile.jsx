@@ -170,7 +170,7 @@ function SceneTwo_mobile({ startPoint, unloadPoints, onSequencePass }) {
                 <SingleLoadManager loadPoint={83} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('viewPortTimsChamber')} />
                 {showComponents.viewPortTimsChamber && <ViewPort screenTitle="TimsChamber" position={[548, -17.85, -26.15]} rotation={[0, 11, 0]} sequence={scene2Sheet.sequence} stopPoint={96} unloadPoint={90} onSequencePass={() => toggleComponentDisplay('viewPortTimsChamber')} isSetNextScene={true} nextScene={"sceneFive"} nextSceneStartPoint={0} />}
                 <SingleLoadManager loadPoint={93} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('loadingForTimsChamber')} />
-                {showComponents.loadingForTimsChamber && <Loading THkey="TimsChamber" title="TimsChamber" lines={["Authenticating ", "access to ", "Tim's chamber "]} position={[560.75, 5.25, -22.5]} rotation={[0, 9.45, 0]} sequence={scene2Sheet.sequence} unloadPoint={96} onSequencePass={() => toggleComponentDisplay('loadingForTimsChamber')} textTitleVersion={2} />}
+                {showComponents.loadingForTimsChamber && <Loading THkey="TimsChamber" title="TimsChamber" lines={["Authenticating ", "access to ", "Tim's chamber "]} position={[560.75, 5.25, -22.5]} rotation={[0, 9.45, 0]} sequence={scene2Sheet.sequence} unloadPoint={96.5} onSequencePass={() => toggleComponentDisplay('loadingForTimsChamber')} textTitleVersion={2} />}
 
             </Suspense>
 

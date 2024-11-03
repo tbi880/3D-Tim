@@ -1,6 +1,6 @@
 import { engineeringAccess, getNextScene, getUserAntialias, getUserDpr, jumpToTheNextScene, setNextScene, setNextSceneStartPoint } from './Status'
 import * as THREE from 'three'
-import { useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { useCursor, MeshReflectorMaterial, Image, Text, Environment, } from '@react-three/drei'
 import { useRoute, useLocation } from 'wouter'
@@ -14,7 +14,7 @@ import AnyModel from '../modelComponents/AnyModel'
 const GOLDENRATIO = 1.61803398875
 
 export const SceneFour = ({ images }) => {
-    return <Canvas gl={{ antialias: getUserAntialias() }} dpr={getUserDpr()} performance={{ min: 0.5 }}> <SceneFourInsideOfCanvas images={images} /> </Canvas>
+    return <Canvas gl={{ antialias: getUserAntialias() }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent"> <SceneFourInsideOfCanvas images={images} /> </Canvas>
 }
 
 export const SceneFourInsideOfCanvas = ({ images }) => {

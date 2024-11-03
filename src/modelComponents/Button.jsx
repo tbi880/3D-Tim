@@ -43,7 +43,7 @@ function Button({ title, position, buttonLength, rotation, clickablePoint, IsPre
             }
         }
 
-    }, [jumpToPoint, stopPoint]);
+    }, [jumpToPoint, stopPoint, alertAndNoPlay]);
 
     const [hovered, setHovered] = useState(false);
     useCursor(hovered);

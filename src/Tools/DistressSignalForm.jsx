@@ -3,15 +3,17 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes, faCheck } from '@fortawesome/free-solid-svg-icons';
 import { sendDistressSignalContext } from '../sharedContexts/SendDistressSignalProvider';
 import { scene5Sheet } from '../pages/SceneManager';
+import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 
 
-function DistressSignalForm({ isPortraitPhoneScreen, messageApi }) {
+function DistressSignalForm({ isPortraitPhoneScreen }) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [messageContent, setMessageContent] = useState('');
     const [allowSaveEmail, setAllowSaveEmail] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { showForm, setShowForm } = useContext(sendDistressSignalContext);
+    const { messageApi } = useContext(GlobalNotificationContext);
 
     const handleAfterPlay = () => {
         if (window.location.pathname.includes('/ship_captains_chamber')) {
@@ -25,10 +27,10 @@ function DistressSignalForm({ isPortraitPhoneScreen, messageApi }) {
 
     const handleSubmit = async () => {
         if (!name || !email.includes('@')) {
-            messageApi.open({
-                type: 'error',
-                content: 'Please fill in all required fields correctly.',
-            });
+            messageApi(
+                'error',
+                'Please fill in all required fields correctly.'
+            );
             return;
         }
 
@@ -50,27 +52,27 @@ function DistressSignalForm({ isPortraitPhoneScreen, messageApi }) {
             });
 
             if (response.status === 201) {
-                messageApi.open({
-                    type: 'success',
-                    content: 'Your distress signal has been sent successfully! Please check your mailbox later!',
-                });
+                messageApi(
+                    'success',
+                    'Your distress signal has been sent successfully! Please check your mailbox later!',
+                );
                 if (showForm) {
                     handleAfterPlay();
                     setShowForm(false);
                 }
             } else {
                 const errorData = await response.json();
-                messageApi.open({
-                    type: 'error',
-                    content: errorData.message || 'An error occurred while sending your message.',
-                });
+                messageApi(
+                    'error',
+                    errorData.message || 'An error occurred while sending your message.',
+                );
                 setIsSubmitting(false);
             }
         } catch (error) {
-            messageApi.open({
-                type: 'error',
-                content: 'Failed to send the message. Please try again later.',
-            });
+            messageApi(
+                'error',
+                'Failed to send the message. Please try again later.',
+            );
             setIsSubmitting(false);
         }
     };
@@ -171,8 +173,9 @@ function DistressSignalForm({ isPortraitPhoneScreen, messageApi }) {
                         type="text"
                         style={inputStyle}
                         value={name}
-                        onChange={(e) => setName(e.target.value)}
+                        onChange={(e) => e.target.value.length <= 50 ? setName(e.target.value) : null}
                         required
+                        maxLength={"50"}
                     />
                     <div style={dividerStyle}></div>
 
@@ -183,8 +186,9 @@ function DistressSignalForm({ isPortraitPhoneScreen, messageApi }) {
                         type="email"
                         style={inputStyle}
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => e.target.value.length <= 254 ? setEmail(e.target.value) : null}
                         required
+                        maxLength={"254"}
                     />
                     <div style={dividerStyle}></div>
 

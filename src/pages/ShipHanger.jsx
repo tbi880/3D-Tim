@@ -8,14 +8,24 @@ import { SheetProvider } from '@theatre/r3f';
 import { scene3Sheet } from './SceneManager';
 import SceneThree_mobile from './SceneThree_mobile';
 import SceneThree from './SceneThree';
-import { useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { webGLPreserveDrawingBuffer } from '../Settings';
+import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 
 
 
 
 
 function ShipHanger({ vrSupported, isPortraitPhoneScreen }) {
+    const { messageApi } = useContext(GlobalNotificationContext);
+    useEffect(() => {
+
+        messageApi(
+            'success',
+            "Welcome to the ship hanger - Tim's memory of his tech journey! Click on the viewport to access.",
+            3,
+        )
+    }, [messageApi])
 
     const [isJumping, setIsJumping] = useState(false);
 
@@ -47,7 +57,7 @@ function ShipHanger({ vrSupported, isPortraitPhoneScreen }) {
 
                 {vrSupported && <>
                     <VRButton />
-                    <Canvas gl={{ antialias: getUserAntialias(), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }}>
+                    <Canvas gl={{ antialias: getUserAntialias(), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent">
                         <XR>
                             <Controllers rayMaterial={{ color: '#99FFFF' }} />
                             <Hands />
@@ -63,7 +73,7 @@ function ShipHanger({ vrSupported, isPortraitPhoneScreen }) {
                 </>}
 
                 {!vrSupported &&
-                    <Canvas gl={{ antialias: getUserAntialias(), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }}>
+                    <Canvas gl={{ antialias: getUserAntialias(), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent">
                         <SheetProvider sheet={scene3Sheet}>
                             <SceneThree_mobile startPoint={getNextSceneStartPoint()} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
 

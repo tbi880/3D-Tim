@@ -21,6 +21,7 @@ import { coreEnergyContext } from '../sharedContexts/CoreEnergyProvider';
 import { useFrame } from '@react-three/fiber';
 import Button from '../modelComponents/button';
 import { sendDistressSignalContext } from '../sharedContexts/SendDistressSignalProvider';
+import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 
 
 function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
@@ -29,10 +30,12 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
     const [outAmbientIntensity, setOutAmbientIntensity] = useState(0);
     const [ambientColor, setAmbientColor] = useState("white");
     const [backgroundColor, setBackgroundColor] = useState("black");
+    const [isWarped, setIsWarped] = useState(false);
     const { estHitTimeCountDown, setEstHitTimeCountDown, initEstHitTimeCountDown } = useContext(estHitTimeCountDownContext);
     const { hullTemperature, setHullTemperature, initHullTemperature } = useContext(hullTemperatureContext);
     const { coreEnergy, setCoreEnergy, initCoreEnergy } = useContext(coreEnergyContext);
     const { showForm, setShowForm } = useContext(sendDistressSignalContext);
+    const { messageApi } = useContext(GlobalNotificationContext);
     const modelNodeVisibility = useMemo(() => ({
         "Object_225": [58],
         "Object_226": [58],
@@ -41,6 +44,8 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
     const damageReport = "The external temperature of the ship is rising rapidly; the hull surface has reached a red-hot state. Based on the current rate of temperature increase, it is estimated that the hull structure will begin to melt in 15 minutes, at which point life support systems will fail. I have shared a calculated countdown to structural failure on your retinal display. Currently, the main thrusters lack sufficient power to escape the star's gravity. The backup thrusters are damaged. Ten minutes ago, our power reserves were at 30%. I initiated an emergency override to redirect energy, and the current power reserve is 48%, which is insufficient to support any high-power operations. In one minute, we can attempt a warp engine jump, but it may deplete all remaining energy and has an 80% chance of failure due to insufficient power."
     const simulationResult = "After each time traveling for hundreds of years in empty space, we finally passed by a star system. We truly need the energy from this star to increase core energy, but we didn’t anticipate the star’s gravity would be so strong. As for whether we can use the star’s gravity to perform a gravitational slingshot maneuver and break free from its pull, all calculations for possible close-approach slingshot trajectories have been completed. The results indicate that, at our current speed and energy levels, none are feasible. The good news, however, is that we now have enough energy to activate the warp engine and can attempt to warp past the star, escaping its gravitational field to leave this star system."
     const [currentCamera, setCurrentCamera] = useState("ThirdPersonCamera");
+    const [signalSent, setSignalSent] = useState(false);
+    const [simulationDone, setSimulationDone] = useState(false);
 
     const switchCamera = useCallback((cameraKey) => {
         setCurrentCamera(cameraKey);
@@ -118,7 +123,7 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
             const currentPosition = scene5Sheet.sequence.position;
             if (1 < currentPosition && currentPosition < 20) {
                 setEstHitTimeCountDown((prevCountdown) => (prevCountdown >= 900 ? prevCountdown - 3 : prevCountdown));
-                setHullTemperature((prevTemperature) => (prevTemperature <= 3500 ? prevTemperature + 3 : prevTemperature));
+                setHullTemperature((prevTemperature) => (prevTemperature <= 3500 ? prevTemperature + 2 : prevTemperature));
                 setCoreEnergy((prevEnergy) => (prevEnergy <= 480 ? prevEnergy + 0.5 : prevEnergy));
             } else if (currentPosition === 41) {
                 if (!showComponents.isFormToggled) {
@@ -132,8 +137,9 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
     useEffect(() => {
         // 设置倒计时函数,温度和能量的变化
         const interval = setInterval(() => {
+            const tempRisingRate = isWarped ? 3 : 1;
             setEstHitTimeCountDown((prevCountdown) => (prevCountdown >= 0 ? prevCountdown - 1 : prevCountdown));
-            setHullTemperature((prevTemperature) => (prevTemperature < 4500 ? prevTemperature + 1 : prevTemperature));
+            setHullTemperature((prevTemperature) => (prevTemperature < 4500 ? prevTemperature + tempRisingRate : prevTemperature));
             setCoreEnergy((prevEnergy) => (prevEnergy < 1000 ? prevEnergy + 1 : prevEnergy));
         }, 1000);
 
@@ -156,6 +162,9 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
         isFormToggled: false,
         hologramSlingshotTrajectory: false,
         simulationResult: false,
+        controlPanel: false,
+        countdown: false,
+        warping: false,
     }
     // 使用一个对象来管理多个组件的初始显示状态,加载的时候先全部挂载，然后替换成上面的真实加载情况
     const [showComponents, setShowComponents] = useState({
@@ -172,7 +181,9 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
         isFormToggled: false,
         hologramSlingshotTrajectory: true,
         simulationResult: true,
-
+        controlPanel: true,
+        countdown: true,
+        warping: true,
     });
 
     useEffect(() => {
@@ -284,9 +295,9 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
                 {showComponents.infoScreenDisplayDamageReport && <InfoScreenDisplay title={"damage report"} content={damageReport} sequence={scene5Sheet.sequence} stopPoints={[23.5, 24, 24.5, 25, 30]} loadPoints={[22, 23, 23.5, 24, 24.5]} unloadPoints={[23.5, 24, 24.5, 25, 25.5]} onSequencePass={() => { toggleComponentDisplay("infoScreenDisplayDamageReport") }} />}
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={29} onSequencePass={() => { toggleComponentDisplay("buttonCalculateSlingshotTrajectory"); toggleComponentDisplay("buttonSendDistressSignal"); toggleComponentDisplay("buttonInitiateTheWarpEngine"); }} />
-                {showComponents.buttonCalculateSlingshotTrajectory && <Button title={"calculate slingshot trajectory"} position={[558, 33.75, 3]} buttonLength={1.5} rotation={[0.12, 0.185, -0.06]} sequence={scene5Sheet.sequence} clickablePoint={30} IsPreJump={true} jumpToPoint={55} stopPoint={67.5} unloadPoint={56} onSequencePass={() => { toggleComponentDisplay("buttonCalculateSlingshotTrajectory") }} />}
-                {showComponents.buttonSendDistressSignal && <Button title={"send distress signal"} position={[558, 34, 3]} buttonLength={1.5} rotation={[0.12, 0.185, -0.06]} sequence={scene5Sheet.sequence} clickablePoint={30} IsPreJump={false} jumpToPoint={30} stopPoint={41} unloadPoint={42} onSequencePass={() => { toggleComponentDisplay("buttonSendDistressSignal") }} />}
-                {showComponents.buttonInitiateTheWarpEngine && <Button title={"initiate the warp engine"} position={[558, 34.25, 3]} buttonLength={1.5} rotation={[0.12, 0.185, -0.06]} sequence={scene5Sheet.sequence} clickablePoint={30} IsPreJump={true} jumpToPoint={25} stopPoint={30} onSequencePass={() => { }} />}
+                {showComponents.buttonCalculateSlingshotTrajectory && <Button title={"calculate slingshot trajectory"} position={[558, 33.75, 3]} buttonLength={1.5} rotation={[0.12, 0.185, -0.06]} sequence={scene5Sheet.sequence} clickablePoint={30} IsPreJump={true} jumpToPoint={55} stopPoint={67.5} unloadPoint={56} onSequencePass={() => { toggleComponentDisplay("buttonCalculateSlingshotTrajectory"); setSimulationDone(true); }} />}
+                {showComponents.buttonSendDistressSignal && <Button title={"send distress signal"} position={[558, 34, 3]} buttonLength={1.5} rotation={[0.12, 0.185, -0.06]} sequence={scene5Sheet.sequence} clickablePoint={30} IsPreJump={false} jumpToPoint={30} stopPoint={41} unloadPoint={42} onSequencePass={() => { toggleComponentDisplay("buttonSendDistressSignal"); setSignalSent(true); }} />}
+                {showComponents.buttonInitiateTheWarpEngine && <Button title={"initiate the warp engine"} position={[558, 34.25, 3]} buttonLength={1.5} rotation={[0.12, 0.185, -0.06]} sequence={scene5Sheet.sequence} clickablePoint={30} IsPreJump={true} jumpToPoint={75} stopPoint={130} unloadPoint={76} alertAndNoPlay={!(signalSent && simulationDone)} alertMessage={"Insufficient energy!"} onSequencePass={() => { toggleComponentDisplay("buttonInitiateTheWarpEngine") }} />}
 
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={59} onSequencePass={() => { toggleComponentDisplay("hologramSlingshotTrajectory") }} />
@@ -294,7 +305,119 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={67} onSequencePass={() => { toggleComponentDisplay("simulationResult") }} />
                 {showComponents.simulationResult && <InfoScreenDisplay title={"simulation"} content={simulationResult} sequence={scene5Sheet.sequence} stopPoints={[68, 68.5, 69, 75]} loadPoints={[67, 67.5, 68, 68.5]} unloadPoints={[68, 68.5, 69, 69.5]} onSequencePass={() => { toggleComponentDisplay("simulationResult") }} />}
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={75} onSequencePass={() => { scene5Sheet.sequence.play({ range: [29, 30] }) }} />
-                {/* <AnyModel modelURL={'FTL travelling.glb'} sequence={scene5Sheet.sequence} useTheatre={true} theatreKey={"FTL travelling"} position={[750, 0, 0]} rotation={[0, -1.6, 0]} scale={[10, 10, 10]} visible={currentCamera === "ThirdPersonCamera"} animationNames={["Animation"]} animationAutoStart={true} animationStartPoint={0} /> */}
+
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={85} onSequencePass={() => { toggleComponentDisplay("controlPanel") }} />
+                {showComponents.controlPanel && <AnyModel modelURL={"control_panel-transformed.glb"} sequence={scene5Sheet.sequence} useTheatre={true} theatreKey={"control-panel"} position={[552.11, 30.55, 0.19]} rotation={[0, -3.55, 0]} scale={[0.05, 0.05, 0.05]} animationNames={["Take 001"]} animationAutoStart={true} unloadPoint={98} onSequencePass={() => { toggleComponentDisplay("controlPanel") }} />}
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={103.3} onSequencePass={() => { toggleComponentDisplay("countdown") }} />
+                {showComponents.countdown && <AnyModel modelURL={'countdown-transformed.glb'} sequence={scene5Sheet.sequence} useTheatre={true} theatreKey={"countdown"} position={[551, 32.75, 0.19]} rotation={[0, 1.66, 0]} scale={[0.5, 0.5, 0.5]} animationNames={["Default Take"]} animationStartPoint={0} animationPlayTimes={1} animationOnClick={false} unloadPoint={109} onSequencePass={() => { toggleComponentDisplay("countdown") }} />}
+
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={109} onSequencePass={() => { toggleComponentDisplay("warping") }} />
+                {showComponents.warping && <AnyModel modelURL={'FTL travelling.glb'} sequence={scene5Sheet.sequence} useTheatre={true} theatreKey={"FTL travelling"} position={[551, 32.75, 0.19]} rotation={[0, -1.6, 0]} scale={[10, 10, 100]} animationNames={["Animation"]} animationOnClick={false} animationPlayTimes={1} animationSpeeds={1.2} animationStartPoint={0} unloadPoint={116} onSequencePass={() => { toggleComponentDisplay("warping") }} />}
+
+
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={10} onSequencePass={() => {
+                    messageApi(
+                        'warning',
+                        'Hull temperature rising detected!',
+                        2.5
+                    )
+                }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={20} onSequencePass={() => {
+                    messageApi(
+                        'success',
+                        "Welcome to the captain's command chamber!",
+                        2.5,
+                    )
+                }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={85} onSequencePass={() => {
+                    messageApi(
+                        'success',
+                        'Control panel loaded!',
+                    )
+                }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={86} onSequencePass={() => {
+                    messageApi(
+                        'success',
+                        'Access granted!',
+                    )
+                }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={87} onSequencePass={() => {
+                    messageApi(
+                        'loading',
+                        'Initiating warp engine power preheat mode...',
+                        2,
+                    )
+                }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={89} onSequencePass={() => {
+                    setCoreEnergy(0);
+                    messageApi(
+                        'success',
+                        'Energy injection completed!',
+                        2,
+                    )
+                }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={90} onSequencePass={() => {
+                    messageApi(
+                        'loading',
+                        'Synchronizing star map database...',
+                        2,
+                    )
+                        .then(() => messageApi('info', 'Determining target coordinates..', 2))
+                        .then(() => messageApi('success', 'Coordinates locked！', 1)).then(() => messageApi('success', 'Warp trajectory set!', 1));
+                }}
+                />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={98} onSequencePass={() => {
+                    messageApi(
+                        'loading',
+                        "Aligning heading to target coordinates.",
+                        2,
+                    )
+                        .then(() => messageApi('info', 'Energy module connected to the warp core, all non-essential systems entering standby mode.', 3))
+                }}
+                />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={103} onSequencePass={() => {
+                    messageApi(
+                        'info',
+                        "Countdown initiated.",
+                        2,
+                    )
+                        .then(() => messageApi('info', 'Warp field generated', 3))
+                }}
+                />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={117} onSequencePass={() => {
+                    messageApi(
+                        'warning',
+                        'Warp sequence forcibly aborted, current position deviates from target coordinates!',
+                        3,
+                    )
+                }}
+                />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={117} onSequencePass={() => {
+                    messageApi(
+                        'warning',
+                        'Core energy reaction anomaly detected, disconnecting engine to prevent overload.',
+                        3,
+                    )
+                }}
+                />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={117} onSequencePass={() => {
+                    messageApi(
+                        'warning',
+                        'Warp engine malfunction, energy output interrupted, unable to sustain spatial distortion!',
+                        3,
+                    )
+                }}
+                />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={118} onSequencePass={() => {
+                    setEstHitTimeCountDown(300);
+                    setIsWarped(true);
+                    messageApi(
+                        'error',
+                        'Unexpected gravitational wave interference, warp sequence forced to terminate!',
+                        5,
+                    );
+                }}
+                />
 
 
             </Suspense>

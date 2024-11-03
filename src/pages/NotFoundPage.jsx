@@ -2,7 +2,7 @@
 
 const NotFoundPage = () => {
     return (
-        <div style={{ padding: '50px', textAlign: 'center' }}>
+        <div style={{ padding: '50px', textAlign: 'center', color: "black" }}>
             <h1>404</h1>
             <h2>Stop trying to find something does not exist! </h2>
             <p>Damn!!!</p>

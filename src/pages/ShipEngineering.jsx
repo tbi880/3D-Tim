@@ -3,8 +3,18 @@ import Status from "./Status";
 import '../Tools/css/scene4.css';
 import { SceneFour } from "./SceneFour";
 import { bucketURL } from '../Settings';
+import { useContext, useEffect } from "react";
+import { GlobalNotificationContext } from "../sharedContexts/GlobalNotificationProvider";
 
 function ShipEngineering() {
+    const { messageApi } = useContext(GlobalNotificationContext);
+    useEffect(() => {
+        messageApi(
+            'success',
+            "Welcome to the Engineering dept - Tim's workshop gallery!",
+            2.5,
+        )
+    }, [messageApi])
 
     const pexel = (project_name) => bucketURL + "scene4/" + project_name;
     const images = [

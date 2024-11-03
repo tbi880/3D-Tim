@@ -126,7 +126,7 @@ function SceneJessie({ startPoint }) {
                 <link rel="canonical" href="https://www.bty.co.nz/jessie" />
                 <meta name="author" content="Tim Bi" />
             </Helmet>
-            <Canvas gl={{ antialias: getUserAntialias(), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }}>
+            <Canvas gl={{ antialias: getUserAntialias(), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent">
                 <SheetProvider sheet={sceneJessieSheet}>
                     <PreloadAssets />
                     <Suspense fallback={<WaitingJessie />}>

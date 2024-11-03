@@ -1,11 +1,13 @@
 import { SendDistressSignalProvider } from "./sharedContexts/SendDistressSignalProvider";
+import { GlobalNotificationProvider } from "./sharedContexts/GlobalNotificationProvider";
 
 function GlobalProviders({ children }) {
     return (
-        <SendDistressSignalProvider>
-            {children}
-        </SendDistressSignalProvider>
-
+        <GlobalNotificationProvider>
+            <SendDistressSignalProvider>
+                {children}
+            </SendDistressSignalProvider>
+        </GlobalNotificationProvider>
     );
 }
 
