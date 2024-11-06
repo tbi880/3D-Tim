@@ -13,6 +13,7 @@ export const scene_uri_map = {
     "sceneThree": "/ship_hanger",
     "sceneFour": "/ship_engineering",
     "sceneFive": "/ship_captains_chamber",
+    "sceneSix": "/project_dawn",
 }
 
 // Initial scene menu lock map
@@ -22,6 +23,7 @@ const scene_menu_lock_map = {
     "sceneThree": true,
     "sceneFour": true,
     "sceneFive": true,
+    "sceneSix": true,
 };
 
 

@@ -105,9 +105,16 @@ function Menu({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
                     </li>
 
                     <li style={listItemStyle} className="menu-item">
-                        <a href="/tims-chamber" className={`menu-link locked`} >
+                        <a href="/ship_captains_chamber" className={`menu-link ${scene_menu_lock_map.sceneFive ? 'locked' : ''}`} onClick={(e) => handleClick(e, scene_menu_lock_map.sceneFive)} target="_blank" rel="noopener noreferrer">
+                            {!scene_menu_lock_map.sceneFive ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
+                            Scene5: Captain's Command Chamber</a>
+                        <div style={dividerStyle} ></div>
+                    </li>
+
+                    <li style={listItemStyle} className="menu-item">
+                        <a href="/project_dawn" className={`menu-link locked`} >
                             <FontAwesomeIcon icon={faLock} className="lock-icon" />
-                            Scene5: Under development...</a>
+                            Scene6: Under development...</a>
                         <div style={dividerStyle} ></div>
                     </li>
 

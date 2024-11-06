@@ -54,7 +54,6 @@ function ViewPort({ screenTitle, position, rotation, sequence, stopPoint, unload
             setNextSceneStartPoint(nextSceneStartPoint);
             unlockScene(nextScene);
             //console.log("Next Scene: " + getNextScene() + " Start Point: " + getNextSceneStartPoint());
-
         }
 
     }, [sequence, stopPoint]);
