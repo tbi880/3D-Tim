@@ -4,7 +4,7 @@ import { faTimes, faCheck } from '@fortawesome/free-solid-svg-icons';
 import { sendDistressSignalContext } from '../sharedContexts/SendDistressSignalProvider';
 import { scene5Sheet } from '../pages/SceneManager';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
-
+import '../Tools/css/general.css';
 
 function DistressSignalForm({ isPortraitPhoneScreen }) {
     const [name, setName] = useState('');
@@ -12,7 +12,7 @@ function DistressSignalForm({ isPortraitPhoneScreen }) {
     const [messageContent, setMessageContent] = useState('');
     const [allowSaveEmail, setAllowSaveEmail] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const { showForm, setShowForm } = useContext(sendDistressSignalContext);
+    const { showSendDistressSignalForm, setShowSendDistressSignalForm } = useContext(sendDistressSignalContext);
     const { messageApi } = useContext(GlobalNotificationContext);
 
     const handleAfterPlay = () => {
@@ -56,9 +56,9 @@ function DistressSignalForm({ isPortraitPhoneScreen }) {
                     'success',
                     'Your distress signal has been sent successfully! Please check your mailbox later!',
                 );
-                if (showForm) {
+                if (showSendDistressSignalForm) {
                     handleAfterPlay();
-                    setShowForm(false);
+                    setShowSendDistressSignalForm(false);
                 }
             } else {
                 const errorData = await response.json();
@@ -93,128 +93,63 @@ function DistressSignalForm({ isPortraitPhoneScreen }) {
         overflowY: 'auto',
     };
 
-    const formStyle = {
-        width: '80%',
-        maxWidth: '500px',
-    };
-
-    const titleStyle = {
-        marginTop: '20px',
-        marginBottom: '30px',
-        fontSize: '32px',
-        textAlign: 'center',
-        fontFamily: ['Orbitron', 'sans-serif'],
-    };
-
-    const labelStyle = {
-        display: 'block',
-        marginBottom: '5px',
-    };
-
-    const inputStyle = {
-        width: '100%',
-        padding: '10px',
-        marginBottom: '15px',
-        borderRadius: '5px',
-        border: '1px solid #ccc',
-        fontSize: '16px',
-    };
-
-    const dividerStyle = {
-        width: '100%',
-        height: '2px',
-        background: 'linear-gradient(to right, rgba(255, 255, 255, 0), #fff, rgba(255, 255, 255, 0))',
-        margin: '15px 0',
-    };
-
-    const checkboxContainerStyle = {
-        display: 'flex',
-        alignItems: 'center',
-        marginBottom: '20px',
-    };
-
-    const buttonContainerStyle = {
-        display: 'flex',
-        justifyContent: 'space-between',
-        width: '100%',
-    };
-
-    const buttonStyle = {
-        padding: '10px 20px',
-        fontSize: '16px',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        border: 'none',
-    };
-
-    const closeButtonStyle = {
-        ...buttonStyle,
-        backgroundColor: '#555',
-        color: '#fff',
-    };
-
-    const submitButtonStyle = {
-        ...buttonStyle,
-        backgroundColor: isSubmitting ? '#888' : '#108ee9',
-        color: '#fff',
-        pointerEvents: isSubmitting ? 'none' : 'auto',
-    };
 
     return (
         <>
             <div style={containerStyle}>
-                <div style={formStyle}>
-                    <h1 style={titleStyle}>Send Distress Signal</h1>
+                <div className="form">
+                    <h1 className="title">Send Distress Signal</h1>
 
-                    <label style={labelStyle}>
-                        Your identity (Name): <span style={{ color: 'red' }}>*</span>
+                    <label className="label">
+                        Your identity (Name): <span className="required">*</span>
                     </label>
                     <input
                         type="text"
-                        style={inputStyle}
+                        className="input"
                         value={name}
                         onChange={(e) => e.target.value.length <= 50 ? setName(e.target.value) : null}
                         required
-                        maxLength={"50"}
+                        maxLength="50"
                     />
-                    <div style={dividerStyle}></div>
+                    <div className="divider"></div>
 
-                    <label style={labelStyle}>
-                        Your location (Email): <span style={{ color: 'red' }}>*</span>
+                    <label className="label">
+                        Your location (Email): <span className="required">*</span>
                     </label>
                     <input
                         type="email"
-                        style={inputStyle}
+                        className="input"
                         value={email}
                         onChange={(e) => e.target.value.length <= 254 ? setEmail(e.target.value) : null}
                         required
-                        maxLength={"254"}
+                        maxLength="254"
                     />
-                    <div style={dividerStyle}></div>
+                    <div className="divider"></div>
 
-                    <label style={labelStyle}>Your message (Optional):</label>
+                    <label className="label">Your message (Optional):</label>
                     <textarea
-                        style={{ ...inputStyle, height: '100px' }}
+                        className="input message"
                         value={messageContent}
                         onChange={(e) => setMessageContent(e.target.value)}
                     ></textarea>
-                    <div style={dividerStyle}></div>
+                    <div className="divider"></div>
 
-                    <div style={checkboxContainerStyle} onClick={handleCheckboxClick}>
+                    <div className="checkbox-container" onClick={handleCheckboxClick}>
                         <input
                             type="checkbox"
                             checked={allowSaveEmail}
                             onChange={(e) => setAllowSaveEmail(e.target.checked)}
-                            style={{ marginRight: '10px' }}
+                            className="checkbox"
                         />
+
                         <label>Allow Tim to save your email for future contact and cooperation.</label>
                     </div>
 
-                    <div style={buttonContainerStyle}>
-                        <button style={closeButtonStyle} onClick={() => { showForm ? setShowForm(false) : null; handleAfterPlay(); }}>
+                    <div className="button-container">
+                        <button className="button close-button" onClick={() => { showSendDistressSignalForm ? setShowSendDistressSignalForm(false) : null; handleAfterPlay(); }}>
                             <FontAwesomeIcon icon={faTimes} /> Close
                         </button>
-                        <button style={submitButtonStyle} onClick={handleSubmit} disabled={isSubmitting}>
+                        <button className={`button submit-button ${isSubmitting ? 'submit-button-submitting' : ''}`} onClick={handleSubmit} disabled={isSubmitting}>
                             {!isSubmitting && <FontAwesomeIcon icon={faCheck} />}
                             {isSubmitting ? ' Sending...' : ' Send'}
                         </button>
@@ -222,7 +157,7 @@ function DistressSignalForm({ isPortraitPhoneScreen }) {
                 </div>
             </div>
         </>
-    );
+    )
 }
 
 export default DistressSignalForm;

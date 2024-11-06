@@ -35,6 +35,8 @@
     "react-router-dom": "^6.22.1",
     "sitemap": "^7.1.1",
     "three": "^0.161.0",
+    "typed.js": "^2.1.0",
+    "typeit": "^8.8.7",
     "uuid-by-string": "4.0.0",
     "wouter": "2.11.0"
   },

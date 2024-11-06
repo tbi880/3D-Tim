@@ -55,9 +55,10 @@ function ShipOutside({ onSequencePass, unloadPoint, sequence }) {
     }, [shipModel.scene, opacity]);
 
     useFrame(() => {
-        // 当sequence.position超过结束点时触发
-        if (sequence && sequence.position > unloadPoint) {
-            onSequencePass();
+        if (unloadPoint) {
+            if (sequence && sequence.position > unloadPoint) {
+                onSequencePass();
+            }
         }
     });
 

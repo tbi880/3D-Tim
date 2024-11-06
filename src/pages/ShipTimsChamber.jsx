@@ -15,13 +15,23 @@ import { CoreEnergyProvider } from '../sharedContexts/CoreEnergyProvider';
 import { HullTemperatureProvider } from '../sharedContexts/HullTemperatureProvider';
 import DistressSignalForm from '../Tools/DistressSignalForm';
 import { sendDistressSignalContext } from '../sharedContexts/SendDistressSignalProvider';
+import { authorizationCheckContext } from '../sharedContexts/AuthorizationCheckProvider';
+import AuthorizationCheckForm from '../Tools/AuthorizationCheckForm';
+import { searchForEmergencyPlansContext } from '../sharedContexts/SearchForEmergencyPlansProvider';
+import SearchForEmergencyPlans from '../Tools/SearchForEmergencyPlans';
+import Header from '../Tools/Header';
+import { headerSubTitleContext } from '../sharedContexts/HeaderSubTitleProvider';
 
 
 
 function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
 
     const [isJumping, setIsJumping] = useState(false);
-    const { showForm, setShowForm } = useContext(sendDistressSignalContext);
+    const { showSendDistressSignalForm, setShowSendDistressSignalForm } = useContext(sendDistressSignalContext);
+    const { showAuthorizationCheckForm, setShowAuthorizationCheckForm } = useContext(authorizationCheckContext);
+    const { showSearchForEmergencyPlansLayer, setShowSearchForEmergencyPlansLayer } = useContext(searchForEmergencyPlansContext);
+    const { showHeaderSubTitle, setShowHeaderSubTitle } = useContext(headerSubTitleContext);
+
 
 
     function checkThenJumpToTheNextScene() {
@@ -52,11 +62,26 @@ function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
                     <CoreEnergyProvider>
 
                         <ShipStatus isPortraitPhoneScreen={isPortraitPhoneScreen} />
-                        {showForm && (
+                        {showSendDistressSignalForm && (
                             <DistressSignalForm
                                 isPortraitPhoneScreen={isPortraitPhoneScreen}
                             />
                         )}
+
+                        {showAuthorizationCheckForm && (
+                            <AuthorizationCheckForm
+                                isPortraitPhoneScreen={isPortraitPhoneScreen}
+                            />
+                        )}
+
+                        {showSearchForEmergencyPlansLayer && (
+                            <SearchForEmergencyPlans
+                                isPortraitPhoneScreen={isPortraitPhoneScreen}
+                            />
+                        )}
+
+                        {showHeaderSubTitle && <Header onAnimationEnd={() => { setShowHeaderSubTitle(false) }} defaultBaseDuration={7} defaultNotice={{ noticeContent: "If you’re watching this, it’s our last moment. ‘Project Dawn’ can probably save the ship, but it will consume all remaining resources. It's a tough decision to make but I trust you. Lead them out of the darkness before dawn arrives.", noticeLink: null }} />}
+
                         <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
 
 

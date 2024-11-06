@@ -37,11 +37,11 @@ function importantNotice() {
 
 
 
-function Header({ onAnimationEnd }) {
-    const { noticeContent, noticeLink } = importantNotice();
+function Header({ onAnimationEnd, defaultNotice, defaultBaseDuration }) {
+    const { noticeContent, noticeLink } = defaultNotice ? defaultNotice : importantNotice();
 
     // 假设基础是每100个字符10秒
-    const baseDuration = 10; // 10秒
+    const baseDuration = defaultBaseDuration ? defaultBaseDuration : 10; // 10秒
     const chars = noticeContent.length;
     const duration = Math.max(baseDuration, (chars / 100) * baseDuration); // 确保至少是基础时间，避免内容太少动画太快
     const styleAnimation = `marquee ${duration}s linear`; // 直接使用字符串拼接定义动画
@@ -73,7 +73,7 @@ function Header({ onAnimationEnd }) {
                 top: 0,
                 width: '100%',
                 height: '10vh',
-                zIndex: 2,
+                zIndex: 1000,
                 backgroundColor: 'rgba(0, 0, 0, 0.5)',
                 padding: '10px 0',
                 boxShadow: '0 2px 4px rgba(0,0,0,.1)',
@@ -82,11 +82,11 @@ function Header({ onAnimationEnd }) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
-            }} onClick={navigateToURL}>
+            }} onClick={noticeLink ? navigateToURL : null}>
                 <div className="container" style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
                     <h1 style={{
                         display: 'inline-block',
-                        animation: styleAnimation, // 正确设置动画样式
+                        animation: styleAnimation,
                         fontSize: '1.5rem',
                     }}>{noticeContent}</h1>
                 </div>

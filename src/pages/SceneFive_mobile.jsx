@@ -22,11 +22,16 @@ import { useFrame } from '@react-three/fiber';
 import Button from '../modelComponents/button';
 import { sendDistressSignalContext } from '../sharedContexts/SendDistressSignalProvider';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
+import { authorizationCheckContext } from '../sharedContexts/AuthorizationCheckProvider';
+import { searchForEmergencyPlansContext } from '../sharedContexts/SearchForEmergencyPlansProvider';
+import { headerSubTitleContext } from '../sharedContexts/HeaderSubTitleProvider';
+import Loading from '../modelComponents/Loading';
 
 
 function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
     const musicUrl = bucketURL + 'music/bgm5.mp3';
     const [ambientIntensity, setAmbientIntensity] = useState(0);
+    const [warningFrequency, setWarningFrequency] = useState(10000);
     const [outAmbientIntensity, setOutAmbientIntensity] = useState(0);
     const [ambientColor, setAmbientColor] = useState("white");
     const [backgroundColor, setBackgroundColor] = useState("black");
@@ -34,21 +39,24 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
     const { estHitTimeCountDown, setEstHitTimeCountDown, initEstHitTimeCountDown } = useContext(estHitTimeCountDownContext);
     const { hullTemperature, setHullTemperature, initHullTemperature } = useContext(hullTemperatureContext);
     const { coreEnergy, setCoreEnergy, initCoreEnergy } = useContext(coreEnergyContext);
-    const { showForm, setShowForm } = useContext(sendDistressSignalContext);
+    const { showSendDistressSignalForm, setShowSendDistressSignalForm } = useContext(sendDistressSignalContext);
+    const { showAuthorizationCheckForm, setShowAuthorizationCheckForm } = useContext(authorizationCheckContext);
+    const { showSearchForEmergencyPlansLayer, setShowSearchForEmergencyPlansLayer } = useContext(searchForEmergencyPlansContext);
+    const { showHeaderSubTitle, setShowHeaderSubTitle } = useContext(headerSubTitleContext);
     const { messageApi } = useContext(GlobalNotificationContext);
     const modelNodeVisibility = useMemo(() => ({
         "Object_225": [58],
         "Object_226": [58],
     }), []);
 
-    const damageReport = "The external temperature of the ship is rising rapidly; the hull surface has reached a red-hot state. Based on the current rate of temperature increase, it is estimated that the hull structure will begin to melt in 15 minutes, at which point life support systems will fail. I have shared a calculated countdown to structural failure on your retinal display. Currently, the main thrusters lack sufficient power to escape the star's gravity. The backup thrusters are damaged. Ten minutes ago, our power reserves were at 30%. I initiated an emergency override to redirect energy, and the current power reserve is 48%, which is insufficient to support any high-power operations. In one minute, we can attempt a warp engine jump, but it may deplete all remaining energy and has an 80% chance of failure due to insufficient power."
-    const simulationResult = "After each time traveling for hundreds of years in empty space, we finally passed by a star system. We truly need the energy from this star to increase core energy, but we didn’t anticipate the star’s gravity would be so strong. As for whether we can use the star’s gravity to perform a gravitational slingshot maneuver and break free from its pull, all calculations for possible close-approach slingshot trajectories have been completed. The results indicate that, at our current speed and energy levels, none are feasible. The good news, however, is that we now have enough energy to activate the warp engine and can attempt to warp past the star, escaping its gravitational field to leave this star system."
-    const [currentCamera, setCurrentCamera] = useState("ThirdPersonCamera");
+    const damageReport = "The external temperature of the ship is rising rapidly; the hull surface has reached a red-hot state. Based on the current rate of temperature increase, it is estimated that the hull structure will begin to melt in 15 minutes, at which point life support systems will fail. I have shared a calculated countdown to structural failure on your retinal display. Currently, the main thrusters lack sufficient power to escape the star's gravity. The backup thrusters are damaged. Ten minutes ago, our power reserves were at 30%. I initiated an emergency override to redirect energy, and the current power reserve is 48%, which is insufficient to support any high-power operations. In one minute, we can attempt a warp engine jump, but it may deplete all remaining energy and has an 80% chance of failure due to insufficient power.";
+    const simulationResult = "After each time traveling for hundreds of years in empty space, we finally passed by a star system. We truly need the energy from this star to increase core energy, but we didn’t anticipate the star’s gravity would be so strong. As for whether we can use the star’s gravity to perform a gravitational slingshot maneuver and break free from its pull, all calculations for possible close-approach slingshot trajectories have been completed. The results indicate that, at our current speed and energy levels, none are feasible. The good news, however, is that we now have enough energy to activate the warp engine and can attempt to warp past the star, escaping its gravitational field to leave this star system.";
+    const [isFirstPersonCamera, setIsFirstPersonCamera] = useState(false);
     const [signalSent, setSignalSent] = useState(false);
     const [simulationDone, setSimulationDone] = useState(false);
 
-    const switchCamera = useCallback((cameraKey) => {
-        setCurrentCamera(cameraKey);
+    const switchCamera = useCallback((isFirstPerson) => {
+        setIsFirstPersonCamera(isFirstPerson);
     }, []);
 
 
@@ -56,13 +64,13 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
 
     const changeColor = useCallback(() => {
         setAmbientColor("#ff0000");
-        // 先清理之前的timeout，确保不会有未清理的timeout
+        // Clear previous timeout to ensure no leftover timeouts
         if (timeoutRef.current) {
             clearTimeout(timeoutRef.current);
         }
 
         const maxIntensity = 5;
-        // 定义一个递归函数来平滑更新亮度
+        // Define a recursive function to smoothly update intensity
         const updateIntensity = (start, end, duration, callback) => {
             const startTime = performance.now();
             const step = () => {
@@ -80,9 +88,6 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
             requestAnimationFrame(step);
         };
 
-
-
-
         updateIntensity(0, maxIntensity, 1000, () => {
 
             updateIntensity(maxIntensity, 0, 1000, () => {
@@ -94,17 +99,17 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
 
                         timeoutRef.current = setTimeout(() => {
                             changeColor();
-                        }, 10000);
+                        }, warningFrequency);
                     });
                 });
             });
         });
-    }, []);
+    }, [warningFrequency]);
 
     useEffect(() => {
-        changeColor(); // 初始调用
+        changeColor(); // Initial call
         return () => {
-            // 组件卸载时清除timeout，避免内存泄漏
+            // Clear timeout on component unmount to prevent memory leaks
             if (timeoutRef.current) {
                 clearTimeout(timeoutRef.current);
             }
@@ -112,7 +117,7 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
     }, [changeColor]);
 
     useEffect(() => {
-        // 初始化值
+        // Initialize values
         initEstHitTimeCountDown(60 * 60);
         initHullTemperature(200);
         initCoreEnergy(5);
@@ -122,20 +127,20 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
         if (scene5Sheet.sequence) {
             const currentPosition = scene5Sheet.sequence.position;
             if (1 < currentPosition && currentPosition < 20) {
-                setEstHitTimeCountDown((prevCountdown) => (prevCountdown >= 900 ? prevCountdown - 3 : prevCountdown));
+                setEstHitTimeCountDown((prevCountdown) => (prevCountdown >= 1200 ? prevCountdown - 2 : prevCountdown));
                 setHullTemperature((prevTemperature) => (prevTemperature <= 3500 ? prevTemperature + 2 : prevTemperature));
                 setCoreEnergy((prevEnergy) => (prevEnergy <= 480 ? prevEnergy + 0.5 : prevEnergy));
             } else if (currentPosition === 41) {
                 if (!showComponents.isFormToggled) {
                     toggleComponentDisplay("isFormToggled")
-                    setShowForm(true);
+                    setShowSendDistressSignalForm(true);
                 }
             }
         }
     });
 
     useEffect(() => {
-        // 设置倒计时函数,温度和能量的变化
+        // Set up countdown function, temperature, and energy changes
         const interval = setInterval(() => {
             const tempRisingRate = isWarped ? 3 : 1;
             setEstHitTimeCountDown((prevCountdown) => (prevCountdown >= 0 ? prevCountdown - 1 : prevCountdown));
@@ -143,7 +148,7 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
             setCoreEnergy((prevEnergy) => (prevEnergy < 1000 ? prevEnergy + 1 : prevEnergy));
         }, 1000);
 
-        // 清除计时器，避免内存泄漏
+        // Clear the interval to avoid memory leaks
         return () => clearInterval(interval);
     }, [estHitTimeCountDown, setEstHitTimeCountDown, hullTemperature, setHullTemperature, coreEnergy, setCoreEnergy]);
 
@@ -165,8 +170,16 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
         controlPanel: false,
         countdown: false,
         warping: false,
+        shipOutside2: false,
+        buttonSearchForEmergencyPlans: false,
+        decryption: false,
+        timsVideo: false,
+        viewportProjectDawn: false,
+        controlPanel2: false,
+        loadingForTheNextScene: false,
+
     }
-    // 使用一个对象来管理多个组件的初始显示状态,加载的时候先全部挂载，然后替换成上面的真实加载情况
+    // Use an object to manage the initial display state of multiple components
     const [showComponents, setShowComponents] = useState({
         insideAmbientLight: true,
         shipOutside: true,
@@ -184,6 +197,13 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
         controlPanel: true,
         countdown: true,
         warping: true,
+        shipOutside2: false,
+        buttonSearchForEmergencyPlans: true,
+        decryption: true,
+        timsVideo: true,
+        viewportProjectDawn: false,
+        controlPanel2: false,
+        loadingForTheNextScene: true,
     });
 
     useEffect(() => {
@@ -197,7 +217,7 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
         });
     }, []);
 
-    // 创建一个通用的切换函数
+    // Create a generic toggle function
     const toggleComponentDisplay = useCallback((componentKey) => {
         setShowComponents((prev) => ({
             ...prev,
@@ -206,13 +226,13 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
 
     }, []);
 
-    const [audioElement, setAudioElement] = useState(null); // 用于存储<audio>元素的状态
+    const [audioElement, setAudioElement] = useState(null); // To store the state of the <audio> element
 
     useEffect(() => {
         // console.log('Parent useEffect - Creating <audio> element');
         const audio = new Audio(musicUrl);
         audio.crossOrigin = "anonymous";
-        setAudioElement(audio); // 设置状态以存储<audio>元素
+        setAudioElement(audio); // Set state to store the <audio> element
     }, [musicUrl]);
 
     useEffect(() => {
@@ -239,17 +259,17 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
                     }),
                 }}
                     objRef={(theatreObject) => {
-                        // 监听Theatre.js中透明度的变化
+                        // Listen to opacity changes in Theatre.js
                         theatreObject.onValuesChange((newValues) => {
                             setOutAmbientIntensity(newValues.intensity);
                         });
                     }} >
-                    <ambientLight color={"#ff0000"} intensity={outAmbientIntensity} visible={currentCamera === "ThirdPersonCamera"} />
+                    <ambientLight color={"#ff0000"} intensity={outAmbientIntensity} visible={!isFirstPersonCamera} />
 
                 </e.mesh>
-                {showComponents.chamberInside && <AnyModel modelURL={'captains-chamber-transformed.glb'} sequence={scene5Sheet.sequence} useTheatre={true} theatreKey={"captains-chamber-inside"} position={[550, 30, 0]} rotation={[0, -1.6, 0]} scale={[1, 1, 1]} visible={currentCamera === "FirstPersonCamera"} modelNodeVisibility={modelNodeVisibility} />}
-                <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault={currentCamera === "FirstPersonCamera"} position={[558, 33.7, -1.9]} rotation={[0, -4.5, 0]} fov={75} near={0.01} />
-                <PerspectiveCamera theatreKey="ThirdPersonCamera" makeDefault={currentCamera === "ThirdPersonCamera"} position={[550, 50, -10]} rotation={[0, -Math.PI / 2, 0]} fov={75} near={0.01} />
+                {showComponents.chamberInside && <AnyModel modelURL={'captains-chamber-transformed.glb'} sequence={scene5Sheet.sequence} useTheatre={true} theatreKey={"captains-chamber-inside"} position={[550, 30, 0]} rotation={[0, -1.6, 0]} scale={[1, 1, 1]} visible={isFirstPersonCamera} modelNodeVisibility={modelNodeVisibility} />}
+                <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault={isFirstPersonCamera} position={[558, 33.7, -1.9]} rotation={[0, -4.5, 0]} fov={75} near={0.01} />
+                <PerspectiveCamera theatreKey="ThirdPersonCamera" makeDefault={!isFirstPersonCamera} position={[550, 50, -10]} rotation={[0, -Math.PI / 2, 0]} fov={75} near={0.01} />
 
                 <color attach='background' args={[backgroundColor]} />
                 <Environment
@@ -258,7 +278,7 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
                     intensity={3.5}
                     environmentIntensity={1}
                 />
-                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={10} onSequencePass={() => { switchCamera("FirstPersonCamera") }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={10} onSequencePass={() => { switchCamera(true) }} />
 
                 {showComponents.preloadEnv && <Environment
                     preset='studio'
@@ -267,7 +287,7 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
                     intensity={3.5}
                     environmentIntensity={1}
                 />}
-                {showComponents.chamberInside && currentCamera === "FirstPersonCamera" && <Environment
+                {showComponents.chamberInside && isFirstPersonCamera && <Environment
                     preset='studio'
                     resolution={4}
                     background={false}
@@ -275,16 +295,16 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
                     environmentIntensity={1}
                 />}
 
-                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={13} onSequencePass={() => { switchCamera("ThirdPersonCamera") }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={13} onSequencePass={() => { switchCamera(false) }} />
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={20} onSequencePass={() => {
                     toggleComponentDisplay("chamberInside");
                     toggleComponentDisplay("shipOutside");
-                    switchCamera("FirstPersonCamera");
+                    switchCamera(true);
                 }} />
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={25} onSequencePass={() => { toggleComponentDisplay("insideAmbientLight") }} />
-                {showComponents.insideAmbientLight && <ambientLight color={ambientColor} intensity={ambientIntensity} visible={currentCamera === "FirstPersonCamera"} />}
+                {showComponents.insideAmbientLight && <ambientLight color={ambientColor} intensity={ambientIntensity} visible={isFirstPersonCamera} />}
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={20} onSequencePass={() => { toggleComponentDisplay("robot") }} />
                 {showComponents.robot && <Robot title="Robot" position={[562, 32.75, 0]} rotation={[0, 1.2, 0]} sequence={scene5Sheet.sequence} onSequencePass={() => { toggleComponentDisplay("robot") }} />}
@@ -297,7 +317,7 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={29} onSequencePass={() => { toggleComponentDisplay("buttonCalculateSlingshotTrajectory"); toggleComponentDisplay("buttonSendDistressSignal"); toggleComponentDisplay("buttonInitiateTheWarpEngine"); }} />
                 {showComponents.buttonCalculateSlingshotTrajectory && <Button title={"calculate slingshot trajectory"} position={[558, 33.75, 3]} buttonLength={1.5} rotation={[0.12, 0.185, -0.06]} sequence={scene5Sheet.sequence} clickablePoint={30} IsPreJump={true} jumpToPoint={55} stopPoint={67.5} unloadPoint={56} onSequencePass={() => { toggleComponentDisplay("buttonCalculateSlingshotTrajectory"); setSimulationDone(true); }} />}
                 {showComponents.buttonSendDistressSignal && <Button title={"send distress signal"} position={[558, 34, 3]} buttonLength={1.5} rotation={[0.12, 0.185, -0.06]} sequence={scene5Sheet.sequence} clickablePoint={30} IsPreJump={false} jumpToPoint={30} stopPoint={41} unloadPoint={42} onSequencePass={() => { toggleComponentDisplay("buttonSendDistressSignal"); setSignalSent(true); }} />}
-                {showComponents.buttonInitiateTheWarpEngine && <Button title={"initiate the warp engine"} position={[558, 34.25, 3]} buttonLength={1.5} rotation={[0.12, 0.185, -0.06]} sequence={scene5Sheet.sequence} clickablePoint={30} IsPreJump={true} jumpToPoint={75} stopPoint={130} unloadPoint={76} alertAndNoPlay={!(signalSent && simulationDone)} alertMessage={"Insufficient energy!"} onSequencePass={() => { toggleComponentDisplay("buttonInitiateTheWarpEngine") }} />}
+                {showComponents.buttonInitiateTheWarpEngine && <Button title={"initiate the warp engine"} position={[558, 34.25, 3]} buttonLength={1.5} rotation={[0.12, 0.185, -0.06]} sequence={scene5Sheet.sequence} clickablePoint={30} IsPreJump={true} jumpToPoint={75} stopPoint={144} unloadPoint={76} alertAndNoPlay={!(signalSent && simulationDone)} alertMessage={"Insufficient energy!"} onSequencePass={() => { toggleComponentDisplay("buttonInitiateTheWarpEngine") }} />}
 
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={59} onSequencePass={() => { toggleComponentDisplay("hologramSlingshotTrajectory") }} />
@@ -409,7 +429,7 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
                 }}
                 />
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={118} onSequencePass={() => {
-                    setEstHitTimeCountDown(300);
+                    setEstHitTimeCountDown(600);
                     setIsWarped(true);
                     messageApi(
                         'error',
@@ -418,6 +438,80 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
                     );
                 }}
                 />
+
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={132} onSequencePass={() => { switchCamera(false) }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={130} onSequencePass={() => { toggleComponentDisplay("shipOutside2") }} />
+                {showComponents.shipOutside2 && <ShipOutside sequence={scene5Sheet.sequence} unloadPoint={140} onSequencePass={() => { toggleComponentDisplay("shipOutside2") }} />}
+
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={140} onSequencePass={() => { switchCamera(true) }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={143} onSequencePass={() => {
+                    messageApi(
+                        'warning',
+                        'Impact expected in 10 minutes!',
+                        5,
+                    );
+                    messageApi(
+                        'warning',
+                        'A rapid hull temperature rise has been detected!',
+                        5,
+                    );
+                    messageApi(
+                        'warning',
+                        'Code Bravo! Deck E port side has been damaged! Emergency bulkhead doors have been activated!',
+                        5,
+                    );
+                    toggleComponentDisplay("buttonSearchForEmergencyPlans");
+                }} />
+
+                {showComponents.buttonSearchForEmergencyPlans && <Button title={"Search for last-hand plans"} position={[246.15, 33.25, -73.5]} buttonLength={1.5} rotation={[0, 3.67, 0]} sequence={scene5Sheet.sequence} clickablePoint={144} IsPreJump={false} jumpToPoint={144} stopPoint={153} unloadPoint={145} onSequencePass={() => { toggleComponentDisplay("buttonSearchForEmergencyPlans") }} />}
+
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={153} onSequencePass={() => {
+                    setShowAuthorizationCheckForm(true);
+                }
+                } />
+
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={153.25} onSequencePass={() => {
+                    toggleComponentDisplay("decryption");
+                    messageApi('loading', 'Alpha class layer decryption is in progress!', 9).then(() => messageApi('success', 'Alpha class layer decrypted successfully!', 2));
+                }} />
+                {showComponents.decryption && <AnyModel modelURL={'circuits_in_motion-transformed.glb'} sequence={scene5Sheet.sequence} useTheatre={true} theatreKey={"Decryption"} position={[257.75, 34, -71.6]} rotation={[0, 3, 0]} scale={[0.001, 0.001, 0.001]} animationNames={["GltfAnimation 0"]} animationOnClick={false} animationPlayTimes={1} animationSpeeds={0.5} unloadPoint={164} onSequencePass={() => { toggleComponentDisplay("decryption"); }} />}
+
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={164} onSequencePass={() => { setShowSearchForEmergencyPlansLayer(true); }} />
+
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={165.5} onSequencePass={() => { messageApi('info', 'You received a video recording from the captain Tim!!!', 3) }} />
+
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={167} onSequencePass={() => { toggleComponentDisplay("timsVideo"); setShowHeaderSubTitle(true); }} />
+                {showComponents.timsVideo && <AnyModel modelURL={'TimsVideo.glb'} sequence={scene5Sheet.sequence} useTheatre={true} theatreKey={"Tim"} position={[257, 33.75, -75.5]} rotation={[0, -1.75, 0]} scale={[2, 2, 2]} animationNames={["2024-10-22--23-55-58"]} animationOnClick={false} animationPlayTimes={1} animationSpeeds={1} unloadPoint={183} onSequencePass={() => { toggleComponentDisplay("timsVideo"); }} />}
+
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={184} onSequencePass={() => { toggleComponentDisplay("viewportProjectDawn") }} />
+                {showComponents.viewportProjectDawn && <ViewPort screenTitle="viewportProjectDawn" position={[253.67, 33.1, -76.68]} rotation={[0, 1.59, 0]} sequence={scene5Sheet.sequence} stopPoint={207} unloadPoint={187} onSequencePass={() => { toggleComponentDisplay("viewportProjectDawn") }} isSetNextScene={true} nextScene={"sceneSix"} nextSceneStartPoint={0} />}
+
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={193} onSequencePass={() => { toggleComponentDisplay("controlPanel2") }} />
+                {showComponents.controlPanel2 && <AnyModel modelURL={"control_panel-transformed.glb"} sequence={scene5Sheet.sequence} useTheatre={true} theatreKey={"control-panel2"} position={[252, 32.5, -76]} rotation={[0, -3.55, 0]} scale={[0.05, 0.05, 0.05]} animationNames={["Take 001"]} animationAutoStart={true} unloadPoint={200} onSequencePass={() => { toggleComponentDisplay("controlPanel2") }} />}
+
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={193} onSequencePass={() => {
+                    messageApi(
+                        'success',
+                        'Control panel loaded!',
+                    )
+                }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={194} onSequencePass={() => {
+                    messageApi(
+                        'success',
+                        'Access granted!',
+                    )
+                }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={196} onSequencePass={() => {
+                    messageApi(
+                        'loading',
+                        'Project Dawn is being loaded...',
+                        3,
+                    ).then(() => messageApi('success', 'Project Dawn loaded!', 2));
+                }} />
+
+                <SingleLoadManager loadPoint={201} sequence={scene5Sheet.sequence} onSequencePass={() => { toggleComponentDisplay('loadingForTheNextScene'); toggleComponentDisplay("chamberInside"); setWarningFrequency(0); }} />
+                {showComponents.loadingForTheNextScene && <Loading THkey="ForTheNextScene" title="ForTheNextScene" lines={["Connecting ", "to Tim's ", "Project Dawn "]} position={[252, 32.5, -76]} rotation={[0, -6.28, 0]} sequence={scene5Sheet.sequence} unloadPoint={208} onSequencePass={() => toggleComponentDisplay('loadingForTheNextScene')} textTitleVersion={2} />}
+
 
 
             </Suspense>

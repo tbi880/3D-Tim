@@ -1,0 +1,80 @@
+.form {
+    width: 80%;
+    max-width: 500px;
+}
+
+.title {
+    margin-top: 20px;
+    margin-bottom: 30px;
+    font-size: 32px;
+    text-align: center;
+    font-family: 'Orbitron', sans-serif;
+}
+
+.label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.required {
+    color: red;
+}
+
+.input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+}
+
+.message {
+    height: 100px;
+}
+
+.divider {
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(to right, rgba(255, 255, 255, 0), #fff, rgba(255, 255, 255, 0));
+    margin: 15px 0;
+}
+
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.button-container {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.button {
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    border: none;
+}
+
+.close-button {
+    background-color: #555;
+    color: #fff;
+}
+
+.submit-button {
+    background-color: #108ee9;
+    color: #fff;
+}
+
+.submit-button-submitting {
+    background-color: #888;
+    pointer-events: none;
+}
+
+.checkbox {
+    margin-right: 10px;
+}

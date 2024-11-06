@@ -10,7 +10,7 @@ import Menu from './Tools/Menu';
 import ShipEngineering from './pages/ShipEngineering';
 import ShipTimsChamber from './pages/ShipTimsChamber';
 import GraphicSetting from './Tools/GraphicSetting';
-import GlobalProviders from './GlobalProviders';
+import GlobalProviders from './sharedContexts/GlobalProviders';
 
 function Routers() {
     const [vrSupported, setVrSuppoerted] = useState(false);
