@@ -6,7 +6,7 @@ import { getUserAntialias, getUserDpr, setUserAntialias, setUserDpr } from '../p
 
 function GraphicSetting({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
     const [showSettings, setShowSettings] = useState(false);
-    const [dpr, setDpr] = useState(() => getUserDpr() ?? 1.5);
+    const [dpr, setDpr] = useState(() => getUserDpr() ?? (isPortraitPhoneScreen ? 1 : 1.5));
     const [antialias, setAntialias] = useState(() => getUserAntialias() ?? true);
     const [tooltip, setTooltip] = useState({ visible: false, content: '', x: 0, y: 0 });
     const [messageApi, contextHolder] = message.useMessage();
@@ -25,12 +25,19 @@ function GraphicSetting({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
         if (isPortraitPhoneScreen) {
             setAntialias(false);
             setUserAntialias(false);
+            setDpr(1);
+            setUserDpr(1);
         }
     }, [isPortraitPhoneScreen]);
 
 
     const handleDprChange = (e) => {
         const value = parseFloat(e.target.value);
+        if (value > 1.25 && isPortraitPhoneScreen) {
+            messageApi.error("The current DPR setting is not optimal for mobile devices. For the best experience, we strongly recommend accessing here on a desktop device!");
+            return;
+        }
+
         setDpr(value);
         setUserDpr(value);
     };
@@ -86,7 +93,7 @@ function GraphicSetting({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
         position: 'fixed',
         top: 0,
         right: 0,
-        zIndex: 9999,
+        zIndex: 999,
         width: isPortraitPhoneScreen ? '100%' : '50%',
         height: '100%',
         backgroundColor: isPortraitPhoneScreen ? 'black' : 'rgba(0, 0, 0, 0.5)',

@@ -1,5 +1,5 @@
 
-import Status, { getNextScene, getNextSceneStartPoint, getUserAntialias, getUserDpr, jumpToTheNextScene } from './Status';
+import Status, { getNextScene, getNextSceneStartPoint, getNextSceneURI, getUserAntialias, getUserDpr, } from './Status';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
 import { Controllers, Hands, VRButton, XR } from '@react-three/xr';
@@ -11,12 +11,14 @@ import SceneThree from './SceneThree';
 import { useContext, useEffect, useState } from 'react';
 import { webGLPreserveDrawingBuffer } from '../Settings';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
+import { useNavigate } from 'react-router-dom';
 
 
 
 
 
 function ShipHanger({ vrSupported, isPortraitPhoneScreen }) {
+    const navigate = useNavigate();
     const { messageApi } = useContext(GlobalNotificationContext);
     useEffect(() => {
 
@@ -29,10 +31,11 @@ function ShipHanger({ vrSupported, isPortraitPhoneScreen }) {
 
     const [isJumping, setIsJumping] = useState(false);
 
-    function checkThenJumpToTheNextScene() {
+    function checkThenjumpToTheNextScene() {
         if (!isJumping) {
             setIsJumping(true);
-            jumpToTheNextScene(getNextScene());
+            navigate(getNextSceneURI(getNextScene()));
+
         }
     }
 
@@ -62,7 +65,7 @@ function ShipHanger({ vrSupported, isPortraitPhoneScreen }) {
                             <Controllers rayMaterial={{ color: '#99FFFF' }} />
                             <Hands />
                             <SheetProvider sheet={scene3Sheet}>
-                                <SceneThree startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
+                                <SceneThree startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoint={64} onSequencePass={() => checkThenjumpToTheNextScene()} /></SheetProvider>
 
                         </XR>
 
@@ -75,7 +78,7 @@ function ShipHanger({ vrSupported, isPortraitPhoneScreen }) {
                 {!vrSupported &&
                     <Canvas gl={{ antialias: getUserAntialias(), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent">
                         <SheetProvider sheet={scene3Sheet}>
-                            <SceneThree_mobile startPoint={getNextSceneStartPoint()} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
+                            <SceneThree_mobile startPoint={getNextSceneStartPoint()} unloadPoint={64} onSequencePass={() => checkThenjumpToTheNextScene()} /></SheetProvider>
 
                     </Canvas>}
 

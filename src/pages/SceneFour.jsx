@@ -1,4 +1,4 @@
-import { engineeringAccess, getNextScene, getUserAntialias, getUserDpr, jumpToTheNextScene, setNextScene, setNextSceneStartPoint } from './Status'
+import { engineeringAccess, getNextScene, getNextSceneURI, getUserAntialias, getUserDpr, setNextScene, setNextSceneStartPoint } from './Status'
 import * as THREE from 'three'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
@@ -10,6 +10,8 @@ import { Suspense } from 'react'
 import WaitingForMoreModels from './WaitingForMoreModels';
 import { useCallback } from 'react'
 import AnyModel from '../modelComponents/AnyModel'
+import { useNavigate } from "react-router-dom";
+
 
 const GOLDENRATIO = 1.61803398875
 
@@ -18,6 +20,7 @@ export const SceneFour = ({ images }) => {
 }
 
 export const SceneFourInsideOfCanvas = ({ images }) => {
+    const navigate = useNavigate();
     const [visitedIds, setVisitedIds] = useState(new Set());
     const [cameraReached, setCameraReached] = useState(false);
     const startPosition = [0, 2, 15];
@@ -61,7 +64,7 @@ export const SceneFourInsideOfCanvas = ({ images }) => {
                         return prev - 1;
                     } else {
                         clearInterval(intervalId);
-                        jumpToTheNextScene(getNextScene());
+                        navigate(getNextSceneURI(getNextScene()));
                         return 0;
                     }
                 });
@@ -187,7 +190,7 @@ export const SceneFourInsideOfCanvas = ({ images }) => {
                         />
                     </mesh>
                 </group>
-                <Environment preset="city" background={false} /></>}
+                <Environment preset="city" background={false} resolution={512} /></>}
 
             {showComponents.loading && <>
                 <color attach='background' args={["white"]} />

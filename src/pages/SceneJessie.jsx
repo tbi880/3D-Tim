@@ -171,7 +171,7 @@ function SceneJessie({ startPoint }) {
                         {showComponents.paimon && <AnyModel theatreKey="paimon" modelURL="toJessie/paimon_idle_animation-transformed.glb" sequence={sceneJessieSheet.sequence} unloadPoint={15} onSequencePass={() => { toggleComponentDisplay("paimon") }} position={[0, 0, 0]} rotation={[0, 0, 0]} scale={0.003} />}
                         {showComponents.treasure_one && <AnyModel theatreKey="treasure1" modelURL="toJessie/treasure_chest-transformed.glb" sequence={sceneJessieSheet.sequence} unloadPoint={8.5} onSequencePass={() => { toggleComponentDisplay("treasure_one") }} stopPoints={[15]} position={[0, 0, 0]} rotation={[0, 0, 0]} scale={0.5} clickablePoint={5.5} animationNames={['Armature|A_Open']} animationOnClick={true} animationPlayTimes={1} animationSpeeds={1} />}
                         <SingleLoadManager sequence={sceneJessieSheet.sequence} loadPoint={7} onSequencePass={() => { toggleComponentDisplay("textTitle_one") }} />
-                        {showComponents.textTitle_one && <TextTitle text={"生日快乐，小Jessie！"} fontURL={"fonts/ZCOOL KuaiLe_Regular.json"} size={1} sequence={sceneJessieSheet.sequence} onSequencePass={() => { toggleComponentDisplay("textTitle_one") }} unloadPoint={15} />}
+                        {showComponents.textTitle_one && <TextTitle text={"生日快乐，小Jessie！"} fontURL={"fonts/Orbitron_Bold.json"} size={1} sequence={sceneJessieSheet.sequence} onSequencePass={() => { toggleComponentDisplay("textTitle_one") }} unloadPoint={15} />}
                         <SingleLoadManager sequence={sceneJessieSheet.sequence} loadPoint={5.5} onSequencePass={() => { toggleComponentDisplay("treasure_two") }} />
                         {showComponents.treasure_two && <AnyModel theatreKey="treasure2" modelURL="toJessie/medieval_wooden_chest-transformed.glb" sequence={sceneJessieSheet.sequence} unloadPoint={18} onSequencePass={() => { toggleComponentDisplay("treasure_two") }} stopPoints={[19.5]} position={[0, 0, 0]} rotation={[0, 0, 0]} scale={0.5} clickablePoint={15} animationNames={["Opening"]} animationOnClick={true} animationPlayTimes={1} animationSpeeds={1} />}
                         <SingleLoadManager sequence={sceneJessieSheet.sequence} loadPoint={15} onSequencePass={() => { toggleComponentDisplay("cup") }} />
@@ -185,8 +185,8 @@ function SceneJessie({ startPoint }) {
                         <SingleLoadManager sequence={sceneJessieSheet.sequence} loadPoint={50} onSequencePass={() => toggleComponentDisplay("fireworks")} />
                         {showComponents.fireworks && <Fireworks />}
                         <SingleLoadManager sequence={sceneJessieSheet.sequence} loadPoint={51} onSequencePass={() => { toggleComponentDisplay("textTitle_birthdayWithValue") }} />
-                        {showComponents.textTitle_birthdayWithValue && <><TextTitle_v2 theatreKey={"birthdayWithValue"} text={endingString1} color={"#FF99FF"} fontURL={"fonts/ZCOOL KuaiLe_Regular.json"} size={1} />
-                            <TextTitle_v2 theatreKey={"birthdayWithValue2"} text={endingString2} color={"#FF99FF"} fontURL={"fonts/ZCOOL KuaiLe_Regular.json"} size={0.8} /></>}
+                        {showComponents.textTitle_birthdayWithValue && <><TextTitle_v2 theatreKey={"birthdayWithValue"} text={endingString1} color={"#FF99FF"} fontURL={"fonts/Orbitron_Bold.json"} size={1} />
+                            <TextTitle_v2 theatreKey={"birthdayWithValue2"} text={endingString2} color={"#FF99FF"} fontURL={"fonts/Orbitron_Bold.json"} size={0.8} /></>}
 
                     </Suspense>
                 </SheetProvider>

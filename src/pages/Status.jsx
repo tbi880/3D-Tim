@@ -1,6 +1,3 @@
-import { useNavigate } from "react-router-dom";
-
-
 let nextScene = sessionStorage.getItem('nextScene') || "sceneOne";
 let nextSceneStartPoint = JSON.parse(sessionStorage.getItem('nextSceneStartPoint')) || 0;
 let engineeringHasBeenAccessed = JSON.parse(localStorage.getItem('engineeringHasBeenAccessed')) || false;
@@ -98,11 +95,14 @@ export function checkStauts() {
     }
 }
 
+// //废弃
+// export function jumpToTheNextScene(nextScene) {
+//     // 重新加载当前页面到映射到下一个场景的新 URI
+//     window.location.href = scene_uri_map[nextScene];
+// }
 
-export function jumpToTheNextScene(nextScene) {
-
-    // 重新加载当前页面到映射到下一个场景的新 URI
-    window.location.href = scene_uri_map[nextScene];
+export function getNextSceneURI(nextScene) {
+    return scene_uri_map[nextScene];
 }
 
 export function getRootAccess() {
@@ -115,8 +115,8 @@ export function setUserDpr(dpr) {
     localStorage.setItem('userDpr', dpr);
 }
 
-export function getUserDpr() {
-    return JSON.parse(localStorage.getItem('userDpr')) ?? 1.5;
+export function getUserDpr(isPortraitPhoneScreen) {
+    return JSON.parse(localStorage.getItem('userDpr')) ?? (isPortraitPhoneScreen ? 1 : 1.5);
 }
 
 export function setUserAntialias(antialias) {

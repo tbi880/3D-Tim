@@ -23,7 +23,7 @@ function ShipStatus({ isPortraitPhoneScreen }) {
         height: isPortraitPhoneScreen
             ? isHide
                 ? "5vh"
-                : "25vh"
+                : "30vh"
             : isHide
                 ? "3.5vh"
                 : "17.5vh",

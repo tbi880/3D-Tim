@@ -298,10 +298,10 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={13} onSequencePass={() => { switchCamera(false) }} />
 
 
-                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={19} onSequencePass={() => {
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={18} onSequencePass={() => {
                     toggleComponentDisplay("chamberInside");
                 }} />
-                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={19.5} onSequencePass={() => {
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={20.5} onSequencePass={() => {
                     toggleComponentDisplay("shipOutside");
                 }} />
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={20} onSequencePass={() => {
@@ -311,10 +311,10 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={25} onSequencePass={() => { toggleComponentDisplay("insideAmbientLight") }} />
                 {showComponents.insideAmbientLight && <ambientLight color={ambientColor} intensity={ambientIntensity} visible={isFirstPersonCamera} />}
 
-                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={20} onSequencePass={() => { toggleComponentDisplay("robot") }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={19.25} onSequencePass={() => { toggleComponentDisplay("robot") }} />
                 {showComponents.robot && <Robot title="Robot" position={[562, 32.75, 0]} rotation={[0, 1.2, 0]} sequence={scene5Sheet.sequence} onSequencePass={() => { toggleComponentDisplay("robot") }} />}
 
-                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={20} onSequencePass={() => { toggleComponentDisplay("viewportStart") }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={19.75} onSequencePass={() => { toggleComponentDisplay("viewportStart") }} />
                 {showComponents.viewportStart && <ViewPort screenTitle="ViewPort" position={[562, 32.75, 0]} rotation={[1.12, 3.21, -0.06]} sequence={scene5Sheet.sequence} stopPoint={23} unloadPoint={21} onSequencePass={() => { toggleComponentDisplay("viewportStart") }} />}
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={22} onSequencePass={() => { toggleComponentDisplay("infoScreenDisplayDamageReport") }} />
                 {showComponents.infoScreenDisplayDamageReport && <InfoScreenDisplay title={"damage report"} content={damageReport} sequence={scene5Sheet.sequence} stopPoints={[23.5, 24, 24.5, 25, 30]} loadPoints={[22, 23, 23.5, 24, 24.5]} unloadPoints={[23.5, 24, 24.5, 25, 25.5]} onSequencePass={() => { toggleComponentDisplay("infoScreenDisplayDamageReport") }} />}

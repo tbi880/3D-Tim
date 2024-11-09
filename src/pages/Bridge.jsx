@@ -1,5 +1,5 @@
 
-import Status, { getNextScene, getNextSceneStartPoint, getUserAntialias, getUserDpr, jumpToTheNextScene } from './Status';
+import Status, { getNextScene, getNextSceneStartPoint, getNextSceneURI, getUserAntialias, getUserDpr } from './Status';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
 import { Controllers, Hands, VRButton, XR } from '@react-three/xr';
@@ -11,12 +11,16 @@ import SceneTwo_mobile from './SceneTwo_mobile';
 import { useContext, useEffect, useState } from 'react';
 import { webGLPreserveDrawingBuffer } from '../Settings';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
+import { useNavigate } from "react-router-dom";
 
 
 
 
 
 function Bridge({ vrSupported, isPortraitPhoneScreen }) {
+    const navigate = useNavigate();
+
+
     const { messageApi } = useContext(GlobalNotificationContext);
     useEffect(() => {
         messageApi(
@@ -28,10 +32,10 @@ function Bridge({ vrSupported, isPortraitPhoneScreen }) {
 
     const [isJumping, setIsJumping] = useState(false);
 
-    function checkThenJumpToTheNextScene() {
+    function checkThenjumpToTheNextScene() {
         if (!isJumping) {
             setIsJumping(true);
-            jumpToTheNextScene(getNextScene());
+            navigate(getNextSceneURI(getNextScene()));
         }
     }
 
@@ -61,7 +65,7 @@ function Bridge({ vrSupported, isPortraitPhoneScreen }) {
                             <Controllers rayMaterial={{ color: '#99FFFF' }} />
                             <Hands />
                             <SheetProvider sheet={scene2Sheet}>
-                                <SceneTwo startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoints={[38, 72, 96]} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
+                                <SceneTwo startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoints={[38, 72, 96]} onSequencePass={() => checkThenjumpToTheNextScene()} /></SheetProvider>
 
                         </XR>
 
@@ -74,7 +78,7 @@ function Bridge({ vrSupported, isPortraitPhoneScreen }) {
                 {!vrSupported &&
                     <Canvas gl={{ antialias: getUserAntialias(), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent">
                         <SheetProvider sheet={scene2Sheet}>
-                            <SceneTwo_mobile startPoint={getNextSceneStartPoint()} unloadPoints={[38, 72, 96]} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
+                            <SceneTwo_mobile startPoint={getNextSceneStartPoint()} unloadPoints={[38, 72, 96]} onSequencePass={() => checkThenjumpToTheNextScene()} /></SheetProvider>
 
                     </Canvas>}
 
