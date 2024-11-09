@@ -59,6 +59,12 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
         setIsFirstPersonCamera(isFirstPerson);
     }, []);
 
+    const finishLoading = useCallback(() => {
+        scene5Project.ready.then(() => {
+            scene5Sheet.sequence.position = 0;
+            scene5Sheet.sequence.play({ range: [0, 20] });
+        });
+    }, []);
 
     const timeoutRef = useRef(null);
 
@@ -210,12 +216,6 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
         setShowComponents(initialShowComponents);
     }, []);
 
-    useEffect(() => {
-        scene5Project.ready.then(() => {
-            scene5Sheet.sequence.position = 0;
-            scene5Sheet.sequence.play({ range: [0, 20] });
-        });
-    }, []);
 
     // Create a generic toggle function
     const toggleComponentDisplay = useCallback((componentKey) => {
@@ -247,9 +247,9 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
     return (
         <>
             <PreloadAssets />
-            <Suspense fallback={<WaitingForMoreModels />}>
+            <Suspense fallback={<WaitingForMoreModels onFinished={() => { finishLoading(); }} />}>
 
-                {audioElement && <StreamMusic audioElement={audioElement} sequence={scene5Sheet.sequence} startPoint={0.02} maxVolume={1} />}
+                {audioElement && <StreamMusic audioElement={audioElement} sequence={scene5Sheet.sequence} startPoint={3} maxVolume={1} />}
                 <Galaxy />
                 <StrangerStar />
                 {showComponents.shipOutside && <ShipOutside sequence={scene5Sheet.sequence} unloadPoint={20} onSequencePass={() => { toggleComponentDisplay("shipOutside") }} />}
@@ -297,9 +297,14 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={13} onSequencePass={() => { switchCamera(false) }} />
 
-                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={20} onSequencePass={() => {
+
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={19} onSequencePass={() => {
                     toggleComponentDisplay("chamberInside");
+                }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={19.5} onSequencePass={() => {
                     toggleComponentDisplay("shipOutside");
+                }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={20} onSequencePass={() => {
                     switchCamera(true);
                 }} />
 
@@ -509,9 +514,11 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
                     ).then(() => messageApi('success', 'Project Dawn loaded!', 2));
                 }} />
 
-                <SingleLoadManager loadPoint={201} sequence={scene5Sheet.sequence} onSequencePass={() => { toggleComponentDisplay('loadingForTheNextScene'); toggleComponentDisplay("chamberInside"); setWarningFrequency(0); }} />
-                {showComponents.loadingForTheNextScene && <Loading THkey="ForTheNextScene" title="ForTheNextScene" lines={["Connecting ", "to Tim's ", "Project Dawn "]} position={[252, 32.5, -76]} rotation={[0, -6.28, 0]} sequence={scene5Sheet.sequence} unloadPoint={208} onSequencePass={() => toggleComponentDisplay('loadingForTheNextScene')} textTitleVersion={2} />}
-
+                <SingleLoadManager loadPoint={201} sequence={scene5Sheet.sequence} onSequencePass={() => { toggleComponentDisplay('loadingForTheNextScene'); toggleComponentDisplay("chamberInside"); setWarningFrequency(500); }} />
+                {showComponents.loadingForTheNextScene && <Loading THkey="ForTheNextScene" title="ForTheNextScene" lines={["Connecting ", "to Tim's ", "Project Dawn "]} position={[252, 32.5, -76]} rotation={[0, -6.28, 0]} sequence={scene5Sheet.sequence} unloadPoint={208} onSequencePass={() => { toggleComponentDisplay('loadingForTheNextScene'); }} textTitleVersion={2} />}
+                <SingleLoadManager loadPoint={207} sequence={scene5Sheet.sequence} onSequencePass={() => {
+                    messageApi("info", "The next scene is currently under development... That's all for now!", 10);
+                }} />
 
 
             </Suspense>

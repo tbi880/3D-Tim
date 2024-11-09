@@ -1,10 +1,11 @@
 import { useContext, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTimes, faCheck } from '@fortawesome/free-solid-svg-icons';
+import { faCheck } from '@fortawesome/free-solid-svg-icons';
 import { sendDistressSignalContext } from '../sharedContexts/SendDistressSignalProvider';
 import { scene5Sheet } from '../pages/SceneManager';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import '../Tools/css/general.css';
+import { backendURL } from '../Settings';
 
 function DistressSignalForm({ isPortraitPhoneScreen }) {
     const [name, setName] = useState('');
@@ -37,7 +38,7 @@ function DistressSignalForm({ isPortraitPhoneScreen }) {
         setIsSubmitting(true);
 
         try {
-            const response = await fetch('https://jsonplaceholder.typicode.com/posts', {
+            const response = await fetch(backendURL + 'email_contacts', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -51,7 +52,7 @@ function DistressSignalForm({ isPortraitPhoneScreen }) {
                 mode: 'cors',
             });
 
-            if (response.status === 201) {
+            if (response.status === 204) {
                 messageApi(
                     'success',
                     'Your distress signal has been sent successfully! Please check your mailbox later!',
@@ -86,7 +87,7 @@ function DistressSignalForm({ isPortraitPhoneScreen }) {
         width: '100%',
         height: isPortraitPhoneScreen ? '100%' : '70%',
         backgroundColor: isPortraitPhoneScreen ? 'black' : 'rgba(0, 0, 0, 0.7)',
-        zIndex: 9999,
+        zIndex: 999,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -146,9 +147,6 @@ function DistressSignalForm({ isPortraitPhoneScreen }) {
                     </div>
 
                     <div className="button-container">
-                        <button className="button close-button" onClick={() => { showSendDistressSignalForm ? setShowSendDistressSignalForm(false) : null; handleAfterPlay(); }}>
-                            <FontAwesomeIcon icon={faTimes} /> Close
-                        </button>
                         <button className={`button submit-button ${isSubmitting ? 'submit-button-submitting' : ''}`} onClick={handleSubmit} disabled={isSubmitting}>
                             {!isSubmitting && <FontAwesomeIcon icon={faCheck} />}
                             {isSubmitting ? ' Sending...' : ' Send'}

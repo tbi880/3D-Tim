@@ -1,3 +1,6 @@
+import { useNavigate } from "react-router-dom";
+
+
 let nextScene = sessionStorage.getItem('nextScene') || "sceneOne";
 let nextSceneStartPoint = JSON.parse(sessionStorage.getItem('nextSceneStartPoint')) || 0;
 let engineeringHasBeenAccessed = JSON.parse(localStorage.getItem('engineeringHasBeenAccessed')) || false;
@@ -97,12 +100,9 @@ export function checkStauts() {
 
 
 export function jumpToTheNextScene(nextScene) {
-    const targetUrl = scene_uri_map[nextScene];
-    if (window.location.pathname !== targetUrl) {
-        window.location.href = targetUrl;
-    }
-    // // 重新加载当前页面到映射到下一个场景的新 URI
-    // window.location.href = scene_uri_map[nextScene];
+
+    // 重新加载当前页面到映射到下一个场景的新 URI
+    window.location.href = scene_uri_map[nextScene];
 }
 
 export function getRootAccess() {

@@ -5,6 +5,7 @@ import { authorizationCheckContext } from '../sharedContexts/AuthorizationCheckP
 import { scene5Sheet } from '../pages/SceneManager';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import '../Tools/css/general.css';
+import { backendURL } from '../Settings';
 
 function AuthorizationCheckForm({ isPortraitPhoneScreen }) {
     const [verificationCode, setVerificationCode] = useState('');
@@ -31,7 +32,7 @@ function AuthorizationCheckForm({ isPortraitPhoneScreen }) {
         setIsSubmitting(true);
 
         try {
-            const response = await fetch('https://run.mocky.io/v3/c86a6dd1-ed5d-42a1-9b64-fd5971bb879b', {
+            const response = await fetch(backendURL + 'email_contacts/verify', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -45,9 +46,10 @@ function AuthorizationCheckForm({ isPortraitPhoneScreen }) {
             if (response.status === 200) {
                 const data = await response.json();
                 if (data.status === 'success') {
+                    const name = data.name;
                     messageApi(
                         'success',
-                        'Captain, you have successfully verified your identity!',
+                        'Commander ' + name + ', you have successfully verified your identity!',
                         3
                     );
                     if (showAuthorizationCheckForm) {
@@ -89,7 +91,7 @@ function AuthorizationCheckForm({ isPortraitPhoneScreen }) {
         width: '100%',
         height: isPortraitPhoneScreen ? '100%' : '70%',
         backgroundColor: isPortraitPhoneScreen ? 'black' : 'rgba(0, 0, 0, 0.7)',
-        zIndex: 9999,
+        zIndex: 999,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',

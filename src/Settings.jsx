@@ -8,7 +8,9 @@ const url = stageOfENV === "prod" ? "https://www.bty.co.nz" : "http://localhost:
 
 const bucketURL = stageOfENV === "prod" ? "https://f005.backblazeb2.com/file/tim3Dweb/" : "/assets/";
 
+const backendURL = stageOfENV === "prod" ? "https://api.bty.co.nz/" : "http://localhost:5130/";
+
 const webGLPreserveDrawingBuffer = stageOfENV === "prod" ? false : true;
 
 // Export the settings
-export { stageOfENV, url, bucketURL, webGLPreserveDrawingBuffer };
+export { stageOfENV, url, bucketURL, backendURL, webGLPreserveDrawingBuffer };

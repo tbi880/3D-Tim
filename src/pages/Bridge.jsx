@@ -19,7 +19,6 @@ import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationP
 function Bridge({ vrSupported, isPortraitPhoneScreen }) {
     const { messageApi } = useContext(GlobalNotificationContext);
     useEffect(() => {
-
         messageApi(
             'success',
             "Welcome - Let's go to the main bridge. Click on the viewport to start",

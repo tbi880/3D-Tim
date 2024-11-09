@@ -6,10 +6,19 @@ const codelineOne = "if (userHasInternetHoweverItIsNotFast){";
 const codelineTwo = "    return ThisPageThatYouAreLookingAtRightNow;";
 const codelineThree = "}";
 
-function WaitingForMoreModels({ textColor = "black" }) {
+function WaitingForMoreModels({ textColor = "black", onFinished }) {
     const { progress: actualProgress } = useProgress(); // 实际加载进度
     const [simulatedProgress, setSimulatedProgress] = useState(0); // 模拟的进度
     const [showNotification, setShowNotification] = useState(false);
+
+    useEffect(() => {
+
+        return () => {
+            if (onFinished) {
+                onFinished();
+            }
+        }
+    }, [onFinished]);
 
     // 使用 useRef 存储计时器引用
     const timer1Ref = useRef(null);
