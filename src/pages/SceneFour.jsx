@@ -1,16 +1,16 @@
 import { engineeringAccess, getNextScene, getNextSceneURI, getUserAntialias, getUserDpr, setNextScene, setNextSceneStartPoint } from './Status'
 import * as THREE from 'three'
-import { useContext, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { useCursor, MeshReflectorMaterial, Image, Text, Environment, } from '@react-three/drei'
 import { useRoute, useLocation } from 'wouter'
 import { easing } from 'maath'
 import getUuid from 'uuid-by-string'
 import { Suspense } from 'react'
-import WaitingForMoreModels from './WaitingForMoreModels';
 import { useCallback } from 'react'
 import AnyModel from '../modelComponents/AnyModel'
 import { useNavigate } from "react-router-dom";
+import Loader from './Loader'
 
 
 const GOLDENRATIO = 1.61803398875
@@ -99,7 +99,7 @@ export const SceneFourInsideOfCanvas = ({ images }) => {
 
     return (
 
-        <Suspense fallback={<WaitingForMoreModels />}>
+        <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["Now you'll see some of my previous work", "treat it as a museum, a gallery", "Check them all, then I will bring you back with half of the access to my command chamber."]} />}>
             <camera position={startPosition} />
             <Text
                 position={[0, -0.4, 3.75]}

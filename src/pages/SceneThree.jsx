@@ -1,7 +1,6 @@
 import { shipHangerAccess } from './Status';
 import Technology from '../modelComponents/technology';
 import Tunnel from '../modelComponents/Tunnel';
-import WaitingForMoreModels from './WaitingForMoreModels';
 import Iphone14pro from '../modelComponents/Iphone14pro';
 import ProgrammingOffice from '../modelComponents/ProgrammingOffice';
 import Galaxy from '../modelComponents/Galaxy';
@@ -24,6 +23,7 @@ import { types } from '@theatre/core';
 import { scene3Project } from './SceneManager';
 import { useFrame } from '@react-three/fiber';
 import { useXR } from '@react-three/xr';
+import Loader from './Loader';
 
 function SceneThree({ startPoint, unloadPoint, onSequencePass, isVRSupported }) {
     const { player, isPresenting } = useXR(); // This gives us access to the VR player context
@@ -186,7 +186,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isVRSupported }) 
             {/* <Canvas gl={{ preserveDrawingBuffer: true }} >
                 <SheetProvider sheet={scene1Sheet}> */}
             <PreloadAssets />
-            <Suspense fallback={<WaitingForMoreModels />}>
+            <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["Now you'll see some of my stories during my tech journey", "You can click on the viewport after the loading is finished", "You will be ported back to the previous page to see the other options after viewing this", "or you can download my resume as PDF"]} />}>
 
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene3Sheet.sequence} startPoint={0.02} maxVolume={1} />}
 

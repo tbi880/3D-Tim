@@ -1,7 +1,6 @@
 import { Html, useProgress } from '@react-three/drei';
 import { useEffect, useState } from 'react';
 import JessiePreAlert from '../modelComponents/JessiePreAlert';
-import { Notification } from './Loader';
 
 const codelineOne = "耐心等待哦"
 const codelineTwo = "嘻嘻嘻"
@@ -54,42 +53,6 @@ function WaitingJessie() {
         }
     }, [simulatedProgress, actualProgress]);
 
-    const [showNotification, setShowNotification] = useState(false);
-
-    useEffect(() => {
-        let timer;
-        const checkProgress = () => {
-            if (simulatedProgress === actualProgress) {
-                timer = setTimeout(() => {
-                    if (simulatedProgress === actualProgress) {
-                        setShowNotification(true);
-                    }
-                }, 7000);
-                timer = setTimeout(() => {
-                    if (simulatedProgress === actualProgress) {
-                        window.location.reload();
-                    } else {
-                        setShowNotification(false);
-                    }
-                }, 17000); // 10秒后检查进度是否更新
-            }
-        };
-
-        checkProgress();
-
-        window.addEventListener('online', checkProgress);
-        window.addEventListener('offline', () => {
-            window.location.reload();
-        });
-
-        return () => {
-            clearTimeout(timer);
-            window.removeEventListener('online', checkProgress);
-            window.removeEventListener('offline', () => {
-                window.location.reload();
-            });
-        };
-    }, [simulatedProgress, actualProgress]);
 
     return (
         <Html center>
@@ -115,7 +78,6 @@ function WaitingJessie() {
                 <h1 style={{ fontSize: '4vw', padding: '10px' }}>{codelineSeven}</h1>
                 <h1 style={{ fontSize: '4vw', padding: '10px' }}>{codelineEight}</h1>
                 <div className="loading" style={{ fontSize: '5vw' }}>{Math.ceil(simulatedProgress)} % loaded</div>
-                <Notification message="Your internet is tooooo slow!!! Please check your network connection and try again. The page will reload in 10 seconds if the progress remains unchanged." show={showNotification} />
 
             </div>
             {!isCrawler && <JessiePreAlert />}

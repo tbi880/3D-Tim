@@ -1,48 +1,26 @@
 import { Html, useProgress } from '@react-three/drei';
-import { useEffect, useState, useRef } from 'react';
-import "../Tools/css/notification.css";
+import { useEffect, useState, useRef, useContext } from 'react';
+import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
+import { Progress } from 'antd';
 
-export function Notification({ message, show }) {
-    return (
-        <div className={`notification ${show ? 'show' : ''}`}>
-            {message}
-        </div>
-    );
-}
+function Loader({ isIntroNeeded = true, extraContent, onFinished }) {
 
-function Loader() {
-    const stories = [
-        "In the distant future,", "humanity has mastered the technology of interstellar travel,", "but the universe remains full of unknowns...",
-        "You are about to awaken on a starship that has been voyaging for centuries,", "time has passed so long that Captain Tim Bi has been gone forever,",
-        "You don't remember anything before your hibernation,", "only that you designed this starship, familiar with every corner of it,", "and vaguely remember that the destination is humanity's new home...",
-        "Suddenly, an alarm sound and intense vibrations alert you to the severity of the situation,", "you are unsure if this centuries-old vessel can withstand this sudden 'surprise'",
-        "You must awaken quickly,", "check the extent of the damage to the ship,", "gain the AI's trust to get authorized, thus changing the course.", "The lives of all surviving crew members are in your hands now"
-    ];
-    const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
     const { progress: actualProgress } = useProgress(); // 实际加载进度
     const [simulatedProgress, setSimulatedProgress] = useState(0); // 模拟的进度
+    const { messageApi } = useContext(GlobalNotificationContext);
 
-    // 使用 useRef 存储计时器引用
-    const storyTimerRef = useRef(null);
-    const timer1Ref = useRef(null);
-    const timer2Ref = useRef(null);
+    const isMobile = window.innerWidth <= 768; // 判断是否为移动端
 
     useEffect(() => {
-        // 故事增加逻辑
-        storyTimerRef.current = setInterval(() => {
-            setCurrentStoryIndex(prevIndex => {
-                if (prevIndex < stories.length - 1) {
-                    return prevIndex + 1;
-                } else {
-                    // 清除计时器
-                    clearInterval(storyTimerRef.current);
-                    return prevIndex;
-                }
-            });
-        }, 500);
+        return () => {
+            if (onFinished) {
+                onFinished();
+            }
+        }
+    }, [onFinished]);
 
-        return () => clearInterval(storyTimerRef.current);
-    }, []);
+    const timer1Ref = useRef(null);
+    const timer2Ref = useRef(null);
 
     useEffect(() => {
         // 模拟加载进度
@@ -56,24 +34,24 @@ function Loader() {
         }
     }, [simulatedProgress, actualProgress]);
 
-    const [showNotification, setShowNotification] = useState(false);
-
     useEffect(() => {
         const checkProgress = () => {
             if (simulatedProgress === actualProgress) {
                 timer1Ref.current = setTimeout(() => {
                     if (simulatedProgress === actualProgress) {
-                        setShowNotification(true);
+                        messageApi(
+                            'warning',
+                            "Your internet is too slow! Please check your network connection and try again. The page will reload in 10 seconds if the progress remains unchanged.",
+                            8,
+                        )
                     }
-                }, 7000);
+                }, 15000);
 
                 timer2Ref.current = setTimeout(() => {
                     if (simulatedProgress === actualProgress) {
                         window.location.reload();
-                    } else {
-                        setShowNotification(false);
                     }
-                }, 17000); // 弹窗后10秒后检查进度是否更新
+                }, 25000); // 弹窗后10秒后检查进度是否更新
             }
         };
 
@@ -100,23 +78,59 @@ function Loader() {
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '100vw',
+                width: isMobile ? '80vw' : '60vw', // 电脑端更窄
+                margin: '0 auto',
                 padding: '10px',
                 color: 'black',
             }}>
-                <h1 style={{ fontSize: '4vw' }}>Welcome to Tim Bi's world.</h1>
-                <h2 style={{ fontSize: '3vw' }}>Ready for a 3D ride in my universe?</h2>
-                <h2 style={{ fontSize: '3vw', padding: '10px' }}>I think you would know me very well after you finish this "adventure"</h2>
-                <h2 style={{ fontSize: '3vw', padding: '10px' }}>Please be patient. The first time access would take approximately 20 seconds.</h2>
-                <div className="loading" style={{ fontSize: '5vw' }}>{Math.ceil(simulatedProgress)} % loaded</div>
-                <div style={{ padding: '10px' }}>
-                    {stories.slice(0, currentStoryIndex + 1).map((story, index) => (
-                        <p key={index} className="story" style={{ animation: `fadeIn 2s ease-out`, fontSize: '2.5vw' }}>{story}</p>
-                    ))}
+                <h1 style={{
+                    fontSize: isMobile ? '5vw' : '3vw', // 电脑端字体更小
+                    marginBottom: isMobile ? '10vw' : '5vw'
+                }}>
+                    Welcome to Tim Bi's world.
+                </h1>
+                {isIntroNeeded && (
+                    <>
+                        <h2 style={{ fontSize: isMobile ? '3vw' : '1.5vw', padding: '10px' }}>Ready for a 3D ride in my universe?</h2>
+                        <h2 style={{ fontSize: isMobile ? '3vw' : '1.5vw', padding: '10px' }}>I think you would know me very well after you finish this "space adventure".</h2>
+                        <h2 style={{ fontSize: isMobile ? '3vw' : '1.5vw', padding: '10px' }}>Please be patient. The first time access would take approximately 20 seconds.</h2>
+                    </>
+                )}
+                {extraContent && (
+                    <>
+                        {extraContent.map((text, index) => (
+                            <h2 key={index} style={{ fontSize: isMobile ? '3vw' : '1.5vw', padding: '10px' }}>{text}</h2>
+                        ))}
+                    </>
+                )}
+            </div>
+            <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                width: isMobile ? '80%' : '60%', // 电脑端更窄
+                margin: '0 auto',
+                paddingTop: '3vh',
+                marginTop: isMobile ? '5vh' : '2vh',
+            }}>
+                <div className="loading" style={{
+                    fontSize: isMobile ? '5vw' : '2vw', // 电脑端字体更小
+                    color: 'black',
+                    textAlign: 'center'
+                }}>
+                    {Math.ceil(simulatedProgress)} % loaded
                 </div>
-                <Notification
-                    message="Your internet is too slow! Please check your network connection and try again. The page will reload in 10 seconds if the progress remains unchanged."
-                    show={showNotification}
+                <Progress
+                    percent={simulatedProgress}
+                    status="active"
+                    strokeColor={{
+                        from: '#108ee9',
+                        to: '#add8e6',
+                    }}
+                    percentPosition={{
+                        align: 'center',
+                        type: 'outer',
+                    }}
                 />
             </div>
         </Html>

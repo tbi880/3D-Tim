@@ -1,5 +1,4 @@
 import { getEngineeringHasBeenAccessed, getRootAccess, getShipHangerHasBeenAccessed } from './Status';
-import WaitingForMoreModels from './WaitingForMoreModels';
 import StrangerStar from '../modelComponents/StrangerStar';
 import ShipInside from '../modelComponents/ShipInside';
 import Galaxy from '../modelComponents/Galaxy';
@@ -19,6 +18,7 @@ import Loading from '../modelComponents/Loading';
 import { Environment, useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useXR, useXREvent } from '@react-three/xr';
+import Loader from './Loader';
 
 
 // const audioResourceForScene2 = createAudioLoader(bucketURL + 'music/bgm2.mp3');
@@ -151,7 +151,7 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isVRSupported }) {
 
 
             <PreloadAssets />
-            <Suspense fallback={<WaitingForMoreModels />}>
+            <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["You will see some options", "Where you want to go depends on what you want to know about me", "My journey in tech or my previous work experience.", "or you want to meet me in person in my command chamber"]} />}>
 
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene2Sheet.sequence} startPoint={0.5} lowVolumePoints={[1]} highVolumePoints={[3]} maxVolume={0.75} />}
                 {/* <AsyncMusic audioBuffer={audioBuffer} sequence={scene2Sheet.sequence} startPoint={0.5} lowVolumePoints={[1]} highVolumePoints={[3]} maxVolume={0.75} /> */}

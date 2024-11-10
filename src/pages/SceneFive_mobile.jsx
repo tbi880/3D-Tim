@@ -1,4 +1,3 @@
-import WaitingForMoreModels from './WaitingForMoreModels';
 import Galaxy from '../modelComponents/Galaxy';
 import ShipOutside from '../modelComponents/ShipOutside';
 import StreamMusic from '../modelComponents/StreamMusic';
@@ -26,6 +25,7 @@ import { authorizationCheckContext } from '../sharedContexts/AuthorizationCheckP
 import { searchForEmergencyPlansContext } from '../sharedContexts/SearchForEmergencyPlansProvider';
 import { headerSubTitleContext } from '../sharedContexts/HeaderSubTitleProvider';
 import Loading from '../modelComponents/Loading';
+import Loader from './Loader';
 
 
 function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
@@ -247,7 +247,7 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
     return (
         <>
             <PreloadAssets />
-            <Suspense fallback={<WaitingForMoreModels onFinished={() => { finishLoading(); }} />}>
+            <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["You made it!", "You are about to enter the command chamber", "You are about to experience some of my technical skills of backend development.", "Which involve .Net, message queue(RabbitMQ), async programming...", "Anyway, you'll see."]} onFinished={() => { finishLoading(); }} />}>
 
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene5Sheet.sequence} startPoint={3} maxVolume={1} />}
                 <Galaxy />
