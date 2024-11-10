@@ -281,14 +281,14 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={10} onSequencePass={() => { switchCamera(true) }} />
 
                 {showComponents.preloadEnv && <Environment
-                    preset='studio'
+                    files={bucketURL + 'pic/studio.hdr'}
                     resolution={4}
                     background={false}
                     intensity={3.5}
                     environmentIntensity={1}
                 />}
                 {showComponents.chamberInside && isFirstPersonCamera && <Environment
-                    preset='studio'
+                    files={bucketURL + 'pic/studio.hdr'}
                     resolution={4}
                     background={false}
                     intensity={3.5}

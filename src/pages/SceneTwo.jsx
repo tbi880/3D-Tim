@@ -165,7 +165,7 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isVRSupported }) {
                 <StrangerStar />
 
                 <Environment
-                    preset="warehouse"
+                    files={bucketURL + 'pic/warehouse.hdr'}
                     resolution={1}
                     intensity={2}
                     backgroundIntensity={0}

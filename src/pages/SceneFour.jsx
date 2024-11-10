@@ -11,6 +11,7 @@ import { useCallback } from 'react'
 import AnyModel from '../modelComponents/AnyModel'
 import { useNavigate } from "react-router-dom";
 import Loader from './Loader'
+import { bucketURL } from '../Settings'
 
 
 const GOLDENRATIO = 1.61803398875
@@ -190,7 +191,7 @@ export const SceneFourInsideOfCanvas = ({ images }) => {
                         />
                     </mesh>
                 </group>
-                <Environment preset="city" background={false} resolution={512} /></>}
+                <Environment files={bucketURL + 'pic/city.hdr'} background={false} resolution={512} /></>}
 
             {showComponents.loading && <>
                 <color attach='background' args={["white"]} />

@@ -125,7 +125,7 @@ function SceneTwo_mobile({ startPoint, unloadPoints, onSequencePass }) {
                 <StrangerStar />
 
                 <Environment
-                    preset="warehouse"
+                    files={bucketURL + 'pic/warehouse.hdr'}
                     resolution={1}
                     intensity={2}
                     backgroundIntensity={0}
