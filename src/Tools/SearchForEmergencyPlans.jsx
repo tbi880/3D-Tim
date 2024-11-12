@@ -29,7 +29,7 @@ function SearchForEmergencyPlans({ isPortraitPhoneScreen }) {
         width: '100%',
         height: isPortraitPhoneScreen ? '100%' : '70%',
         backgroundColor: isPortraitPhoneScreen ? 'black' : 'rgba(0, 0, 0, 0.7)',
-        zIndex: 9999,
+        zIndex: 888,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
