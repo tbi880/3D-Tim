@@ -90,5 +90,5 @@ function ViewPort({ screenTitle, position, rotation, sequence, stopPoint, unload
     );
 }
 
-useGLTF.preload(bucketURL + "viewport.glb");
+// useGLTF.preload(bucketURL + "viewport.glb");
 export default ViewPort;

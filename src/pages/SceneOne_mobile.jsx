@@ -94,7 +94,7 @@ function SceneOne_mobile({ unloadPoint, onSequencePass }) {
             <PreloadAssets />
             <Suspense fallback={<Loader />}>
 
-                {audioElement && <StreamMusic audioElement={audioElement} sequence={scene1Sheet.sequence} startPoint={0.07} lowVolumePoints={[30]} highVolumePoints={[0.034, 33]} maxVolume={1} />}
+                {audioElement && <StreamMusic audioElement={audioElement} sequence={scene1Sheet.sequence} startPoint={0.07} />}
                 <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault position={[600, 20, -61]} rotation={[0, 0.33, 0]} fov={75} near={0.01} />
                 <ambientLight intensity={5} />
 
