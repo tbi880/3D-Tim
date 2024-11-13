@@ -16,10 +16,10 @@ function Robots({ title, position, rotation, sequence, unloadPoint, onSequencePa
     const animation1 = useAnimations(robotModel.animations, robotModel.scene)
     const action1 = animation1.actions[animation]
 
-    useFrame(() => {
+    useEffect(() => {
         action1.play()
         action1.timeScale = 1;
-    })
+    }, [])
 
     useEffect(() => {
         // 组件卸载时的清理逻辑

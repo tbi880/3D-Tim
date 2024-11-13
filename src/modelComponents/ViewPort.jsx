@@ -29,10 +29,10 @@ function ViewPort({ screenTitle, position, rotation, sequence, stopPoint, unload
         });
     }, [ViewPortModel.scene, opacity]);
 
-    useFrame(() => {
+    useEffect(() => {
         const action = actions[animationNames[0]];
         action.play();
-    });
+    }, []);
 
     useFrame(() => {
         // 当sequence.position超过结束点时触发

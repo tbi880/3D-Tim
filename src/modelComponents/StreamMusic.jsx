@@ -8,7 +8,7 @@ function StreamMusic({ audioElement, sequence, startPoint, lowVolumePoints, high
     const gainNodeRef = useRef(null);
     const sourceNodeRef = useRef(null); // 用于连接<audio>元素与AudioContext
     const isPlayingRef = useRef(false);
-    const [volumeTransition, setVolumeTransition] = useState('idle');
+    // const [volumeTransition, setVolumeTransition] = useState('idle');
 
     useEffect(() => {
         if (!audioElement) {
@@ -64,8 +64,8 @@ function StreamMusic({ audioElement, sequence, startPoint, lowVolumePoints, high
             return;
         }
 
-        const currentTime = sequence.position; // 假设sequence.position反映了当前的播放时间
-        const fadeDuration = 2; // 渐变持续时间（秒）
+        // const currentTime = sequence.position; // 假设sequence.position反映了当前的播放时间
+        // const fadeDuration = 2; // 渐变持续时间（秒）
 
         if (!isPlayingRef.current && sequence.position >= startPoint) {
             if (audioContextRef.current.state !== 'running') {
@@ -86,18 +86,18 @@ function StreamMusic({ audioElement, sequence, startPoint, lowVolumePoints, high
             });
         }
 
-        if (lowVolumePoints && highVolumePoints) {
-            const shouldLowerVolume = lowVolumePoints.some(point => Math.abs(currentTime - point) < 0.1);
-            const shouldRaiseVolume = highVolumePoints.some(point => Math.abs(currentTime - point) < 0.1);
+        // if (lowVolumePoints && highVolumePoints) {
+        //     const shouldLowerVolume = lowVolumePoints.some(point => Math.abs(currentTime - point) < 0.1);
+        //     const shouldRaiseVolume = highVolumePoints.some(point => Math.abs(currentTime - point) < 0.1);
 
-            if (shouldLowerVolume && volumeTransition !== 'down') {
-                gainNodeRef.current.gain.linearRampToValueAtTime(0.2, audioContextRef.current.currentTime + fadeDuration);
-                setVolumeTransition('down');
-            } else if (shouldRaiseVolume && volumeTransition !== 'up') {
-                gainNodeRef.current.gain.linearRampToValueAtTime(maxVolume, audioContextRef.current.currentTime + fadeDuration);
-                setVolumeTransition('up');
-            }
-        }
+        //     if (shouldLowerVolume && volumeTransition !== 'down') {
+        //         gainNodeRef.current.gain.linearRampToValueAtTime(0.2, audioContextRef.current.currentTime + fadeDuration);
+        //         setVolumeTransition('down');
+        //     } else if (shouldRaiseVolume && volumeTransition !== 'up') {
+        //         gainNodeRef.current.gain.linearRampToValueAtTime(maxVolume, audioContextRef.current.currentTime + fadeDuration);
+        //         setVolumeTransition('up');
+        //     }
+        // }
     });
 
     return null;

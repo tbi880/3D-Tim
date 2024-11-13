@@ -15,7 +15,7 @@ function Tunnel({ unloadPoint, sequence, onSequencePass }) {
     const animation1 = useAnimations(tunnelModel.animations, tunnelModel.scene)
     const action1 = animation1.actions[animationName]
 
-    useFrame(() => {
+    useEffect(() => {
         action1.play()
         action1.timeScale = 1;
     })

@@ -1,7 +1,7 @@
 import { useGLTF, useAnimations } from '@react-three/drei'
-import { useFrame } from '@react-three/fiber'
 import { bucketURL } from '../Settings';
 import { editable as e } from '@theatre/r3f';
+import { useEffect } from 'react';
 
 const animationnames = ["Object_0"]
 
@@ -12,7 +12,7 @@ const Fireworks = () => {
     const animation1 = useAnimations(fireworksModel.animations, fireworksModel.scene)
     const action1 = animation1.actions[animationnames[0]]
 
-    useFrame(() => {
+    useEffect(() => {
         action1.play()
         action1.timeScale = 2;
     })

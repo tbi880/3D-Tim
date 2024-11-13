@@ -1,6 +1,6 @@
 import { useGLTF, useAnimations } from '@react-three/drei'
-import { useFrame } from '@react-three/fiber'
 import { bucketURL } from '../Settings';
+import { useEffect } from 'react';
 
 const animationnames = ["Animation"]
 
@@ -11,7 +11,7 @@ const StrangerStar = () => {
     const animation1 = useAnimations(starModel.animations, starModel.scene)
     const action1 = animation1.actions[animationnames[0]]
 
-    useFrame(() => {
+    useEffect(() => {
         action1.play()
         action1.timeScale = 0.3;
     })

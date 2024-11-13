@@ -208,7 +208,7 @@ function AnyModel(props) {
 
 
 
-    useFrame(() => {
+    useEffect(() => {
         if (!isPlaying) {
             if (props.animationAutoStart) {
                 const action = actions[props.animationNames[0]];
@@ -243,7 +243,7 @@ function AnyModel(props) {
         if (props.sequence && props.sequence.position >= props.unloadPoint) {
             props.onSequencePass(); // 调用从父组件传递的函数来卸载自己
         }
-    });
+    }, [props.animationAutoStart, props.animationNames, props.animationPlayTimes, props.animationSpeeds, props.animationStartPoint, props.sequence, props.unloadPoint, props.onSequencePass, actions, isPlaying, animationIsClicked]);
 
 
 

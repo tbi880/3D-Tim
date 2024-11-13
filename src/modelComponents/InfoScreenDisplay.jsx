@@ -34,9 +34,9 @@ function InfoScreenDisplay({ title, content, sequence, stopPoints = [], loadPoin
     }, [pages.length]);
 
 
-    useFrame(() => {
+    useEffect(() => {
         action1.play();
-    })
+    }, [])
 
     const { camera } = useThree();
     const [positionInFrontOfCamera, setPositionInFrontOfCamera] = useState([0, 0, 0]);

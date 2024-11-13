@@ -1,7 +1,7 @@
 import { bucketURL } from '../Settings';
 import { editable as e } from '@theatre/r3f';
 import { useFrame } from '@react-three/fiber';
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useGLTF, useAnimations, RoundedBox } from '@react-three/drei'
 import TextTitle from './TextTitle';
 import { types } from '@theatre/core';
@@ -18,10 +18,10 @@ export function Loading({ THkey, title, lines, position, rotation, sequence, onS
   const theatreKey = THkey ? THkey : ("Loading: " + title).trim();
   const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
 
-  useFrame(() => {
+  useEffect(() => {
     const action = actions[animationNames[0]];
     action.play();
-  });
+  }, []);
 
   useFrame(() => {
 

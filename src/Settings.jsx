@@ -14,3 +14,4 @@ const webGLPreserveDrawingBuffer = stageOfENV === "prod" ? false : true;
 
 // Export the settings
 export { stageOfENV, url, bucketURL, backendURL, webGLPreserveDrawingBuffer };
+ 

@@ -16,10 +16,10 @@ function ProgrammingFuture({ position, rotation, sequence, unloadPoint, onSequen
     const animation1 = useAnimations(futureModel.animations, futureModel.scene)
     const action1 = animation1.actions[animationName]
 
-    useFrame(() => {
+    useEffect(() => {
         action1.play();
         action1.timeScale = 0.1;
-    })
+    }, [])
 
 
     useEffect(() => {
