@@ -351,7 +351,7 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
                     messageApi(
                         'success',
                         "Welcome to the captain's command chamber!",
-                        2.5,
+                        3,
                     )
                 }} />
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={85} onSequencePass={() => {

@@ -8,7 +8,7 @@ import { SheetProvider } from '@theatre/r3f';
 import { scene3Sheet } from './SceneManager';
 import SceneThree_mobile from './SceneThree_mobile';
 import SceneThree from './SceneThree';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { webGLPreserveDrawingBuffer } from '../Settings';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import { useNavigate } from 'react-router-dom';
@@ -19,9 +19,11 @@ import { useNavigate } from 'react-router-dom';
 
 function ShipHanger({ vrSupported, isPortraitPhoneScreen }) {
     const navigate = useNavigate();
+    const welcomeMessageSent = useRef(false);
     const { messageApi } = useContext(GlobalNotificationContext);
     useEffect(() => {
-
+        if (welcomeMessageSent.current) return;
+        welcomeMessageSent.current = true;
         messageApi(
             'success',
             "Welcome to the ship hanger - Tim's memory of his tech journey! Click on the viewport to access.",

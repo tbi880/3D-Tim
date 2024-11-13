@@ -3,16 +3,19 @@ import Status from "./Status";
 import '../Tools/css/scene4.css';
 import { SceneFour } from "./SceneFour";
 import { bucketURL } from '../Settings';
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useRef } from "react";
 import { GlobalNotificationContext } from "../sharedContexts/GlobalNotificationProvider";
 
 function ShipEngineering(isPortraitPhoneScreen) {
+    const welcomeMessageSent = useRef(false);
     const { messageApi } = useContext(GlobalNotificationContext);
     useEffect(() => {
+        if (welcomeMessageSent.current) return;
+        welcomeMessageSent.current = true;
         messageApi(
             'success',
             "Welcome to the Engineering dept - Tim's workshop gallery!",
-            2.5,
+            3,
         )
     }, [messageApi])
 

@@ -8,7 +8,7 @@ import { SheetProvider } from '@theatre/r3f';
 import SceneTwo from './SceneTwo';
 import { scene2Sheet } from './SceneManager';
 import SceneTwo_mobile from './SceneTwo_mobile';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { webGLPreserveDrawingBuffer } from '../Settings';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import { useNavigate } from "react-router-dom";
@@ -20,9 +20,11 @@ import { useNavigate } from "react-router-dom";
 function Bridge({ vrSupported, isPortraitPhoneScreen }) {
     const navigate = useNavigate();
 
-
+    const welcomeMessageSent = useRef(false);
     const { messageApi } = useContext(GlobalNotificationContext);
     useEffect(() => {
+        if (welcomeMessageSent.current) return;
+        welcomeMessageSent.current = true;
         messageApi(
             'success',
             "Welcome - Let's go to the main bridge. Click on the viewport to start",
