@@ -9,7 +9,7 @@ import { bucketURL } from '../Settings';
 const animationNames = ["CINEMA_4D_Main"];
 
 
-function Arrow({ screenTitle, isNext, position, rotation, sequence, stopPoints }) {
+function Arrow({ screenTitle, isNext, position, rotation, sequence, stopPoints, disableUnnecessaryComponentAnimation }) {
     const arrowModel = useGLTF(bucketURL + "arrow-transformed.glb", true, true);
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const { animations, scene } = arrowModel;
@@ -46,37 +46,18 @@ function Arrow({ screenTitle, isNext, position, rotation, sequence, stopPoints }
     }, [arrowModel.scene, opacity]);
 
 
-    // 假设您已经有了一个AnimationAction实例
-    const action = actions[animationNames[0]];
-    const duration = 1000; // 假设动画时长为5秒
-    const waitTime = 5000; // 等待时间也是5秒
-    const fadeInDuration = 1;
-    // 调用函数开始循环播放动画
-
-    // 创建一个等待函数
-    function wait(time) {
-        return new Promise(resolve => setTimeout(resolve, time));
-    }
-
-
     useEffect(() => {
-        // 定义playAnimationCycle函数
-        const playAnimationCycle = async (action, duration, waitTime, fadeInDuration) => {
-            action.reset().fadeIn(fadeInDuration).play();
-            await wait(duration);
-            action.stop();
-            await wait(waitTime);
-            playAnimationCycle(action, duration, waitTime, fadeInDuration);
-        };
 
-        // 开始循环播放动画
-        playAnimationCycle(action, duration, waitTime, fadeInDuration);
-
+        if (disableUnnecessaryComponentAnimation) {
+            actions[animationNames[0]].stop();
+        } else {
+            actions[animationNames[0]].play();
+        }
         // 当组件卸载时，停止动画循环
         return () => {
-            action.stop();
+            actions[animationNames[0]].stop();
         };
-    }, []); // 确保这个useEffect只执行一次
+    }, [disableUnnecessaryComponentAnimation]); // 确保这个useEffect只执行一次
 
 
     return (
@@ -99,7 +80,7 @@ function Arrow({ screenTitle, isNext, position, rotation, sequence, stopPoints }
             {/* Additional Sphere for easier clicking */}
             <e.mesh theatreKey={theatreKey + " sphereBG"} ref={sphereRef} position={position}
                 scale={[1, 1, 1]}
-                onClick={play} onPointerOver={() => hover(true)} onPointerOut={() => hover(false)}>
+                onClick={play} onPointerOver={(e) => (e.stopPropagation(), hover(true))} onPointerOut={() => hover(false)}>
                 {/* <e.mesh theatreKey={theatreKey + " sphereBG"} ref={sphereRef} position={position}
                 scale={[1, 1, 1]}
                 onClick={play} > */}

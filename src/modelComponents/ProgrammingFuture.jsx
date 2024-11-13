@@ -1,11 +1,12 @@
 import { useGLTF } from "@react-three/drei";
 import * as THREE from 'three';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { bucketURL } from '../Settings';
 import { useFrame } from '@react-three/fiber';
 import { editable as e } from '@theatre/r3f';
 import { types } from '@theatre/core';
 import { useAnimations } from "@react-three/drei";
+import { disableUnnecessaryAnimationContext } from "../sharedContexts/DisableUnnecessaryAnimation";
 
 const animationName = "Take 001";
 
@@ -15,11 +16,19 @@ function ProgrammingFuture({ position, rotation, sequence, unloadPoint, onSequen
     const theatreKey = "future scene";
     const animation1 = useAnimations(futureModel.animations, futureModel.scene)
     const action1 = animation1.actions[animationName]
+    const { disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(disableUnnecessaryAnimationContext);
 
     useEffect(() => {
-        action1.play();
-        action1.timeScale = 0.1;
-    }, [])
+        if (disableUnnecessaryComponentAnimation) {
+            action1.stop();
+        } else {
+            action1.play();
+            action1.timeScale = 0.1;
+        }
+        return () => {
+            action1.stop();
+        };
+    }, [disableUnnecessaryComponentAnimation])
 
 
     useEffect(() => {

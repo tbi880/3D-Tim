@@ -87,7 +87,7 @@ function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
                         <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
 
 
-                            <Canvas gl={{ antialias: getUserAntialias(), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent">
+                            <Canvas gl={{ antialias: getUserAntialias(isPortraitPhoneScreen), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent">
                                 <SheetProvider sheet={scene5Sheet}>
                                     <SceneFive_mobile startPoint={getNextSceneStartPoint()} unloadPoint={64} onSequencePass={() => checkThenjumpToTheNextScene()} /></SheetProvider>
 

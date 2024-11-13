@@ -1,15 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCog, faCheck, faQuestionCircle } from '@fortawesome/free-solid-svg-icons';
 import { message } from 'antd';
-import { getUserAntialias, getUserDpr, setUserAntialias, setUserDpr } from '../pages/Status';
+import { getUserAntialias, getUserDpr, getUserDisableUnnecessaryComponentAnimation, setUserAntialias, setUserDpr, setUserDisableUnnecessaryComponentAnimation } from '../pages/Status';
+import { disableUnnecessaryAnimationContext } from '../sharedContexts/DisableUnnecessaryAnimation';
 
 function GraphicSetting({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
     const [showSettings, setShowSettings] = useState(false);
     const [dpr, setDpr] = useState(() => getUserDpr() ?? (isPortraitPhoneScreen ? 1 : 1.5));
-    const [antialias, setAntialias] = useState(() => getUserAntialias() ?? true);
+    const [antialias, setAntialias] = useState(() => getUserAntialias() ?? (isPortraitPhoneScreen ? false : true));
     const [tooltip, setTooltip] = useState({ visible: false, content: '', x: 0, y: 0 });
     const [messageApi, contextHolder] = message.useMessage();
+    const { disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(disableUnnecessaryAnimationContext);
+
+
 
     const toggleSettings = () => {
         setShowSettings(!showSettings);
@@ -27,6 +31,8 @@ function GraphicSetting({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
             setUserAntialias(false);
             setDpr(1);
             setUserDpr(1);
+            setDisableUnnecessaryComponentAnimation(true);
+            setUserDisableUnnecessaryComponentAnimation(true);
         }
     }, [isPortraitPhoneScreen]);
 
@@ -46,6 +52,12 @@ function GraphicSetting({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
         const newValue = !antialias;
         setAntialias(newValue);
         setUserAntialias(newValue);
+    };
+
+    const handleDisableUnnecessaryComponentAnimationToggle = () => {
+        const newValue = !disableUnnecessaryComponentAnimation;
+        setDisableUnnecessaryComponentAnimation(newValue);
+        setUserDisableUnnecessaryComponentAnimation(newValue);
     };
 
     const showTooltip = (e, content) => {
@@ -212,6 +224,22 @@ function GraphicSetting({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
                         <label>Antialias: </label>
                         <button onClick={handleAntialiasToggle}>
                             {antialias ? 'On' : 'Off'}
+                        </button>
+                    </div>
+                </div>
+                <div style={dividerStyle}></div>
+                <div style={optionStyle}>
+                    <div style={eachContainerStyle}>
+                        <FontAwesomeIcon
+                            icon={faQuestionCircle}
+                            onClick={(e) => handleTooltipClick(e, 'Disable unnecessary animation on certain 3D models to improve performance and page reliability (on iphone devices).')}
+                            onMouseEnter={(e) => !isPortraitPhoneScreen && showTooltip(e, 'Disable unnecessary animation on certain 3D models to improve performance and page reliability (on iphone devices).')}
+                            onMouseLeave={() => !isPortraitPhoneScreen && hideTooltip()}
+                            style={{ cursor: 'pointer' }}
+                        />
+                        <label>Disable Unnecessary Animation: </label>
+                        <button onClick={handleDisableUnnecessaryComponentAnimationToggle}>
+                            {disableUnnecessaryComponentAnimation ? 'On' : 'Off'}
                         </button>
                     </div>
                 </div>

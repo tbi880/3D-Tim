@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useContext } from 'react';
 import { useGLTF, useAnimations } from '@react-three/drei';
 import { editable as e } from '@theatre/r3f';
 import { types } from '@theatre/core';
@@ -9,6 +9,8 @@ import TextTitle from './TextTitle';
 import TextContent from './TextContent';
 import Arrow from './Arrow';
 import { bucketURL } from '../Settings';
+import { disableUnnecessaryAnimationContext } from '../sharedContexts/DisableUnnecessaryAnimation';
+
 
 const animationnames = ["Take 001"]
 
@@ -20,6 +22,8 @@ function InfoScreenDisplay({ title, content, sequence, stopPoints = [], loadPoin
     const [pages, setPages] = useState([]); // 二维数组，保存页和行
     const animation1 = useAnimations(screenModel.animations, screenModel.scene)
     const action1 = animation1.actions[animationnames[0]]
+    const { disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(disableUnnecessaryAnimationContext);
+
 
     function checkForHowManyPagesAreNeeded() {
         console.log('you need pages of ', pages.length);
@@ -35,8 +39,15 @@ function InfoScreenDisplay({ title, content, sequence, stopPoints = [], loadPoin
 
 
     useEffect(() => {
-        action1.play();
-    }, [])
+        if (disableUnnecessaryComponentAnimation) {
+            action1.stop();
+        } else {
+            action1.play();
+        }
+        return () => {
+            action1.stop();
+        };
+    }, [disableUnnecessaryComponentAnimation])
 
     const { camera } = useThree();
     const [positionInFrontOfCamera, setPositionInFrontOfCamera] = useState([0, 0, 0]);
@@ -215,7 +226,7 @@ function InfoScreenDisplay({ title, content, sequence, stopPoints = [], loadPoin
             </e.mesh>
 
             <TextTitle text={title} color="white" size={0.1} position={positionInFrontOfCameraForTextTitle} rotation={rotationInFrontOfCameraForTextTitle} />
-            <Arrow screenTitle={title} isNext={true} position={positionInFrontOfCamera} rotation={rotationInFrontOfCamera} sequence={sequence} stopPoints={stopPoints} />
+            <Arrow screenTitle={title} isNext={true} position={positionInFrontOfCamera} rotation={rotationInFrontOfCamera} sequence={sequence} stopPoints={stopPoints} disableUnnecessaryComponentAnimation={disableUnnecessaryComponentAnimation} />
 
             {pages.map((page, pageIndex) => (
                 (showTextContent[`textContent${pageIndex}`] && <TextContent key={`${pageIndex}`} title={title} order={pageIndex} lines={pages[pageIndex]} color="#000000" size={0.07} position={[positionInFrontOfCameraForTextTitle[0], positionInFrontOfCameraForTextTitle[1], positionInFrontOfCameraForTextTitle[2]]} rotation={rotationInFrontOfCameraForTextTitle} />)

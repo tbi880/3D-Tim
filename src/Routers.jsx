@@ -106,7 +106,7 @@ function Routers() {
                     <Route path="/" element={<HomePage isPortraitPhoneScreen={isPortraitPhoneScreen} vrSupported={vrSupported} />} />
                     <Route path="/bridge" element={<Bridge isPortraitPhoneScreen={isPortraitPhoneScreen} vrSupported={vrSupported} />} />
                     <Route path="/ship_hanger" element={<ShipHanger isPortraitPhoneScreen={isPortraitPhoneScreen} vrSupported={vrSupported} />} />
-                    <Route path="/ship_engineering" element={<ShipEngineering />} />
+                    <Route path="/ship_engineering" element={<ShipEngineering isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
                     <Route path="/ship_captains_chamber" element={<ShipTimsChamber isPortraitPhoneScreen={isPortraitPhoneScreen} vrSupported={vrSupported} />} />
                     <Route path="/jessie" element={<SceneJessie startPoint={0} />} />
                     <Route path="*" element={<NotFoundPage />} />

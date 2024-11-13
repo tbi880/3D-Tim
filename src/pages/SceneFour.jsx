@@ -16,8 +16,8 @@ import { bucketURL } from '../Settings'
 
 const GOLDENRATIO = 1.61803398875
 
-export const SceneFour = ({ images }) => {
-    return <Canvas gl={{ antialias: getUserAntialias() }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent"> <SceneFourInsideOfCanvas images={images} /> </Canvas>
+export const SceneFour = ({ images, isPortraitPhoneScreen }) => {
+    return <Canvas gl={{ antialias: getUserAntialias(isPortraitPhoneScreen) }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent"> <SceneFourInsideOfCanvas images={images} /> </Canvas>
 }
 
 export const SceneFourInsideOfCanvas = ({ images }) => {

@@ -60,7 +60,7 @@ function ShipHanger({ vrSupported, isPortraitPhoneScreen }) {
 
                 {vrSupported && <>
                     <VRButton />
-                    <Canvas gl={{ antialias: getUserAntialias(), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent">
+                    <Canvas gl={{ antialias: getUserAntialias(isPortraitPhoneScreen), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent">
                         <XR>
                             <Controllers rayMaterial={{ color: '#99FFFF' }} />
                             <Hands />
@@ -76,7 +76,7 @@ function ShipHanger({ vrSupported, isPortraitPhoneScreen }) {
                 </>}
 
                 {!vrSupported &&
-                    <Canvas gl={{ antialias: getUserAntialias(), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent">
+                    <Canvas gl={{ antialias: getUserAntialias(isPortraitPhoneScreen), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent">
                         <SheetProvider sheet={scene3Sheet}>
                             <SceneThree_mobile startPoint={getNextSceneStartPoint()} unloadPoint={64} onSequencePass={() => checkThenjumpToTheNextScene()} /></SheetProvider>
 

@@ -60,7 +60,7 @@ function Bridge({ vrSupported, isPortraitPhoneScreen }) {
 
                 {vrSupported && <>
                     <VRButton />
-                    <Canvas gl={{ antialias: getUserAntialias(), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent">
+                    <Canvas gl={{ antialias: getUserAntialias(isPortraitPhoneScreen), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent">
                         <XR>
                             <Controllers rayMaterial={{ color: '#99FFFF' }} />
                             <Hands />
@@ -76,7 +76,7 @@ function Bridge({ vrSupported, isPortraitPhoneScreen }) {
                 </>}
 
                 {!vrSupported &&
-                    <Canvas gl={{ antialias: getUserAntialias(), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent">
+                    <Canvas gl={{ antialias: getUserAntialias(isPortraitPhoneScreen), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent">
                         <SheetProvider sheet={scene2Sheet}>
                             <SceneTwo_mobile startPoint={getNextSceneStartPoint()} unloadPoints={[38, 72, 96]} onSequencePass={() => checkThenjumpToTheNextScene()} /></SheetProvider>
 

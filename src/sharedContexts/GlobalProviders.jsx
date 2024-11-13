@@ -3,6 +3,7 @@ import { GlobalNotificationProvider } from "./GlobalNotificationProvider";
 import { AuthorizationCheckProvider } from "./AuthorizationCheckProvider";
 import { SearchForEmergencyPlansProvider } from "./SearchForEmergencyPlansProvider";
 import { HeaderSubTitleProvider } from "./HeaderSubTitleProvider";
+import { DisableUnnecessaryAnimationProvider } from "./DisableUnnecessaryAnimation";
 
 function GlobalProviders({ children }) {
     return (
@@ -11,7 +12,9 @@ function GlobalProviders({ children }) {
                 <AuthorizationCheckProvider>
                     <SearchForEmergencyPlansProvider>
                         <HeaderSubTitleProvider>
-                            {children}
+                            <DisableUnnecessaryAnimationProvider>
+                                {children}
+                            </DisableUnnecessaryAnimationProvider>
                         </HeaderSubTitleProvider>
                     </SearchForEmergencyPlansProvider>
                 </AuthorizationCheckProvider>
