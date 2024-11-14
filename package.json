@@ -26,6 +26,7 @@
     "@theatre/studio": "^0.7.0",
     "@types/three": "^0.154.0",
     "antd": "^5.21.6",
+    "axios": "^1.7.7",
     "bootstrap": "^5.3.3",
     "maath": "0.10.8",
     "react": "^18.3.1",

@@ -6,6 +6,7 @@ import { scene5Sheet } from '../pages/SceneManager';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import '../Tools/css/general.css';
 import { backendURL } from '../Settings';
+import axios from 'axios';
 
 function DistressSignalForm({ isPortraitPhoneScreen }) {
     const [name, setName] = useState('');
@@ -28,55 +29,62 @@ function DistressSignalForm({ isPortraitPhoneScreen }) {
 
     const handleSubmit = async () => {
         if (!name || !email.includes('@')) {
-            messageApi(
-                'error',
-                'Please fill in all required fields correctly.'
-            );
+            messageApi('error', 'Please fill in all required fields correctly.');
             return;
         }
 
         setIsSubmitting(true);
 
         try {
-            const response = await fetch(backendURL + 'email_contacts', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
+            const response = await axios.post(
+                `${backendURL}email_contacts`,
+                {
                     name,
                     email,
                     message: messageContent,
                     allowSaveEmail,
-                }),
-                mode: 'cors',
-            });
+                },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    timeout: 5000, // 设置超时时间为5秒
+                }
+            );
 
+            // axios 的 post 请求若返回 204，会自动抛出一个 error，因此这里检查 response.status
             if (response.status === 204) {
                 messageApi(
                     'success',
-                    'Your distress signal has been sent successfully! Please check your mailbox later!',
+                    'Your distress signal has been sent successfully! Please check your mailbox later!'
                 );
                 if (showSendDistressSignalForm) {
                     handleAfterPlay();
                     setShowSendDistressSignalForm(false);
                 }
             } else {
-                const errorData = await response.json();
                 messageApi(
                     'error',
-                    errorData.message || 'An error occurred while sending your message.',
+                    'An unexpected response status was returned. Please try again.'
                 );
-                setIsSubmitting(false);
             }
         } catch (error) {
-            messageApi(
-                'error',
-                'Failed to send the message. Please try again later.',
-            );
+            if (error.response) {
+                // 服务器返回错误信息
+                const errorData = error.response.data;
+                messageApi('error', errorData.message || 'An error occurred while sending your message.');
+            } else if (error.code === 'ECONNABORTED') {
+                // 请求超时
+                messageApi('error', 'Request timed out. Please try again later.');
+            } else {
+                // 其他错误
+                messageApi('error', 'Failed to send the message. Please try again later.');
+            }
+        } finally {
             setIsSubmitting(false);
         }
     };
+
 
     const containerStyle = {
         color: '#fff',

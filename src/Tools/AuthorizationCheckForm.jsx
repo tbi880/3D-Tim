@@ -6,6 +6,7 @@ import { scene5Sheet } from '../pages/SceneManager';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import '../Tools/css/general.css';
 import { backendURL } from '../Settings';
+import axios from 'axios';
 
 function AuthorizationCheckForm({ isPortraitPhoneScreen }) {
     const [verificationCode, setVerificationCode] = useState('');
@@ -31,20 +32,23 @@ function AuthorizationCheckForm({ isPortraitPhoneScreen }) {
 
         setIsSubmitting(true);
 
+
         try {
-            const response = await fetch(backendURL + 'email_contacts/verify', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
+            const response = await axios.post(
+                backendURL + 'email_contacts/verify',
+                {
+                    verificationCode
                 },
-                body: JSON.stringify({
-                    verificationCode,
-                }),
-                mode: 'cors',
-            });
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    timeout: 5000, // 可选：设置请求超时时间（毫秒）
+                }
+            );
 
             if (response.status === 200) {
-                const data = await response.json();
+                const data = response.data;
                 if (data.status === 'success') {
                     const name = data.name;
                     messageApi(
@@ -59,28 +63,45 @@ function AuthorizationCheckForm({ isPortraitPhoneScreen }) {
                 } else {
                     messageApi(
                         'error',
-                        'Please enter the correct verification code. If you are not sure, please check your mail box(The one you just filled in).',
+                        'Please enter the correct verification code. If you are not sure, please check your mailbox (the one you just filled in).',
                         3
                     );
                 }
             } else {
-                const errorData = await response.json();
+                const errorData = response.data;
                 messageApi(
                     'error',
-                    errorData.message || 'An error occurred.',
+                    errorData.message || 'An error occurred.'
                 );
                 setIsSubmitting(false);
             }
         } catch (error) {
-            messageApi(
-                'error',
-                'Failed to verify. Please try again later.',
-            );
-        }
-        finally {
+            if (error.response) {
+                // 服务器响应了一个错误
+                const errorData = error.response.data;
+                messageApi(
+                    'error',
+                    errorData.message || 'An error occurred.'
+                );
+            } else if (error.code === 'ECONNABORTED') {
+                // 请求超时
+                messageApi(
+                    'error',
+                    'Request timed out. Please try again later.',
+                );
+            } else {
+                // 其他错误
+                messageApi(
+                    'error',
+                    'Failed to verify. Please try again later.',
+                );
+            }
+        } finally {
             setIsSubmitting(false);
         }
     };
+
+
 
     const containerStyle = {
         color: '#fff',
