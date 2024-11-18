@@ -1,3 +1,6 @@
+import reactCompiler from 'eslint-plugin-react-compiler'
+
+
 module.exports = {
   env: { browser: true, es2020: true },
   extends: [
@@ -8,8 +11,11 @@ module.exports = {
   ],
   parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },
   settings: { react: { version: '18.2.0' } },
-  plugins: ['react-refresh'],
+  plugins: ['react-refresh',
+    'eslint-plugin-react-compiler',
+  ],
   rules: {
     'react-refresh/only-export-components': 'warn',
+    'react-compiler/react-compiler': 'error',
   },
 }

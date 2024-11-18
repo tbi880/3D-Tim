@@ -5,6 +5,10 @@ import { terser } from 'rollup-plugin-terser';
 import compressPlugin from 'vite-plugin-compression';
 import { VitePWA } from 'vite-plugin-pwa';
 
+const ReactCompilerConfig = {
+  target: '18' // '17' | '18' | '19'
+};
+
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -17,7 +21,13 @@ export default defineConfig({
   },
 
   plugins: [
-    react()
+    react({
+      babel: {
+        plugins: [
+          ["babel-plugin-react-compiler", ReactCompilerConfig],
+        ],
+      },
+    })
   ],
   build: {
     rollupOptions: {
