@@ -22,6 +22,7 @@ import { searchForEmergencyPlansContext } from '../sharedContexts/SearchForEmerg
 import SearchForEmergencyPlans from '../Tools/SearchForEmergencyPlans';
 import Header from '../Tools/Header';
 import { headerSubTitleContext } from '../sharedContexts/HeaderSubTitleProvider';
+import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider';
 
 
 
@@ -32,10 +33,11 @@ function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
     const { showAuthorizationCheckForm, setShowAuthorizationCheckForm } = useContext(authorizationCheckContext);
     const { showSearchForEmergencyPlansLayer, setShowSearchForEmergencyPlansLayer } = useContext(searchForEmergencyPlansContext);
     const { showHeaderSubTitle, setShowHeaderSubTitle } = useContext(headerSubTitleContext);
+    const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
 
 
 
-    function checkThenjumpToTheNextScene() {
+    function checkThenJumpToTheNextScene() {
         if (!isJumping) {
             setIsJumping(true);
             navigate(getNextSceneURI(getNextScene()));
@@ -87,9 +89,9 @@ function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
                         <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
 
 
-                            <Canvas gl={{ antialias: getUserAntialias(isPortraitPhoneScreen), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent">
+                            <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent">
                                 <SheetProvider sheet={scene5Sheet}>
-                                    <SceneFive_mobile startPoint={getNextSceneStartPoint()} unloadPoint={64} onSequencePass={() => checkThenjumpToTheNextScene()} /></SheetProvider>
+                                    <SceneFive_mobile startPoint={getNextSceneStartPoint()} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
 
                             </Canvas>
 
@@ -100,7 +102,7 @@ function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
                             <Controllers rayMaterial={{ color: '#99FFFF' }} />
                             <Hands />
                             <SheetProvider sheet={scene5Sheet}>
-                                <SceneThree startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoint={64} onSequencePass={() => checkThenjumpToTheNextScene()} /></SheetProvider>
+                                <SceneThree startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
 
                         </XR>
 
@@ -113,7 +115,7 @@ function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
                 {!vrSupported &&
                     <Canvas gl={{ preserveDrawingBuffer: webGLPreserveDrawingBuffer }} >
                         <SheetProvider sheet={scene5Sheet}>
-                            <SceneThree_mobile startPoint={getNextSceneStartPoint()} unloadPoint={64} onSequencePass={() => checkThenjumpToTheNextScene()} /></SheetProvider>
+                            <SceneThree_mobile startPoint={getNextSceneStartPoint()} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
 
                     </Canvas>} */}
 

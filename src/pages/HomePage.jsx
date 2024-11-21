@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useContext } from 'react';
 import { getNextScene, getNextSceneStartPoint, getNextSceneURI, getUserAntialias, getUserDpr } from './Status';
 import Header from '../Tools/Header';
 import Status from './Status';
@@ -15,6 +15,7 @@ import { Canvas } from '@react-three/fiber';
 import { Controllers, Hands, VRButton, XR } from '@react-three/xr';
 import { scene1Sheet } from './SceneManager';
 import { useNavigate } from "react-router-dom";
+import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider';
 
 
 if (stageOfENV != "prod") {
@@ -28,6 +29,8 @@ if (stageOfENV != "prod") {
 
 
 function HomePage({ isPortraitPhoneScreen, vrSupported }) {
+    const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
+
     const navigate = useNavigate();
     const [showComponents, setShowComponents] = useState({
         header: true,
@@ -43,7 +46,7 @@ function HomePage({ isPortraitPhoneScreen, vrSupported }) {
 
     const [isJumping, setIsJumping] = useState(false);
 
-    function checkThenjumpToTheNextScene() {
+    function checkThenJumpToTheNextScene() {
         if (!isJumping) {
             setIsJumping(true);
             navigate(getNextSceneURI(getNextScene()));
@@ -71,12 +74,12 @@ function HomePage({ isPortraitPhoneScreen, vrSupported }) {
 
                 {vrSupported && <>
                     <VRButton />
-                    <Canvas gl={{ antialias: getUserAntialias(isPortraitPhoneScreen), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent">
+                    <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent">
                         <XR>
                             <Controllers rayMaterial={{ color: '#99FFFF' }} />
                             <Hands />
                             <SheetProvider sheet={scene1Sheet}>
-                                <SceneOne startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoint={39} onSequencePass={() => checkThenjumpToTheNextScene()} /></SheetProvider>
+                                <SceneOne startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoint={39} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
 
                         </XR>
 
@@ -87,9 +90,9 @@ function HomePage({ isPortraitPhoneScreen, vrSupported }) {
                 </>}
 
                 {!vrSupported &&
-                    <Canvas gl={{ antialias: getUserAntialias(isPortraitPhoneScreen), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent">
+                    <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent">
                         <SheetProvider sheet={scene1Sheet}>
-                            <SceneOne_mobile startPoint={getNextSceneStartPoint()} unloadPoint={39} onSequencePass={() => checkThenjumpToTheNextScene()} /></SheetProvider>
+                            <SceneOne_mobile startPoint={getNextSceneStartPoint()} unloadPoint={39} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
 
                     </Canvas>}
 

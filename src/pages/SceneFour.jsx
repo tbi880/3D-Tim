@@ -1,6 +1,6 @@
 import { engineeringAccess, getNextScene, getNextSceneURI, getUserAntialias, getUserDpr, setNextScene, setNextSceneStartPoint } from './Status'
 import * as THREE from 'three'
-import { useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { useCursor, MeshReflectorMaterial, Image, Text, Environment, } from '@react-three/drei'
 import { useRoute, useLocation } from 'wouter'
@@ -12,12 +12,14 @@ import AnyModel from '../modelComponents/AnyModel'
 import { useNavigate } from "react-router-dom";
 import Loader from './Loader'
 import { bucketURL } from '../Settings'
+import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider'
 
 
 const GOLDENRATIO = 1.61803398875
 
 export const SceneFour = ({ images, isPortraitPhoneScreen }) => {
-    return <Canvas gl={{ antialias: getUserAntialias(isPortraitPhoneScreen) }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent"> <SceneFourInsideOfCanvas images={images} /> </Canvas>
+    const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
+    return <Canvas gl={{ antialias: antialias }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent"> <SceneFourInsideOfCanvas images={images} /> </Canvas>
 }
 
 export const SceneFourInsideOfCanvas = ({ images }) => {
@@ -125,7 +127,7 @@ export const SceneFourInsideOfCanvas = ({ images }) => {
                 anchorY="middle"
                 visible={!showComponents.loading}
             >
-                {"You have browsed " + (visitedIds.size + 1) + " out of " + (images.length + 1) + " websites that were built and designed by me."}
+                {"You have browsed " + (visitedIds.size + 1) + " out of " + (images.length + 1) + " websites that were built & designed & optimized by me."}
             </Text>
 
 
@@ -214,7 +216,7 @@ function Frames({ images, onVisit, q = new THREE.Quaternion(), p = new THREE.Vec
         clicked.current = ref.current.getObjectByName(params?.id)
         if (clicked.current) {
             clicked.current.parent.updateWorldMatrix(true, true)
-            clicked.current.parent.localToWorld(p.set(0, GOLDENRATIO / 2, 1.25))
+            clicked.current.parent.localToWorld(p.set(0, GOLDENRATIO / 2, 1.5))
             clicked.current.parent.getWorldQuaternion(q)
         } else {
             p.set(0, 0, 5.5)
@@ -272,7 +274,7 @@ function Frame({ url, c = new THREE.Color(), ...props }) {
                 </mesh>
                 <Image raycast={() => null} ref={image} position={[0, 0, 0.7]} url={url} />
             </mesh>
-            <Text maxWidth={0.1} anchorX="left" anchorY="top" position={[0.55, GOLDENRATIO, 0]} fontSize={0.025}>
+            <Text maxWidth={0.1} anchorX="center" anchorY="middle" position={[0, GOLDENRATIO + 0.15, 0]} fontSize={0.025}>
                 {props.project_name.split('-').join(' ')}
             </Text>
         </group >

@@ -12,12 +12,14 @@ import { useContext, useEffect, useRef, useState } from 'react';
 import { webGLPreserveDrawingBuffer } from '../Settings';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import { useNavigate } from 'react-router-dom';
+import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider';
 
 
 
 
 
 function ShipHanger({ vrSupported, isPortraitPhoneScreen }) {
+    const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
     const navigate = useNavigate();
     const welcomeMessageSent = useRef(false);
     const { messageApi } = useContext(GlobalNotificationContext);
@@ -33,7 +35,7 @@ function ShipHanger({ vrSupported, isPortraitPhoneScreen }) {
 
     const [isJumping, setIsJumping] = useState(false);
 
-    function checkThenjumpToTheNextScene() {
+    function checkThenJumpToTheNextScene() {
         if (!isJumping) {
             setIsJumping(true);
             navigate(getNextSceneURI(getNextScene()));
@@ -62,12 +64,12 @@ function ShipHanger({ vrSupported, isPortraitPhoneScreen }) {
 
                 {vrSupported && <>
                     <VRButton />
-                    <Canvas gl={{ antialias: getUserAntialias(isPortraitPhoneScreen), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent">
+                    <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent">
                         <XR>
                             <Controllers rayMaterial={{ color: '#99FFFF' }} />
                             <Hands />
                             <SheetProvider sheet={scene3Sheet}>
-                                <SceneThree startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoint={64} onSequencePass={() => checkThenjumpToTheNextScene()} /></SheetProvider>
+                                <SceneThree startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
 
                         </XR>
 
@@ -78,9 +80,9 @@ function ShipHanger({ vrSupported, isPortraitPhoneScreen }) {
                 </>}
 
                 {!vrSupported &&
-                    <Canvas gl={{ antialias: getUserAntialias(isPortraitPhoneScreen), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent">
+                    <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent">
                         <SheetProvider sheet={scene3Sheet}>
-                            <SceneThree_mobile startPoint={getNextSceneStartPoint()} unloadPoint={64} onSequencePass={() => checkThenjumpToTheNextScene()} /></SheetProvider>
+                            <SceneThree_mobile startPoint={getNextSceneStartPoint()} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
 
                     </Canvas>}
 

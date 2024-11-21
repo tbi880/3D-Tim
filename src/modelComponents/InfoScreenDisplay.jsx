@@ -9,7 +9,7 @@ import TextTitle from './TextTitle';
 import TextContent from './TextContent';
 import Arrow from './Arrow';
 import { bucketURL } from '../Settings';
-import { disableUnnecessaryAnimationContext } from '../sharedContexts/DisableUnnecessaryAnimation';
+import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider';
 
 
 const animationnames = ["Take 001"]
@@ -22,7 +22,7 @@ function InfoScreenDisplay({ title, content, sequence, stopPoints = [], loadPoin
     const [pages, setPages] = useState([]); // 二维数组，保存页和行
     const animation1 = useAnimations(screenModel.animations, screenModel.scene)
     const action1 = animation1.actions[animationnames[0]]
-    const { disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(disableUnnecessaryAnimationContext);
+    const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
 
 
     function checkForHowManyPagesAreNeeded() {

@@ -2,16 +2,14 @@ import { useState, useEffect, useContext } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCog, faCheck, faQuestionCircle } from '@fortawesome/free-solid-svg-icons';
 import { message } from 'antd';
-import { getUserAntialias, getUserDpr, getUserDisableUnnecessaryComponentAnimation, setUserAntialias, setUserDpr, setUserDisableUnnecessaryComponentAnimation } from '../pages/Status';
-import { disableUnnecessaryAnimationContext } from '../sharedContexts/DisableUnnecessaryAnimation';
+import { getUserAntialias, getUserDpr, setUserAntialias, setUserDpr, setUserDisableUnnecessaryComponentAnimation } from '../pages/Status';
+import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider';
 
 function GraphicSetting({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
     const [showSettings, setShowSettings] = useState(false);
-    const [dpr, setDpr] = useState(() => getUserDpr() ?? (isPortraitPhoneScreen ? 1 : 1.5));
-    const [antialias, setAntialias] = useState(() => getUserAntialias() ?? (isPortraitPhoneScreen ? false : true));
     const [tooltip, setTooltip] = useState({ visible: false, content: '', x: 0, y: 0 });
     const [messageApi, contextHolder] = message.useMessage();
-    const { disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(disableUnnecessaryAnimationContext);
+    const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
 
 
 
@@ -39,8 +37,8 @@ function GraphicSetting({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
 
     const handleDprChange = (e) => {
         const value = parseFloat(e.target.value);
-        if (value > 1.25 && isPortraitPhoneScreen) {
-            messageApi.error("The current DPR setting is not optimal for mobile devices. For the best experience, we strongly recommend accessing here on a desktop device!");
+        if (value > 1.5 && isPortraitPhoneScreen) {
+            messageApi.error("The current DPR setting is not optimal for mobile devices. For the best experience, I strongly recommend accessing here on a desktop device!");
             return;
         }
 
@@ -244,6 +242,10 @@ function GraphicSetting({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
                     </div>
                 </div>
                 <div style={dividerStyle}></div>
+                <div style={optionStyle}>
+                    <br />
+                    <div style={eachContainerStyle}>Note: For the best experience, avoid accessing this website on mobile devices.</div>
+                </div>
             </div>
             <div style={tooltipStyle}>{tooltip.content}</div>
         </>

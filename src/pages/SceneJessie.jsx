@@ -17,6 +17,7 @@ import PreloadAssets from '../modelComponents/preloadAssets';
 import { useGLTF } from '@react-three/drei';
 import { Helmet } from 'react-helmet';
 import { getUserAntialias, getUserDpr } from './Status';
+import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider';
 
 
 function SceneJessie({ startPoint }) {
@@ -27,6 +28,7 @@ function SceneJessie({ startPoint }) {
     const age = (new Date().getFullYear().valueOf()) - 2001;
     const endingString1 = age + "岁生日快乐呀！";
     const endingString2 = "希望你每天都充满幸福快乐！";
+    const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
 
 
     useEffect(() => {
@@ -126,7 +128,7 @@ function SceneJessie({ startPoint }) {
                 <link rel="canonical" href="https://www.bty.co.nz/jessie" />
                 <meta name="author" content="Tim Bi" />
             </Helmet>
-            <Canvas gl={{ antialias: getUserAntialias(window.innerHeight > window.innerWidth), preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={getUserDpr()} performance={{ min: 0.5 }} mode="concurrent">
+            <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent">
                 <SheetProvider sheet={sceneJessieSheet}>
                     <PreloadAssets />
                     <Suspense fallback={<WaitingJessie />}>

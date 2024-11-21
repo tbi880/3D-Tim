@@ -6,7 +6,7 @@ import { useFrame } from '@react-three/fiber';
 import { editable as e } from '@theatre/r3f';
 import { types } from '@theatre/core';
 import { useAnimations } from "@react-three/drei";
-import { disableUnnecessaryAnimationContext } from "../sharedContexts/DisableUnnecessaryAnimation";
+import { graphicSettingContext } from "../sharedContexts/GraphicSettingProvider";
 
 const animationName = "Take 001";
 
@@ -16,7 +16,7 @@ function ProgrammingFuture({ position, rotation, sequence, unloadPoint, onSequen
     const theatreKey = "future scene";
     const animation1 = useAnimations(futureModel.animations, futureModel.scene)
     const action1 = animation1.actions[animationName]
-    const { disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(disableUnnecessaryAnimationContext);
+    const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
 
     useEffect(() => {
         if (disableUnnecessaryComponentAnimation) {
