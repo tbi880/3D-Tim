@@ -13,8 +13,6 @@ import XrToolMiddleLayer from '../Tools/XrToolMiddleLayer';
 
 
 
-
-
 function ShipHanger({ isPortraitPhoneScreen }) {
     const navigate = useNavigate();
     const welcomeMessageSent = useRef(false);
@@ -61,12 +59,12 @@ function ShipHanger({ isPortraitPhoneScreen }) {
                 <CanvasProvider>
                     <XrToolMiddleLayer>
                         <SheetProvider sheet={scene3Sheet}>
-                            <SceneThree startPoint={getNextSceneStartPoint()} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
+                            <SceneThree startPoint={getNextSceneStartPoint()} isPortraitPhoneScreen={isPortraitPhoneScreen} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
                     </XrToolMiddleLayer>
                 </CanvasProvider>
 
 
-            </div>
+            </div >
             <Status />
         </>
     )

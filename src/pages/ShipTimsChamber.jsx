@@ -9,7 +9,6 @@ import { SheetProvider } from '@theatre/r3f';
 import { scene5Sheet } from './SceneManager';
 import { useContext, useState } from 'react';
 import { webGLPreserveDrawingBuffer } from '../Settings';
-import SceneFive_mobile from './SceneFive_mobile';
 import ShipStatus from '../Tools/ShipStatus';
 import { EstHitTimeCountDownProvider } from '../sharedContexts/EstHitTimeCountDownProvider';
 import { CoreEnergyProvider } from '../sharedContexts/CoreEnergyProvider';
@@ -23,6 +22,7 @@ import SearchForEmergencyPlans from '../Tools/SearchForEmergencyPlans';
 import Header from '../Tools/Header';
 import { headerSubTitleContext } from '../sharedContexts/HeaderSubTitleProvider';
 import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider';
+import SceneFive from './SceneFive';
 
 
 
@@ -88,42 +88,16 @@ function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
 
                         <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
 
-
                             <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent">
                                 <SheetProvider sheet={scene5Sheet}>
-                                    <SceneFive_mobile startPoint={getNextSceneStartPoint()} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
+                                    <SceneFive startPoint={getNextSceneStartPoint()} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} isPortraitPhoneScreen={isPortraitPhoneScreen} /></SheetProvider>
 
                             </Canvas>
-
-                            {/* {vrSupported && <>
-                    <VRButton />
-                    <Canvas gl={{ preserveDrawingBuffer: webGLPreserveDrawingBuffer }} >
-                        <XR>
-                            <Controllers rayMaterial={{ color: '#99FFFF' }} />
-                            <Hands />
-                            <SheetProvider sheet={scene5Sheet}>
-                                <SceneThree startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
-
-                        </XR>
-
-
-
-                    </Canvas>
-
-                </>}
-
-                {!vrSupported &&
-                    <Canvas gl={{ preserveDrawingBuffer: webGLPreserveDrawingBuffer }} >
-                        <SheetProvider sheet={scene5Sheet}>
-                            <SceneThree_mobile startPoint={getNextSceneStartPoint()} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
-
-                    </Canvas>} */}
-
 
                         </div>
                     </CoreEnergyProvider>
                 </HullTemperatureProvider>
-            </EstHitTimeCountDownProvider>
+            </EstHitTimeCountDownProvider >
             <Status />
         </>
     )

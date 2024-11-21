@@ -25,7 +25,8 @@ import Loader from './Loader';
 import { canvasContext } from '../sharedContexts/CanvasProvider';
 import { XrToolsContext } from '../sharedContexts/XrToolsProvider';
 
-function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
+
+function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     const { isVRSupported, setIsVRSupported } = useContext(canvasContext);
     const [player, setPlayer] = useState(null);
     const [isPresenting, setIsPresenting] = useState(false);
@@ -320,7 +321,6 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
 
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={62} onSequencePass={() => { toggleComponentDisplay("loading") }} />
                 {showComponents.loading && <Loading title="loading" lines={["Disconnected", "from Tim's", "namespace"]} position={[0, 0, 0]} rotation={[0, 0, 0]} sequence={scene3Sheet.sequence} unloadPoint={66} onSequencePass={() => { toggleComponentDisplay("loading") }} />}
-
 
             </Suspense>
         </>

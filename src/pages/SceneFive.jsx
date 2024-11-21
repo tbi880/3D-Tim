@@ -27,8 +27,7 @@ import { headerSubTitleContext } from '../sharedContexts/HeaderSubTitleProvider'
 import Loading from '../modelComponents/Loading';
 import Loader from './Loader';
 
-
-function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
+function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     const musicUrl = bucketURL + 'music/bgm5.mp3';
     const [ambientIntensity, setAmbientIntensity] = useState(0);
     const [warningFrequency, setWarningFrequency] = useState(10000);
@@ -164,6 +163,7 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
         shipOutside: true,
         chamberInside: false,
         preloadEnv: false,
+        spaceEnv: true,
         viewportStart: false,
         robot: false,
         infoScreenDisplayDamageReport: false,
@@ -191,6 +191,7 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
         shipOutside: true,
         chamberInside: true,
         preloadEnv: true,
+        spaceEnv: true,
         viewportStart: true,
         robot: true,
         infoScreenDisplayDamageReport: true,
@@ -253,7 +254,7 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
                 <Galaxy />
                 <StrangerStar />
                 {showComponents.shipOutside && <ShipOutside sequence={scene5Sheet.sequence} unloadPoint={20} onSequencePass={() => { toggleComponentDisplay("shipOutside") }} />}
-                <e.mesh theatreKey='Outside ambient light' additionalProps={{
+                {!isFirstPersonCamera && <e.mesh theatreKey='Outside ambient light' additionalProps={{
                     intensity: types.number(outAmbientIntensity, {
                         range: [0, 10],
                     }),
@@ -266,7 +267,7 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
                     }} >
                     <ambientLight color={"#ff0000"} intensity={outAmbientIntensity} visible={!isFirstPersonCamera} />
 
-                </e.mesh>
+                </e.mesh>}
                 {showComponents.chamberInside && <AnyModel modelURL={'captains-chamber-transformed.glb'} sequence={scene5Sheet.sequence} useTheatre={true} theatreKey={"captains-chamber-inside"} position={[550, 30, 0]} rotation={[0, -1.6, 0]} scale={[1, 1, 1]} visible={isFirstPersonCamera} modelNodeVisibility={modelNodeVisibility} />}
                 <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault={isFirstPersonCamera} position={[558, 33.7, -1.9]} rotation={[0, -4.5, 0]} fov={75} near={0.01} />
                 <PerspectiveCamera theatreKey="ThirdPersonCamera" makeDefault={!isFirstPersonCamera} position={[550, 50, -10]} rotation={[0, -Math.PI / 2, 0]} fov={75} near={0.01} />
@@ -287,7 +288,12 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
                     intensity={3.5}
                     environmentIntensity={1}
                 />}
-                {showComponents.chamberInside && isFirstPersonCamera && <Environment
+                {showComponents.spaceEnv ? <Environment
+                    files={bucketURL + 'pic/space.exr'}
+                    background={false}
+                    intensity={3.5}
+                    environmentIntensity={1}
+                /> : <Environment
                     files={bucketURL + 'pic/studio.hdr'}
                     resolution={4}
                     background={false}
@@ -303,9 +309,17 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
                 }} />
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={20.5} onSequencePass={() => {
                     toggleComponentDisplay("shipOutside");
+                    toggleComponentDisplay("spaceEnv");
                 }} />
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={20} onSequencePass={() => {
                     switchCamera(true);
+                }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={21} onSequencePass={() => {
+                    messageApi(
+                        'info',
+                        'Power Saving Mode deactivated!',
+                        3,
+                    );
                 }} />
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={25} onSequencePass={() => { toggleComponentDisplay("insideAmbientLight") }} />
@@ -444,11 +458,11 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
                 }}
                 />
 
-                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={132} onSequencePass={() => { switchCamera(false) }} />
-                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={130} onSequencePass={() => { toggleComponentDisplay("shipOutside2") }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={132} onSequencePass={() => { switchCamera(false); toggleComponentDisplay("spaceEnv"); }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={130} onSequencePass={() => { toggleComponentDisplay("shipOutside2"); }} />
                 {showComponents.shipOutside2 && <ShipOutside sequence={scene5Sheet.sequence} unloadPoint={140} onSequencePass={() => { toggleComponentDisplay("shipOutside2") }} />}
 
-                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={140} onSequencePass={() => { switchCamera(true) }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={140} onSequencePass={() => { switchCamera(true); toggleComponentDisplay("spaceEnv"); }} />
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={143} onSequencePass={() => {
                     messageApi(
                         'warning',
@@ -526,4 +540,4 @@ function SceneFive_mobile({ startPoint, unloadPoint, onSequencePass }) {
     )
 }
 
-export default SceneFive_mobile;
+export default SceneFive;

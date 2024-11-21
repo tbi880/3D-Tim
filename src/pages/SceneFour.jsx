@@ -15,14 +15,15 @@ import { bucketURL } from '../Settings'
 import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider'
 
 
+
 const GOLDENRATIO = 1.61803398875
 
 export const SceneFour = ({ images, isPortraitPhoneScreen }) => {
     const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
-    return <Canvas gl={{ antialias: antialias }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent"> <SceneFourInsideOfCanvas images={images} /> </Canvas>
+    return <Canvas gl={{ antialias: antialias }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent"> <SceneFourInsideOfCanvas isPortraitPhoneScreen={isPortraitPhoneScreen} images={images} /> </Canvas>
 }
 
-export const SceneFourInsideOfCanvas = ({ images }) => {
+export const SceneFourInsideOfCanvas = ({ isPortraitPhoneScreen, images }) => {
     const navigate = useNavigate();
     const [visitedIds, setVisitedIds] = useState(new Set());
     const [cameraReached, setCameraReached] = useState(false);
@@ -103,6 +104,7 @@ export const SceneFourInsideOfCanvas = ({ images }) => {
     return (
 
         <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["Now you'll see some of my previous work", "treat it as a museum, a gallery", "Check them all, then I will bring you back with half of the access to my command chamber."]} />}>
+
             <camera position={startPosition} />
             <Text
                 position={[0, -0.4, 3.75]}

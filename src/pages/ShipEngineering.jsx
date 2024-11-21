@@ -6,6 +6,7 @@ import { bucketURL } from '../Settings';
 import { useContext, useEffect, useRef } from "react";
 import { GlobalNotificationContext } from "../sharedContexts/GlobalNotificationProvider";
 
+
 function ShipEngineering(isPortraitPhoneScreen) {
     const welcomeMessageSent = useRef(false);
     const { messageApi } = useContext(GlobalNotificationContext);
@@ -54,7 +55,6 @@ function ShipEngineering(isPortraitPhoneScreen) {
             </Helmet>
 
             <SceneFour images={images} isPortraitPhoneScreen={isPortraitPhoneScreen} />
-
             <Status />
         </>
     )

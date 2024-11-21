@@ -46,7 +46,6 @@ function StreamMusic({ audioElement, sequence, startPoint, }) {
         audioContextRef.current.resume().then(() => {
             audioElement.play();
             isPlayingRef.current = true;
-            console.log('Playing!');
         }).catch(console.error);
 
         return () => {

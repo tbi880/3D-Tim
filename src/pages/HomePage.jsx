@@ -72,13 +72,13 @@ function HomePage({ isPortraitPhoneScreen }) {
 
                 <CanvasProvider>
                     <XrToolMiddleLayer>
-                        <SheetProvider sheet={scene1Sheet}>
-                            <SceneOne startPoint={getNextSceneStartPoint()} unloadPoint={39} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
 
+                        <SheetProvider sheet={scene1Sheet}>
+                            <SceneOne startPoint={getNextSceneStartPoint()} isPortraitPhoneScreen={isPortraitPhoneScreen} unloadPoint={39} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
                     </XrToolMiddleLayer>
                 </CanvasProvider>
 
-            </div>
+            </div >
             <Status />
         </>
 

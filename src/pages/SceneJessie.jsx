@@ -1,6 +1,6 @@
 import AnyModel from '../modelComponents/AnyModel';
 import SingleLoadManager from '../modelComponents/SingleLoadManager';
-import { Suspense, useState, useCallback, useEffect } from 'react';
+import { Suspense, useState, useCallback, useEffect, useContext } from 'react';
 import TextTitle from '../modelComponents/TextTitle';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { bucketURL, webGLPreserveDrawingBuffer } from '../Settings';
@@ -16,7 +16,6 @@ import WaitingJessie from './WaitingJessie';
 import PreloadAssets from '../modelComponents/preloadAssets';
 import { useGLTF } from '@react-three/drei';
 import { Helmet } from 'react-helmet';
-import { getUserAntialias, getUserDpr } from './Status';
 import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider';
 
 
@@ -136,7 +135,7 @@ function SceneJessie({ startPoint }) {
                         {showComponents.viewPort_start && <ViewPort theatreKey="start" screenTitle={"start"} position={[0, 0, 0]} rotation={[0, 0, 0]} stopPoint={5.5} sequence={sceneJessieSheet.sequence} onSequencePass={() => { toggleComponentDisplay("viewPort_start") }} unloadPoint={5.5} isSetNextScene={false} />}
                         {audioElement && <StreamMusic audioElement={audioElement} sequence={sceneJessieSheet.sequence} startPoint={0.02} maxVolume={1} />}
 
-                        {showComponents.scene && <AnyModel theatreKey="scene" modelURL="toJessie/Scene-transformed.glb" sequence={sceneJessieSheet.sequence} onSequencePass={() => toggleComponentDisplay("scene")} unloadPoint={49} position={[0, 0, 0]} rotation={[0, 0, 0]} />}
+                        {showComponents.scene && <AnyModel useTheatre={true} theatreKey="scene" modelURL="toJessie/Scene-transformed.glb" sequence={sceneJessieSheet.sequence} onSequencePass={() => toggleComponentDisplay("scene")} unloadPoint={49} position={[0, 0, 0]} rotation={[0, 0, 0]} />}
                         <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault position={[0, 0, 0]} rotation={[0, 0, 0]} fov={75} near={0.01} />
                         <color attach='background' args={[backgroundColor]} />
 
@@ -170,20 +169,20 @@ function SceneJessie({ startPoint }) {
                         </>}
                         <SingleLoadManager sequence={sceneJessieSheet.sequence} loadPoint={50.5} onSequencePass={() => { toggleComponentDisplay("lightings") }} />
                         <SingleLoadManager sequence={sceneJessieSheet.sequence} loadPoint={5.5} onSequencePass={() => { toggleComponentDisplay("paimon") }} />
-                        {showComponents.paimon && <AnyModel theatreKey="paimon" modelURL="toJessie/paimon_idle_animation-transformed.glb" sequence={sceneJessieSheet.sequence} unloadPoint={15} onSequencePass={() => { toggleComponentDisplay("paimon") }} position={[0, 0, 0]} rotation={[0, 0, 0]} scale={0.003} />}
-                        {showComponents.treasure_one && <AnyModel theatreKey="treasure1" modelURL="toJessie/treasure_chest-transformed.glb" sequence={sceneJessieSheet.sequence} unloadPoint={8.5} onSequencePass={() => { toggleComponentDisplay("treasure_one") }} stopPoints={[15]} position={[0, 0, 0]} rotation={[0, 0, 0]} scale={0.5} clickablePoint={5.5} animationNames={['Armature|A_Open']} animationOnClick={true} animationPlayTimes={1} animationSpeeds={1} />}
+                        {showComponents.paimon && <AnyModel useTheatre={true} theatreKey="paimon" modelURL="toJessie/paimon_idle_animation-transformed.glb" sequence={sceneJessieSheet.sequence} unloadPoint={15} onSequencePass={() => { toggleComponentDisplay("paimon") }} position={[0, 0, 0]} rotation={[0, 0, 0]} scale={[0.003, 0.003, 0.003]} />}
+                        {showComponents.treasure_one && <AnyModel useTheatre={true} theatreKey="treasure1" modelURL="toJessie/treasure_chest-transformed.glb" sequence={sceneJessieSheet.sequence} unloadPoint={8.5} onSequencePass={() => { toggleComponentDisplay("treasure_one") }} stopPoints={[15]} position={[0, 0, 0]} rotation={[0, 0, 0]} scale={[0.5, 0.5, 0.5]} clickablePoint={5.5} animationNames={['Armature|A_Open']} animationOnClick={true} animationPlayTimes={1} animationSpeeds={1} />}
                         <SingleLoadManager sequence={sceneJessieSheet.sequence} loadPoint={7} onSequencePass={() => { toggleComponentDisplay("textTitle_one") }} />
-                        {showComponents.textTitle_one && <TextTitle text={"生日快乐，小Jessie！"} fontURL={"fonts/Orbitron_Bold.json"} size={1} sequence={sceneJessieSheet.sequence} onSequencePass={() => { toggleComponentDisplay("textTitle_one") }} unloadPoint={15} />}
+                        {showComponents.textTitle_one && <TextTitle text={"get lost"} fontURL={"fonts/Orbitron_Bold.json"} size={1} sequence={sceneJessieSheet.sequence} onSequencePass={() => { toggleComponentDisplay("textTitle_one") }} unloadPoint={15} />}
                         <SingleLoadManager sequence={sceneJessieSheet.sequence} loadPoint={5.5} onSequencePass={() => { toggleComponentDisplay("treasure_two") }} />
-                        {showComponents.treasure_two && <AnyModel theatreKey="treasure2" modelURL="toJessie/medieval_wooden_chest-transformed.glb" sequence={sceneJessieSheet.sequence} unloadPoint={18} onSequencePass={() => { toggleComponentDisplay("treasure_two") }} stopPoints={[19.5]} position={[0, 0, 0]} rotation={[0, 0, 0]} scale={0.5} clickablePoint={15} animationNames={["Opening"]} animationOnClick={true} animationPlayTimes={1} animationSpeeds={1} />}
+                        {showComponents.treasure_two && <AnyModel useTheatre={true} theatreKey="treasure2" modelURL="toJessie/medieval_wooden_chest-transformed.glb" sequence={sceneJessieSheet.sequence} unloadPoint={18} onSequencePass={() => { toggleComponentDisplay("treasure_two") }} stopPoints={[19.5]} position={[0, 0, 0]} rotation={[0, 0, 0]} scale={[0.5, 0.5, 0.5]} clickablePoint={15} animationNames={["Opening"]} animationOnClick={true} animationPlayTimes={1} animationSpeeds={1} />}
                         <SingleLoadManager sequence={sceneJessieSheet.sequence} loadPoint={15} onSequencePass={() => { toggleComponentDisplay("cup") }} />
-                        {showComponents.cup && <AnyModel theatreKey="cup" modelURL="toJessie/cup-transformed.glb" sequence={sceneJessieSheet.sequence} onSequencePass={() => { toggleComponentDisplay("cup") }} unloadPoint={20} position={[0, 0, 0]} rotation={[0, 0, 0]} scale={0.1} />}
+                        {showComponents.cup && <AnyModel useTheatre={true} theatreKey="cup" modelURL="toJessie/cup-transformed.glb" sequence={sceneJessieSheet.sequence} onSequencePass={() => { toggleComponentDisplay("cup") }} unloadPoint={20} position={[0, 0, 0]} rotation={[0, 0, 0]} scale={[0.1, 0.1, 0.1]} />}
                         <SingleLoadManager sequence={sceneJessieSheet.sequence} loadPoint={18} onSequencePass={() => { toggleComponentDisplay("treasure_three") }} />
-                        {showComponents.treasure_three && <AnyModel theatreKey="treasure3" modelURL="toJessie/the_steampunk-transformed.glb" sequence={sceneJessieSheet.sequence} unloadPoint={47} onSequencePass={() => { toggleComponentDisplay("treasure_three") }} stopPoints={[54]} position={[0, 0, 0]} rotation={[0, 0, 0]} scale={10} clickablePoint={19.5} animationNames={["Take 001"]} animationOnClick={true} animationPlayTimes={1} animationSpeeds={1} animationStartPoint={5} />}
+                        {showComponents.treasure_three && <AnyModel useTheatre={true} theatreKey="treasure3" modelURL="toJessie/the_steampunk-transformed.glb" sequence={sceneJessieSheet.sequence} unloadPoint={47} onSequencePass={() => { toggleComponentDisplay("treasure_three") }} stopPoints={[54]} position={[0, 0, 0]} rotation={[0, 0, 0]} scale={[10, 10, 10]} clickablePoint={19.5} animationNames={["Take 001"]} animationOnClick={true} animationPlayTimes={1} animationSpeeds={1} animationStartPoint={5} />}
                         <SingleLoadManager sequence={sceneJessieSheet.sequence} loadPoint={45} onSequencePass={() => { toggleComponentDisplay("sllh") }} />
-                        {showComponents.sllh && <AnyModel theatreKey="sllh" modelURL="toJessie/Fanart Ayaka.glb" sequence={sceneJessieSheet.sequence} unloadPoint={50} onSequencePass={() => { toggleComponentDisplay("sllh") }} position={[0, 0, 0]} rotation={[0, 0, 0]} scale={0.001} />}
+                        {showComponents.sllh && <AnyModel useTheatre={true} theatreKey="sllh" modelURL="toJessie/Fanart Ayaka.glb" sequence={sceneJessieSheet.sequence} unloadPoint={50} onSequencePass={() => { toggleComponentDisplay("sllh") }} position={[0, 0, 0]} rotation={[0, 0, 0]} scale={[0.001, 0.001, 0.001]} />}
                         <SingleLoadManager sequence={sceneJessieSheet.sequence} loadPoint={49} onSequencePass={() => { toggleComponentDisplay("firework_bg") }} />
-                        {showComponents.firework_bg && <AnyModel theatreKey="firework_bg" modelURL="toJessie/firework_sky.glb" position={[0, 0, 0]} rotation={[0, 0, 0]} scale={1} />}
+                        {showComponents.firework_bg && <AnyModel useTheatre={true} theatreKey="firework_bg" modelURL="toJessie/firework_sky.glb" position={[0, 0, 0]} rotation={[0, 0, 0]} scale={[1, 1, 1]} />}
                         <SingleLoadManager sequence={sceneJessieSheet.sequence} loadPoint={50} onSequencePass={() => toggleComponentDisplay("fireworks")} />
                         {showComponents.fireworks && <Fireworks />}
                         <SingleLoadManager sequence={sceneJessieSheet.sequence} loadPoint={51} onSequencePass={() => { toggleComponentDisplay("textTitle_birthdayWithValue") }} />

@@ -21,8 +21,7 @@ import { XrToolsContext } from '../sharedContexts/XrToolsProvider';
 import XrSqueezeEventListener from '../Tools/XrSqueezeEventListener';
 
 
-
-function SceneOne({ unloadPoint, onSequencePass }) {
+function SceneOne({ unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     const { isVRSupported, setIsVRSupported } = useContext(canvasContext);
     const [player, setPlayer] = useState(null);
     const [isPresenting, setIsPresenting] = useState(false);

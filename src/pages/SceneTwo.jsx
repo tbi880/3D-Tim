@@ -22,10 +22,8 @@ import { canvasContext } from '../sharedContexts/CanvasProvider';
 import { XrToolsContext } from '../sharedContexts/XrToolsProvider';
 import { XrSqueezeEventListener } from '../Tools/XrSqueezeEventListener';
 
-// const audioResourceForScene2 = createAudioLoader(bucketURL + 'music/bgm2.mp3');
 
-
-function SceneTwo({ startPoint, unloadPoints, onSequencePass }) {
+function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScreen }) {
     const screenIntro = "You finally awaken, chief designer! Our ship is about to enter the strange red giant ahead of us. The ship is damaged quite severe due to the strong gravitational force. As AI, we cannot change the course of the ship because the first captain, Tim Bi, set it up millennia ago. Additionally, we have been blocked from answering the questions to unlock the captain's chamber. We need your help to find the answers to the root access questions so we can alter the ship's course or initiate an emergency stop. Please follow me to the bridge. Let's start by checking the structure of the ship first. This will probably help you to rewind your memory about the ship.";
     const musicUrl = bucketURL + 'music/bgm2.mp3';
     const { isVRSupported, setIsVRSupported } = useContext(canvasContext);

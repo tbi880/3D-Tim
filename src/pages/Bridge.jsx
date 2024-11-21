@@ -13,7 +13,6 @@ import XrToolMiddleLayer from '../Tools/XrToolMiddleLayer';
 
 
 
-
 function Bridge({ isPortraitPhoneScreen }) {
     const navigate = useNavigate();
     const welcomeMessageSent = useRef(false);
@@ -57,8 +56,10 @@ function Bridge({ isPortraitPhoneScreen }) {
             <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
                 <CanvasProvider>
                     <XrToolMiddleLayer>
+
                         <SheetProvider sheet={scene2Sheet}>
-                            <SceneTwo startPoint={getNextSceneStartPoint()} unloadPoints={[38, 72, 96]} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
+                            <SceneTwo startPoint={getNextSceneStartPoint()} isPortraitPhoneScreen={isPortraitPhoneScreen} unloadPoints={[38, 72, 96]} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
+
                     </XrToolMiddleLayer>
                 </CanvasProvider>
 
