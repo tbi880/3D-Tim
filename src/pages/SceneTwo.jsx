@@ -9,7 +9,7 @@ import Button from '../modelComponents/button';
 import ViewPort from '../modelComponents/ViewPort';
 import StreamMusic from '../modelComponents/StreamMusic';
 import Robots from '../modelComponents/Robot';
-import { Suspense, useState, useCallback, useEffect } from 'react';
+import { Suspense, useState, useCallback, useEffect, useContext } from 'react';
 import PreloadAssets from '../modelComponents/preloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { scene2Sheet, scene2Project } from "./SceneManager";
@@ -17,17 +17,27 @@ import { bucketURL } from '../Settings';
 import Loading from '../modelComponents/Loading';
 import { Environment, useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
-import { useXR, useXREvent } from '@react-three/xr';
 import Loader from './Loader';
-
+import { canvasContext } from '../sharedContexts/CanvasProvider';
+import { XrToolsContext } from '../sharedContexts/XrToolsProvider';
+import { XrSqueezeEventListener } from '../Tools/XrSqueezeEventListener';
 
 // const audioResourceForScene2 = createAudioLoader(bucketURL + 'music/bgm2.mp3');
 
 
-function SceneTwo({ startPoint, unloadPoints, onSequencePass, isVRSupported }) {
+function SceneTwo({ startPoint, unloadPoints, onSequencePass }) {
     const screenIntro = "You finally awaken, chief designer! Our ship is about to enter the strange red giant ahead of us. The ship is damaged quite severe due to the strong gravitational force. As AI, we cannot change the course of the ship because the first captain, Tim Bi, set it up millennia ago. Additionally, we have been blocked from answering the questions to unlock the captain's chamber. We need your help to find the answers to the root access questions so we can alter the ship's course or initiate an emergency stop. Please follow me to the bridge. Let's start by checking the structure of the ship first. This will probably help you to rewind your memory about the ship.";
     const musicUrl = bucketURL + 'music/bgm2.mp3';
-    const { player, isPresenting } = useXR(); // This gives us access to the VR player context
+    const { isVRSupported, setIsVRSupported } = useContext(canvasContext);
+    const [player, setPlayer] = useState(null);
+    const [isPresenting, setIsPresenting] = useState(false);
+    const { xrPlayer, xrIsPresenting } = isVRSupported && useContext(XrToolsContext) ? useContext(XrToolsContext) : {};
+    useEffect(() => {
+        setPlayer(xrPlayer);
+        setIsPresenting(xrIsPresenting);
+    }, [xrPlayer, xrIsPresenting]);
+
+
     const [VRCordinate, setVRCordinate] = useState({
         0: [499, -24, -60],
         1: [630, -18, -106],
@@ -48,8 +58,10 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isVRSupported }) {
                 scene2Sheet.sequence.play({ range: [startPoint, startPoint + 0.5] });
             }
         });
-        player.position.set(499, -24, -60);
-    }, []);
+        if (player) {
+            player.position.set(499, -24, -60);
+        }
+    }, [player]);
 
     useEffect(() => {
         // 设置定时器，每秒执行一次
@@ -120,39 +132,37 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isVRSupported }) {
     useFrame(() => {
         if (isVRSupported) {
             if (isPresenting) {
-                player.position.set(VRCordinate[currentVRCordinate][0], VRCordinate[currentVRCordinate][1], VRCordinate[currentVRCordinate][2]);
+                if (player) {
+                    player.position.set(VRCordinate[currentVRCordinate][0], VRCordinate[currentVRCordinate][1], VRCordinate[currentVRCordinate][2]);
+                }
             } else {
-                player.position.set(0, 0, 0);
+                if (player) {
+                    player.position.set(0, 0, 0);
+                }
             }
         }
     });
 
-    //前往上一个VR坐标
-    useXREvent('squeeze', (event) => {
+    const handleLeftSqueeze = () => {
         setCurrentVRCordinate((prev) => {
             return prev === 0 ? Object.keys(VRCordinate).length - 1 : prev - 1;
-        })
+        });
+    };
 
-    }, { handedness: 'left' });
-
-    //前往下一个VR坐标
-    useXREvent('squeeze', (event) => {
+    const handleRightSqueeze = () => {
         setCurrentVRCordinate((prev) => {
             return prev < Object.keys(VRCordinate).length - 1 ? prev + 1 : 0;
-        })
-
-    }, { handedness: 'right' });
+        });
+    };
 
 
     return (
         <>
             {/* <Canvas gl={{ preserveDrawingBuffer: true }} >
                 <SheetProvider sheet={scene1Sheet}> */}
-
-
             <PreloadAssets />
             <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["You will see some options", "Where you want to go depends on what you want to know about me", "My journey in tech or my previous work experience.", "or you want to meet me in person in my command chamber"]} />}>
-
+                {isVRSupported && <XrSqueezeEventListener onLeftSqueeze={handleLeftSqueeze} onRightSqueeze={handleRightSqueeze} />}
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene2Sheet.sequence} startPoint={0.5} />}
                 {/* <AsyncMusic audioBuffer={audioBuffer} sequence={scene2Sheet.sequence} startPoint={0.5} lowVolumePoints={[1]} highVolumePoints={[3]} maxVolume={0.75} /> */}
                 <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault position={[498, -19, -61]} rotation={[0, 1.55, 0]} fov={75} near={0.01} />

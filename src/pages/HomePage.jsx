@@ -1,21 +1,20 @@
 
-import { useState, useCallback, useContext } from 'react';
-import { getNextScene, getNextSceneStartPoint, getNextSceneURI, getUserAntialias, getUserDpr } from './Status';
+import { useState, useCallback } from 'react';
+import { getNextScene, getNextSceneStartPoint, getNextSceneURI } from './Status';
 import Header from '../Tools/Header';
 import Status from './Status';
-import { stageOfENV, webGLPreserveDrawingBuffer } from '../Settings';
+import { stageOfENV } from '../Settings';
 import studio from '@theatre/studio'
 import extension from '@theatre/r3f/dist/extension'
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
 import SceneOne from './SceneOne';
-import SceneOne_mobile from './SceneOne_mobile';
+
 import { SheetProvider } from '@theatre/r3f';
-import { Canvas } from '@react-three/fiber';
-import { Controllers, Hands, VRButton, XR } from '@react-three/xr';
 import { scene1Sheet } from './SceneManager';
 import { useNavigate } from "react-router-dom";
-import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider';
+import XrToolMiddleLayer from '../Tools/XrToolMiddleLayer';
+import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 
 
 if (stageOfENV != "prod") {
@@ -28,8 +27,7 @@ if (stageOfENV != "prod") {
 
 
 
-function HomePage({ isPortraitPhoneScreen, vrSupported }) {
-    const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
+function HomePage({ isPortraitPhoneScreen }) {
 
     const navigate = useNavigate();
     const [showComponents, setShowComponents] = useState({
@@ -69,33 +67,16 @@ function HomePage({ isPortraitPhoneScreen, vrSupported }) {
                 <meta name="author" content="Tim Bi" />
 
             </Helmet>
-            {showComponents.header && (getNextScene() == "sceneOne") && <Header onAnimationEnd={() => toggleComponentDisplay("header")} />}
+            {showComponents.header && <Header onAnimationEnd={() => toggleComponentDisplay("header")} />}
             <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
 
-                {vrSupported && <>
-                    <VRButton />
-                    <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent">
-                        <XR>
-                            <Controllers rayMaterial={{ color: '#99FFFF' }} />
-                            <Hands />
-                            <SheetProvider sheet={scene1Sheet}>
-                                <SceneOne startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoint={39} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
-
-                        </XR>
-
-
-
-                    </Canvas>
-
-                </>}
-
-                {!vrSupported &&
-                    <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent">
+                <CanvasProvider>
+                    <XrToolMiddleLayer>
                         <SheetProvider sheet={scene1Sheet}>
-                            <SceneOne_mobile startPoint={getNextSceneStartPoint()} unloadPoint={39} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
+                            <SceneOne startPoint={getNextSceneStartPoint()} unloadPoint={39} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
 
-                    </Canvas>}
-
+                    </XrToolMiddleLayer>
+                </CanvasProvider>
 
             </div>
             <Status />

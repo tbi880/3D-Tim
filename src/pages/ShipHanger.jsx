@@ -1,25 +1,21 @@
 
-import Status, { getNextScene, getNextSceneStartPoint, getNextSceneURI, getUserAntialias, getUserDpr, } from './Status';
+import Status, { getNextScene, getNextSceneStartPoint, getNextSceneURI } from './Status';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
-import { Controllers, Hands, VRButton, XR } from '@react-three/xr';
-import { Canvas } from '@react-three/fiber';
 import { SheetProvider } from '@theatre/r3f';
 import { scene3Sheet } from './SceneManager';
-import SceneThree_mobile from './SceneThree_mobile';
 import SceneThree from './SceneThree';
 import { useContext, useEffect, useRef, useState } from 'react';
-import { webGLPreserveDrawingBuffer } from '../Settings';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import { useNavigate } from 'react-router-dom';
-import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider';
+import { CanvasProvider } from '../sharedContexts/CanvasProvider';
+import XrToolMiddleLayer from '../Tools/XrToolMiddleLayer';
 
 
 
 
 
-function ShipHanger({ vrSupported, isPortraitPhoneScreen }) {
-    const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
+function ShipHanger({ isPortraitPhoneScreen }) {
     const navigate = useNavigate();
     const welcomeMessageSent = useRef(false);
     const { messageApi } = useContext(GlobalNotificationContext);
@@ -62,29 +58,12 @@ function ShipHanger({ vrSupported, isPortraitPhoneScreen }) {
 
             <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
 
-                {vrSupported && <>
-                    <VRButton />
-                    <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent">
-                        <XR>
-                            <Controllers rayMaterial={{ color: '#99FFFF' }} />
-                            <Hands />
-                            <SheetProvider sheet={scene3Sheet}>
-                                <SceneThree startPoint={getNextSceneStartPoint()} isVRSupported={vrSupported} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
-
-                        </XR>
-
-
-
-                    </Canvas>
-
-                </>}
-
-                {!vrSupported &&
-                    <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent">
+                <CanvasProvider>
+                    <XrToolMiddleLayer>
                         <SheetProvider sheet={scene3Sheet}>
-                            <SceneThree_mobile startPoint={getNextSceneStartPoint()} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
-
-                    </Canvas>}
+                            <SceneThree startPoint={getNextSceneStartPoint()} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
+                    </XrToolMiddleLayer>
+                </CanvasProvider>
 
 
             </div>

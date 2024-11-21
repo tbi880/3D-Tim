@@ -13,7 +13,6 @@ import GraphicSetting from './Tools/GraphicSetting';
 import GlobalProviders from './sharedContexts/GlobalProviders';
 
 function Routers() {
-    const [vrSupported, setVrSuppoerted] = useState(false);
     const [isWeChatBrowser, setIsWeChatBrowser] = useState(false);
     // 检测屏幕是否为手机竖屏模式，即高度大于宽度
     const [isPortraitPhoneScreen, setIsPortraitPhoneScreen] = useState(false);
@@ -22,17 +21,6 @@ function Routers() {
     const openSettingOrMenu = (settingOrMenu) => {
         setSettingOrMenuIsOn(settingOrMenu);
     };
-
-    useEffect(() => {
-        if (navigator.xr) {
-            navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
-                if (supported) {
-                    setVrSuppoerted(true);
-                }
-            });
-        }
-
-    }, []);
 
 
     useEffect(() => {
@@ -103,11 +91,11 @@ function Routers() {
                 {(settingOrMenuIsOn === "none" || settingOrMenuIsOn === "menu") && <Menu isPortraitPhoneScreen={isPortraitPhoneScreen} openSettingOrMenuCallback={openSettingOrMenu} />}
                 {(settingOrMenuIsOn === "none" || settingOrMenuIsOn === "setting") && <GraphicSetting isPortraitPhoneScreen={isPortraitPhoneScreen} openSettingOrMenuCallback={openSettingOrMenu} />}
                 <Routes>
-                    <Route path="/" element={<HomePage isPortraitPhoneScreen={isPortraitPhoneScreen} vrSupported={vrSupported} />} />
-                    <Route path="/bridge" element={<Bridge isPortraitPhoneScreen={isPortraitPhoneScreen} vrSupported={vrSupported} />} />
-                    <Route path="/ship_hanger" element={<ShipHanger isPortraitPhoneScreen={isPortraitPhoneScreen} vrSupported={vrSupported} />} />
+                    <Route path="/" element={<HomePage isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
+                    <Route path="/bridge" element={<Bridge isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
+                    <Route path="/ship_hanger" element={<ShipHanger isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
                     <Route path="/ship_engineering" element={<ShipEngineering isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
-                    <Route path="/ship_captains_chamber" element={<ShipTimsChamber isPortraitPhoneScreen={isPortraitPhoneScreen} vrSupported={vrSupported} />} />
+                    <Route path="/ship_captains_chamber" element={<ShipTimsChamber isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
                     <Route path="/jessie" element={<SceneJessie startPoint={0} />} />
                     <Route path="*" element={<NotFoundPage />} />
                 </Routes>

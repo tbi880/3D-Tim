@@ -9,19 +9,29 @@ import InfoScreenDisplay from '../modelComponents/InfoScreenDisplay';
 import SingleLoadManager from '../modelComponents/SingleLoadManager';
 import ViewPort from '../modelComponents/ViewPort';
 // import AsyncMusic, { createAudioLoader } from '../modelComponents/AsyncMusic';
-import { Suspense, useState, useCallback, useEffect } from 'react';
+import { Suspense, useState, useCallback, useEffect, useContext } from 'react';
 import PreloadAssets from '../modelComponents/preloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { scene1Sheet } from "./SceneManager";
 import { bucketURL } from '../Settings';
 import StreamMusic from '../modelComponents/StreamMusic';
 import { Environment, useGLTF } from '@react-three/drei';
-import { useXR, useXREvent } from '@react-three/xr';
+import { canvasContext } from '../sharedContexts/CanvasProvider';
+import { XrToolsContext } from '../sharedContexts/XrToolsProvider';
+import XrSqueezeEventListener from '../Tools/XrSqueezeEventListener';
 
 
 
-function SceneOne({ unloadPoint, onSequencePass, isVRSupported }) {
-    const { player, isPresenting } = useXR(); // This gives us access to the VR player context
+function SceneOne({ unloadPoint, onSequencePass }) {
+    const { isVRSupported, setIsVRSupported } = useContext(canvasContext);
+    const [player, setPlayer] = useState(null);
+    const [isPresenting, setIsPresenting] = useState(false);
+    const { xrPlayer, xrIsPresenting } = isVRSupported && useContext(XrToolsContext) ? useContext(XrToolsContext) : {};
+    useEffect(() => {
+        setPlayer(xrPlayer);
+        setIsPresenting(xrIsPresenting);
+    }, [xrPlayer, xrIsPresenting]);
+
     const [VRCordinate, setVRCordinate] = useState({
         0: [600, 19, -61],
         1: [0, 20, -61],
@@ -66,33 +76,20 @@ function SceneOne({ unloadPoint, onSequencePass, isVRSupported }) {
     }, []);
 
 
-
-
     useFrame(() => {
         if (isVRSupported) {
             if (isPresenting) {
-                player.position.set(VRCordinate[currentVRCordinate][0], VRCordinate[currentVRCordinate][1], VRCordinate[currentVRCordinate][2]);
+                if (player) {
+                    player.position.set(VRCordinate[currentVRCordinate][0], VRCordinate[currentVRCordinate][1], VRCordinate[currentVRCordinate][2]);
+                }
             } else {
-                player.position.set(0, 0, 0);
+                if (player) {
+                    player.position.set(0, 0, 0);
+                }
             }
         }
     });
 
-    //前往上一个VR坐标
-    useXREvent('squeeze', (event) => {
-        setCurrentVRCordinate((prev) => {
-            return prev === 0 ? Object.keys(VRCordinate).length - 1 : prev - 1;
-        })
-
-    }, { handedness: 'left' });
-
-    //前往下一个VR坐标
-    useXREvent('squeeze', (event) => {
-        setCurrentVRCordinate((prev) => {
-            return prev < Object.keys(VRCordinate).length - 1 ? prev + 1 : 0;
-        })
-
-    }, { handedness: 'right' });
 
 
     useFrame(() => {
@@ -107,7 +104,6 @@ function SceneOne({ unloadPoint, onSequencePass, isVRSupported }) {
         useGLTF.preload(bucketURL + "arrow-transformed.glb");
         useGLTF.preload(bucketURL + "galaxy.glb");
         useGLTF.preload(bucketURL + "sci-fi-screen-transformed.glb");
-        // useGLTF.preload(bucketURL + "shipinside-transformed.glb");
     }, []);
 
     useEffect(() => {
@@ -127,6 +123,18 @@ function SceneOne({ unloadPoint, onSequencePass, isVRSupported }) {
     }, [musicUrl]);
 
 
+    const handleLeftSqueeze = () => {
+        setCurrentVRCordinate((prev) => {
+            return prev === 0 ? Object.keys(VRCordinate).length - 1 : prev - 1;
+        });
+    };
+
+    const handleRightSqueeze = () => {
+        setCurrentVRCordinate((prev) => {
+            return prev < Object.keys(VRCordinate).length - 1 ? prev + 1 : 0;
+        });
+    };
+
 
     return (
         <>
@@ -134,7 +142,9 @@ function SceneOne({ unloadPoint, onSequencePass, isVRSupported }) {
             <PreloadAssets />
             <Suspense fallback={<Loader />}>
 
-                {audioElement && <StreamMusic audioElement={audioElement} sequence={scene1Sheet.sequence} startPoint={0.07} />}
+                {audioElement && <StreamMusic audioElement={audioElement} sequence={scene1Sheet.sequence} startPoint={1} />}
+                {isVRSupported && <XrSqueezeEventListener onLeftSqueeze={handleLeftSqueeze} onRightSqueeze={handleRightSqueeze} />}
+
                 {/* <AsyncMusic audioBuffer={audioBuffer} sequence={scene1Sheet.sequence} startPoint={0.07} lowVolumePoints={[30]} highVolumePoints={[0.034, 33]} maxVolume={1} /> */}
                 <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault position={[600, 20, -61]} rotation={[0, 0.33, 0]} fov={75} near={0.01} />
                 <ambientLight intensity={5} />

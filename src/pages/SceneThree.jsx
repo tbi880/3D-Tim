@@ -11,9 +11,8 @@ import ProgrammingHome from '../modelComponents/ProgrammingHome';
 import ViewPort from '../modelComponents/ViewPort';
 import ProgrammingFuture from '../modelComponents/ProgrammingFuture';
 import StreamMusic from '../modelComponents/StreamMusic';
-// import AsyncMusic, { createAudioLoader } from '../modelComponents/AsyncMusic';
 import Auckland from '../modelComponents/Auckland';
-import { Suspense, useState, useCallback, useEffect } from 'react';
+import { Suspense, useState, useCallback, useEffect, useContext } from 'react';
 import PreloadAssets from '../modelComponents/preloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { scene3Sheet } from "./SceneManager";
@@ -22,11 +21,19 @@ import Loading from '../modelComponents/Loading';
 import { types } from '@theatre/core';
 import { scene3Project } from './SceneManager';
 import { useFrame } from '@react-three/fiber';
-import { useXR } from '@react-three/xr';
 import Loader from './Loader';
+import { canvasContext } from '../sharedContexts/CanvasProvider';
+import { XrToolsContext } from '../sharedContexts/XrToolsProvider';
 
-function SceneThree({ startPoint, unloadPoint, onSequencePass, isVRSupported }) {
-    const { player, isPresenting } = useXR(); // This gives us access to the VR player context
+function SceneThree({ startPoint, unloadPoint, onSequencePass }) {
+    const { isVRSupported, setIsVRSupported } = useContext(canvasContext);
+    const [player, setPlayer] = useState(null);
+    const [isPresenting, setIsPresenting] = useState(false);
+    const { xrPlayer, xrIsPresenting } = isVRSupported && useContext(XrToolsContext) ? useContext(XrToolsContext) : {};
+    useEffect(() => {
+        setPlayer(xrPlayer);
+        setIsPresenting(xrIsPresenting);
+    }, [xrPlayer, xrIsPresenting]);
     const [VRCordinate, setVRCordinate] = useState({ // mapped by sequence position to coordinates
         0: [0, 0, 0],
         20: [0.1, -0.4, -4.25],
@@ -117,7 +124,9 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isVRSupported }) 
 
     useEffect(() => {
         setShowComponents(initialShowComponents);
-        player.position.set(0, 0, 0);
+        if (player) {
+            player.position.set(0, 0, 0);
+        }
     }, []);
 
     useEffect(() => {
@@ -173,9 +182,13 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isVRSupported }) 
                 if (scene3Sheet.sequence.position >= nextSwitchPoint) {
                     setCurrentVRCordinate(nextSwitchPoint);
                 }
-                player.position.set(VRCordinate[currentVRCordinate][0], VRCordinate[currentVRCordinate][1], VRCordinate[currentVRCordinate][2]);
+                if (player) {
+                    player.position.set(VRCordinate[currentVRCordinate][0], VRCordinate[currentVRCordinate][1], VRCordinate[currentVRCordinate][2]);
+                }
             } else {
-                player.position.set(0, 0, 0);
+                if (player) {
+                    player.position.set(0, 0, 0);
+                }
             }
         }
     }
@@ -188,7 +201,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isVRSupported }) 
             <PreloadAssets />
             <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["Now you'll see some of my stories during my tech journey", "You can click on the viewport after the loading is finished", "You will be ported back to the previous page to see the other options after viewing this", "or you can download my resume as PDF"]} />}>
 
-                {audioElement && <StreamMusic audioElement={audioElement} sequence={scene3Sheet.sequence} startPoint={0.02} maxVolume={1} />}
+                {audioElement && <StreamMusic audioElement={audioElement} sequence={scene3Sheet.sequence} startPoint={1} maxVolume={1} />}
 
                 {/* <AsyncMusic audioBuffer={audioBuffer} sequence={scene3Sheet.sequence} startPoint={0.02} lowVolumePoints={[31, 50]} highVolumePoints={[32, 52]} maxVolume={0.75} /> */}
                 {showComponents.viewPort_start && <ViewPort screenTitle={"start"} position={[-3.3, 1.82, -4.88]} rotation={[0, 0, 0]} stopPoint={30} sequence={scene3Sheet.sequence} onSequencePass={() => { toggleComponentDisplay("viewPort_start") }} unloadPoint={1} isSetNextScene={false} />}
