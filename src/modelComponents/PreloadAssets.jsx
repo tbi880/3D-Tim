@@ -1,20 +1,13 @@
 
-import { Helmet } from 'react-helmet';
-import { bucketURL } from '../Settings';
+import TextContent from "./TextContent";
+import TextTitle_v2 from "./TextTitle_v2";
 
-// PreloadAssets组件
+
 const PreloadAssets = () => {
 
-    const fontFile1 = bucketURL + "fonts/Play_Regular.json";
-    const fontFile2 = bucketURL + "fonts/Orbitron_Bold.json";
-
-
     return (<>
-        <Helmet>
-            <link rel="preload" href={fontFile1} as="fetch" type="application/json" crossorigin="anonymous"></link>
-            <link rel="preload" href={fontFile2} as="fetch" type="application/json" crossorigin="anonymous"></link>
-
-        </Helmet >
+        <TextTitle_v2 theatreKey="preload" text="preloading" color="#ffffff" size={0.5} position={[0, 0, 110]} rotation={[0, 0, 0]} />
+        <TextContent title="preloading" order={0} lines={["1", "w"]} color="#ffffff" size={0.5} position={[0, 0, 110]} rotation={[0, 0, 0]} />
     </>);
 };
 

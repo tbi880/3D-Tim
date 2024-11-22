@@ -1,13 +1,19 @@
 import { useEffect, useRef } from 'react';
 
 function StreamMusic({ audioElement, sequence, startPoint, }) {
-    const audioContextRef = useRef(new AudioContext());
+    const audioContextRef = useRef(null);
     const gainNodeRef = useRef(null);
     const sourceNodeRef = useRef(null);
     const isPlayingRef = useRef(false);
 
     useEffect(() => {
-        if (!audioElement || audioContextRef.current.state === 'running') {
+        if (!audioElement || startPoint < sequence.position) {
+            return;
+        }
+        if (!audioContextRef.current) {
+            audioContextRef.current = new AudioContext();
+        }
+        if (audioContextRef.current.state === 'running') {
             return;
         }
 

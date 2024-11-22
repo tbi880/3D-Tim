@@ -18,17 +18,17 @@ function TextContent({ title, order, lines, color, size, position = [0, 0, 0], r
     // 确保引用数组足够长以保存所有行的引用
     meshRefs.current = meshRefs.current.slice(0, lines.length);
 
-    useEffect(() => {
-        // 返回一个清理函数，清理所有的 mesh
-        return () => {
-            meshRefs.current.forEach(mesh => {
-                if (mesh) {
-                    if (mesh.geometry) mesh.geometry.dispose();
-                    if (mesh.material) mesh.material.dispose();
-                }
-            });
-        };
-    }, []); // 空依赖数组，这个 effect 只在卸载时运行
+    // useEffect(() => {
+    //     // 返回一个清理函数，清理所有的 mesh
+    //     return () => {
+    //         meshRefs.current.forEach(mesh => {
+    //             if (mesh) {
+    //                 if (mesh.geometry) mesh.geometry.dispose();
+    //                 if (mesh.material) mesh.material.dispose();
+    //             }
+    //         });
+    //     };
+    // }, []); // 空依赖数组，这个 effect 只在卸载时运行
 
     // 使用Effect确保在字体加载后应用透明度
     useEffect(() => {

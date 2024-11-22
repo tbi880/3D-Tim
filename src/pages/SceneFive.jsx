@@ -159,6 +159,7 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
 
 
     const initialShowComponents = {
+        preloadAssets: false,
         insideAmbientLight: false,
         shipOutside: true,
         chamberInside: false,
@@ -184,9 +185,11 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
         controlPanel2: false,
         loadingForTheNextScene: false,
 
+
     }
     // Use an object to manage the initial display state of multiple components
     const [showComponents, setShowComponents] = useState({
+        preloadAssets: true,
         insideAmbientLight: true,
         shipOutside: true,
         chamberInside: true,
@@ -247,10 +250,9 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
 
     return (
         <>
-            <PreloadAssets />
             <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["You made it!", "You are about to enter the command chamber", "You are about to experience some of my technical skills of backend development.", "Which involve .Net, message queue(RabbitMQ), async programming...", "Anyway, you'll see."]} onFinished={() => { finishLoading(); }} />}>
-
-                {audioElement && <StreamMusic audioElement={audioElement} sequence={scene5Sheet.sequence} startPoint={3} maxVolume={1} />}
+                {showComponents.preloadAssets && <PreloadAssets />}
+                {audioElement && <StreamMusic audioElement={audioElement} sequence={scene5Sheet.sequence} startPoint={20.1} maxVolume={1} />}
                 <Galaxy />
                 <StrangerStar />
                 {showComponents.shipOutside && <ShipOutside sequence={scene5Sheet.sequence} unloadPoint={20} onSequencePass={() => { toggleComponentDisplay("shipOutside") }} />}

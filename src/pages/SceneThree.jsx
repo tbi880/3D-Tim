@@ -76,6 +76,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
 
 
     const initialShowComponents = {
+        preloadAssets: false,
         lightings: true,
         pointlight: false,
         viewPort_start: true,
@@ -100,6 +101,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
     }
     // 使用一个对象来管理多个组件的初始显示状态,加载的时候先全部挂载，然后替换成上面的真实加载情况
     const [showComponents, setShowComponents] = useState({
+        preloadAssets: true,
         lightings: true,
         pointlight: true,
         viewPort_start: true,
@@ -199,8 +201,8 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
         <>
             {/* <Canvas gl={{ preserveDrawingBuffer: true }} >
                 <SheetProvider sheet={scene1Sheet}> */}
-            <PreloadAssets />
             <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["Now you'll see some of my stories during my tech journey", "You can click on the viewport after the loading is finished", "You will be ported back to the previous page to see the other options after viewing this", "or you can download my resume as PDF"]} />}>
+                {showComponents.preloadAssets && <PreloadAssets />}
 
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene3Sheet.sequence} startPoint={1} maxVolume={1} />}
 

@@ -98,6 +98,7 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
     // const screenStarShipInfo = "This starship, laden with humanity's hopes, pioneers space exploration with true self-learning, multi-purpose AI robots. Each AI holds a unique role: service AIs cater to the needs of all on board, maintenance AIs ensure the ship's upkeep, and research AIs delve into cutting-edge theories, transforming them into technologies that not only prevent the ship from deteriorating over its millennia-long journey but also significantly enhance its capabilities through expansions and upgrades. This visionary approach originated from the ship's first captain,whose name is Tim Bi(2001-21??), a renowned computer scientist on Earth whose early life remains largely unknown. His obscure past forms the basis of the root access questions for the ship's control system, without which altering the ship's course or initiating emergency stops is impossible. As the ship's chief engineer, it falls to you to unearth these ancient records to avert a catastrophic fate from powerful gravitational forces."
     // 使用一个对象来管理多个组件的初始显示状态
     const [showComponents, setShowComponents] = useState({
+        preloadAssets: true,
         shipInside: true,
         robotIntro: true,
         viewPortIntro: true,
@@ -124,6 +125,12 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
             [componentKey]: !prev[componentKey],
         }));
 
+    }, []);
+
+    useEffect(() => {
+        if (showComponents.preloadAssets) {
+            toggleComponentDisplay('preloadAssets');
+        }
     }, []);
 
 
@@ -158,8 +165,9 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
         <>
             {/* <Canvas gl={{ preserveDrawingBuffer: true }} >
                 <SheetProvider sheet={scene1Sheet}> */}
-            <PreloadAssets />
             <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["You will see some options", "Where you want to go depends on what you want to know about me", "My journey in tech or my previous work experience.", "or you want to meet me in person in my command chamber"]} />}>
+                {showComponents.preloadAssets && <PreloadAssets />}
+
                 {isVRSupported && <XrSqueezeEventListener onLeftSqueeze={handleLeftSqueeze} onRightSqueeze={handleRightSqueeze} />}
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene2Sheet.sequence} startPoint={0.5} />}
                 {/* <AsyncMusic audioBuffer={audioBuffer} sequence={scene2Sheet.sequence} startPoint={0.5} lowVolumePoints={[1]} highVolumePoints={[3]} maxVolume={0.75} /> */}

@@ -51,7 +51,9 @@ function SceneOne({ unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
 
     const screenStarShipInfo = "This starship, laden with humanity's hopes, pioneers space exploration with true self-learning, multi-purpose AI robots. Each AI holds a unique role: service AIs cater to the needs of all on board, maintenance AIs ensure the ship's upkeep, and research AIs delve into cutting-edge theories, transforming them into technologies that not only prevent the ship from deteriorating over its millennia-long journey but also significantly enhance its capabilities through expansions and upgrades. This visionary approach originated from the ship's first captain,whose name is Tim Bi(2001-21??), a renowned computer scientist on Earth whose early life remains largely unknown. His obscure past forms the basis of the root access questions for the ship's control system, without which altering the ship's course or initiating emergency stops is impossible. As the ship's chief engineer, it falls to you to unearth these ancient records to avert a catastrophic fate from powerful gravitational forces."
     // 使用一个对象来管理多个组件的初始显示状态
+
     const [showComponents, setShowComponents] = useState({
+        preloadAssets: true,
         textTitleAD32101: true,
         textTitleOuterArm: true,
         textTitleApproximately: true,
@@ -61,8 +63,7 @@ function SceneOne({ unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
         viewPortStarShipInfo: true,
         infoScreenDisplayStarShipInfo: false,
         textTitleVRVIEWPORT: true,
-        // 可以添加更多组件的初始显示状态
-        // 例如: otherComponent: true,
+
     });
 
     // 创建一个通用的切换函数
@@ -74,6 +75,12 @@ function SceneOne({ unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
 
     }, []);
 
+
+    useEffect(() => {
+        if (showComponents.preloadAssets) {
+            toggleComponentDisplay('preloadAssets');
+        }
+    }, []);
 
     useFrame(() => {
         if (isVRSupported) {
@@ -138,8 +145,8 @@ function SceneOne({ unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     return (
         <>
 
-            <PreloadAssets />
             <Suspense fallback={<Loader />}>
+                {showComponents.preloadAssets && <PreloadAssets />}
 
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene1Sheet.sequence} startPoint={1} />}
                 {isVRSupported && <XrSqueezeEventListener onLeftSqueeze={handleLeftSqueeze} onRightSqueeze={handleRightSqueeze} />}

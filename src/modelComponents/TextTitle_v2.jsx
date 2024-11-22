@@ -27,18 +27,18 @@ function TextTitle_v2({ theatreKey, text, fontURL, color, size, position = [0, 0
 
     }, [font, theatreKey]);
 
-    useEffect(() => {
-        return () => {
-            if (meshRef.current) {
-                if (meshRef.current.geometry) {
-                    meshRef.current.geometry.dispose();
-                }
-                if (meshRef.current.material) {
-                    meshRef.current.material.dispose();
-                }
-            }
-        };
-    }, []);
+    // useEffect(() => {
+    //     return () => {
+    //         if (meshRef.current) {
+    //             if (meshRef.current.geometry) {
+    //                 meshRef.current.geometry.dispose();
+    //             }
+    //             if (meshRef.current.material) {
+    //                 meshRef.current.material.dispose();
+    //             }
+    //         }
+    //     };
+    // }, []);
 
     useFrame(() => {
         if (sequence && sequence.position >= unloadPoint) {
