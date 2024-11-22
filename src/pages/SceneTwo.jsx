@@ -13,7 +13,7 @@ import { Suspense, useState, useCallback, useEffect, useContext } from 'react';
 import PreloadAssets from '../modelComponents/preloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { scene2Sheet, scene2Project } from "./SceneManager";
-import { bucketURL } from '../Settings';
+import { bucketURL, stageOfENV } from '../Settings';
 import Loading from '../modelComponents/Loading';
 import { Environment, useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
@@ -21,6 +21,7 @@ import Loader from './Loader';
 import { canvasContext } from '../sharedContexts/CanvasProvider';
 import { XrToolsContext } from '../sharedContexts/XrToolsProvider';
 import { XrSqueezeEventListener } from '../Tools/XrSqueezeEventListener';
+import { Perf } from 'r3f-perf';
 
 
 function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScreen }) {
@@ -166,6 +167,8 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
             {/* <Canvas gl={{ preserveDrawingBuffer: true }} >
                 <SheetProvider sheet={scene1Sheet}> */}
             <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["You will see some options", "Where you want to go depends on what you want to know about me", "My journey in tech or my previous work experience.", "or you want to meet me in person in my command chamber"]} />}>
+                {stageOfENV != "prod" && !isPortraitPhoneScreen && <Perf position={"bottom-right"} openByDefault showGraph />}
+
                 {showComponents.preloadAssets && <PreloadAssets />}
 
                 {isVRSupported && <XrSqueezeEventListener onLeftSqueeze={handleLeftSqueeze} onRightSqueeze={handleRightSqueeze} />}
@@ -190,7 +193,7 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
                 <ShipInside sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('shipInside')} />
                 {showComponents.viewPortIntro && <ViewPort screenTitle="Intro" position={[613, -15.5, -106]} rotation={[0, 0, 0]} sequence={scene2Sheet.sequence} stopPoint={1} unloadPoint={1} onSequencePass={() => toggleComponentDisplay('viewPortIntro')} />}
                 {showComponents.robotIntro && <Robots title="Intro" position={[613, -15.5, -106]} rotation={[0, 0, 0]} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('robotIntro')} />}
-                {showComponents.screenIntro && <InfoScreenDisplay title="Conversation" content={screenIntro} sequence={scene2Sheet.sequence} stopPoints={[1.5, 2, 2.5, 22.5]} loadPoints={[0, 1, 1.5, 2]} unloadPoints={[2, 2.5, 3, 3.5]} onSequencePass={() => toggleComponentDisplay("screenIntro")} />}
+                {showComponents.screenIntro && <InfoScreenDisplay title="Conversation" content={screenIntro} sequence={scene2Sheet.sequence} stopPoints={[1.5, 2, 2.5, 22.5]} loadPoints={isPortraitPhoneScreen ? [0, 1.5, 2, 2.5] : [0, 1, 1.5, 2]} unloadPoints={[2, 2.5, 3, 3.5]} onSequencePass={() => toggleComponentDisplay("screenIntro")} />}
 
                 <SingleLoadManager loadPoint={22} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('textTitleGetROOTACCESS')} />
                 {showComponents.textTitleGetROOTACCESS && <TextTitle text="Where to get the ROOT ACCESS?" color="#99CCFF" size={1} sequence={scene2Sheet.sequence} unloadPoint={24} onSequencePass={() => toggleComponentDisplay('textTitleGetROOTACCESS')} />}

@@ -16,7 +16,7 @@ import { Suspense, useState, useCallback, useEffect, useContext } from 'react';
 import PreloadAssets from '../modelComponents/preloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { scene3Sheet } from "./SceneManager";
-import { bucketURL } from '../Settings';
+import { bucketURL, stageOfENV } from '../Settings';
 import Loading from '../modelComponents/Loading';
 import { types } from '@theatre/core';
 import { scene3Project } from './SceneManager';
@@ -24,6 +24,7 @@ import { useFrame } from '@react-three/fiber';
 import Loader from './Loader';
 import { canvasContext } from '../sharedContexts/CanvasProvider';
 import { XrToolsContext } from '../sharedContexts/XrToolsProvider';
+import { Perf } from 'r3f-perf';
 
 
 function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
@@ -202,6 +203,8 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
             {/* <Canvas gl={{ preserveDrawingBuffer: true }} >
                 <SheetProvider sheet={scene1Sheet}> */}
             <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["Now you'll see some of my stories during my tech journey", "You can click on the viewport after the loading is finished", "You will be ported back to the previous page to see the other options after viewing this", "or you can download my resume as PDF"]} />}>
+                {stageOfENV != "prod" && !isPortraitPhoneScreen && <Perf position={"bottom-right"} openByDefault showGraph />}
+
                 {showComponents.preloadAssets && <PreloadAssets />}
 
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene3Sheet.sequence} startPoint={1} maxVolume={1} />}
@@ -310,7 +313,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
                 {showComponents.year2099 && <TextTitle text="2099" color="#FFFFFF" size={0.1} position={[0, 0, 0]} rotation={[0, 3.14, 0]} sequence={scene3Sheet.sequence} unloadPoint={47} onSequencePass={() => { toggleComponentDisplay("year2099") }} />}
 
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={48.5} onSequencePass={() => { toggleComponentDisplay("resumeScreen") }} />
-                {showComponents.resumeScreen && <InfoScreenDisplay title={"Resume2024"} content={resumeString} sequence={scene3Sheet.sequence} loadPoints={[49.5, 50, 50.5, 51]} stopPoints={[50.5, 51, 51.5, 64]} unloadPoints={[50.5, 51, 51.5, 52]} onSequencePass={() => { toggleComponentDisplay("resumeScreen") }} />}
+                {showComponents.resumeScreen && <InfoScreenDisplay title={"Resume2024"} content={resumeString} sequence={scene3Sheet.sequence} loadPoints={isPortraitPhoneScreen ? [49.5, 50.5, 51, 51.5] : [49.5, 50, 50.5, 51]} stopPoints={[50.5, 51, 51.5, 64]} unloadPoints={[50.5, 51, 51.5, 52]} onSequencePass={() => { toggleComponentDisplay("resumeScreen") }} />}
 
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={52} onSequencePass={() => { toggleComponentDisplay("techs") }} />
                 {showComponents.techs && <>

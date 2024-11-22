@@ -4,7 +4,7 @@ import StreamMusic from '../modelComponents/StreamMusic';
 import { Suspense, useState, useCallback, useEffect, useRef, useContext, useMemo } from 'react';
 import PreloadAssets from '../modelComponents/preloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
-import { bucketURL } from '../Settings';
+import { bucketURL, stageOfENV } from '../Settings';
 import { scene5Project, scene5Sheet } from './SceneManager';
 import StrangerStar from '../modelComponents/StrangerStar';
 import AnyModel from '../modelComponents/AnyModel';
@@ -26,6 +26,8 @@ import { searchForEmergencyPlansContext } from '../sharedContexts/SearchForEmerg
 import { headerSubTitleContext } from '../sharedContexts/HeaderSubTitleProvider';
 import Loading from '../modelComponents/Loading';
 import Loader from './Loader';
+import { Perf } from 'r3f-perf';
+
 
 function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     const musicUrl = bucketURL + 'music/bgm5.mp3';
@@ -251,6 +253,7 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
     return (
         <>
             <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["You made it!", "You are about to enter the command chamber", "You are about to experience some of my technical skills of backend development.", "Which involve .Net, message queue(RabbitMQ), async programming...", "Anyway, you'll see."]} onFinished={() => { finishLoading(); }} />}>
+                {stageOfENV != "prod" && !isPortraitPhoneScreen && <Perf position={"bottom-right"} openByDefault showGraph />}
                 {showComponents.preloadAssets && <PreloadAssets />}
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene5Sheet.sequence} startPoint={20.1} maxVolume={1} />}
                 <Galaxy />
@@ -333,7 +336,7 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={19.75} onSequencePass={() => { toggleComponentDisplay("viewportStart") }} />
                 {showComponents.viewportStart && <ViewPort screenTitle="ViewPort" position={[562, 32.75, 0]} rotation={[1.12, 3.21, -0.06]} sequence={scene5Sheet.sequence} stopPoint={23} unloadPoint={21} onSequencePass={() => { toggleComponentDisplay("viewportStart") }} />}
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={22} onSequencePass={() => { toggleComponentDisplay("infoScreenDisplayDamageReport") }} />
-                {showComponents.infoScreenDisplayDamageReport && <InfoScreenDisplay title={"damage report"} content={damageReport} sequence={scene5Sheet.sequence} stopPoints={[23.5, 24, 24.5, 25, 30]} loadPoints={[22, 23, 23.5, 24, 24.5]} unloadPoints={[23.5, 24, 24.5, 25, 25.5]} onSequencePass={() => { toggleComponentDisplay("infoScreenDisplayDamageReport") }} />}
+                {showComponents.infoScreenDisplayDamageReport && <InfoScreenDisplay title={"damage report"} content={damageReport} sequence={scene5Sheet.sequence} stopPoints={[23.5, 24, 24.5, 25, 30]} loadPoints={isPortraitPhoneScreen ? [22, 23.5, 24, 24.5, 25] : [22, 23, 23.5, 24, 24.5]} unloadPoints={[23.5, 24, 24.5, 25, 25.5]} onSequencePass={() => { toggleComponentDisplay("infoScreenDisplayDamageReport") }} />}
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={29} onSequencePass={() => { toggleComponentDisplay("buttonCalculateSlingshotTrajectory"); toggleComponentDisplay("buttonSendDistressSignal"); toggleComponentDisplay("buttonInitiateTheWarpEngine"); }} />
                 {showComponents.buttonCalculateSlingshotTrajectory && <Button title={"calculate slingshot trajectory"} position={[558, 33.75, 3]} buttonLength={1.5} rotation={[0.12, 0.185, -0.06]} sequence={scene5Sheet.sequence} clickablePoint={30} IsPreJump={true} jumpToPoint={55} stopPoint={67.5} unloadPoint={56} onSequencePass={() => { toggleComponentDisplay("buttonCalculateSlingshotTrajectory"); setSimulationDone(true); }} />}
@@ -344,7 +347,7 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={59} onSequencePass={() => { toggleComponentDisplay("hologramSlingshotTrajectory") }} />
                 {showComponents.hologramSlingshotTrajectory && <AnyModel modelURL='earth_hologram-transformed.glb' sequence={scene5Sheet.sequence} useTheatre={true} theatreKey={"hologram-SlingshotTrajectory"} position={[558, 34, 0]} rotation={[0, 0, 0]} scale={[0.5, 0.5, 0.5]} animationNames={["Take 01"]} animationAutoStart={true} unloadPoint={67} onSequencePass={() => { toggleComponentDisplay("hologramSlingshotTrajectory") }} />}
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={67} onSequencePass={() => { toggleComponentDisplay("simulationResult") }} />
-                {showComponents.simulationResult && <InfoScreenDisplay title={"simulation"} content={simulationResult} sequence={scene5Sheet.sequence} stopPoints={[68, 68.5, 69, 75]} loadPoints={[67, 67.5, 68, 68.5]} unloadPoints={[68, 68.5, 69, 69.5]} onSequencePass={() => { toggleComponentDisplay("simulationResult") }} />}
+                {showComponents.simulationResult && <InfoScreenDisplay title={"simulation"} content={simulationResult} sequence={scene5Sheet.sequence} stopPoints={[68, 68.5, 69, 75]} loadPoints={isPortraitPhoneScreen ? [67, 68, 68.5, 69] : [67, 67.5, 68, 68.5]} unloadPoints={[68, 68.5, 69, 69.5]} onSequencePass={() => { toggleComponentDisplay("simulationResult") }} />}
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={75} onSequencePass={() => { scene5Sheet.sequence.play({ range: [29, 30] }) }} />
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={85} onSequencePass={() => { toggleComponentDisplay("controlPanel") }} />
