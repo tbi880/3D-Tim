@@ -1,5 +1,3 @@
-import { useXR } from "@react-three/xr";
-
 let nextScene = sessionStorage.getItem('nextScene') || "sceneOne";
 let nextSceneStartPoint = JSON.parse(sessionStorage.getItem('nextSceneStartPoint')) || 0;
 let engineeringHasBeenAccessed = JSON.parse(localStorage.getItem('engineeringHasBeenAccessed')) || false;

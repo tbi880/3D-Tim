@@ -49,11 +49,12 @@ function StreamMusic({ audioElement, sequence, startPoint, }) {
             return;
         }
 
-        audioContextRef.current.resume().then(() => {
-            audioElement.play();
-            isPlayingRef.current = true;
-        }).catch(console.error);
-
+        if (audioContextRef.current) {
+            audioContextRef.current.resume().then(() => {
+                audioElement.play();
+                isPlayingRef.current = true;
+            }).catch(console.error);
+        }
         return () => {
             isPlayingRef.current = false;
         };

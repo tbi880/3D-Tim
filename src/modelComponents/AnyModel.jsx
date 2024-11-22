@@ -249,7 +249,13 @@ function AnyModel(props) {
 
     return (
         <>{props.useTheatre ?
-            <e.mesh theatreKey={theatreKey} scale={props.scale ? props.scale : 0.01} position={props.position} rotation={props.rotation} visible={props.visible} {...eventHandlers}
+            <e.mesh theatreKey={theatreKey} scale={
+                Array.isArray(props.scale)
+                    ? props.scale
+                    : typeof props.scale === 'number'
+                        ? [props.scale, props.scale, props.scale]
+                        : [0.01, 0.01, 0.01] // 默认值
+            } position={props.position} rotation={props.rotation} visible={props.visible} {...eventHandlers}
 
                 additionalProps={{
                     opacity: types.number(opacity, {
@@ -265,7 +271,13 @@ function AnyModel(props) {
 
             </e.mesh>
             :
-            <mesh scale={props.scale ? props.scale : 0.01} >
+            <mesh scale={
+                Array.isArray(props.scale)
+                    ? props.scale
+                    : typeof props.scale === 'number'
+                        ? [props.scale, props.scale, props.scale]
+                        : [0.01, 0.01, 0.01] // 默认值
+            } >
                 <primitive
                     object={props.isMultiple ? clone : anyModel.scene}
                     position={props.position}
@@ -296,8 +308,10 @@ AnyModel.propTypes = {
     rotation: PropTypes.array,
     opacity: PropTypes.number,
     visible: PropTypes.bool,
-    scale: PropTypes.array,
-    unloadPoint: PropTypes.number,
+    scale: PropTypes.oneOfType([
+        PropTypes.number, // 支持单个数字
+        PropTypes.arrayOf(PropTypes.number), // 或者一个数组
+    ]), unloadPoint: PropTypes.number,
     onSequencePass: PropTypes.func,
     animationNames: PropTypes.array,
     animationAutoStart: PropTypes.bool,
@@ -319,7 +333,7 @@ AnyModel.defaultProps = {
     rotation: [0, 0, 0],
     opacity: 1,
     visible: true,
-    scale: [1, 1, 1],
+    scale: 0.01, // 默认值可以是单个数字    
     unloadPoint: Infinity,
     onSequencePass: () => { },
     animationNames: [],
