@@ -187,7 +187,6 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
         controlPanel2: false,
         loadingForTheNextScene: false,
 
-
     }
     // Use an object to manage the initial display state of multiple components
     const [showComponents, setShowComponents] = useState({
@@ -280,12 +279,12 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
                 <PerspectiveCamera theatreKey="ThirdPersonCamera" makeDefault={!isFirstPersonCamera} position={[550, 50, -10]} rotation={[0, -Math.PI / 2, 0]} fov={75} near={0.01} />
 
                 <color attach='background' args={[backgroundColor]} />
-                <Environment
+                {showComponents.spaceEnv && <Environment
                     files={bucketURL + 'pic/space.exr'}
                     background={false}
                     intensity={3.5}
                     environmentIntensity={1}
-                />
+                />}
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={10} onSequencePass={() => { switchCamera(true) }} />
 
                 {showComponents.preloadEnv && <Environment
@@ -295,12 +294,7 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
                     intensity={3.5}
                     environmentIntensity={1}
                 />}
-                {showComponents.spaceEnv ? <Environment
-                    files={bucketURL + 'pic/space.exr'}
-                    background={false}
-                    intensity={3.5}
-                    environmentIntensity={1}
-                /> : <Environment
+                {showComponents.chamberInside && isFirstPersonCamera && <Environment
                     files={bucketURL + 'pic/studio.hdr'}
                     resolution={4}
                     background={false}
