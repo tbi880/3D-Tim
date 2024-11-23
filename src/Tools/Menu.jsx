@@ -6,7 +6,7 @@ import { getMenuLockMapFromLocalStorage } from "../pages/Status";
 
 function Menu({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
     const [showMenu, setShowMenu] = useState(false);
-    const scene_menu_lock_map = getMenuLockMapFromLocalStorage();
+    const [sceneMenuLockMap, setSceneMenuLockMap] = useState(getMenuLockMapFromLocalStorage());
 
     const handleClick = (e, isLocked) => {
         if (isLocked) {
@@ -16,6 +16,7 @@ function Menu({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
 
     const toggleMenu = () => {
         setShowMenu(!showMenu);
+        setSceneMenuLockMap(getMenuLockMapFromLocalStorage());
         if (showMenu) {
             openSettingOrMenuCallback("none");
         } else {
@@ -84,29 +85,29 @@ function Menu({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
                     </li>
 
                     <li style={listItemStyle} className="menu-item">
-                        <a href="/bridge" className={`menu-link ${scene_menu_lock_map.sceneTwo ? 'locked' : ''}`} onClick={(e) => handleClick(e, scene_menu_lock_map.sceneTwo)} target="_blank" rel="noopener noreferrer">
-                            {!scene_menu_lock_map.sceneTwo ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
+                        <a href="/bridge" className={`menu-link ${sceneMenuLockMap.sceneTwo ? 'locked' : ''}`} onClick={(e) => handleClick(e, sceneMenuLockMap.sceneTwo)} target="_blank" rel="noopener noreferrer">
+                            {!sceneMenuLockMap.sceneTwo ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
                             Scene2: Ship's bridge</a>
                         <div style={dividerStyle} ></div>
                     </li>
 
                     <li style={listItemStyle} className="menu-item">
-                        <a href="/ship_hanger" className={`menu-link ${scene_menu_lock_map.sceneThree ? 'locked' : ''}`} onClick={(e) => handleClick(e, scene_menu_lock_map.sceneThree)} target="_blank" rel="noopener noreferrer">
-                            {!scene_menu_lock_map.sceneThree ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
+                        <a href="/ship_hanger" className={`menu-link ${sceneMenuLockMap.sceneThree ? 'locked' : ''}`} onClick={(e) => handleClick(e, sceneMenuLockMap.sceneThree)} target="_blank" rel="noopener noreferrer">
+                            {!sceneMenuLockMap.sceneThree ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
                             Scene3: Ship hanger</a>
                         <div style={dividerStyle} ></div>
                     </li>
 
                     <li style={listItemStyle} className="menu-item">
-                        <a href="/ship_engineering" className={`menu-link ${scene_menu_lock_map.sceneFour ? 'locked' : ''}`} onClick={(e) => handleClick(e, scene_menu_lock_map.sceneFour)} target="_blank" rel="noopener noreferrer">
-                            {!scene_menu_lock_map.sceneFour ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
+                        <a href="/ship_engineering" className={`menu-link ${sceneMenuLockMap.sceneFour ? 'locked' : ''}`} onClick={(e) => handleClick(e, sceneMenuLockMap.sceneFour)} target="_blank" rel="noopener noreferrer">
+                            {!sceneMenuLockMap.sceneFour ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
                             Scene4: Ship's Engineering</a>
                         <div style={dividerStyle} ></div>
                     </li>
 
                     <li style={listItemStyle} className="menu-item">
-                        <a href="/ship_captains_chamber" className={`menu-link ${scene_menu_lock_map.sceneFive ? 'locked' : ''}`} onClick={(e) => handleClick(e, scene_menu_lock_map.sceneFive)} target="_blank" rel="noopener noreferrer">
-                            {!scene_menu_lock_map.sceneFive ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
+                        <a href="/ship_captains_chamber" className={`menu-link ${sceneMenuLockMap.sceneFive ? 'locked' : ''}`} onClick={(e) => handleClick(e, sceneMenuLockMap.sceneFive)} target="_blank" rel="noopener noreferrer">
+                            {!sceneMenuLockMap.sceneFive ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
                             Scene5: Captain's Command Chamber</a>
                         <div style={dividerStyle} ></div>
                     </li>

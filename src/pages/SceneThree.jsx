@@ -85,10 +85,10 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
         textTitle_12yearsOldTim: true,
         textTitle_mumsAsleep: true,
         textTitle_15yearsOldTim: false,
-        programmingOffice: false,
+        programmingOffice: true,
         textTitle_18yearsOldTim: false,
         viewport_iphone: false,
-        auckland: false,
+        auckland: true,
         year2022: false,
         year2023: false,
         year2024: false,
@@ -100,6 +100,40 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
         resumeScreen: false,
         loading: false,
     }
+
+    // 创建一个通用的切换函数
+    const toggleComponentDisplay = useCallback((componentKey) => {
+        setShowComponents((prev) => ({
+            ...prev,
+            [componentKey]: !prev[componentKey],
+
+        }));
+        if (componentKey === "textTitle_mumsAsleep") {
+            setBackgroundColor("white");
+        }
+
+        if (componentKey === "galaxy" && scene3Sheet.sequence.position >= 40) {
+            setBackgroundColor("black");
+            shipHangerAccess();
+        }
+
+
+    }, []);
+
+    useEffect(() => {
+        scene3Project.ready.then(() => {
+            scene3Sheet.sequence.position = 0;
+            // console.log("Scene 3 Start Point: " + startPoint);
+        });
+    }, []);
+
+    useEffect(() => {
+        if (player) {
+            player.position.set(0, 0, 0);
+        }
+        setShowComponents(initialShowComponents);
+    }, []);
+
     // 使用一个对象来管理多个组件的初始显示状态,加载的时候先全部挂载，然后替换成上面的真实加载情况
     const [showComponents, setShowComponents] = useState({
         preloadAssets: true,
@@ -126,38 +160,9 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
         loading: true,
     });
 
-    useEffect(() => {
-        setShowComponents(initialShowComponents);
-        if (player) {
-            player.position.set(0, 0, 0);
-        }
-    }, []);
-
-    useEffect(() => {
-        scene3Project.ready.then(() => {
-            scene3Sheet.sequence.position = 0;
-            // console.log("Scene 3 Start Point: " + startPoint);
-        });
-    }, []);
-
-    // 创建一个通用的切换函数
-    const toggleComponentDisplay = useCallback((componentKey) => {
-        setShowComponents((prev) => ({
-            ...prev,
-            [componentKey]: !prev[componentKey],
-
-        }));
-        if (componentKey === "textTitle_mumsAsleep") {
-            setBackgroundColor("white");
-        }
-
-        if (componentKey === "galaxy" && scene3Sheet.sequence.position >= 40) {
-            setBackgroundColor("black");
-            shipHangerAccess();
-        }
 
 
-    }, []);
+
 
     const [audioElement, setAudioElement] = useState(null); // 用于存储<audio>元素的状态
 
@@ -209,6 +214,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
 
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene3Sheet.sequence} startPoint={1} maxVolume={1} />}
 
+                <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={0.1} onSequencePass={() => { toggleComponentDisplay("auckland"); toggleComponentDisplay("programmingOffice"); }} />
                 {/* <AsyncMusic audioBuffer={audioBuffer} sequence={scene3Sheet.sequence} startPoint={0.02} lowVolumePoints={[31, 50]} highVolumePoints={[32, 52]} maxVolume={0.75} /> */}
                 {showComponents.viewPort_start && <ViewPort screenTitle={"start"} position={[-3.3, 1.82, -4.88]} rotation={[0, 0, 0]} stopPoint={30} sequence={scene3Sheet.sequence} onSequencePass={() => { toggleComponentDisplay("viewPort_start") }} unloadPoint={1} isSetNextScene={false} />}
                 <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault position={[0, 0, 0]} rotation={[0, 0, 0]} fov={75} near={0.01} />

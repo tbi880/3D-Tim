@@ -164,7 +164,7 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
         preloadAssets: false,
         insideAmbientLight: false,
         shipOutside: true,
-        chamberInside: false,
+        chamberInside: true,
         preloadEnv: false,
         spaceEnv: true,
         viewportStart: false,
@@ -182,7 +182,7 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
         shipOutside2: false,
         buttonSearchForEmergencyPlans: false,
         decryption: false,
-        timsVideo: false,
+        timsVideo: true,
         viewportProjectDawn: false,
         controlPanel2: false,
         loadingForTheNextScene: false,
@@ -258,6 +258,8 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene5Sheet.sequence} startPoint={20.1} maxVolume={1} />}
                 <Galaxy />
                 <StrangerStar />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={0.1} onSequencePass={() => { toggleComponentDisplay("chamberInside"); toggleComponentDisplay("timsVideo"); }} />
+
                 {showComponents.shipOutside && <ShipOutside sequence={scene5Sheet.sequence} unloadPoint={20} onSequencePass={() => { toggleComponentDisplay("shipOutside") }} />}
                 {!isFirstPersonCamera && <e.mesh theatreKey='Outside ambient light' additionalProps={{
                     intensity: types.number(outAmbientIntensity, {

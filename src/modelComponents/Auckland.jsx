@@ -10,6 +10,8 @@ function Auckland({ unloadPoint, sequence, onSequencePass }) {
     const aucklandModel = useGLTF(bucketURL + "auckland.glb", true, true)
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
 
+
+
     useEffect(() => {
         aucklandModel.scene.traverse((child) => {
             if (child instanceof THREE.Mesh) {
