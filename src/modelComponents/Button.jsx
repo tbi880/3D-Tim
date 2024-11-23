@@ -1,13 +1,15 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useContext } from 'react';
 import { RoundedBox, Text, useCursor } from '@react-three/drei';
 import { types } from '@theatre/core';
 import { editable as e } from '@theatre/r3f';
 import { useFrame } from '@react-three/fiber';
+import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 
 function Button({ title, position, buttonLength, rotation, clickablePoint, IsPreJump, jumpToPoint, stopPoint, unloadPoint, sequence, onSequencePass, alertAndNoPlay, alertMessage }) {
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const theatreKey = ("Button-" + title).trim();
     const [visible, setVisible] = useState(false);
+    const { messageApi } = useContext(GlobalNotificationContext);
 
     useEffect(() => {
         // 当opacity为0时设置visible为false，否则为true
@@ -30,7 +32,11 @@ function Button({ title, position, buttonLength, rotation, clickablePoint, IsPre
         }
 
         if (alertAndNoPlay) {
-            alert(alertMessage);
+            messageApi(
+                'error',
+                alertMessage,
+                3,
+            )
             return;
         }
 

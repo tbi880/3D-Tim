@@ -12,7 +12,7 @@ import ViewPort from '../modelComponents/ViewPort';
 import ProgrammingFuture from '../modelComponents/ProgrammingFuture';
 import StreamMusic from '../modelComponents/StreamMusic';
 import Auckland from '../modelComponents/Auckland';
-import { Suspense, useState, useCallback, useEffect, useContext } from 'react';
+import { Suspense, useState, useCallback, useEffect, useContext, useRef } from 'react';
 import PreloadAssets from '../modelComponents/preloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { scene3Sheet } from "./SceneManager";
@@ -55,19 +55,8 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
     useEffect(() => {
         // 设置定时器，每秒执行一次
         const checkForUnload = setInterval(() => {
-
             if (scene3Sheet.sequence && scene3Sheet.sequence.position === unloadPoint) {
-                // Display a confirmation dialog
-                const userConfirmed = confirm("Do you want to download Tim's resume as a software developer?");
-
-                // Check if the user confirmed the download
-                if (userConfirmed) {
-                    // Open the URL in a new tab
-                    window.location.href = "https://www.bty.co.nz/Tim_Bi_resume.pdf";
-                } else {
-                    onSequencePass();
-                }
-
+                onSequencePass();
             }
         }, 2000); // 1000毫秒 = 1秒
 
@@ -327,8 +316,8 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
                     <Technology title={"nodejs"} imagePath={bucketURL + "tech/nodejs.png"} />
                     <Technology title={"docker"} imagePath={bucketURL + "tech/docker.png"} />
                     <Technology title={"python"} imagePath={bucketURL + "tech/python.png"} />
-                    <Technology title={"spring"} imagePath={bucketURL + "tech/spring.png"} />
-                    <Technology title={"postgresql"} imagePath={bucketURL + "tech/postgresql.png"} /> </>}
+                    <Technology title={"dotnet"} imagePath={bucketURL + "tech/NET core.png"} />
+                    <Technology title={"sqlserver"} imagePath={bucketURL + "tech/sqlserver.png"} /> </>}
 
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={62} onSequencePass={() => { toggleComponentDisplay("loading") }} />
                 {showComponents.loading && <Loading title="loading" lines={["Disconnected", "from Tim's", "namespace"]} position={[0, 0, 0]} rotation={[0, 0, 0]} sequence={scene3Sheet.sequence} unloadPoint={66} onSequencePass={() => { toggleComponentDisplay("loading") }} />}
