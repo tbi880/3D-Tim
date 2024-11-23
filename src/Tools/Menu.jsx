@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faChevronRight, faChevronLeft, faLock, faVrCardboard } from '@fortawesome/free-solid-svg-icons';
+import { faChevronRight, faChevronLeft, faLock, faVrCardboard, faFileDownload } from '@fortawesome/free-solid-svg-icons';
 import "./css/menu.css";
 import { getMenuLockMapFromLocalStorage } from "../pages/Status";
 
@@ -35,7 +35,9 @@ function Menu({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
         height: '100%',
         backgroundColor: isPortraitPhoneScreen ? 'black' : 'rgba(0, 0, 0, 0.5)',
         transition: 'transform 0.5s ease',
-        transform: showMenu ? 'translateX(0)' : 'translateX(-100%)'
+        transform: showMenu ? 'translateX(0)' : 'translateX(-100%)',
+        overflowY: 'auto', // 启用纵向滚动
+        maxHeight: '100vh', // 最大高度限制为屏幕高度
     };
 
     const buttonStyle = {
@@ -124,7 +126,21 @@ function Menu({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
                     <FontAwesomeIcon icon={faVrCardboard} className="vr-icon" />
                     <span>VR is now supported, to experience in a different view with more hidden places on the ship to unlock.</span>
                 </div>
-            </div>
+                <br /><br />
+                <a
+                    href="https://www.bty.co.nz/Tim_Bi_resume.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="vr-link"
+                    style={{ color: 'white' }}
+                    title="Download Tim Bi's software developer resume"
+                    aria-label="Download Tim Bi's software developer resume"
+                >
+                    <FontAwesomeIcon icon={faFileDownload} className="vr-icon" />
+                    <span>Click here to download Tim's developer resume</span>
+                </a>
+
+            </div >
         </>
     );
 
