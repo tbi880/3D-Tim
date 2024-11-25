@@ -29,6 +29,7 @@ import Loader from './Loader';
 import { Perf } from 'r3f-perf';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
 import { useAudioElement } from '../hooks/useAudioElement';
+import { useCameraSwitcher } from '../hooks/useCameraSwitcher';
 
 
 function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
@@ -112,13 +113,9 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
 
     const damageReport = "The external temperature of the ship is rising rapidly; the hull surface has reached a red-hot state. Based on the current rate of temperature increase, it is estimated that the hull structure will begin to melt in 15 minutes, at which point life support systems will fail. I have shared a calculated countdown to structural failure on your retinal display. Currently, the main thrusters lack sufficient power to escape the star's gravity. The backup thrusters are damaged. Ten minutes ago, our power reserves were at 30%. I initiated an emergency override to redirect energy, and the current power reserve is 48%, which is insufficient to support any high-power operations. In one minute, we can attempt a warp engine jump, but it may deplete all remaining energy and has an 80% chance of failure due to insufficient power.";
     const simulationResult = "After each time traveling for hundreds of years in empty space, we finally passed by a star system. We truly need the energy from this star to increase core energy, but we didn’t anticipate the star’s gravity would be so strong. As for whether we can use the star’s gravity to perform a gravitational slingshot maneuver and break free from its pull, all calculations for possible close-approach slingshot trajectories have been completed. The results indicate that, at our current speed and energy levels, none are feasible. The good news, however, is that we now have enough energy to activate the warp engine and can attempt to warp past the star, escaping its gravitational field to leave this star system.";
-    const [isFirstPersonCamera, setIsFirstPersonCamera] = useState(false);
+    const { isFirstPersonCamera, switchCamera } = useCameraSwitcher(false);
     const [signalSent, setSignalSent] = useState(false);
     const [simulationDone, setSimulationDone] = useState(false);
-
-    const switchCamera = useCallback((isFirstPerson) => {
-        setIsFirstPersonCamera(isFirstPerson);
-    }, []);
 
     const finishLoading = useCallback(() => {
         scene5Project.ready.then(() => {

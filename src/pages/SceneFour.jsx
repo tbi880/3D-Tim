@@ -120,8 +120,8 @@ export const SceneFourInsideOfCanvas = ({ isPortraitPhoneScreen, images }) => {
             </Text>
 
             <Text
-                position={[0, 3, 0.1]}
-                fontSize={0.1}
+                position={[0, 3.25, 0.1]}
+                fontSize={0.15}
                 color="white"
                 maxWidth={200}
                 lineHeight={1}
@@ -129,9 +129,32 @@ export const SceneFourInsideOfCanvas = ({ isPortraitPhoneScreen, images }) => {
                 anchorY="middle"
                 visible={!showComponents.loading}
             >
-                {"You have browsed " + (visitedIds.size + 1) + " out of " + (images.length + 1) + " websites that were built & designed & optimized by me."}
+                {"You have browsed "}
             </Text>
-
+            <Text
+                position={[0, 3, 0.1]}
+                fontSize={0.25}
+                color="white"
+                maxWidth={200}
+                lineHeight={1}
+                anchorX="center"
+                anchorY="middle"
+                visible={!showComponents.loading}
+            >
+                {(visitedIds.size + 1) + " out of " + (images.length + 1) + " websites "}
+            </Text>
+            <Text
+                position={[0, 2.75, 0.1]}
+                fontSize={0.15}
+                color="white"
+                maxWidth={200}
+                lineHeight={1}
+                anchorX="center"
+                anchorY="middle"
+                visible={!showComponents.loading}
+            >
+                {"that were built & designed & optimized by me."}
+            </Text>
 
 
             <Text

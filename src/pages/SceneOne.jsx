@@ -21,6 +21,8 @@ import { XrToolsContext } from '../sharedContexts/XrToolsProvider';
 import XrSqueezeEventListener from '../Tools/XrSqueezeEventListener';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
 import { useAudioElement } from '../hooks/useAudioElement';
+import { useCameraSwitcher } from '../hooks/useCameraSwitcher';
+import AnyModel from '../modelComponents/AnyModel';
 
 
 function SceneOne({ unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
@@ -54,6 +56,8 @@ function SceneOne({ unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     const screenStarShipInfo = "This starship, laden with humanity's hopes, pioneers space exploration with true self-learning, multi-purpose AI robots. Each AI holds a unique role: service AIs cater to the needs of all on board, maintenance AIs ensure the ship's upkeep, and research AIs delve into cutting-edge theories, transforming them into technologies that not only prevent the ship from deteriorating over its millennia-long journey but also significantly enhance its capabilities through expansions and upgrades. This visionary approach originated from the ship's first captain,whose name is Tim Bi(2001-21??), a renowned computer scientist on Earth whose early life remains largely unknown. His obscure past forms the basis of the root access questions for the ship's control system, without which altering the ship's course or initiating emergency stops is impossible. As the ship's chief engineer, it falls to you to unearth these ancient records to avert a catastrophic fate from powerful gravitational forces."
     // 使用一个对象来管理多个组件的初始显示状态
 
+    const { isFirstPersonCamera, switchCamera } = useCameraSwitcher({ isFirstPersonCameraForStart: true });
+
     const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
         loadingComponents: {
             preloadAssets: true,
@@ -65,6 +69,7 @@ function SceneOne({ unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
             viewPortStarShipInfo: true,
             infoScreenDisplayStarShipInfo: false,
             textTitleVRVIEWPORT: true,
+            warping: true,
 
         }, initialComponents: {
             preloadAssets: false,
@@ -76,7 +81,7 @@ function SceneOne({ unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
             viewPortStarShipInfo: true,
             infoScreenDisplayStarShipInfo: false,
             textTitleVRVIEWPORT: true,
-
+            warping: false,
         }
     });
 
@@ -126,8 +131,14 @@ function SceneOne({ unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene1Sheet.sequence} startPoint={1} />}
                 {isVRSupported && <XrSqueezeEventListener onLeftSqueeze={handleLeftSqueeze} onRightSqueeze={handleRightSqueeze} />}
 
-                {/* <AsyncMusic audioBuffer={audioBuffer} sequence={scene1Sheet.sequence} startPoint={0.07} lowVolumePoints={[30]} highVolumePoints={[0.034, 33]} maxVolume={1} /> */}
-                <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault position={[600, 20, -61]} rotation={[0, 0.33, 0]} fov={75} near={0.01} />
+                <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault={isFirstPersonCamera} position={[600, 20, -61]} rotation={[0, 0.33, 0]} fov={75} near={0.01} />
+                <SingleLoadManager loadPoint={23} sequence={scene1Sheet.sequence} onSequencePass={() => { switchCamera(false); }} />
+                <PerspectiveCamera theatreKey="ThirdPersonCamera" makeDefault={!isFirstPersonCamera} position={[908, -18, -40]} rotation={[0, -Math.PI / 2, 0]} fov={75} near={0.01} />
+                <SingleLoadManager loadPoint={22.2} sequence={scene1Sheet.sequence} onSequencePass={() => { toggleComponentDisplay("warping"); }} />
+
+                {showComponents.warping && <AnyModel modelURL={'FTL travelling.glb'} sequence={scene1Sheet.sequence} useTheatre={true} theatreKey={"FTL travelling"} position={[900, -19, -40]} rotation={[0, -1.6, 0]} scale={[10, 10, 100]} animationNames={["Animation"]} animationOnClick={false} animationPlayTimes={1} animationSpeeds={2} animationStartPoint={0} unloadPoint={116} onSequencePass={() => { toggleComponentDisplay("warping") }} visible={!isFirstPersonCamera} />}
+                <SingleLoadManager loadPoint={26} sequence={scene1Sheet.sequence} onSequencePass={() => { switchCamera(true); toggleComponentDisplay("warping"); }} />
+
                 <ambientLight intensity={5} />
 
                 <color attach='background' args={['black']} />
@@ -151,7 +162,7 @@ function SceneOne({ unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
                 {showComponents.textTitleOuterArm && (<TextTitle text="Outer arm of the galaxy" color="#FFD700" size={1} sequence={scene1Sheet.sequence} unloadPoint={9} onSequencePass={() => toggleComponentDisplay('textTitleOuterArm')} />)}
                 {showComponents.textTitleApproximately && (<TextTitle text="Approximately 18,000 light years from Earth" color="#FFD700" size={1} sequence={scene1Sheet.sequence} unloadPoint={15} onSequencePass={() => toggleComponentDisplay('textTitleApproximately')} />)}
 
-                {isVRSupported && showComponents.textTitleVRVIEWPORT && <TextTitle_v2 theatreKey={"_VR_VIEWPORT"} text="Come back here again when you see the VIEWPORT" color="#FFFFFF" size={1} sequence={scene1Sheet.sequence} unloadPoint={25} position={[725, -19, -60]} onSequencePass={() => toggleComponentDisplay('textTitleVRVIEWPORT')} />}
+                {isVRSupported && isPresenting && showComponents.textTitleVRVIEWPORT && <TextTitle_v2 theatreKey={"_VR_VIEWPORT"} text="Come back here again when you see the VIEWPORT" color="#FFFFFF" size={1} sequence={scene1Sheet.sequence} unloadPoint={25} position={[725, -19, -60]} onSequencePass={() => toggleComponentDisplay('textTitleVRVIEWPORT')} />}
 
                 {showComponents.viewPortStarShipInfo && (<ViewPort screenTitle={"StarShip Info"} position={[745, -16, 38]} rotation={[-1.13, -0.654, 5.2]} sequence={scene1Sheet.sequence} stopPoint={30} unloadPoint={37} onSequencePass={() => toggleComponentDisplay('viewPortStarShipInfo')} isSetNextScene={true} nextScene={"sceneTwo"} />)}
                 <SingleLoadManager loadPoint={29.5} sequence={scene1Sheet.sequence} onSequencePass={() => toggleComponentDisplay('infoScreenDisplayStarShipInfo')} />
