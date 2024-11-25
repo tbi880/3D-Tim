@@ -97,14 +97,6 @@ function SceneOne({ unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
 
 
 
-    useFrame(() => {
-        // 当sequence.position超过结束点时触发
-        if (scene1Sheet.sequence && scene1Sheet.sequence.position === unloadPoint) {
-            onSequencePass();
-        }
-    });
-
-
     useEffect(() => {
         useGLTF.preload(bucketURL + "arrow-transformed.glb");
         useGLTF.preload(bucketURL + "galaxy.glb");
@@ -164,6 +156,7 @@ function SceneOne({ unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
                 {showComponents.viewPortStarShipInfo && (<ViewPort screenTitle={"StarShip Info"} position={[745, -16, 38]} rotation={[-1.13, -0.654, 5.2]} sequence={scene1Sheet.sequence} stopPoint={30} unloadPoint={37} onSequencePass={() => toggleComponentDisplay('viewPortStarShipInfo')} isSetNextScene={true} nextScene={"sceneTwo"} />)}
                 <SingleLoadManager loadPoint={29.5} sequence={scene1Sheet.sequence} onSequencePass={() => toggleComponentDisplay('infoScreenDisplayStarShipInfo')} />
                 {showComponents.infoScreenDisplayStarShipInfo && (<InfoScreenDisplay title={"Starship Info"} content={screenStarShipInfo} sequence={scene1Sheet.sequence} stopPoints={[30.5, 31, 31.5, 32, 32.5, 39]} loadPoints={[29.5, 30.5, 31, 31.5, 32, 32.5]} unloadPoints={[30.5, 31, 31.5, 32, 32.5, 37]} onSequencePass={() => toggleComponentDisplay('infoScreenDisplayStarShipInfo')} />)}
+                <SingleLoadManager loadPoint={unloadPoint} sequence={scene1Sheet.sequence} onSequencePass={onSequencePass} />
             </Suspense>
 
         </>

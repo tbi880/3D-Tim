@@ -27,6 +27,7 @@ import { XrToolsContext } from '../sharedContexts/XrToolsProvider';
 import { Perf } from 'r3f-perf';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
 import { useAudioElement } from '../hooks/useAudioElement';
+import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
 
 
 function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
@@ -105,21 +106,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
     const [backgroundColor, setBackgroundColor] = useState("black"); // 状态管理背景颜色
     const resumeString = "I embarked on my tech journey at the age of 15, contributing to four commercial projects since then. During my previous work, I encompassed practical skills from developing applications and websites to manage my own server. In addition, my experience as a stage performing keyboardist has sharpened my teamwork skills and stress handling. I am a diligent professional with extensive experience in the field of software engineering, who likes details and always looks for runtime optimizations. I am currently seeking a junior / intermediate level opportunity to further develop my skills.";
     const audioElement = useAudioElement(musicUrl);
-
-
-    useEffect(() => {
-        // 设置定时器，每秒执行一次
-        const checkForUnload = setInterval(() => {
-            if (scene3Sheet.sequence && scene3Sheet.sequence.position === unloadPoint) {
-                onSequencePass();
-            }
-        }, 2000); // 1000毫秒 = 1秒
-
-        // 清理函数：组件卸载时执行，用于清理定时器
-        return () => clearInterval(checkForUnload);
-    }, [unloadPoint]); // 依赖项数组，当这些依赖变化时重新设置定时器
-
-
+    useSequenceUnloadSceneChecker(scene3Sheet.sequence, [unloadPoint], onSequencePass);
 
     useEffect(() => {
         scene3Project.ready.then(() => {

@@ -24,6 +24,7 @@ import { XrSqueezeEventListener } from '../Tools/XrSqueezeEventListener';
 import { Perf } from 'r3f-perf';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
 import { useAudioElement } from '../hooks/useAudioElement';
+import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
 
 
 function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScreen }) {
@@ -34,6 +35,7 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
     const [isPresenting, setIsPresenting] = useState(false);
     const { xrPlayer, xrIsPresenting } = isVRSupported && useContext(XrToolsContext) ? useContext(XrToolsContext) : {};
     const audioElement = useAudioElement(musicUrl);
+    useSequenceUnloadSceneChecker(scene2Sheet.sequence, unloadPoints, onSequencePass);
     const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
         loadingComponents: {
             preloadAssets: true,
@@ -89,6 +91,12 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
     const [currentVRCordinate, setCurrentVRCordinate] = useState(0);
 
     useEffect(() => {
+        if (player) {
+            player.position.set(499, -24, -60);
+        }
+    }, [player]);
+
+    useEffect(() => {
         useGLTF.preload(bucketURL + 'loading.glb');
 
         scene2Project.ready.then(() => {
@@ -96,26 +104,7 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
                 scene2Sheet.sequence.play({ range: [startPoint, startPoint + 0.5] });
             }
         });
-        if (player) {
-            player.position.set(499, -24, -60);
-        }
-    }, [player]);
-
-    useEffect(() => {
-        // 设置定时器，每秒执行一次
-        const checkForUnload = setInterval(() => {
-            if (unloadPoints) {
-                for (let i = 0; i < unloadPoints.length; i++) {
-                    if (scene2Sheet.sequence && scene2Sheet.sequence.position === unloadPoints[i]) {
-                        onSequencePass();
-                    }
-                }
-            }
-        }, 2000); // 1000毫秒 = 1秒
-
-        // 清理函数：组件卸载时执行，用于清理定时器
-        return () => clearInterval(checkForUnload);
-    }, [unloadPoints]); // 依赖项数组，当这些依赖变化时重新设置定时器
+    }, []);
 
 
 
