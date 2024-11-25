@@ -28,6 +28,7 @@ import Loading from '../modelComponents/Loading';
 import Loader from './Loader';
 import { Perf } from 'r3f-perf';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
+import { useAudioElement } from '../hooks/useAudioElement';
 
 
 function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
@@ -46,6 +47,7 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
     const { showSearchForEmergencyPlansLayer, setShowSearchForEmergencyPlansLayer } = useContext(searchForEmergencyPlansContext);
     const { showHeaderSubTitle, setShowHeaderSubTitle } = useContext(headerSubTitleContext);
     const { messageApi } = useContext(GlobalNotificationContext);
+    const audioElement = useAudioElement(musicUrl);
     const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
         loadingComponents: {
             preloadAssets: true,
@@ -216,24 +218,6 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
         // Clear the interval to avoid memory leaks
         return () => clearInterval(interval);
     }, [estHitTimeCountDown, setEstHitTimeCountDown, hullTemperature, setHullTemperature, coreEnergy, setCoreEnergy]);
-
-
-    const [audioElement, setAudioElement] = useState(null); // To store the state of the <audio> element
-
-    useEffect(() => {
-        // console.log('Parent useEffect - Creating <audio> element');
-        const audio = new Audio(musicUrl);
-        audio.crossOrigin = "anonymous";
-        setAudioElement(audio); // Set state to store the <audio> element
-    }, [musicUrl]);
-
-    useEffect(() => {
-        return () => {
-            if (audioElement) {
-                setAudioElement(null);
-            }
-        }
-    }, [audioElement]);
 
 
     return (

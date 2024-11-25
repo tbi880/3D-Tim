@@ -23,6 +23,7 @@ import { XrToolsContext } from '../sharedContexts/XrToolsProvider';
 import { XrSqueezeEventListener } from '../Tools/XrSqueezeEventListener';
 import { Perf } from 'r3f-perf';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
+import { useAudioElement } from '../hooks/useAudioElement';
 
 
 function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScreen }) {
@@ -32,6 +33,7 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
     const [player, setPlayer] = useState(null);
     const [isPresenting, setIsPresenting] = useState(false);
     const { xrPlayer, xrIsPresenting } = isVRSupported && useContext(XrToolsContext) ? useContext(XrToolsContext) : {};
+    const audioElement = useAudioElement(musicUrl);
     const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
         loadingComponents: {
             preloadAssets: true,
@@ -114,25 +116,6 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
         // 清理函数：组件卸载时执行，用于清理定时器
         return () => clearInterval(checkForUnload);
     }, [unloadPoints]); // 依赖项数组，当这些依赖变化时重新设置定时器
-
-    const [audioElement, setAudioElement] = useState(null); // 用于存储<audio>元素的状态
-
-    useEffect(() => {
-        // console.log('Parent useEffect - Creating <audio> element');
-        const audio = new Audio(musicUrl);
-        audio.crossOrigin = "anonymous";
-        setAudioElement(audio); // 设置状态以存储<audio>元素
-    }, [musicUrl]);
-
-    useEffect(() => {
-
-        return () => {
-            if (audioElement) {
-                setAudioElement(null);
-            }
-        }
-    }, [audioElement]);
-
 
 
 

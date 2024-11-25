@@ -26,6 +26,7 @@ import { canvasContext } from '../sharedContexts/CanvasProvider';
 import { XrToolsContext } from '../sharedContexts/XrToolsProvider';
 import { Perf } from 'r3f-perf';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
+import { useAudioElement } from '../hooks/useAudioElement';
 
 
 function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
@@ -103,6 +104,8 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
     const [rectAreaIntensity, setRectAreaIntensity] = useState(5);
     const [backgroundColor, setBackgroundColor] = useState("black"); // 状态管理背景颜色
     const resumeString = "I embarked on my tech journey at the age of 15, contributing to four commercial projects since then. During my previous work, I encompassed practical skills from developing applications and websites to manage my own server. In addition, my experience as a stage performing keyboardist has sharpened my teamwork skills and stress handling. I am a diligent professional with extensive experience in the field of software engineering, who likes details and always looks for runtime optimizations. I am currently seeking a junior / intermediate level opportunity to further develop my skills.";
+    const audioElement = useAudioElement(musicUrl);
+
 
     useEffect(() => {
         // 设置定时器，每秒执行一次
@@ -121,7 +124,6 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
     useEffect(() => {
         scene3Project.ready.then(() => {
             scene3Sheet.sequence.position = 0;
-            // console.log("Scene 3 Start Point: " + startPoint);
         });
     }, []);
 
@@ -130,53 +132,6 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
             player.position.set(0, 0, 0);
         }
     }, []);
-
-    // 使用一个对象来管理多个组件的初始显示状态,加载的时候先全部挂载，然后替换成上面的真实加载情况
-    // const [showComponents, setShowComponents] = useState({
-    //     preloadAssets: true,
-    //     lightings: true,
-    //     pointlight: true,
-    //     viewPort_start: true,
-    //     programmingHome: true,
-    //     textTitle_12yearsOldTim: true,
-    //     textTitle_mumsAsleep: true,
-    //     textTitle_15yearsOldTim: true,
-    //     programmingOffice: true,
-    //     textTitle_18yearsOldTim: true,
-    //     viewport_iphone: true,
-    //     auckland: true,
-    //     year2022: true,
-    //     year2023: true,
-    //     year2024: true,
-    //     tunnel: true,
-    //     galaxy: true,
-    //     programmingFuture: true,
-    //     techs: true,
-    //     year2099: true,
-    //     resumeScreen: true,
-    //     loading: true,
-    // });
-
-
-
-
-
-    const [audioElement, setAudioElement] = useState(null); // 用于存储<audio>元素的状态
-
-    useEffect(() => {
-        // console.log('Parent useEffect - Creating <audio> element');
-        const audio = new Audio(musicUrl);
-        audio.crossOrigin = "anonymous";
-        setAudioElement(audio); // 设置状态以存储<audio>元素
-    }, [musicUrl]);
-
-    useEffect(() => {
-        return () => {
-            if (audioElement) {
-                setAudioElement(null);
-            }
-        }
-    }, [audioElement]);
 
 
 
