@@ -27,6 +27,7 @@ import { headerSubTitleContext } from '../sharedContexts/HeaderSubTitleProvider'
 import Loading from '../modelComponents/Loading';
 import Loader from './Loader';
 import { Perf } from 'r3f-perf';
+import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
 
 
 function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
@@ -45,6 +46,63 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
     const { showSearchForEmergencyPlansLayer, setShowSearchForEmergencyPlansLayer } = useContext(searchForEmergencyPlansContext);
     const { showHeaderSubTitle, setShowHeaderSubTitle } = useContext(headerSubTitleContext);
     const { messageApi } = useContext(GlobalNotificationContext);
+    const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
+        loadingComponents: {
+            preloadAssets: true,
+            insideAmbientLight: true,
+            shipOutside: true,
+            chamberInside: true,
+            preloadEnv: true,
+            spaceEnv: true,
+            viewportStart: true,
+            robot: true,
+            infoScreenDisplayDamageReport: true,
+            buttonCalculateSlingshotTrajectory: true,
+            buttonSendDistressSignal: true,
+            buttonInitiateTheWarpEngine: true,
+            isFormToggled: false,
+            hologramSlingshotTrajectory: true,
+            simulationResult: true,
+            controlPanel: true,
+            countdown: true,
+            warping: true,
+            shipOutside2: false,
+            buttonSearchForEmergencyPlans: true,
+            decryption: true,
+            timsVideo: true,
+            viewportProjectDawn: false,
+            controlPanel2: false,
+            loadingForTheNextScene: true,
+        },
+        initialComponents: {
+            preloadAssets: false,
+            insideAmbientLight: false,
+            shipOutside: true,
+            chamberInside: true,
+            preloadEnv: false,
+            spaceEnv: true,
+            viewportStart: false,
+            robot: false,
+            infoScreenDisplayDamageReport: false,
+            buttonCalculateSlingshotTrajectory: false,
+            buttonSendDistressSignal: false,
+            buttonInitiateTheWarpEngine: false,
+            isFormToggled: false,
+            hologramSlingshotTrajectory: false,
+            simulationResult: false,
+            controlPanel: false,
+            countdown: false,
+            warping: false,
+            shipOutside2: false,
+            buttonSearchForEmergencyPlans: false,
+            decryption: false,
+            timsVideo: true,
+            viewportProjectDawn: false,
+            controlPanel2: false,
+            loadingForTheNextScene: false,
+
+        }
+    });
     const modelNodeVisibility = useMemo(() => ({
         "Object_225": [58],
         "Object_226": [58],
@@ -159,77 +217,6 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
         return () => clearInterval(interval);
     }, [estHitTimeCountDown, setEstHitTimeCountDown, hullTemperature, setHullTemperature, coreEnergy, setCoreEnergy]);
 
-
-    const initialShowComponents = {
-        preloadAssets: false,
-        insideAmbientLight: false,
-        shipOutside: true,
-        chamberInside: true,
-        preloadEnv: false,
-        spaceEnv: true,
-        viewportStart: false,
-        robot: false,
-        infoScreenDisplayDamageReport: false,
-        buttonCalculateSlingshotTrajectory: false,
-        buttonSendDistressSignal: false,
-        buttonInitiateTheWarpEngine: false,
-        isFormToggled: false,
-        hologramSlingshotTrajectory: false,
-        simulationResult: false,
-        controlPanel: false,
-        countdown: false,
-        warping: false,
-        shipOutside2: false,
-        buttonSearchForEmergencyPlans: false,
-        decryption: false,
-        timsVideo: true,
-        viewportProjectDawn: false,
-        controlPanel2: false,
-        loadingForTheNextScene: false,
-
-    }
-    // Use an object to manage the initial display state of multiple components
-    const [showComponents, setShowComponents] = useState({
-        preloadAssets: true,
-        insideAmbientLight: true,
-        shipOutside: true,
-        chamberInside: true,
-        preloadEnv: true,
-        spaceEnv: true,
-        viewportStart: true,
-        robot: true,
-        infoScreenDisplayDamageReport: true,
-        buttonCalculateSlingshotTrajectory: true,
-        buttonSendDistressSignal: true,
-        buttonInitiateTheWarpEngine: true,
-        isFormToggled: false,
-        hologramSlingshotTrajectory: true,
-        simulationResult: true,
-        controlPanel: true,
-        countdown: true,
-        warping: true,
-        shipOutside2: false,
-        buttonSearchForEmergencyPlans: true,
-        decryption: true,
-        timsVideo: true,
-        viewportProjectDawn: false,
-        controlPanel2: false,
-        loadingForTheNextScene: true,
-    });
-
-    useEffect(() => {
-        setShowComponents(initialShowComponents);
-    }, []);
-
-
-    // Create a generic toggle function
-    const toggleComponentDisplay = useCallback((componentKey) => {
-        setShowComponents((prev) => ({
-            ...prev,
-            [componentKey]: !prev[componentKey],
-        }));
-
-    }, []);
 
     const [audioElement, setAudioElement] = useState(null); // To store the state of the <audio> element
 

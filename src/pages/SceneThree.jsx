@@ -25,6 +25,7 @@ import Loader from './Loader';
 import { canvasContext } from '../sharedContexts/CanvasProvider';
 import { XrToolsContext } from '../sharedContexts/XrToolsProvider';
 import { Perf } from 'r3f-perf';
+import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
 
 
 function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
@@ -32,6 +33,57 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
     const [player, setPlayer] = useState(null);
     const [isPresenting, setIsPresenting] = useState(false);
     const { xrPlayer, xrIsPresenting } = isVRSupported && useContext(XrToolsContext) ? useContext(XrToolsContext) : {};
+    const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
+        loadingComponents: {
+            preloadAssets: true,
+            lightings: true,
+            pointlight: true,
+            viewPort_start: true,
+            programmingHome: true,
+            textTitle_12yearsOldTim: true,
+            textTitle_mumsAsleep: true,
+            textTitle_15yearsOldTim: true,
+            programmingOffice: true,
+            textTitle_18yearsOldTim: true,
+            viewport_iphone: true,
+            auckland: true,
+            year2022: true,
+            year2023: true,
+            year2024: true,
+            tunnel: true,
+            galaxy: true,
+            programmingFuture: true,
+            techs: true,
+            year2099: true,
+            resumeScreen: true,
+            loading: true,
+        },
+        initialComponents: {
+            preloadAssets: false,
+            lightings: true,
+            pointlight: false,
+            viewPort_start: true,
+            programmingHome: true,
+            textTitle_12yearsOldTim: true,
+            textTitle_mumsAsleep: true,
+            textTitle_15yearsOldTim: false,
+            programmingOffice: true,
+            textTitle_18yearsOldTim: false,
+            viewport_iphone: false,
+            auckland: true,
+            year2022: false,
+            year2023: false,
+            year2024: false,
+            tunnel: false,
+            galaxy: false,
+            programmingFuture: false,
+            techs: false,
+            year2099: false,
+            resumeScreen: false,
+            loading: false,
+        }
+    });
+
     useEffect(() => {
         setPlayer(xrPlayer);
         setIsPresenting(xrIsPresenting);
@@ -65,49 +117,6 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
     }, [unloadPoint]); // 依赖项数组，当这些依赖变化时重新设置定时器
 
 
-    const initialShowComponents = {
-        preloadAssets: false,
-        lightings: true,
-        pointlight: false,
-        viewPort_start: true,
-        programmingHome: true,
-        textTitle_12yearsOldTim: true,
-        textTitle_mumsAsleep: true,
-        textTitle_15yearsOldTim: false,
-        programmingOffice: true,
-        textTitle_18yearsOldTim: false,
-        viewport_iphone: false,
-        auckland: true,
-        year2022: false,
-        year2023: false,
-        year2024: false,
-        tunnel: false,
-        galaxy: false,
-        programmingFuture: false,
-        techs: false,
-        year2099: false,
-        resumeScreen: false,
-        loading: false,
-    }
-
-    // 创建一个通用的切换函数
-    const toggleComponentDisplay = useCallback((componentKey) => {
-        setShowComponents((prev) => ({
-            ...prev,
-            [componentKey]: !prev[componentKey],
-
-        }));
-        if (componentKey === "textTitle_mumsAsleep") {
-            setBackgroundColor("white");
-        }
-
-        if (componentKey === "galaxy" && scene3Sheet.sequence.position >= 40) {
-            setBackgroundColor("black");
-            shipHangerAccess();
-        }
-
-
-    }, []);
 
     useEffect(() => {
         scene3Project.ready.then(() => {
@@ -120,34 +129,33 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
         if (player) {
             player.position.set(0, 0, 0);
         }
-        setShowComponents(initialShowComponents);
     }, []);
 
     // 使用一个对象来管理多个组件的初始显示状态,加载的时候先全部挂载，然后替换成上面的真实加载情况
-    const [showComponents, setShowComponents] = useState({
-        preloadAssets: true,
-        lightings: true,
-        pointlight: true,
-        viewPort_start: true,
-        programmingHome: true,
-        textTitle_12yearsOldTim: true,
-        textTitle_mumsAsleep: true,
-        textTitle_15yearsOldTim: true,
-        programmingOffice: true,
-        textTitle_18yearsOldTim: true,
-        viewport_iphone: true,
-        auckland: true,
-        year2022: true,
-        year2023: true,
-        year2024: true,
-        tunnel: true,
-        galaxy: true,
-        programmingFuture: true,
-        techs: true,
-        year2099: true,
-        resumeScreen: true,
-        loading: true,
-    });
+    // const [showComponents, setShowComponents] = useState({
+    //     preloadAssets: true,
+    //     lightings: true,
+    //     pointlight: true,
+    //     viewPort_start: true,
+    //     programmingHome: true,
+    //     textTitle_12yearsOldTim: true,
+    //     textTitle_mumsAsleep: true,
+    //     textTitle_15yearsOldTim: true,
+    //     programmingOffice: true,
+    //     textTitle_18yearsOldTim: true,
+    //     viewport_iphone: true,
+    //     auckland: true,
+    //     year2022: true,
+    //     year2023: true,
+    //     year2024: true,
+    //     tunnel: true,
+    //     galaxy: true,
+    //     programmingFuture: true,
+    //     techs: true,
+    //     year2099: true,
+    //     resumeScreen: true,
+    //     loading: true,
+    // });
 
 
 
@@ -268,7 +276,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
                         <rectAreaLight width={5} height={0.5} intensity={rectAreaIntensity} />
                     </e.mesh>
                 </>}
-                {showComponents.textTitle_mumsAsleep && <TextTitle text="Mum's finally asleep. It's time for some PVZ, LOL and EVE online." color="#000000" size={0.15} position={[0, 0, 0]} rotation={[0, 0, 0]} sequence={scene3Sheet.sequence} unloadPoint={12} onSequencePass={() => { toggleComponentDisplay("textTitle_mumsAsleep") }} />}
+                {showComponents.textTitle_mumsAsleep && <TextTitle text="Mum's finally asleep. It's time for some PVZ, LOL and EVE online." color="#000000" size={0.15} position={[0, 0, 0]} rotation={[0, 0, 0]} sequence={scene3Sheet.sequence} unloadPoint={12} onSequencePass={() => { toggleComponentDisplay("textTitle_mumsAsleep"); setBackgroundColor("white"); }} />}
                 {showComponents.textTitle_12yearsOldTim && <TextTitle text="12 years old Tim:" color="#000000" size={0.15} position={[0, 0, 0]} rotation={[0, 0, 0]} sequence={scene3Sheet.sequence} unloadPoint={5.5} onSequencePass={() => { toggleComponentDisplay("textTitle_12yearsOldTim") }} />}
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={12} onSequencePass={() => { toggleComponentDisplay("textTitle_15yearsOldTim") }} />
                 {showComponents.textTitle_15yearsOldTim && <TextTitle text="15 years old tim: gonna make some cool things in visual basic." color="#000000" size={0.15} position={[0, 0, 0]} rotation={[0, 0, 0]} sequence={scene3Sheet.sequence} unloadPoint={20} onSequencePass={() => { toggleComponentDisplay("textTitle_15yearsOldTim") }} />}
@@ -298,7 +306,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={38} onSequencePass={() => { toggleComponentDisplay("tunnel") }} />
                 {showComponents.tunnel && <Tunnel unloadPoint={42.75} sequence={scene3Sheet.sequence} onSequencePass={() => { toggleComponentDisplay("tunnel") }} />}
 
-                <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={41} onSequencePass={() => { toggleComponentDisplay("galaxy") }} />
+                <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={41} onSequencePass={() => { toggleComponentDisplay("galaxy"); setBackgroundColor("black"); shipHangerAccess(); }} />
                 {showComponents.galaxy && <Galaxy />}
 
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={43} onSequencePass={() => { toggleComponentDisplay("programmingFuture") }} />

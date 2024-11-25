@@ -22,6 +22,7 @@ import { canvasContext } from '../sharedContexts/CanvasProvider';
 import { XrToolsContext } from '../sharedContexts/XrToolsProvider';
 import { XrSqueezeEventListener } from '../Tools/XrSqueezeEventListener';
 import { Perf } from 'r3f-perf';
+import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
 
 
 function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScreen }) {
@@ -31,6 +32,42 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
     const [player, setPlayer] = useState(null);
     const [isPresenting, setIsPresenting] = useState(false);
     const { xrPlayer, xrIsPresenting } = isVRSupported && useContext(XrToolsContext) ? useContext(XrToolsContext) : {};
+    const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
+        loadingComponents: {
+            preloadAssets: true,
+            shipInside: true,
+            robotIntro: true,
+            viewPortIntro: true,
+            screenIntro: true,
+            buttonForGOTOShipHangar: false,
+            buttonForGOTOEngineering: false,
+            buttonForGOTOCaptainsChamber: false,
+            textTitleGetROOTACCESS: false,
+            viewPortShipHanger: false,
+            loadingForShipHanger: false,
+            viewPortEngineering: false,
+            loadingForEngineering: false,
+            viewPortTimsChamber: false,
+            loadingForTimsChamber: false
+        }, initialComponents: {
+            preloadAssets: false,
+            shipInside: true,
+            robotIntro: true,
+            viewPortIntro: true,
+            screenIntro: true,
+            buttonForGOTOShipHangar: false,
+            buttonForGOTOEngineering: false,
+            buttonForGOTOCaptainsChamber: false,
+            textTitleGetROOTACCESS: false,
+            viewPortShipHanger: false,
+            loadingForShipHanger: false,
+            viewPortEngineering: false,
+            loadingForEngineering: false,
+            viewPortTimsChamber: false,
+            loadingForTimsChamber: false
+        }
+    });
+
     useEffect(() => {
         setPlayer(xrPlayer);
         setIsPresenting(xrIsPresenting);
@@ -96,43 +133,7 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
         }
     }, [audioElement]);
 
-    // const screenStarShipInfo = "This starship, laden with humanity's hopes, pioneers space exploration with true self-learning, multi-purpose AI robots. Each AI holds a unique role: service AIs cater to the needs of all on board, maintenance AIs ensure the ship's upkeep, and research AIs delve into cutting-edge theories, transforming them into technologies that not only prevent the ship from deteriorating over its millennia-long journey but also significantly enhance its capabilities through expansions and upgrades. This visionary approach originated from the ship's first captain,whose name is Tim Bi(2001-21??), a renowned computer scientist on Earth whose early life remains largely unknown. His obscure past forms the basis of the root access questions for the ship's control system, without which altering the ship's course or initiating emergency stops is impossible. As the ship's chief engineer, it falls to you to unearth these ancient records to avert a catastrophic fate from powerful gravitational forces."
-    // 使用一个对象来管理多个组件的初始显示状态
-    const [showComponents, setShowComponents] = useState({
-        preloadAssets: true,
-        shipInside: true,
-        robotIntro: true,
-        viewPortIntro: true,
-        screenIntro: true,
-        buttonForGOTOShipHangar: false,
-        buttonForGOTOEngineering: false,
-        buttonForGOTOCaptainsChamber: false,
-        textTitleGetROOTACCESS: false,
 
-        viewPortShipHanger: false,
-        loadingForShipHanger: false,
-
-        viewPortEngineering: false,
-        loadingForEngineering: false,
-
-        viewPortTimsChamber: false,
-        loadingForTimsChamber: false
-    });
-
-    // 创建一个通用的切换函数
-    const toggleComponentDisplay = useCallback((componentKey) => {
-        setShowComponents((prev) => ({
-            ...prev,
-            [componentKey]: !prev[componentKey],
-        }));
-
-    }, []);
-
-    useEffect(() => {
-        if (showComponents.preloadAssets) {
-            toggleComponentDisplay('preloadAssets');
-        }
-    }, []);
 
 
     useFrame(() => {
