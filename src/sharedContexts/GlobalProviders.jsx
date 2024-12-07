@@ -4,6 +4,7 @@ import { AuthorizationCheckProvider } from "./AuthorizationCheckProvider";
 import { SearchForEmergencyPlansProvider } from "./SearchForEmergencyPlansProvider";
 import { HeaderSubTitleProvider } from "./HeaderSubTitleProvider";
 import { GraphicSettingProvider } from "./GraphicSettingProvider";
+import { TaskBoardContentProvider } from "./TaskBoardContentProvider";
 
 function GlobalProviders({ children }) {
     return (
@@ -13,7 +14,9 @@ function GlobalProviders({ children }) {
                     <SearchForEmergencyPlansProvider>
                         <HeaderSubTitleProvider>
                             <GraphicSettingProvider>
-                                {children}
+                                <TaskBoardContentProvider>
+                                    {children}
+                                </TaskBoardContentProvider>
                             </GraphicSettingProvider>
                         </HeaderSubTitleProvider>
                     </SearchForEmergencyPlansProvider>

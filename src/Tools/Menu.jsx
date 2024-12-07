@@ -4,7 +4,7 @@ import { faChevronRight, faChevronLeft, faLock, faVrCardboard, faFileDownload } 
 import "./css/menu.css";
 import { getMenuLockMapFromLocalStorage } from "../pages/Status";
 
-function Menu({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
+export function Menu({ isPortraitPhoneScreen, setDisplayOverlayCallback }) {
     const [showMenu, setShowMenu] = useState(false);
     const [sceneMenuLockMap, setSceneMenuLockMap] = useState(getMenuLockMapFromLocalStorage());
 
@@ -18,9 +18,9 @@ function Menu({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
         setShowMenu(!showMenu);
         setSceneMenuLockMap(getMenuLockMapFromLocalStorage());
         if (showMenu) {
-            openSettingOrMenuCallback("none");
+            setDisplayOverlayCallback("none");
         } else {
-            openSettingOrMenuCallback("menu");
+            setDisplayOverlayCallback("menu");
         }
     };
 

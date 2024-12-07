@@ -28,6 +28,7 @@ import { Perf } from 'r3f-perf';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
 import { useAudioElement } from '../hooks/useAudioElement';
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
+import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
 
 
 function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
@@ -103,10 +104,12 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
     // const [pointIntensity, setPointIntensity] = useState(5);
     const [spotIntensity, setSpotIntensity] = useState(5);
     const [rectAreaIntensity, setRectAreaIntensity] = useState(5);
-    const [backgroundColor, setBackgroundColor] = useState("black"); // 状态管理背景颜色
+    const [backgroundColor, setBackgroundColor] = useState("black");
     const resumeString = "I embarked on my tech journey at the age of 15, contributing to four commercial projects since then. During my previous work, I encompassed practical skills from developing applications and websites to manage my own server. In addition, my experience as a stage performing keyboardist has sharpened my teamwork skills and stress handling. I am a diligent professional with extensive experience in the field of software engineering, who likes details and always looks for runtime optimizations. I am currently seeking a junior / intermediate level opportunity to further develop my skills.";
     const audioElement = useAudioElement(musicUrl);
     useSequenceUnloadSceneChecker(scene3Sheet.sequence, [unloadPoint], onSequencePass);
+    const { taskBoardContent, setTaskBoardContent } = useContext(TaskBoardContentContext);
+
 
     useEffect(() => {
         scene3Project.ready.then(() => {
@@ -120,7 +123,17 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
         }
     }, []);
 
+    const [taskBoardContentMap, setTaskBoardContentMap] = useState({
+        0: "Seems I am inside of the Tim's memory, let me have a look at the early life of Tim. (Click on the viewport to start.)",
+        1: "Okay, what is the phone on that desk? Let me have a look.",
+        2: "An email from the University of Auckland? Fast track offer? He must be one of the top student when he was in high school. (Click on the phone to keep going.)",
+        3: "Tim's future plan? Let me have a look.",
+        4: "Tim's tech stack? Let me have a look.",
+    });
 
+    useEffect(() => {
+        setTaskBoardContent(new Array(taskBoardContentMap[0]));
+    }, []);
 
     useFrame(() => {
         if (isVRSupported) {
@@ -144,8 +157,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
 
     return (
         <>
-            {/* <Canvas gl={{ preserveDrawingBuffer: true }} >
-                <SheetProvider sheet={scene1Sheet}> */}
+
             <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["Now you'll see some of my stories during my tech journey", "You can click on the viewport after the loading is finished", "You will be ported back to the previous page to see the other options after viewing this", "or you can download my resume as PDF"]} />}>
                 {stageOfENV != "prod" && !isPortraitPhoneScreen && <Perf position={"bottom-right"} openByDefault showGraph />}
 
@@ -173,22 +185,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
                     }} >
                     <ambientLight color="white" intensity={ambientIntensity} />
                 </e.mesh>
-                {/* <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={11} onSequencePass={() => { toggleComponentDisplay("pointlight") }} />
-                <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={21} onSequencePass={() => { toggleComponentDisplay("pointlight") }} />
-                {showComponents.pointlight && <>
-                    <e.mesh theatreKey='point light' additionalProps={{
-                        intensity: types.number(pointIntensity, {
-                            range: [0, 100],
-                        }),
-                    }}
-                        objRef={(theatreObject) => {
-                            // 监听Theatre.js中透明度的变化
-                            theatreObject.onValuesChange((newValues) => {
-                                setPointIntensity(newValues.intensity);
-                            });
-                        }}>
-                        <pointLight color="white" intensity={pointIntensity} />
-                    </e.mesh> </>} */}
+
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={15} onSequencePass={() => { toggleComponentDisplay("lightings") }} />
                 {showComponents.lightings && <>
                     <e.mesh theatreKey='spot light' additionalProps={{
@@ -272,6 +269,37 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={62} onSequencePass={() => { toggleComponentDisplay("loading") }} />
                 {showComponents.loading && <Loading title="loading" lines={["Disconnected", "from Tim's", "namespace"]} position={[0, 0, 0]} rotation={[0, 0, 0]} sequence={scene3Sheet.sequence} unloadPoint={66} onSequencePass={() => { toggleComponentDisplay("loading") }} />}
 
+                <SingleLoadManager
+                    loadPoint={29}
+                    sequence={scene3Sheet.sequence}
+                    onSequencePass={() => {
+                        setTaskBoardContent(prev => [...prev, taskBoardContentMap[1]]);
+                    }}
+                />
+
+                <SingleLoadManager
+                    loadPoint={30.5}
+                    sequence={scene3Sheet.sequence}
+                    onSequencePass={() => {
+                        setTaskBoardContent(prev => [...prev, taskBoardContentMap[2]]);
+                    }}
+                />
+
+                <SingleLoadManager
+                    loadPoint={50}
+                    sequence={scene3Sheet.sequence}
+                    onSequencePass={() => {
+                        setTaskBoardContent(prev => [...prev, taskBoardContentMap[3]]);
+                    }}
+                />
+
+                <SingleLoadManager
+                    loadPoint={52}
+                    sequence={scene3Sheet.sequence}
+                    onSequencePass={() => {
+                        setTaskBoardContent(prev => [...prev, taskBoardContentMap[4]]);
+                    }}
+                />
             </Suspense>
         </>
     )

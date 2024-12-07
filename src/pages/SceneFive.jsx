@@ -30,6 +30,7 @@ import { Perf } from 'r3f-perf';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
 import { useAudioElement } from '../hooks/useAudioElement';
 import { useCameraSwitcher } from '../hooks/useCameraSwitcher';
+import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
 
 
 function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
@@ -49,6 +50,7 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
     const { showHeaderSubTitle, setShowHeaderSubTitle } = useContext(headerSubTitleContext);
     const { messageApi } = useContext(GlobalNotificationContext);
     const audioElement = useAudioElement(musicUrl);
+    const { taskBoardContent, setTaskBoardContent } = useContext(TaskBoardContentContext);
     const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
         loadingComponents: {
             preloadAssets: true,
@@ -216,6 +218,23 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
         return () => clearInterval(interval);
     }, [estHitTimeCountDown, setEstHitTimeCountDown, hullTemperature, setHullTemperature, coreEnergy, setCoreEnergy]);
 
+    const [taskBoardContentMap, setTaskBoardContentMap] = useState({
+        0: "The warning is constantly flashing, the ship is in extreme danger. ",
+        1: "Finally, I have answered the root access question, I can now access the ship's every system. Let me ask the AI for some updates on the ship's status.",
+        2: "Oh my god, I did not expect the ship to be in such a bad state. The ship's hull temperature is rising rapidly, and the hull surface has reached a red-hot state. The main thrusters lack sufficient power to escape the star's gravity. While the power is being restored, I need to find some other ways to save the ship.",
+        3: "Yes! I can send a distress signal to the nearest space station, and ask for help. See if anyone can come to our rescue.",
+        4: "I can also simulate a slingshot trajectory to escape the star's gravity. Let me calculate the trajectory see if that works.",
+        5: "Time to start the warp engine, let's get out of here safe and sound.",
+        6: "Unbelievable, such a disaster. The warp sequence was forcibly aborted, the current position deviates from the target coordinates. The core energy reaction anomaly detected, disconnecting engine to prevent overload. The warp engine malfunction, energy output interrupted, unable to sustain spatial distortion!",
+        7: "I think now we have no choice but to search for emergency plans as our last-hand. Let me see if I can find any useful information.",
+        8: "The emergency plan is encrypted, I need to decrypt it first. (Check the Email you just submitted for the decryption key)",
+        9: "The emergency plan is decrypted, let's see what it says.",
+        10: "Let's see if this emergency plan can save us or not.(Click on the Viewport to activate the emergency plan)",
+    });
+
+    useEffect(() => {
+        setTaskBoardContent(new Array(taskBoardContentMap[0]));
+    }, []);
 
     return (
         <>
@@ -302,10 +321,10 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={22} onSequencePass={() => { toggleComponentDisplay("infoScreenDisplayDamageReport") }} />
                 {showComponents.infoScreenDisplayDamageReport && <InfoScreenDisplay title={"damage report"} content={damageReport} sequence={scene5Sheet.sequence} stopPoints={[23.5, 24, 24.5, 25, 30]} loadPoints={isPortraitPhoneScreen ? [22, 23.5, 24, 24.5, 25] : [22, 23, 23.5, 24, 24.5]} unloadPoints={[23.5, 24, 24.5, 25, 25.5]} onSequencePass={() => { toggleComponentDisplay("infoScreenDisplayDamageReport") }} />}
 
-                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={29} onSequencePass={() => { toggleComponentDisplay("buttonCalculateSlingshotTrajectory"); toggleComponentDisplay("buttonSendDistressSignal"); toggleComponentDisplay("buttonInitiateTheWarpEngine"); }} />
-                {showComponents.buttonCalculateSlingshotTrajectory && <Button title={"calculate slingshot trajectory"} position={[558, 33.75, 3]} buttonLength={1.5} rotation={[0.12, 0.185, -0.06]} sequence={scene5Sheet.sequence} clickablePoint={30} IsPreJump={true} jumpToPoint={55} stopPoint={67.5} unloadPoint={56} onSequencePass={() => { toggleComponentDisplay("buttonCalculateSlingshotTrajectory"); setSimulationDone(true); }} />}
-                {showComponents.buttonSendDistressSignal && <Button title={"send distress signal"} position={[558, 34, 3]} buttonLength={1.5} rotation={[0.12, 0.185, -0.06]} sequence={scene5Sheet.sequence} clickablePoint={30} IsPreJump={false} jumpToPoint={30} stopPoint={41} unloadPoint={42} onSequencePass={() => { toggleComponentDisplay("buttonSendDistressSignal"); setSignalSent(true); }} />}
-                {showComponents.buttonInitiateTheWarpEngine && <Button title={"initiate the warp engine"} position={[558, 34.25, 3]} buttonLength={1.5} rotation={[0.12, 0.185, -0.06]} sequence={scene5Sheet.sequence} clickablePoint={30} IsPreJump={true} jumpToPoint={75} stopPoint={144} unloadPoint={76} alertAndNoPlay={!(signalSent && simulationDone)} alertMessage={"Insufficient energy!"} onSequencePass={() => { toggleComponentDisplay("buttonInitiateTheWarpEngine") }} />}
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={29} onSequencePass={() => { toggleComponentDisplay("buttonCalculateSlingshotTrajectory"); toggleComponentDisplay("buttonSendDistressSignal"); toggleComponentDisplay("buttonInitiateTheWarpEngine"); setTaskBoardContent(prev => [...prev, taskBoardContentMap[2]]); }} />
+                {showComponents.buttonCalculateSlingshotTrajectory && <Button title={"calculate slingshot trajectory"} position={[558, 33.75, 3]} buttonLength={1.5} rotation={[0.12, 0.185, -0.06]} sequence={scene5Sheet.sequence} clickablePoint={30} IsPreJump={true} jumpToPoint={55} stopPoint={67.5} unloadPoint={56} onSequencePass={() => { toggleComponentDisplay("buttonCalculateSlingshotTrajectory"); setSimulationDone(true); }} additionalOnClickCallback={() => { setTaskBoardContent(prev => [...prev, taskBoardContentMap[4]]); }} />}
+                {showComponents.buttonSendDistressSignal && <Button title={"send distress signal"} position={[558, 34, 3]} buttonLength={1.5} rotation={[0.12, 0.185, -0.06]} sequence={scene5Sheet.sequence} clickablePoint={30} IsPreJump={false} jumpToPoint={30} stopPoint={41} unloadPoint={42} onSequencePass={() => { toggleComponentDisplay("buttonSendDistressSignal"); setSignalSent(true); }} additionalOnClickCallback={() => { setTaskBoardContent(prev => [...prev, taskBoardContentMap[3]]); }} />}
+                {showComponents.buttonInitiateTheWarpEngine && <Button title={"initiate the warp engine"} position={[558, 34.25, 3]} buttonLength={1.5} rotation={[0.12, 0.185, -0.06]} sequence={scene5Sheet.sequence} clickablePoint={30} IsPreJump={true} jumpToPoint={75} stopPoint={144} unloadPoint={76} alertAndNoPlay={!(signalSent && simulationDone)} alertMessage={"Insufficient energy!"} onSequencePass={() => { toggleComponentDisplay("buttonInitiateTheWarpEngine") }} additionalOnClickCallback={() => { setTaskBoardContent(prev => [...prev, taskBoardContentMap[5]]); }} />}
 
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={59} onSequencePass={() => { toggleComponentDisplay("hologramSlingshotTrajectory") }} />
@@ -335,7 +354,8 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
                         'success',
                         "Welcome to the captain's command chamber!",
                         3,
-                    )
+                    );
+                    setTaskBoardContent(prev => [...prev, taskBoardContentMap[1]]);
                 }} />
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={85} onSequencePass={() => {
                     messageApi(
@@ -424,6 +444,7 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
                         'Unexpected gravitational wave interference, warp sequence forced to terminate!',
                         5,
                     );
+                    setTaskBoardContent(prev => [...prev, taskBoardContentMap[6]]);
                 }}
                 />
 
@@ -449,17 +470,20 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
                         5,
                     );
                     toggleComponentDisplay("buttonSearchForEmergencyPlans");
+                    setTaskBoardContent(prev => [...prev, taskBoardContentMap[7]]);
                 }} />
 
                 {showComponents.buttonSearchForEmergencyPlans && <Button title={"Search for last-hand plans"} position={[246.15, 33.25, -73.5]} buttonLength={1.5} rotation={[0, 3.67, 0]} sequence={scene5Sheet.sequence} clickablePoint={144} IsPreJump={false} jumpToPoint={144} stopPoint={153} unloadPoint={145} onSequencePass={() => { toggleComponentDisplay("buttonSearchForEmergencyPlans") }} />}
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={153} onSequencePass={() => {
                     setShowAuthorizationCheckForm(true);
+                    setTaskBoardContent(prev => [...prev, taskBoardContentMap[8]]);
                 }
                 } />
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={153.25} onSequencePass={() => {
                     toggleComponentDisplay("decryption");
+                    setTaskBoardContent(prev => [...prev, taskBoardContentMap[9]]);
                     messageApi('loading', 'Alpha class layer decryption is in progress!', 9).then(() => messageApi('success', 'Alpha class layer decrypted successfully!', 2));
                 }} />
                 {showComponents.decryption && <AnyModel modelURL={'circuits_in_motion-transformed.glb'} sequence={scene5Sheet.sequence} useTheatre={true} theatreKey={"Decryption"} position={[257.75, 34, -71.6]} rotation={[0, 3, 0]} scale={[0.001, 0.001, 0.001]} animationNames={["GltfAnimation 0"]} animationOnClick={false} animationPlayTimes={1} animationSpeeds={0.5} unloadPoint={164} onSequencePass={() => { toggleComponentDisplay("decryption"); }} />}
@@ -471,7 +495,7 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={167} onSequencePass={() => { toggleComponentDisplay("timsVideo"); setShowHeaderSubTitle(true); }} />
                 {showComponents.timsVideo && <AnyModel modelURL={'TimsVideo.glb'} sequence={scene5Sheet.sequence} useTheatre={true} theatreKey={"Tim"} position={[257, 33.75, -75.5]} rotation={[0, -1.75, 0]} scale={[2, 2, 2]} animationNames={["2024-10-22--23-55-58"]} animationOnClick={false} animationPlayTimes={1} animationSpeeds={1} unloadPoint={183} onSequencePass={() => { toggleComponentDisplay("timsVideo"); }} />}
 
-                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={184} onSequencePass={() => { toggleComponentDisplay("viewportProjectDawn") }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={184} onSequencePass={() => { toggleComponentDisplay("viewportProjectDawn"); setTaskBoardContent(prev => [...prev, taskBoardContentMap[10]]); }} />
                 {showComponents.viewportProjectDawn && <ViewPort screenTitle="viewportProjectDawn" position={[253.67, 33.1, -76.68]} rotation={[0, 1.59, 0]} sequence={scene5Sheet.sequence} stopPoint={207} unloadPoint={187} onSequencePass={() => { toggleComponentDisplay("viewportProjectDawn") }} isSetNextScene={true} nextScene={"sceneSix"} nextSceneStartPoint={0} />}
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={193} onSequencePass={() => { toggleComponentDisplay("controlPanel2") }} />

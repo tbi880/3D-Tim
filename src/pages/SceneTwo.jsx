@@ -25,6 +25,7 @@ import { Perf } from 'r3f-perf';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
 import { useAudioElement } from '../hooks/useAudioElement';
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
+import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
 
 
 function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScreen }) {
@@ -36,6 +37,8 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
     const { xrPlayer, xrIsPresenting } = isVRSupported && useContext(XrToolsContext) ? useContext(XrToolsContext) : {};
     const audioElement = useAudioElement(musicUrl);
     useSequenceUnloadSceneChecker(scene2Sheet.sequence, unloadPoints, onSequencePass);
+    const { taskBoardContent, setTaskBoardContent } = useContext(TaskBoardContentContext);
+
     const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
         loadingComponents: {
             preloadAssets: true,
@@ -135,6 +138,19 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
     };
 
 
+    const [taskBoardContentMap, setTaskBoardContentMap] = useState({
+        0: "I am now awaken in the ship. What happened to the ship? Let me find out by asking the AI. Click on the AI to start the conversation.",
+        1: "Okay, so the ship is in danger... I need to get the command chamber as quickly as possible to save the ship. In order to do so, I need to find the root access first, since I am the only one on ship know the early life of the mighty captain Tim, that's why i am here. Let me go to the bridge to check the structure of the ship first, then decide where to go next.",
+        2: "Seems the ship is in a bad shape, can't handle too long, maybe just a few hours left. Let me decide where should i go next.",
+        3: "Let me go to the ship hanger , maybe I can find some information relate to Tim's early experience there.",
+        4: "Let me go to the engineering department, maybe I can find some information relate to Tim's early projects there.",
+        5: "Let me go to Tim's chamber finally, to save the ship. (strongly recommend to use the PC to view this part, some of the models are too heavy to load on the phone)",
+    });
+
+    useEffect(() => {
+        setTaskBoardContent(new Array(taskBoardContentMap[0]));
+    }, []);
+
     return (
         <>
             {/* <Canvas gl={{ preserveDrawingBuffer: true }} >
@@ -171,9 +187,13 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
                 <SingleLoadManager loadPoint={22} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('textTitleGetROOTACCESS')} />
                 {showComponents.textTitleGetROOTACCESS && <TextTitle text="Where to get the ROOT ACCESS?" color="#99CCFF" size={1} sequence={scene2Sheet.sequence} unloadPoint={24} onSequencePass={() => toggleComponentDisplay('textTitleGetROOTACCESS')} />}
                 <SingleLoadManager loadPoint={22} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOShipHangar')} />
-                {showComponents.buttonForGOTOShipHangar && !(getShipHangerHasBeenAccessed()) && <Button title={"To the ship hanger"} position={[490, -23.5, -60]} rotation={[0, 0, 0]} clickablePoint={22.5} jumpToPoint={22.5} stopPoint={33} unloadPoint={24} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOShipHangar')} />}
+                {showComponents.buttonForGOTOShipHangar && !(getShipHangerHasBeenAccessed()) && <Button title={"To the ship hanger"} position={[490, -23.5, -60]} rotation={[0, 0, 0]} clickablePoint={22.5} jumpToPoint={22.5} stopPoint={33} unloadPoint={24} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOShipHangar')} additionalOnClickCallback={() => {
+                    setTaskBoardContent(prev => [...prev, taskBoardContentMap[3]]);
+                }} />}
                 <SingleLoadManager loadPoint={22} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOEngineering')} />
-                {showComponents.buttonForGOTOEngineering && !(getEngineeringHasBeenAccessed()) && <Button title={"To the engineering"} position={[490, -23.5, -60]} rotation={[0, 0, 0]} clickablePoint={22.5} IsPreJump={true} jumpToPoint={39} stopPoint={68} unloadPoint={24} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOEngineering')} />}
+                {showComponents.buttonForGOTOEngineering && !(getEngineeringHasBeenAccessed()) && <Button title={"To the engineering"} position={[490, -23.5, -60]} rotation={[0, 0, 0]} clickablePoint={22.5} IsPreJump={true} jumpToPoint={39} stopPoint={68} unloadPoint={24} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOEngineering')} additionalOnClickCallback={() => {
+                    setTaskBoardContent(prev => [...prev, taskBoardContentMap[4]]);
+                }} />}
                 <SingleLoadManager loadPoint={22} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOCaptainsChamber')} />
                 {showComponents.buttonForGOTOCaptainsChamber && <Button title={"To Tim's chamber"} position={[490, -23.5, -60]} rotation={[0, 0, 0]} clickablePoint={22.5} IsPreJump={true} jumpToPoint={73.5} stopPoint={86} unloadPoint={24} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('buttonForGOTOCaptainsChamber')} alertAndNoPlay={!getRootAccess()} alertMessage={"Please come back later when you have the access. You are not authorized to go there yet! "} />}
 
@@ -203,6 +223,30 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
                 {showComponents.viewPortTimsChamber && <ViewPort screenTitle="TimsChamber" position={[548, -17.85, -26.15]} rotation={[0, 11, 0]} sequence={scene2Sheet.sequence} stopPoint={96} unloadPoint={90} onSequencePass={() => toggleComponentDisplay('viewPortTimsChamber')} isSetNextScene={true} nextScene={"sceneFive"} nextSceneStartPoint={0} />}
                 <SingleLoadManager loadPoint={93} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('loadingForTimsChamber')} />
                 {showComponents.loadingForTimsChamber && <Loading THkey="TimsChamber" title="TimsChamber" lines={["Authenticating ", "access to ", "Tim's chamber "]} position={[560.75, 5.25, -22.5]} rotation={[0, 9.45, 0]} sequence={scene2Sheet.sequence} unloadPoint={96.5} onSequencePass={() => toggleComponentDisplay('loadingForTimsChamber')} textTitleVersion={2} />}
+
+
+                <SingleLoadManager
+                    loadPoint={4}
+                    sequence={scene2Sheet.sequence}
+                    onSequencePass={() => {
+                        setTaskBoardContent(prev => [...prev, taskBoardContentMap[1]]);
+                    }}
+                />
+
+                <SingleLoadManager
+                    loadPoint={22.5}
+                    sequence={scene2Sheet.sequence}
+                    onSequencePass={() => {
+                        setTaskBoardContent(prev => [...prev, taskBoardContentMap[2]]);
+                    }}
+                />
+                <SingleLoadManager
+                    loadPoint={75}
+                    sequence={scene2Sheet.sequence}
+                    onSequencePass={() => {
+                        setTaskBoardContent(prev => [...prev, taskBoardContentMap[5]]);
+                    }}
+                />
 
             </Suspense>
 

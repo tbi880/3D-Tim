@@ -28,7 +28,7 @@ function ShipStatus({ isPortraitPhoneScreen }) {
                 ? "3.5vh"
                 : "17.5vh",
         position: "fixed",
-        top: "10px",
+        top: "50px",
         left: "50%",
         transform: "translateX(-50%)",
         backgroundColor: "rgba(0, 0, 0, 0.5)",

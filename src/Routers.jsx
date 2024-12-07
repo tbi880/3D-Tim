@@ -6,21 +6,15 @@ import { stageOfENV } from './Settings';
 import SceneJessie from './pages/SceneJessie';
 import Bridge from './pages/Bridge';
 import ShipHanger from './pages/ShipHanger';
-import Menu from './Tools/Menu';
 import ShipEngineering from './pages/ShipEngineering';
 import ShipTimsChamber from './pages/ShipTimsChamber';
-import GraphicSetting from './Tools/GraphicSetting';
 import GlobalProviders from './sharedContexts/GlobalProviders';
+import { OverlayDisplayManager } from './Tools/OverlayDisplayManager';
 
 function Routers() {
     const [isWeChatBrowser, setIsWeChatBrowser] = useState(false);
     // 检测屏幕是否为手机竖屏模式，即高度大于宽度
     const [isPortraitPhoneScreen, setIsPortraitPhoneScreen] = useState(false);
-    const [settingOrMenuIsOn, setSettingOrMenuIsOn] = useState("none");
-
-    const openSettingOrMenu = (settingOrMenu) => {
-        setSettingOrMenuIsOn(settingOrMenu);
-    };
 
 
     useEffect(() => {
@@ -88,8 +82,7 @@ function Routers() {
 
         <Router>
             <GlobalProviders>
-                {(settingOrMenuIsOn === "none" || settingOrMenuIsOn === "menu") && <Menu isPortraitPhoneScreen={isPortraitPhoneScreen} openSettingOrMenuCallback={openSettingOrMenu} />}
-                {(settingOrMenuIsOn === "none" || settingOrMenuIsOn === "setting") && <GraphicSetting isPortraitPhoneScreen={isPortraitPhoneScreen} openSettingOrMenuCallback={openSettingOrMenu} />}
+                <OverlayDisplayManager isPortraitPhoneScreen={isPortraitPhoneScreen} />
                 <Routes>
                     <Route path="/" element={<HomePage isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
                     <Route path="/bridge" element={<Bridge isPortraitPhoneScreen={isPortraitPhoneScreen} />} />

@@ -5,7 +5,7 @@ import { editable as e } from '@theatre/r3f';
 import { useFrame } from '@react-three/fiber';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 
-function Button({ title, position, buttonLength, rotation, clickablePoint, IsPreJump, jumpToPoint, stopPoint, unloadPoint, sequence, onSequencePass, alertAndNoPlay, alertMessage }) {
+function Button({ title, position, buttonLength, rotation, clickablePoint, IsPreJump, jumpToPoint, stopPoint, unloadPoint, sequence, onSequencePass, alertAndNoPlay, alertMessage, additionalOnClickCallback }) {
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const theatreKey = ("Button-" + title).trim();
     const [visible, setVisible] = useState(false);
@@ -49,7 +49,9 @@ function Button({ title, position, buttonLength, rotation, clickablePoint, IsPre
             }
         }
 
-    }, [jumpToPoint, stopPoint, alertAndNoPlay]);
+        additionalOnClickCallback && additionalOnClickCallback();
+
+    }, [jumpToPoint, stopPoint, alertAndNoPlay, additionalOnClickCallback]);
 
     const [hovered, setHovered] = useState(false);
     useCursor(hovered);

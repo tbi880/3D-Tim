@@ -73,7 +73,7 @@ function Header({ onAnimationEnd, defaultNotice, defaultBaseDuration }) {
                 top: 0,
                 width: '100%',
                 height: '10vh',
-                zIndex: 1000,
+                zIndex: 10000,
                 backgroundColor: 'rgba(0, 0, 0, 0.5)',
                 padding: '10px 0',
                 boxShadow: '0 2px 4px rgba(0,0,0,.1)',

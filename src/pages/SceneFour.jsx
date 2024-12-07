@@ -1,4 +1,4 @@
-import { engineeringAccess, getNextScene, getNextSceneURI, getUserAntialias, getUserDpr, setNextScene, setNextSceneStartPoint } from './Status'
+import { engineeringAccess, getNextScene, getNextSceneURI, setNextScene, setNextSceneStartPoint } from './Status'
 import * as THREE from 'three'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import Loader from './Loader'
 import { bucketURL } from '../Settings'
 import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider'
+import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider'
 
 
 
@@ -35,6 +36,17 @@ export const SceneFourInsideOfCanvas = ({ isPortraitPhoneScreen, images }) => {
     const [loadingOpacity, setLoadingOpacity] = useState(0);
 
     const [countDown, setCountDown] = useState(3);
+
+    const { taskBoardContent, setTaskBoardContent } = useContext(TaskBoardContentContext);
+
+    const [taskBoardContentMap, setTaskBoardContentMap] = useState({
+        0: "Seems like I am inside of a gallery, I should check all the websites that Tim has built closely to show some respect.",
+    });
+
+    useEffect(() => {
+        setTaskBoardContent(new Array(taskBoardContentMap[0]));
+    }, []);
+
 
     const toggleComponentDisplay = useCallback((componentKey) => {
         setShowComponents((prev) => ({

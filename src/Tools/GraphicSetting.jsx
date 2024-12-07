@@ -2,10 +2,10 @@ import { useState, useEffect, useContext } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCog, faCheck, faQuestionCircle } from '@fortawesome/free-solid-svg-icons';
 import { message } from 'antd';
-import { getUserAntialias, getUserDpr, setUserAntialias, setUserDpr, setUserDisableUnnecessaryComponentAnimation } from '../pages/Status';
+import { setUserAntialias, setUserDpr, setUserDisableUnnecessaryComponentAnimation } from '../pages/Status';
 import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider';
 
-function GraphicSetting({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
+export function GraphicSetting({ isPortraitPhoneScreen, setDisplayOverlayCallback }) {
     const [showSettings, setShowSettings] = useState(false);
     const [tooltip, setTooltip] = useState({ visible: false, content: '', x: 0, y: 0 });
     const [messageApi, contextHolder] = message.useMessage();
@@ -16,10 +16,10 @@ function GraphicSetting({ isPortraitPhoneScreen, openSettingOrMenuCallback }) {
     const toggleSettings = () => {
         setShowSettings(!showSettings);
         if (showSettings) {
-            openSettingOrMenuCallback("none");
+            setDisplayOverlayCallback("none");
             saveSetting();
         } else {
-            openSettingOrMenuCallback("setting");
+            setDisplayOverlayCallback("setting");
         }
     };
 
