@@ -57,3 +57,8 @@ body {
   font-weight: 400;
   /* 你可以根据需要选择从400到900的任意值 */
 }
+
+
+.ant-message {
+  z-index: 999999 !important;
+}

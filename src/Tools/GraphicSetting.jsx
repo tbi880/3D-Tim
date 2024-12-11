@@ -1,11 +1,11 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, forwardRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCog, faCheck, faQuestionCircle } from '@fortawesome/free-solid-svg-icons';
 import { message } from 'antd';
 import { setUserAntialias, setUserDpr, setUserDisableUnnecessaryComponentAnimation } from '../pages/Status';
 import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider';
 
-export function GraphicSetting({ isPortraitPhoneScreen, setDisplayOverlayCallback }) {
+const GraphicSetting = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, refGraphicSetting) => {
     const [showSettings, setShowSettings] = useState(false);
     const [tooltip, setTooltip] = useState({ visible: false, content: '', x: 0, y: 0 });
     const [messageApi, contextHolder] = message.useMessage();
@@ -185,7 +185,7 @@ export function GraphicSetting({ isPortraitPhoneScreen, setDisplayOverlayCallbac
 
     return (
         <>      {contextHolder}
-            <button style={buttonStyle} onClick={toggleSettings}>
+            <button style={buttonStyle} onClick={toggleSettings} ref={refGraphicSetting}>
                 <FontAwesomeIcon icon={showSettings ? faCheck : faCog} size="2x" color="black" />
             </button>
             <div style={menuStyle}>
@@ -250,6 +250,6 @@ export function GraphicSetting({ isPortraitPhoneScreen, setDisplayOverlayCallbac
             <div style={tooltipStyle}>{tooltip.content}</div>
         </>
     );
-}
+});
 
 export default GraphicSetting;

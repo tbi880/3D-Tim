@@ -1,11 +1,14 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, forwardRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronUp, faListCheck, faAnglesDown } from '@fortawesome/free-solid-svg-icons';
 import "./css/general.css";
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
 
 
-function TaskBoard({ isPortraitPhoneScreen, setDisplayOverlayCallback }) {
+const TaskBoard = forwardRef(({
+    isPortraitPhoneScreen,
+    setDisplayOverlayCallback
+}, refTaskBoard) => {
     const [showTaskBoard, setShowTaskBoard] = useState(false);
     const { taskBoardContent, setTaskBoardContent } = useContext(TaskBoardContentContext);
 
@@ -24,7 +27,7 @@ function TaskBoard({ isPortraitPhoneScreen, setDisplayOverlayCallback }) {
         position: 'fixed',
         top: 0,
         left: 0,
-        zIndex: 9999,
+        zIndex: 999,
         width: '100%',
         height: '100%',
         backgroundColor: isPortraitPhoneScreen ? 'black' : 'rgba(0, 0, 0, 0.5)',
@@ -42,7 +45,7 @@ function TaskBoard({ isPortraitPhoneScreen, setDisplayOverlayCallback }) {
         top: 0,
         left: '50%',
         transform: 'translateX(-50%) translateY(0)',
-        zIndex: 10000,
+        zIndex: 1000,
         backgroundColor: '#fff',
         border: 'none',
         cursor: 'pointer',
@@ -53,7 +56,7 @@ function TaskBoard({ isPortraitPhoneScreen, setDisplayOverlayCallback }) {
 
     return (
         <>
-            <button style={buttonStyle} onClick={toggleTaskBoard}>
+            <button style={buttonStyle} onClick={toggleTaskBoard} ref={refTaskBoard}>
                 <FontAwesomeIcon icon={showTaskBoard ? faChevronUp : faListCheck} size="2x" color="black" />
             </button>
             <div style={containerStyle}>
@@ -63,16 +66,16 @@ function TaskBoard({ isPortraitPhoneScreen, setDisplayOverlayCallback }) {
                 <div style={{ paddingTop: "20px" }}></div>
                 <div style={{ padding: "5px", textAlign: "center", overFlowY: 'auto', maxHeight: '100vh', }}>
                     {taskBoardContent.map((item, index) => (
-                        <>
-                            <p key={index}>{item}</p>
+                        <div key={index}>
+                            <p >{item}</p>
                             <FontAwesomeIcon icon={faAnglesDown} />
                             <div style={{ paddingBottom: "10px" }}></div>
-                        </>
+                        </div>
                     ))}
                 </div>
             </div >
         </>
     );
-}
+});
 
 export default TaskBoard;

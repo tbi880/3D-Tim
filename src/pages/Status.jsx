@@ -27,8 +27,13 @@ const scene_menu_lock_map = {
     "sceneSix": true,
 };
 
+const tour_guide_map = {
+    "/bridge": false,
+    "/ship_captains_chamber": false,
+};
 
-function saveMapToLocalStorage(map) {
+
+export function saveMapToLocalStorage(map) {
     localStorage.setItem('scene_menu_lock_map', JSON.stringify(map));
 }
 
@@ -136,6 +141,30 @@ export function getUserDisableUnnecessaryComponentAnimation(isPortraitPhoneScree
     return JSON.parse(localStorage.getItem('userDisableUnnecessaryComponentAnimation')) ?? isPortraitPhoneScreen ? true : false;
 }
 
+export function saveTourMapToLocalStorage(map) {
+    localStorage.setItem('tour_guide_map', JSON.stringify(map));
+}
+
+
+export function getTourMapFromLocalStorage() {
+    const map = localStorage.getItem('tour_guide_map');
+    return map ? JSON.parse(map) : null;
+}
+
+
+if (!getTourMapFromLocalStorage()) {
+    saveTourMapToLocalStorage(tour_guide_map);
+}
+
+export function hasTourGuided(uri) {
+    const map = getTourMapFromLocalStorage();
+    if (uri) {
+        map[uri] = true;
+        saveTourMapToLocalStorage(map);
+    } else {
+        console.error("Failed to retrieve the map from localStorage.");
+    }
+}
 function Status() {
 
     return (

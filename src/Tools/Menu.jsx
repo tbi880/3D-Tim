@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { forwardRef, useState } from "react";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronRight, faChevronLeft, faLock, faVrCardboard, faFileDownload } from '@fortawesome/free-solid-svg-icons';
 import "./css/menu.css";
 import { getMenuLockMapFromLocalStorage } from "../pages/Status";
 
-export function Menu({ isPortraitPhoneScreen, setDisplayOverlayCallback }) {
+const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, refMenu) => {
     const [showMenu, setShowMenu] = useState(false);
     const [sceneMenuLockMap, setSceneMenuLockMap] = useState(getMenuLockMapFromLocalStorage());
 
@@ -74,7 +74,7 @@ export function Menu({ isPortraitPhoneScreen, setDisplayOverlayCallback }) {
 
     return (
         <>
-            <button style={buttonStyle} onClick={toggleMenu}>
+            <button style={buttonStyle} onClick={toggleMenu} ref={refMenu}>
                 <FontAwesomeIcon icon={showMenu ? faChevronLeft : faChevronRight} size="2x" color="black" />
             </button>
             <div style={menuStyle}>
@@ -131,19 +131,19 @@ export function Menu({ isPortraitPhoneScreen, setDisplayOverlayCallback }) {
                     href="https://www.bty.co.nz/Tim_Bi_resume.pdf"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="vr-link"
+                    className={"vr-link"}
                     style={{ color: 'white' }}
                     title="Download Tim Bi's software developer resume"
                     aria-label="Download Tim Bi's software developer resume"
                 >
                     <FontAwesomeIcon icon={faFileDownload} className="vr-icon" />
-                    <span>Click here to download Tim's developer resume</span>
+                    <span className="menu-item">Click here to download Tim's developer resume</span>
                 </a>
 
             </div >
         </>
     );
 
-}
+});
 
 export default Menu;

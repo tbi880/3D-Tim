@@ -1,5 +1,5 @@
 
-import Status, { getNextScene, getNextSceneStartPoint, getNextSceneURI, getUserAntialias, getUserDpr } from './Status';
+import Status, { getNextScene, getNextSceneStartPoint, getNextSceneURI, getTourMapFromLocalStorage, getUserAntialias, getUserDpr, hasTourGuided } from './Status';
 import { useNavigate } from "react-router-dom";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
@@ -7,7 +7,7 @@ import { Helmet } from 'react-helmet';
 import { Canvas } from '@react-three/fiber';
 import { SheetProvider } from '@theatre/r3f';
 import { scene5Sheet } from './SceneManager';
-import { useContext, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { webGLPreserveDrawingBuffer } from '../Settings';
 import ShipStatus from '../Tools/ShipStatus';
 import { EstHitTimeCountDownProvider } from '../sharedContexts/EstHitTimeCountDownProvider';
@@ -23,10 +23,17 @@ import Header from '../Tools/Header';
 import { headerSubTitleContext } from '../sharedContexts/HeaderSubTitleProvider';
 import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider';
 import SceneFive from './SceneFive';
+import TourGuide from '../Tools/TourGuide';
+import { useLocation } from 'wouter';
 
 
 
 function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
+    const [location, setLocation] = useLocation();
+    const tourStartSceneURI = "/ship_captains_chamber";
+    const refShipStatus = useRef(null);
+    const [open, setOpen] = useState(false);
+    const [isHide, setIsHide] = useState(false);
     const navigate = useNavigate();
     const [isJumping, setIsJumping] = useState(false);
     const { showSendDistressSignalForm, setShowSendDistressSignalForm } = useContext(sendDistressSignalContext);
@@ -35,7 +42,29 @@ function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
     const { showHeaderSubTitle, setShowHeaderSubTitle } = useContext(headerSubTitleContext);
     const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
 
+    const stepsConfig = useMemo(() => ([
+        {
+            ref: refShipStatus,
+            title: 'Hide the ship status',
+            description: 'Click on the overlay to hide the ship status and to see the full content behind it.',
+            placement: isPortraitPhoneScreen ? null : 'bottom',
+        },
+        {
+            ref: refShipStatus,
+            title: 'Display the ship status',
+            description: 'Click on the overlay to show the ship status again.',
+            placement: isPortraitPhoneScreen ? null : 'bottom',
+        },
+    ]), [refShipStatus]);
 
+    useEffect(() => {
+        const tourMap = getTourMapFromLocalStorage();
+        if (!(location in tourMap) || tourMap[location] || location != tourStartSceneURI) {
+            return;
+        }
+        setOpen(true);
+        hasTourGuided(location);
+    }, [location]);
 
     function checkThenJumpToTheNextScene() {
         if (!isJumping) {
@@ -43,6 +72,10 @@ function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
             navigate(getNextSceneURI(getNextScene()));
 
         }
+    }
+
+    function onClickCallback() {
+        setIsHide(!isHide);
     }
 
     return (
@@ -64,8 +97,7 @@ function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
             <EstHitTimeCountDownProvider>
                 <HullTemperatureProvider>
                     <CoreEnergyProvider>
-
-                        <ShipStatus isPortraitPhoneScreen={isPortraitPhoneScreen} />
+                        <ShipStatus isPortraitPhoneScreen={isPortraitPhoneScreen} ref={refShipStatus} isHide={isHide} onClick={onClickCallback} />
                         {showSendDistressSignalForm && (
                             <DistressSignalForm
                                 isPortraitPhoneScreen={isPortraitPhoneScreen}
@@ -95,6 +127,7 @@ function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
                             </Canvas>
 
                         </div>
+                        <TourGuide stepsConfig={stepsConfig} open={open} onClose={() => { setOpen(false); setIsHide(false); }} onChange={() => { setIsHide(prev => !prev) }} />
                     </CoreEnergyProvider>
                 </HullTemperatureProvider>
             </EstHitTimeCountDownProvider >

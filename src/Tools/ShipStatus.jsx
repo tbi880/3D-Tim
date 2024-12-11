@@ -1,17 +1,16 @@
 import { Progress, Typography } from "antd";
-import { useContext, useState } from "react";
+import { forwardRef, useContext, useEffect, useState } from "react";
 import "./css/menu.css";
 import { estHitTimeCountDownContext } from "../sharedContexts/EstHitTimeCountDownProvider";
 import { hullTemperatureContext } from "../sharedContexts/HullTemperatureProvider";
 import { coreEnergyContext } from "../sharedContexts/CoreEnergyProvider";
 
-function ShipStatus({ isPortraitPhoneScreen }) {
+const ShipStatus = forwardRef(({ isPortraitPhoneScreen, isHide, onClick }, refShipStatus, hideSwitchFromOutside = false) => {
     const [stepsCount, setStepsCount] = useState(6);
     const [stepsGap, setStepsGap] = useState(5);
     const { estHitTimeCountDown } = useContext(estHitTimeCountDownContext);
     const { hullTemperature } = useContext(hullTemperatureContext);
     const { coreEnergy } = useContext(coreEnergyContext);
-    const [isHide, setIsHide] = useState(false);
 
     const maxHullTemperature = 4500; // ship's maximum hull temperature
     const hullTemperaturePercent = (hullTemperature + 500) / maxHullTemperature * 100;
@@ -66,9 +65,8 @@ function ShipStatus({ isPortraitPhoneScreen }) {
     return (
         <div
             style={containerStyle}
-            onClick={(e) => {
-                setIsHide(!isHide);
-            }}
+            onClick={onClick}
+            ref={refShipStatus}
         >
             <div style={titleStyle}>
                 <Typography.Title level={5} style={{ color: "white" }}>
@@ -116,6 +114,6 @@ function ShipStatus({ isPortraitPhoneScreen }) {
             )}
         </div>
     );
-}
+});
 
 export default ShipStatus;
