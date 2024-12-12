@@ -65,13 +65,37 @@ const TaskBoard = forwardRef(({
                 <div className='divider'></div>
                 <div style={{ paddingTop: "20px" }}></div>
                 <div style={{ padding: "5px", textAlign: "center", overFlowY: 'auto', maxHeight: '100vh', }}>
-                    {taskBoardContent.map((item, index) => (
-                        <div key={index}>
-                            <p >{item}</p>
-                            <FontAwesomeIcon icon={faAnglesDown} />
-                            <div style={{ paddingBottom: "10px" }}></div>
-                        </div>
-                    ))}
+                    {taskBoardContent.map((item, index) => {
+                        const regex = /\((.*?)\)/g;
+                        let parts = [];
+                        let lastIndex = 0;
+                        let match;
+
+                        while ((match = regex.exec(item)) !== null) {
+                            const before = item.slice(lastIndex, match.index);
+                            if (before) parts.push(before);
+
+                            const highlightedText = match[1];
+                            parts.push(
+                                <span key={index + '_highlight_' + match.index} style={{ color: '#add8e6' }}>
+                                    {highlightedText}
+                                </span>
+                            );
+                            lastIndex = match.index + match[0].length;
+                        }
+
+                        const remainingText = item.slice(lastIndex);
+                        if (remainingText) parts.push(remainingText);
+
+                        return (
+                            <div key={index}>
+                                <p>{parts}</p>
+                                <FontAwesomeIcon icon={faAnglesDown} />
+                                <div style={{ paddingBottom: "10px" }}></div>
+                            </div>
+                        );
+                    })}
+
                 </div>
             </div >
         </>

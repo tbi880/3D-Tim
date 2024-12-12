@@ -139,12 +139,12 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
 
 
     const [taskBoardContentMap, setTaskBoardContentMap] = useState({
-        0: "I am now awaken in the ship. What happened to the ship? Let me find out by asking the AI. Click on the AI to start the conversation.",
+        0: "I am now awaken in the ship. What happened to the ship? Let me find out by asking the AI. ( Click on the AI to start the conversation )",
         1: "Okay, so the ship is in danger... I need to get the command chamber as quickly as possible to save the ship. In order to do so, I need to find the root access first, since I am the only one on ship know the early life of the mighty captain Tim, that's why i am here. Let me go to the bridge to check the structure of the ship first, then decide where to go next.",
-        2: "Seems the ship is in a bad shape, can't handle too long, maybe just a few hours left. Let me decide where should i go next.",
+        2: "Seems the ship is in a bad shape, can't handle too long, maybe just a few hours left. Let me decide where should i go next. ( Click on one of the buttons to decide where to go next )",
         3: "Let me go to the ship hanger , maybe I can find some information relate to Tim's early experience there.",
         4: "Let me go to the engineering department, maybe I can find some information relate to Tim's early projects there.",
-        5: "Let me go to Tim's chamber finally, to save the ship. (strongly recommend to use the PC to view this part, some of the models are too heavy to load on the phone)",
+        5: "Let me go to Tim's chamber finally, to save the ship. ( strongly recommend to use the PC to view this part, some of the models are too heavy to load on the phone )",
     });
 
     useEffect(() => {
