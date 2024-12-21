@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef, useContext } from 'react';
 import PropTypes from 'prop-types';
 import { useGLTF, useAnimations, useCursor } from '@react-three/drei';
 import { editable as e } from '@theatre/r3f';
@@ -6,6 +6,7 @@ import { types } from '@theatre/core';
 import * as THREE from 'three';
 import { bucketURL } from '../Settings';
 import { useFrame } from '@react-three/fiber';
+import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 
 
 function AnyModel(props) {
@@ -44,6 +45,8 @@ function AnyModel(props) {
     const [isPlaying, setIsPlaying] = useState(false);
     const timeBasedMapForModelNodeVisibilityRef = useRef({});
     const nodesInTransition = useRef(new Map());
+    const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
+
 
     function setNodeOpacity(node, opacity) {
         node.traverse((child) => {
@@ -168,8 +171,8 @@ function AnyModel(props) {
         if (currentTimePosition == props.clickablePoint) {
             for (let i = 0; i < props.stopPoints.length; i++) {
                 if (currentTimePosition < props.stopPoints[i]) {
-                    props.sequence.play({ range: [currentTimePosition, props.stopPoints[i]] });
                     setAnimationIsClicked(true);
+                    playOnce({ sequence: props.sequence, range: [currentTimePosition, props.stopPoints[i]] });
                     break;
                 }
             }
@@ -235,6 +238,7 @@ function AnyModel(props) {
                         action.clampWhenFinished = true;
                     }
                     action.timeScale = props.animationSpeeds;
+                    console.log("action.timeScale", action.timeScale);
                 }
             }
         }

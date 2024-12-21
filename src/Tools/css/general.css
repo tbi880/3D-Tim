@@ -78,3 +78,23 @@
 .checkbox {
     margin-right: 10px;
 }
+
+.double-speed-button {
+    color: #000;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    background: transparent;
+    border: none;
+    font-size: 2rem;
+    padding: 1rem;
+    cursor: pointer;
+    outline: none;
+    z-index: 500;
+    background-color: white;
+    border: 'none';
+    cursor: 'pointer';
+    padding: '10px';
+    border-radius: 0px 5px 5px 0px;
+    box-shadow: '2px 0 5px rgba(0,0,0,0.1)';
+}

@@ -4,12 +4,15 @@ import { types } from '@theatre/core';
 import { editable as e } from '@theatre/r3f';
 import { useFrame } from '@react-three/fiber';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
+import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 
 function Button({ title, position, buttonLength, rotation, clickablePoint, IsPreJump, jumpToPoint, stopPoint, unloadPoint, sequence, onSequencePass, alertAndNoPlay, alertMessage, additionalOnClickCallback }) {
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const theatreKey = ("Button-" + title).trim();
     const [visible, setVisible] = useState(false);
     const { messageApi } = useContext(GlobalNotificationContext);
+    const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
+
 
     useEffect(() => {
         // 当opacity为0时设置visible为false，否则为true
@@ -42,10 +45,11 @@ function Button({ title, position, buttonLength, rotation, clickablePoint, IsPre
 
         if (jumpToPoint && jumpToPoint < stopPoint) {
             if (IsPreJump) {
-                sequence.play({ range: [clickablePoint, clickablePoint + 0.5] }).then(() => sequence.play({ range: [jumpToPoint, stopPoint] }));
-
+                setTargetPosition(clickablePoint + 0.5);
+                setIsSequencePlaying(true);
+                sequence.play({ range: [clickablePoint, clickablePoint + 0.5], rate: rate.current }).then(() => { setTargetPosition(stopPoint); sequence.play({ range: [jumpToPoint, stopPoint], rate: rate.current }); }).then(() => { setIsSequencePlaying(false); });
             } else {
-                sequence.play({ range: [jumpToPoint, stopPoint] });
+                playOnce({ sequence: sequence, range: [jumpToPoint, stopPoint] });
             }
         }
 

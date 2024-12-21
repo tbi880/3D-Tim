@@ -10,6 +10,7 @@ import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationP
 import { useNavigate } from 'react-router-dom';
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 import XrToolMiddleLayer from '../Tools/XrToolMiddleLayer';
+import DoublePlayTimeSpeedButton from '../Tools/DoublePlayTimeSpeedButton';
 
 
 
@@ -62,9 +63,9 @@ function ShipHanger({ isPortraitPhoneScreen }) {
                             <SceneThree startPoint={getNextSceneStartPoint()} isPortraitPhoneScreen={isPortraitPhoneScreen} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
                     </XrToolMiddleLayer>
                 </CanvasProvider>
-
-
             </div >
+            <DoublePlayTimeSpeedButton sheetSequence={scene3Sheet.sequence} />
+
             <Status />
         </>
     )

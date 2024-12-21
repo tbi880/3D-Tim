@@ -26,6 +26,7 @@ import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager'
 import { useAudioElement } from '../hooks/useAudioElement';
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
+import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 
 
 function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScreen }) {
@@ -38,6 +39,8 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
     const audioElement = useAudioElement(musicUrl);
     useSequenceUnloadSceneChecker(scene2Sheet.sequence, unloadPoints, onSequencePass);
     const { taskBoardContent, setTaskBoardContent } = useContext(TaskBoardContentContext);
+    const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
+
 
     const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
         loadingComponents: {
@@ -104,7 +107,7 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
 
         scene2Project.ready.then(() => {
             if (startPoint && startPoint != 0) {
-                scene2Sheet.sequence.play({ range: [startPoint, startPoint + 0.5] });
+                playOnce({ sequence: scene2Sheet.sequence, range: [startPoint, startPoint + 0.5] });
             }
         });
     }, []);

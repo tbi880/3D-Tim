@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import GraphicSetting from "./GraphicSetting";
 import TaskBoard from "./TaskBoard";
 import Menu from "./Menu";
+import "./css/general.css";
 import { useLocation } from 'wouter';
 import TourGuide from "./TourGuide";
 import { bucketURL } from "../Settings";
@@ -18,6 +19,7 @@ export function OverlayDisplayManager({ isPortraitPhoneScreen }) {
     const refMenu = useRef(null);
     const refGraphicSetting = useRef(null);
     const refTaskBoard = useRef(null);
+    const refSpeedControl = useRef(null);
     const [open, setOpen] = useState(false);
 
     const stepsConfig = useMemo(() => ([
@@ -62,7 +64,13 @@ export function OverlayDisplayManager({ isPortraitPhoneScreen }) {
                 />
             ),
         },
-    ]), [refMenu, refGraphicSetting, refTaskBoard]);
+        {
+            ref: refSpeedControl,
+            title: 'Speed up the animation in between / reset the speed',
+            description: 'You can speed up the animation in between or reset the speed here. You might get dizzy if you speed up too much~',
+
+        },
+    ]), [refMenu, refGraphicSetting, refTaskBoard, refSpeedControl]);
 
     useEffect(() => {
         const tourMap = getTourMapFromLocalStorage();
@@ -79,6 +87,7 @@ export function OverlayDisplayManager({ isPortraitPhoneScreen }) {
             {(displayOverlay === "none" || displayOverlay === "menu") && <Menu ref={refMenu} isPortraitPhoneScreen={isPortraitPhoneScreen} setDisplayOverlayCallback={setDisplayOverlayCallback} />}
             {(displayOverlay === "none" || displayOverlay === "setting") && <GraphicSetting ref={refGraphicSetting} isPortraitPhoneScreen={isPortraitPhoneScreen} setDisplayOverlayCallback={setDisplayOverlayCallback} />}
             {(location != "/") && (displayOverlay === "none" || displayOverlay === "taskBoard") && <TaskBoard ref={refTaskBoard} isPortraitPhoneScreen={isPortraitPhoneScreen} setDisplayOverlayCallback={setDisplayOverlayCallback} currentUri={location} />}
+            <div ref={refSpeedControl} className={"double-speed-button"} style={{ zIndex: -99999, height: "85px", width: "60px" }} />
             <TourGuide stepsConfig={stepsConfig} open={open} onClose={() => setOpen(false)} />
 
         </>

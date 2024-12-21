@@ -25,6 +25,7 @@ import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider'
 import SceneFive from './SceneFive';
 import TourGuide from '../Tools/TourGuide';
 import { useLocation } from 'wouter';
+import DoublePlayTimeSpeedButton from '../Tools/DoublePlayTimeSpeedButton';
 
 
 
@@ -131,6 +132,8 @@ function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
                     </CoreEnergyProvider>
                 </HullTemperatureProvider>
             </EstHitTimeCountDownProvider >
+            <DoublePlayTimeSpeedButton sheetSequence={scene5Sheet.sequence} />
+
             <Status />
         </>
     )

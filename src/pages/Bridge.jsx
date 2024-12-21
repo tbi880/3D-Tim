@@ -10,6 +10,7 @@ import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationP
 import { useNavigate } from "react-router-dom";
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 import XrToolMiddleLayer from '../Tools/XrToolMiddleLayer';
+import DoublePlayTimeSpeedButton from '../Tools/DoublePlayTimeSpeedButton';
 
 
 
@@ -65,6 +66,7 @@ function Bridge({ isPortraitPhoneScreen }) {
 
 
             </div>
+            <DoublePlayTimeSpeedButton sheetSequence={scene2Sheet.sequence} />
             <Status />
         </>
     )

@@ -1,20 +1,23 @@
 import { bucketURL } from '../Settings';
 import { editable as e } from '@theatre/r3f';
 import { useGLTF } from '@react-three/drei';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { types } from '@theatre/core';
 import { useCursor } from '@react-three/drei';
 import { useCallback } from 'react';
+import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 
 
 export function Iphone14pro({ title, clickablePoint, sequence }) {
   const { nodes, materials, scene } = useGLTF(bucketURL + 'iphone-transformed.glb');
   const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
+  const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
+
 
   const play = useCallback(() => {
     if (sequence && sequence.position === clickablePoint) {
-      sequence.play({ range: [31, 50] });
+      playOnce({ sequence: sequence, range: [31, 50] });
     }
   }, [sequence, clickablePoint]);
 

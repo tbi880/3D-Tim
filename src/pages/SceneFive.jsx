@@ -31,6 +31,7 @@ import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager'
 import { useAudioElement } from '../hooks/useAudioElement';
 import { useCameraSwitcher } from '../hooks/useCameraSwitcher';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
+import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 
 
 function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
@@ -118,11 +119,12 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
     const { isFirstPersonCamera, switchCamera } = useCameraSwitcher(false);
     const [signalSent, setSignalSent] = useState(false);
     const [simulationDone, setSimulationDone] = useState(false);
+    const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
 
     const finishLoading = useCallback(() => {
         scene5Project.ready.then(() => {
             scene5Sheet.sequence.position = 0;
-            scene5Sheet.sequence.play({ range: [0, 20] });
+            playOnce({ sequence: scene5Sheet.sequence, range: [0, 20] });
         });
     }, []);
 
@@ -331,12 +333,12 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
                 {showComponents.hologramSlingshotTrajectory && <AnyModel modelURL='earth_hologram-transformed.glb' sequence={scene5Sheet.sequence} useTheatre={true} theatreKey={"hologram-SlingshotTrajectory"} position={[558, 34, 0]} rotation={[0, 0, 0]} scale={[0.5, 0.5, 0.5]} animationNames={["Take 01"]} animationAutoStart={true} unloadPoint={67} onSequencePass={() => { toggleComponentDisplay("hologramSlingshotTrajectory") }} />}
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={67} onSequencePass={() => { toggleComponentDisplay("simulationResult") }} />
                 {showComponents.simulationResult && <InfoScreenDisplay title={"simulation"} content={simulationResult} sequence={scene5Sheet.sequence} stopPoints={[68, 68.5, 69, 75]} loadPoints={isPortraitPhoneScreen ? [67, 68, 68.5, 69] : [67, 67.5, 68, 68.5]} unloadPoints={[68, 68.5, 69, 69.5]} onSequencePass={() => { toggleComponentDisplay("simulationResult") }} />}
-                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={75} onSequencePass={() => { scene5Sheet.sequence.play({ range: [29, 30] }) }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={75} onSequencePass={() => { playOnce({ sequence: scene5Sheet.sequence, range: [29, 30] }) }} />
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={85} onSequencePass={() => { toggleComponentDisplay("controlPanel") }} />
                 {showComponents.controlPanel && <AnyModel modelURL={"control_panel-transformed.glb"} sequence={scene5Sheet.sequence} useTheatre={true} theatreKey={"control-panel"} position={[552.11, 30.55, 0.19]} rotation={[0, -3.55, 0]} scale={[0.05, 0.05, 0.05]} animationNames={["Take 001"]} animationAutoStart={true} unloadPoint={98} onSequencePass={() => { toggleComponentDisplay("controlPanel") }} />}
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={103.3} onSequencePass={() => { toggleComponentDisplay("countdown") }} />
-                {showComponents.countdown && <AnyModel modelURL={'countdown-transformed.glb'} sequence={scene5Sheet.sequence} useTheatre={true} theatreKey={"countdown"} position={[551, 32.75, 0.19]} rotation={[0, 1.66, 0]} scale={[0.5, 0.5, 0.5]} animationNames={["Default Take"]} animationStartPoint={0} animationPlayTimes={1} animationOnClick={false} unloadPoint={109} onSequencePass={() => { toggleComponentDisplay("countdown") }} />}
+                {showComponents.countdown && <AnyModel modelURL={'countdown-transformed.glb'} sequence={scene5Sheet.sequence} useTheatre={true} theatreKey={"countdown"} position={[551, 32.75, 0.19]} rotation={[0, 1.66, 0]} scale={[0.5, 0.5, 0.5]} animationNames={["Default Take"]} animationSpeeds={rate.current === 2 ? 2 : 1} animationStartPoint={0} animationPlayTimes={1} animationOnClick={false} unloadPoint={109} onSequencePass={() => { toggleComponentDisplay("countdown") }} />}
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={109} onSequencePass={() => { toggleComponentDisplay("warping") }} />
                 {showComponents.warping && <AnyModel modelURL={'FTL travelling.glb'} sequence={scene5Sheet.sequence} useTheatre={true} theatreKey={"FTL travelling"} position={[551, 32.75, 0.19]} rotation={[0, -1.6, 0]} scale={[10, 10, 100]} animationNames={["Animation"]} animationOnClick={false} animationPlayTimes={1} animationSpeeds={1.2} animationStartPoint={0} unloadPoint={116} onSequencePass={() => { toggleComponentDisplay("warping") }} />}

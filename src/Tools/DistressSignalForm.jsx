@@ -7,6 +7,7 @@ import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationP
 import '../Tools/css/general.css';
 import { backendURL } from '../Settings';
 import axios from 'axios';
+import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 
 function DistressSignalForm({ isPortraitPhoneScreen }) {
     const [name, setName] = useState('');
@@ -16,10 +17,14 @@ function DistressSignalForm({ isPortraitPhoneScreen }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { showSendDistressSignalForm, setShowSendDistressSignalForm } = useContext(sendDistressSignalContext);
     const { messageApi } = useContext(GlobalNotificationContext);
+    const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
+
 
     const handleAfterPlay = () => {
         if (window.location.pathname.includes('/ship_captains_chamber')) {
-            scene5Sheet.sequence.play({ range: [41, 55] }).then(() => scene5Sheet.sequence.play({ range: [29, 30] }));
+            setTargetPosition(55);
+            setIsSequencePlaying(true);
+            scene5Sheet.sequence.play({ range: [41, 55], rate: rate.current }).then(() => { setTargetPosition(30); scene5Sheet.sequence.play({ range: [29, 30], rate: rate.current }) }).then(() => { setIsSequencePlaying(false); });
         }
     };
 

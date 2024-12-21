@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useContext } from 'react';
 import { useGLTF, useAnimations, useCursor } from '@react-three/drei';
 import { editable as e } from '@theatre/r3f';
 import { types } from '@theatre/core';
 import * as THREE from 'three';
 import { bucketURL } from '../Settings';
+import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 
 
 const animationNames = ["CINEMA_4D_Main"];
@@ -16,6 +17,7 @@ function Arrow({ screenTitle, isNext, position, rotation, sequence, stopPoints, 
     const { actions } = useAnimations(animations, scene);
     const theatreKey = ("arrow: " + screenTitle + (isNext ? " Next" : " Back")).trim();
     const sphereRef = useRef(); // Ref for the clickable sphere
+    const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
 
 
     const play = useCallback(() => {
@@ -25,7 +27,7 @@ function Arrow({ screenTitle, isNext, position, rotation, sequence, stopPoints, 
         }
         for (let i = 0; i < stopPoints.length; i++) {
             if (currentTimePosition < stopPoints[i]) {
-                sequence.play({ range: [currentTimePosition, stopPoints[i]] });
+                playOnce({ sequence: sequence, range: [currentTimePosition, stopPoints[i]] });
                 break;
             }
         }

@@ -7,16 +7,19 @@ import { scene5Sheet } from '../pages/SceneManager';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import '../Tools/css/general.css';
 import { searchForEmergencyPlansContext } from '../sharedContexts/SearchForEmergencyPlansProvider';
+import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 
 function SearchForEmergencyPlans({ isPortraitPhoneScreen }) {
     const [isOutputDone, setIsOutputDone] = useState(false);
     const { showSearchForEmergencyPlansLayer, setShowSearchForEmergencyPlansLayer } = useContext(searchForEmergencyPlansContext);
     const { messageApi } = useContext(GlobalNotificationContext);
+    const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
+
 
     const handleAfterPlay = () => {
         setShowSearchForEmergencyPlansLayer(false);
         if (window.location.pathname.includes('/ship_captains_chamber')) {
-            scene5Sheet.sequence.play({ range: [165, 186] });
+            scene5Sheet.sequence.play({ range: [165, 186], rate: rate.current });
         }
     };
 

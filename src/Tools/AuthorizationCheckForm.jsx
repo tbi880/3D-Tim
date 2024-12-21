@@ -7,16 +7,19 @@ import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationP
 import '../Tools/css/general.css';
 import { backendURL } from '../Settings';
 import axios from 'axios';
+import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 
 function AuthorizationCheckForm({ isPortraitPhoneScreen }) {
     const [verificationCode, setVerificationCode] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { showAuthorizationCheckForm, setShowAuthorizationCheckForm } = useContext(authorizationCheckContext);
     const { messageApi } = useContext(GlobalNotificationContext);
+    const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
+
 
     const handleAfterPlay = () => {
         if (window.location.pathname.includes('/ship_captains_chamber')) {
-            scene5Sheet.sequence.play({ range: [153, 165] });
+            playOnce({ sequence: scene5Sheet.sequence, range: [153, 165] });
         }
     };
 

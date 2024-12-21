@@ -5,6 +5,7 @@ import { SearchForEmergencyPlansProvider } from "./SearchForEmergencyPlansProvid
 import { HeaderSubTitleProvider } from "./HeaderSubTitleProvider";
 import { GraphicSettingProvider } from "./GraphicSettingProvider";
 import { TaskBoardContentProvider } from "./TaskBoardContentProvider";
+import { SheetSequencePlayControlProvider } from "./SheetSequencePlayControlProvider";
 
 function GlobalProviders({ children }) {
     return (
@@ -15,7 +16,9 @@ function GlobalProviders({ children }) {
                         <HeaderSubTitleProvider>
                             <GraphicSettingProvider>
                                 <TaskBoardContentProvider>
-                                    {children}
+                                    <SheetSequencePlayControlProvider>
+                                        {children}
+                                    </SheetSequencePlayControlProvider>
                                 </TaskBoardContentProvider>
                             </GraphicSettingProvider>
                         </HeaderSubTitleProvider>

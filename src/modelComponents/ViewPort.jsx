@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useContext } from 'react';
 import { useGLTF, useAnimations, useCursor } from '@react-three/drei';
 import { editable as e } from '@theatre/r3f';
 import { types } from '@theatre/core';
@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { bucketURL } from '../Settings';
 import { setNextScene, setNextSceneStartPoint, unlockScene } from '../pages/Status';
+import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 
 const animationNames = ["Armature|off state"];
 
@@ -16,6 +17,8 @@ function ViewPort({ screenTitle, position, rotation, sequence, stopPoint, unload
     const { animations, scene } = ViewPortModel;
     const { actions } = useAnimations(animations, scene);
     const sphereRef = useRef(); // Ref for the clickable sphere
+    const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
+
 
 
     const theatreKey = ("ViewPort: " + screenTitle).trim();
@@ -46,7 +49,7 @@ function ViewPort({ screenTitle, position, rotation, sequence, stopPoint, unload
         let currentTimePosition = sequence.position;
 
         if (currentTimePosition < stopPoint) {
-            sequence.play({ range: [currentTimePosition, stopPoint] });
+            playOnce({ sequence: sequence, range: [currentTimePosition, stopPoint] });
         }
 
         if (isSetNextScene) {
