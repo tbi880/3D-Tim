@@ -3,10 +3,14 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlay, faForward } from '@fortawesome/free-solid-svg-icons';
 import './css/general.css';
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
+import { useLocation } from 'wouter';
+
 
 export function DoublePlayTimeSpeedButton({ sheetSequence }) {
     const [doublePlayTimeSpeed, setDoublePlayTimeSpeed] = useState(false);
     const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
+    const [uri, setUri] = useState('');
+    const [location, setLocation] = useLocation();
 
     const handleDoublePlayTimeSpeed = () => {
         setDoublePlayTimeSpeed((prevValue) => !prevValue);
@@ -22,6 +26,17 @@ export function DoublePlayTimeSpeedButton({ sheetSequence }) {
             playOnce({ sequence: sheetSequence, range: [sheetSequence.position, targetPosition.current] });
         }
     }
+
+    useEffect(() => {
+        if (location !== uri) {
+            setUri(location);
+            setDoublePlayTimeSpeed(false);
+            setIsSequencePlaying(false);
+            setRate(1);
+            setTargetPosition(0);
+        }
+    }, [location]);
+
 
     useEffect(() => {
         if (sheetSequence) {
