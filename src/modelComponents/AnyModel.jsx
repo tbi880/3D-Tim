@@ -238,7 +238,7 @@ function AnyModel(props) {
                         action.clampWhenFinished = true;
                     }
                     action.timeScale = props.animationSpeeds;
-                    console.log("action.timeScale", action.timeScale);
+                    // console.log("action.timeScale", action.timeScale);
                 }
             }
         }

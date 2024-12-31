@@ -115,9 +115,9 @@ const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, r
                     </li>
 
                     <li style={listItemStyle} className="menu-item">
-                        <a href="/project_dawn" className={`menu-link locked`} >
-                            <FontAwesomeIcon icon={faLock} className="lock-icon" />
-                            Scene6: Under development...</a>
+                        <a href="/project_dawn" className={`menu-link ${sceneMenuLockMap.sceneSix ? 'locked' : ''}`} onClick={(e) => handleClick(e, sceneMenuLockMap.sceneFive)} target="_blank" rel="noopener noreferrer">
+                            {!sceneMenuLockMap.sceneSix ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
+                            Scene6: Project Dawn</a>
                         <div style={dividerStyle} ></div>
                     </li>
 

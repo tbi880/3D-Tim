@@ -3,6 +3,7 @@ import scene2State from '../scene2.json';
 import scene3State from '../scene3.json';
 import sceneJessieState from '../sceneJessie.json';
 import scene5State from '../scene5.json';
+import scene6State from '../scene6.json';
 import { getProject } from '@theatre/core';
 
 
@@ -16,6 +17,8 @@ export const sceneJessieProject = getProject('SceneJessie', { state: sceneJessie
 export const sceneJessieSheet = sceneJessieProject.sheet('SceneJessie');
 export const scene5Project = getProject('Scene5', { state: scene5State });
 export const scene5Sheet = scene5Project.sheet('Scene5');
+export const scene6Project = getProject('Scene6', { state: scene6State });
+export const scene6Sheet = scene6Project.sheet('Scene6');
 
 
 function SceneManager() {

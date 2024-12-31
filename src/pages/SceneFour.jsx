@@ -21,7 +21,7 @@ const GOLDENRATIO = 1.61803398875
 
 export const SceneFour = ({ images, isPortraitPhoneScreen }) => {
     const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
-    return <Canvas gl={{ antialias: antialias }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent"> <SceneFourInsideOfCanvas isPortraitPhoneScreen={isPortraitPhoneScreen} images={images} /> </Canvas>
+    return <Canvas gl={{ antialias: antialias }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent" fallback={<div>Sorry no WebGL supported!</div>}> <SceneFourInsideOfCanvas isPortraitPhoneScreen={isPortraitPhoneScreen} images={images} /> </Canvas>
 }
 
 export const SceneFourInsideOfCanvas = ({ isPortraitPhoneScreen, images }) => {

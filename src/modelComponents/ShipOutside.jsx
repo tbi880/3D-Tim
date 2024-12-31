@@ -10,40 +10,7 @@ import { useFrame } from '@react-three/fiber';
 function ShipOutside({ onSequencePass, unloadPoint, sequence }) {
     const shipModel = useGLTF(bucketURL + "oas.glb", true, true);
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
-
-    // useEffect(() => {
-    //     // 组件卸载时的清理逻辑
-    //     return () => {
-    //         // 遍历并清理几何体
-    //         if (shipModel.nodes) {
-    //             Object.values(shipModel.nodes).forEach(node => {
-    //                 if (node.geometry) {
-    //                     node.geometry.dispose();
-    //                 }
-    //             });
-    //         }
-
-    //         // 遍历并清理材质
-    //         if (shipModel.materials) {
-    //             Object.values(shipModel.materials).forEach(material => {
-    //                 if (material.dispose) {
-    //                     material.dispose();
-    //                 }
-    //             });
-    //         }
-
-    //         // 如果有纹理，也应该进行遍历和清理
-    //         if (shipModel.textures) {
-    //             Object.values(shipModel.textures).forEach(texture => {
-    //                 if (texture.dispose) {
-    //                     texture.dispose();
-    //                 }
-    //             });
-    //         }
-    //     };
-
-    // }, [shipModel]);
-
+    const [wireframe, setWireframe] = useState(false);
 
     useEffect(() => {
         shipModel.scene.traverse((child) => {
@@ -53,6 +20,15 @@ function ShipOutside({ onSequencePass, unloadPoint, sequence }) {
             }
         });
     }, [shipModel.scene, opacity]);
+
+    useEffect(() => {
+        shipModel.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                child.material.wireframe = wireframe;
+            }
+        });
+    }, [shipModel.scene, wireframe]);
+
 
     useFrame(() => {
         if (unloadPoint) {
@@ -68,10 +44,12 @@ function ShipOutside({ onSequencePass, unloadPoint, sequence }) {
                 opacity: types.number(opacity, {
                     range: [0, 1],
                 }),
+                wireframe: types.boolean(wireframe, { range: [true, false] })
             }} objRef={(theatreObject) => {
                 // 监听Theatre.js中透明度的变化
                 theatreObject.onValuesChange((newValues) => {
                     setOpacity(newValues.opacity);
+                    setWireframe(newValues.wireframe);
                 });
             }}>
                 <primitive object={shipModel.scene} position={[550, -30, 0]} />

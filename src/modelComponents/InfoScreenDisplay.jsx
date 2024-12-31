@@ -26,7 +26,7 @@ function InfoScreenDisplay({ title, content, sequence, stopPoints = [], loadPoin
 
 
     function checkForHowManyPagesAreNeeded() {
-        console.log('you need pages of ', pages.length);
+        // console.log('you need pages of ', pages.length);
     }
 
     useEffect(() => {

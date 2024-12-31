@@ -32,6 +32,7 @@ import { useAudioElement } from '../hooks/useAudioElement';
 import { useCameraSwitcher } from '../hooks/useCameraSwitcher';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
+import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
 
 
 function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
@@ -42,6 +43,7 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
     const [ambientColor, setAmbientColor] = useState("white");
     const [backgroundColor, setBackgroundColor] = useState("black");
     const [isWarped, setIsWarped] = useState(false);
+    useSequenceUnloadSceneChecker(scene5Sheet.sequence, [unloadPoint], onSequencePass);
     const { estHitTimeCountDown, setEstHitTimeCountDown, initEstHitTimeCountDown } = useContext(estHitTimeCountDownContext);
     const { hullTemperature, setHullTemperature, initHullTemperature } = useContext(hullTemperatureContext);
     const { coreEnergy, setCoreEnergy, initCoreEnergy } = useContext(coreEnergyContext);
@@ -525,9 +527,8 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
 
                 <SingleLoadManager loadPoint={201} sequence={scene5Sheet.sequence} onSequencePass={() => { toggleComponentDisplay('loadingForTheNextScene'); toggleComponentDisplay("chamberInside"); setWarningFrequency(500); }} />
                 {showComponents.loadingForTheNextScene && <Loading THkey="ForTheNextScene" title="ForTheNextScene" lines={["Connecting ", "to Tim's ", "Project Dawn "]} position={[252, 32.5, -76]} rotation={[0, -6.28, 0]} sequence={scene5Sheet.sequence} unloadPoint={208} onSequencePass={() => { toggleComponentDisplay('loadingForTheNextScene'); }} textTitleVersion={2} />}
-                <SingleLoadManager loadPoint={207} sequence={scene5Sheet.sequence} onSequencePass={() => {
-                    messageApi("info", "The next scene is currently under development... That's all for now!", 10);
-                }} />
+
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={207} onSequencePass={() => onSequencePass()} />
 
 
             </Suspense>

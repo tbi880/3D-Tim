@@ -2,11 +2,11 @@ import { useGLTF, useAnimations } from '@react-three/drei'
 import { bucketURL } from '../Settings';
 import { useEffect } from 'react';
 
-const animationnames = ["Animation"]
+const animationnames = ["Take 001"]
 
 
 const StrangerStar = () => {
-    const starModel = useGLTF(bucketURL + "stranger_star-transformed.glb", true, true)
+    const starModel = useGLTF(bucketURL + "blackhole-transformed.glb", true, true)
 
     const animation1 = useAnimations(starModel.animations, starModel.scene)
     const action1 = animation1.actions[animationnames[0]]
@@ -17,7 +17,7 @@ const StrangerStar = () => {
     })
 
     return (<>
-        <mesh scale={100}>
+        <mesh scale={90}>
             <primitive object={starModel.scene} position={[0, 0, 0]} />
 
         </mesh>
