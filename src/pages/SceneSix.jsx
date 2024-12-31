@@ -17,7 +17,6 @@ import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager'
 import { useCameraSwitcher } from '../hooks/useCameraSwitcher';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
 
-
 function SceneSix({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     const musicUrl = bucketURL + 'music/bgm6.mp3';
     const [outAmbientIntensity, setOutAmbientIntensity] = useState(1);
@@ -151,8 +150,7 @@ function SceneSix({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScre
 
                 <SingleLoadManager sequence={scene6Sheet.sequence} loadPoint={6.835} onSequencePass={() => { switchCamera(false) }} />
 
-
-                <SingleLoadManager sequence={scene6Sheet.sequence} loadPoint={26.33} onSequencePass={() => { switchCamera(true) }} />
+                <SingleLoadManager sequence={scene6Sheet.sequence} loadPoint={26.3} onSequencePass={() => { switchCamera(true) }} />
 
                 <SingleLoadManager sequence={scene6Sheet.sequence} loadPoint={30} onSequencePass={() => {
                     messageApi(

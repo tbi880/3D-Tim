@@ -9,7 +9,7 @@ import Button from '../modelComponents/button';
 import ViewPort from '../modelComponents/ViewPort';
 import StreamMusic from '../modelComponents/StreamMusic';
 import Robots from '../modelComponents/Robot';
-import { Suspense, useState, useCallback, useEffect, useContext } from 'react';
+import { Suspense, useState, useEffect, useContext } from 'react';
 import PreloadAssets from '../modelComponents/preloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { scene2Sheet, scene2Project } from "./SceneManager";
@@ -27,6 +27,7 @@ import { useAudioElement } from '../hooks/useAudioElement';
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
+import { ChromaticAberration, DepthOfField, EffectComposer, Glitch, Vignette } from "@react-three/postprocessing";
 
 
 function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScreen }) {
@@ -44,6 +45,7 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
 
     const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
         loadingComponents: {
+            openEyes: true,
             preloadAssets: true,
             shipInside: true,
             robotIntro: true,
@@ -60,6 +62,7 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
             viewPortTimsChamber: false,
             loadingForTimsChamber: false
         }, initialComponents: {
+            openEyes: true,
             preloadAssets: false,
             shipInside: true,
             robotIntro: true,
@@ -251,6 +254,17 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
                     }}
                 />
 
+                <SingleLoadManager loadPoint={1} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('openEyes')} />
+                <EffectComposer>
+                    {showComponents.openEyes && <>
+                        <DepthOfField focusDistance={0.03} focalLength={0.05} bokehScale={5} />
+                        <ChromaticAberration offset={[0.002, 0.002]} />
+                        <Vignette eskil={false} offset={0.25} darkness={1.5} /></>}
+
+                    {(!showComponents.openEyes) && <Glitch isActive={true} delay={15} duration={0.5} />}
+
+
+                </EffectComposer>
             </Suspense>
 
         </>

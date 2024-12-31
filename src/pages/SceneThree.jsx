@@ -29,7 +29,8 @@ import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager'
 import { useAudioElement } from '../hooks/useAudioElement';
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
-
+import { EffectComposer, Noise } from "@react-three/postprocessing";
+import { BlendFunction } from "postprocessing";
 
 function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     const { isVRSupported, setIsVRSupported } = useContext(canvasContext);
@@ -38,6 +39,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
     const { xrPlayer, xrIsPresenting } = isVRSupported && useContext(XrToolsContext) ? useContext(XrToolsContext) : {};
     const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
         loadingComponents: {
+            nioseEffect: true,
             preloadAssets: true,
             lightings: true,
             pointlight: true,
@@ -62,6 +64,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
             loading: true,
         },
         initialComponents: {
+            noiseEffect: true,
             preloadAssets: false,
             lightings: true,
             pointlight: false,
@@ -242,7 +245,7 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={36} onSequencePass={() => { toggleComponentDisplay("year2024") }} />
                 {showComponents.year2024 && <TextTitle text="2024" color="#000000" size={1} position={[-150, 167, -2000]} rotation={[0, 3.14, 0]} sequence={scene3Sheet.sequence} unloadPoint={39} onSequencePass={() => { toggleComponentDisplay("year2024") }} />}
 
-                <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={38} onSequencePass={() => { toggleComponentDisplay("tunnel") }} />
+                <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={38} onSequencePass={() => { toggleComponentDisplay("tunnel"); toggleComponentDisplay("noiseEffect") }} />
                 {showComponents.tunnel && <Tunnel unloadPoint={42.75} sequence={scene3Sheet.sequence} onSequencePass={() => { toggleComponentDisplay("tunnel") }} />}
 
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={41} onSequencePass={() => { toggleComponentDisplay("galaxy"); setBackgroundColor("black"); shipHangerAccess(); }} />
@@ -300,6 +303,11 @@ function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneSc
                         setTaskBoardContent(prev => [...prev, taskBoardContentMap[4]]);
                     }}
                 />
+
+
+                {showComponents.noiseEffect && <EffectComposer>
+                    <Noise premultiply blendFunction={BlendFunction.ADD} />
+                </EffectComposer>}
             </Suspense>
         </>
     )
