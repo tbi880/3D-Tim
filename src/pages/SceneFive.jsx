@@ -177,14 +177,16 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
     }, [warningFrequency]);
 
     useEffect(() => {
-        changeColor(); // Initial call
+        if (!isPortraitPhoneScreen) {
+            changeColor(); // Initial call
+        }
         return () => {
             // Clear timeout on component unmount to prevent memory leaks
             if (timeoutRef.current) {
                 clearTimeout(timeoutRef.current);
             }
         };
-    }, [changeColor]);
+    }, [changeColor, isPortraitPhoneScreen]);
 
     useEffect(() => {
         // Initialize values
@@ -315,7 +317,7 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
                 }} />
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={25} onSequencePass={() => { toggleComponentDisplay("insideAmbientLight") }} />
-                {showComponents.insideAmbientLight && <ambientLight color={ambientColor} intensity={ambientIntensity} visible={isFirstPersonCamera} />}
+                {!isPortraitPhoneScreen && showComponents.insideAmbientLight && isFirstPersonCamera && <ambientLight color={ambientColor} intensity={ambientIntensity} visible={isFirstPersonCamera} />}
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={19.25} onSequencePass={() => { toggleComponentDisplay("robot") }} />
                 {showComponents.robot && <Robot title="Robot" position={[562, 32.75, 0]} rotation={[0, 1.2, 0]} sequence={scene5Sheet.sequence} onSequencePass={() => { toggleComponentDisplay("robot") }} />}
@@ -526,7 +528,10 @@ function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScr
                 }} />
 
                 <SingleLoadManager loadPoint={201} sequence={scene5Sheet.sequence} onSequencePass={() => { toggleComponentDisplay('loadingForTheNextScene'); toggleComponentDisplay("chamberInside"); setWarningFrequency(500); }} />
-                {showComponents.loadingForTheNextScene && <Loading THkey="ForTheNextScene" title="ForTheNextScene" lines={["Connecting ", "to Tim's ", "Project Dawn "]} position={[252, 32.5, -76]} rotation={[0, -6.28, 0]} sequence={scene5Sheet.sequence} unloadPoint={208} onSequencePass={() => { toggleComponentDisplay('loadingForTheNextScene'); }} textTitleVersion={2} />}
+                {showComponents.loadingForTheNextScene && <><Loading THkey="ForTheNextScene" title="ForTheNextScene" lines={["Connecting ", "to Tim's ", "Project Dawn "]} position={[252, 32.5, -76]} rotation={[0, -6.28, 0]} sequence={scene5Sheet.sequence} unloadPoint={208} onSequencePass={() => { toggleComponentDisplay('loadingForTheNextScene'); }} textTitleVersion={2} />
+                    {isPortraitPhoneScreen && <ambientLight color={"#FFFFFF"} intensity={3} />}
+
+                </>}
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={207} onSequencePass={() => onSequencePass()} />
 

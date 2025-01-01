@@ -78,7 +78,7 @@ function SceneSix({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScre
 
     return (
         <>
-            <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["Now, the final moment!", "You are about to witness the transform of the ship", "With a short 3D movie but fully coded", "Which involve .Net, message queue(RabbitMQ), async programming...", "Anyway, you'll see."]} onFinished={() => { finishLoading(); }} />}>
+            <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["Now, the final moment!", "You are about to witness the transform of the ship", "With a short 3D movie but fully coded", "Please sit back and relax"]} onFinished={() => { finishLoading(); }} />}>
                 {stageOfENV != "prod" && !isPortraitPhoneScreen && <Perf position={"bottom-right"} openByDefault showGraph />}
                 <SingleLoadManager sequence={scene6Sheet.sequence} loadPoint={0} onSequencePass={() => { toggleComponentDisplay("chamberInside"); toggleComponentDisplay("starRing"); }} />
 
