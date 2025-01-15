@@ -12,7 +12,6 @@ import Robots from '../modelComponents/Robot';
 import { Suspense, useState, useEffect, useContext } from 'react';
 import PreloadAssets from '../modelComponents/preloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
-import { scene2Sheet, scene2Project } from "./SceneManager";
 import { bucketURL, stageOfENV } from '../Settings';
 import Loading from '../modelComponents/Loading';
 import { Environment, useGLTF } from '@react-three/drei';
@@ -27,10 +26,10 @@ import { useAudioElement } from '../hooks/useAudioElement';
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
-import { ChromaticAberration, DepthOfField, EffectComposer, Glitch, Vignette } from "@react-three/postprocessing";
+import { BrightnessContrast, ChromaticAberration, DepthOfField, EffectComposer, Glitch, Vignette } from "@react-three/postprocessing";
 
 
-function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScreen }) {
+function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequencePass, isPortraitPhoneScreen }) {
     const screenIntro = "You finally awaken, chief designer! Our ship is about to enter the black hole ahead of us. The ship is damaged quite severe due to the strong gravitational force. As AI, we cannot change the course of the ship because the first captain, Tim Bi, set it up millennia ago. Additionally, we have been blocked from answering the questions to unlock the captain's chamber. We need your help to find the answers to the root access questions so we can alter the ship's course or initiate an emergency stop. Please follow me to the bridge. Let's start by checking the structure of the ship first. This will probably help you to rewind your memory about the ship.";
     const musicUrl = bucketURL + 'music/bgm2.mp3';
     const { isVRSupported, setIsVRSupported } = useContext(canvasContext);
@@ -180,8 +179,9 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
 
                 <Environment
                     files={bucketURL + 'pic/warehouse.hdr'}
-                    resolution={1}
-                    intensity={2}
+                    resolution={1024}
+                    intensity={0.5}
+                    background={false}
                     backgroundIntensity={0}
                     environmentIntensity={0}
                 />
@@ -261,7 +261,10 @@ function SceneTwo({ startPoint, unloadPoints, onSequencePass, isPortraitPhoneScr
                         <ChromaticAberration offset={[0.002, 0.002]} />
                         <Vignette eskil={false} offset={0.25} darkness={1.5} /></>}
 
-                    {(!showComponents.openEyes) && <Glitch isActive={true} delay={15} duration={0.5} />}
+                    {(!showComponents.openEyes) && <>
+                        <BrightnessContrast brightness={0.1} />
+                        <Glitch isActive={true} delay={15} duration={0.5} />
+                    </>}
 
 
                 </EffectComposer>

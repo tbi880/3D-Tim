@@ -6,7 +6,7 @@ import { Helmet } from 'react-helmet';
 // import { Controllers, Hands, VRButton, XR } from '@react-three/xr';
 import { Canvas } from '@react-three/fiber';
 import { SheetProvider } from '@theatre/r3f';
-import { scene5Sheet } from './SceneManager';
+import scene5State from '../scene5.json';
 import { useContext, useEffect, useRef, useState } from 'react';
 import { webGLPreserveDrawingBuffer } from '../Settings';
 import ShipStatus from '../Tools/ShipStatus';
@@ -26,10 +26,13 @@ import SceneFive from './SceneFive';
 import TourGuide from '../Tools/TourGuide';
 import { useLocation } from 'wouter';
 import DoublePlayTimeSpeedButton from '../Tools/DoublePlayTimeSpeedButton';
+import { getProject } from '@theatre/core';
 
 
 
 function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
+    const scene5Project = getProject('Scene5', { state: scene5State });
+    const scene5Sheet = scene5Project.sheet('Scene5');
     const [location, setLocation] = useLocation();
     const tourStartSceneURI = "/ship_captains_chamber";
     const refShipStatus = useRef(null);
@@ -100,19 +103,19 @@ function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
                     <CoreEnergyProvider>
                         <ShipStatus isPortraitPhoneScreen={isPortraitPhoneScreen} ref={refShipStatus} isHide={isHide} onClick={onClickCallback} />
                         {showSendDistressSignalForm && (
-                            <DistressSignalForm
+                            <DistressSignalForm scene5Sheet={scene5Sheet}
                                 isPortraitPhoneScreen={isPortraitPhoneScreen}
                             />
                         )}
 
                         {showAuthorizationCheckForm && (
-                            <AuthorizationCheckForm
+                            <AuthorizationCheckForm scene5Sheet={scene5Sheet}
                                 isPortraitPhoneScreen={isPortraitPhoneScreen}
                             />
                         )}
 
                         {showSearchForEmergencyPlansLayer && (
-                            <SearchForEmergencyPlans
+                            <SearchForEmergencyPlans scene5Sheet={scene5Sheet}
                                 isPortraitPhoneScreen={isPortraitPhoneScreen}
                             />
                         )}
@@ -123,7 +126,7 @@ function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
 
                             <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent" fallback={<div>Sorry no WebGL supported!</div>}>
                                 <SheetProvider sheet={scene5Sheet}>
-                                    <SceneFive startPoint={getNextSceneStartPoint()} unloadPoint={207} onSequencePass={() => checkThenJumpToTheNextScene()} isPortraitPhoneScreen={isPortraitPhoneScreen} /></SheetProvider>
+                                    <SceneFive scene5Sheet={scene5Sheet} scene5Project={scene5Project} startPoint={getNextSceneStartPoint()} unloadPoint={207} onSequencePass={() => checkThenJumpToTheNextScene()} isPortraitPhoneScreen={isPortraitPhoneScreen} /></SheetProvider>
 
                             </Canvas>
 

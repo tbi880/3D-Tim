@@ -7,7 +7,7 @@ import { bucketURL, webGLPreserveDrawingBuffer } from '../Settings';
 import { SheetProvider } from '@theatre/r3f';
 import { Canvas } from '@react-three/fiber';
 import { types } from '@theatre/core';
-import { sceneJessieProject, sceneJessieSheet } from './SceneManager';
+import sceneJessieState from '../sceneJessie.json';
 import StreamMusic from '../modelComponents/StreamMusic';
 import ViewPort from '../modelComponents/ViewPort';
 import Fireworks from '../modelComponents/Fireworks';
@@ -20,6 +20,8 @@ import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider'
 
 
 function SceneJessie({ startPoint }) {
+    const sceneJessieProject = getProject('SceneJessie', { state: sceneJessieState });
+    const sceneJessieSheet = sceneJessieProject.sheet('SceneJessie');
     const musicUrl = bucketURL + 'music/bgm_jessie.mp3';
     const [ambientIntensity, setAmbientIntensity] = useState(5);
     const [spotIntensity, setSpotIntensity] = useState(5);

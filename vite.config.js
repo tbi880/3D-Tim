@@ -9,7 +9,6 @@ const ReactCompilerConfig = {
   target: '18' // '17' | '18' | '19'
 };
 
-
 // https://vitejs.dev/config/
 export default defineConfig({
   server: {
@@ -30,7 +29,27 @@ export default defineConfig({
     })
   ],
   build: {
+    // 输出目录
+    outDir: 'dist',
+    assetsDir: 'assets', // 资源文件目录，如图片、CSS 等
     rollupOptions: {
+      output: {
+        // 配置 JS 文件输出到 assets/js 目录
+        entryFileNames: 'assets/js/[name].js',  // 输出主入口文件到 assets/js/
+        chunkFileNames: 'assets/js/[name].js',  // 输出动态 import 的 JS 文件到 assets/js/
+        assetFileNames: ({ name }) => {
+          if (/\.(gif|jpe?g|png|svg)$/.test(name ?? '')) {
+            return 'assets/images/[name].[hash][extname]';
+          }
+          if (/\.css$/.test(name ?? '')) {
+            return 'assets/css/[name].[hash][extname]';
+          }
+          if (/\.(woff2?|eot|ttf|otf)$/.test(name ?? '')) {
+            return 'assets/fonts/[name].[hash][extname]';
+          }
+          return 'assets/[name].[hash][extname]';
+        },
+      },
       plugins: [
         terser({
           compress: {

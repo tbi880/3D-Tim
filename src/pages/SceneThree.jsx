@@ -12,14 +12,12 @@ import ViewPort from '../modelComponents/ViewPort';
 import ProgrammingFuture from '../modelComponents/ProgrammingFuture';
 import StreamMusic from '../modelComponents/StreamMusic';
 import Auckland from '../modelComponents/Auckland';
-import { Suspense, useState, useCallback, useEffect, useContext, useRef } from 'react';
+import { Suspense, useState, useEffect, useContext } from 'react';
 import PreloadAssets from '../modelComponents/preloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
-import { scene3Sheet } from "./SceneManager";
 import { bucketURL, stageOfENV } from '../Settings';
 import Loading from '../modelComponents/Loading';
 import { types } from '@theatre/core';
-import { scene3Project } from './SceneManager';
 import { useFrame } from '@react-three/fiber';
 import Loader from './Loader';
 import { canvasContext } from '../sharedContexts/CanvasProvider';
@@ -32,7 +30,7 @@ import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvi
 import { EffectComposer, Noise } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
 
-function SceneThree({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
+function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     const { isVRSupported, setIsVRSupported } = useContext(canvasContext);
     const [player, setPlayer] = useState(null);
     const [isPresenting, setIsPresenting] = useState(false);

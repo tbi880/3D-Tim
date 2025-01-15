@@ -73,7 +73,9 @@ const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, r
     };
 
     return (
-        <>
+        <div style={{
+            fontFamily: 'Orbitron, sans-serif', // 显式设置字体
+        }}>
             <button style={buttonStyle} onClick={toggleMenu} ref={refMenu}>
                 <FontAwesomeIcon icon={showMenu ? faChevronLeft : faChevronRight} size="2x" color="black" />
             </button>
@@ -141,7 +143,7 @@ const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, r
                 </a>
 
             </div >
-        </>
+        </div>
     );
 
 });

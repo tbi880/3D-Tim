@@ -2,14 +2,13 @@ import { useContext, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck } from '@fortawesome/free-solid-svg-icons';
 import { authorizationCheckContext } from '../sharedContexts/AuthorizationCheckProvider';
-import { scene5Sheet } from '../pages/SceneManager';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import '../Tools/css/general.css';
 import { backendURL } from '../Settings';
 import axios from 'axios';
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 
-function AuthorizationCheckForm({ isPortraitPhoneScreen }) {
+function AuthorizationCheckForm({ scene5Sheet, isPortraitPhoneScreen }) {
     const [verificationCode, setVerificationCode] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { showAuthorizationCheckForm, setShowAuthorizationCheckForm } = useContext(authorizationCheckContext);

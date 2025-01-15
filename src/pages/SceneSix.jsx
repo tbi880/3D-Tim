@@ -4,7 +4,6 @@ import { Suspense, useState, useCallback, useEffect, useRef, useContext, useMemo
 import PreloadAssets from '../modelComponents/preloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { bucketURL, stageOfENV } from '../Settings';
-import { scene6Project, scene6Sheet } from './SceneManager';
 import AnyModel from '../modelComponents/AnyModel';
 import { Environment } from '@react-three/drei';
 import { types } from '@theatre/core';
@@ -17,7 +16,7 @@ import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager'
 import { useCameraSwitcher } from '../hooks/useCameraSwitcher';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
 
-function SceneSix({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
+function SceneSix({ scene6Sheet, scene6Project, startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     const musicUrl = bucketURL + 'music/bgm6.mp3';
     const [outAmbientIntensity, setOutAmbientIntensity] = useState(1);
     const [backgroundColor, setBackgroundColor] = useState("black");

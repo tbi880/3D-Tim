@@ -12,7 +12,6 @@ import ViewPort from '../modelComponents/ViewPort';
 import { Suspense, useState, useEffect, useContext } from 'react';
 import PreloadAssets from '../modelComponents/preloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
-import { scene1Sheet } from "./SceneManager";
 import { bucketURL } from '../Settings';
 import StreamMusic from '../modelComponents/StreamMusic';
 import { Environment, useGLTF } from '@react-three/drei';
@@ -25,7 +24,7 @@ import { useCameraSwitcher } from '../hooks/useCameraSwitcher';
 import AnyModel from '../modelComponents/AnyModel';
 
 
-function SceneOne({ unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
+function SceneOne({ scene1Sheet, scene1Project, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     const { isVRSupported, setIsVRSupported } = useContext(canvasContext);
     const [player, setPlayer] = useState(null);
     const [isPresenting, setIsPresenting] = useState(false);

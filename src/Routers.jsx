@@ -1,16 +1,18 @@
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import HomePage from './pages/HomePage';
-import NotFoundPage from './pages/NotFoundPage'
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { stageOfENV } from './Settings';
-import SceneJessie from './pages/SceneJessie';
-import Bridge from './pages/Bridge';
-import ShipHanger from './pages/ShipHanger';
-import ShipEngineering from './pages/ShipEngineering';
-import ShipTimsChamber from './pages/ShipTimsChamber';
 import GlobalProviders from './sharedContexts/GlobalProviders';
 import { OverlayDisplayManager } from './Tools/OverlayDisplayManager';
-import ProjectDawn from './pages/ProjectDawn';
+
+// 使用 React.lazy 动态加载页面组件
+const HomePage = lazy(() => import('./pages/HomePage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const SceneJessie = lazy(() => import('./pages/SceneJessie'));
+const Bridge = lazy(() => import('./pages/Bridge'));
+const ShipHanger = lazy(() => import('./pages/ShipHanger'));
+const ShipEngineering = lazy(() => import('./pages/ShipEngineering'));
+const ShipTimsChamber = lazy(() => import('./pages/ShipTimsChamber'));
+const ProjectDawn = lazy(() => import('./pages/ProjectDawn'));
 
 function Routers() {
     const [isWeChatBrowser, setIsWeChatBrowser] = useState(false);
@@ -80,20 +82,21 @@ function Routers() {
 
 
     return (
-
         <Router>
             <GlobalProviders>
                 <OverlayDisplayManager isPortraitPhoneScreen={isPortraitPhoneScreen} />
-                <Routes>
-                    <Route path="/" element={<HomePage isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
-                    <Route path="/bridge" element={<Bridge isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
-                    <Route path="/ship_hanger" element={<ShipHanger isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
-                    <Route path="/ship_engineering" element={<ShipEngineering isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
-                    <Route path="/ship_captains_chamber" element={<ShipTimsChamber isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
-                    <Route path="/project_dawn" element={<ProjectDawn isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
-                    <Route path="/jessie" element={<SceneJessie startPoint={0} />} />
-                    <Route path="*" element={<NotFoundPage />} />
-                </Routes>
+                <Suspense fallback={<div>Loading...</div>}>
+                    <Routes>
+                        <Route path="/" element={<HomePage isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
+                        <Route path="/bridge" element={<Bridge isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
+                        <Route path="/ship_hanger" element={<ShipHanger isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
+                        <Route path="/ship_engineering" element={<ShipEngineering isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
+                        <Route path="/ship_captains_chamber" element={<ShipTimsChamber isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
+                        <Route path="/project_dawn" element={<ProjectDawn isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
+                        <Route path="/jessie" element={<SceneJessie startPoint={0} />} />
+                        <Route path="*" element={<NotFoundPage />} />
+                    </Routes>
+                </Suspense>
             </GlobalProviders>
         </Router>
     );

@@ -82,6 +82,8 @@ function Loader({ isIntroNeeded = true, extraContent, onFinished }) {
                 margin: '0 auto',
                 padding: '10px',
                 color: 'black',
+                fontFamily: 'Orbitron, sans-serif', // 显式设置字体
+
             }}>
                 <h1 style={{
                     fontSize: isMobile ? '5vw' : '3vw', // 电脑端字体更小

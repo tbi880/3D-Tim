@@ -9,12 +9,12 @@ import extension from '@theatre/r3f/dist/extension'
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
 import SceneOne from './SceneOne';
-
+import scene1State from '../scene1.json';
 import { SheetProvider } from '@theatre/r3f';
-import { scene1Sheet } from './SceneManager';
 import { useNavigate } from "react-router-dom";
 import XrToolMiddleLayer from '../Tools/XrToolMiddleLayer';
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';
+import { getProject } from '@theatre/core';
 
 
 if (stageOfENV != "prod") {
@@ -28,6 +28,9 @@ if (stageOfENV != "prod") {
 
 
 function HomePage({ isPortraitPhoneScreen }) {
+
+    const scene1Project = getProject('Scene1 Sheet', { state: scene1State });
+    const scene1Sheet = scene1Project.sheet('Scene1 Sheet');
 
     const navigate = useNavigate();
     const [showComponents, setShowComponents] = useState({
@@ -74,7 +77,7 @@ function HomePage({ isPortraitPhoneScreen }) {
                     <XrToolMiddleLayer>
 
                         <SheetProvider sheet={scene1Sheet}>
-                            <SceneOne startPoint={getNextSceneStartPoint()} isPortraitPhoneScreen={isPortraitPhoneScreen} unloadPoint={39} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
+                            <SceneOne scene1Sheet={scene1Sheet} scene1Project={scene1Project} startPoint={getNextSceneStartPoint()} isPortraitPhoneScreen={isPortraitPhoneScreen} unloadPoint={39} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
                     </XrToolMiddleLayer>
                 </CanvasProvider>
 

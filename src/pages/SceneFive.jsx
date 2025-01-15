@@ -5,7 +5,6 @@ import { Suspense, useState, useCallback, useEffect, useRef, useContext, useMemo
 import PreloadAssets from '../modelComponents/preloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { bucketURL, stageOfENV } from '../Settings';
-import { scene5Project, scene5Sheet } from './SceneManager';
 import StrangerStar from '../modelComponents/StrangerStar';
 import AnyModel from '../modelComponents/AnyModel';
 import { Environment } from '@react-three/drei';
@@ -35,7 +34,7 @@ import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequence
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
 
 
-function SceneFive({ startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
+function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     const musicUrl = bucketURL + 'music/bgm5.mp3';
     const [ambientIntensity, setAmbientIntensity] = useState(0);
     const [warningFrequency, setWarningFrequency] = useState(10000);

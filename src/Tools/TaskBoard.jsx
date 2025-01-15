@@ -55,7 +55,9 @@ const TaskBoard = forwardRef(({
     };
 
     return (
-        <>
+        <div style={{
+            fontFamily: 'Orbitron, sans-serif', // 显式设置字体
+        }}>
             <button style={buttonStyle} onClick={toggleTaskBoard} ref={refTaskBoard}>
                 <FontAwesomeIcon icon={showTaskBoard ? faChevronUp : faListCheck} size="2x" color="black" />
             </button>
@@ -98,7 +100,7 @@ const TaskBoard = forwardRef(({
 
                 </div>
             </div >
-        </>
+        </div>
     );
 });
 

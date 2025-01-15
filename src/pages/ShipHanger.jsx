@@ -3,7 +3,7 @@ import Status, { getNextScene, getNextSceneStartPoint, getNextSceneURI } from '.
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
 import { SheetProvider } from '@theatre/r3f';
-import { scene3Sheet } from './SceneManager';
+import scene3State from '../scene3.json';
 import SceneThree from './SceneThree';
 import { useContext, useEffect, useRef, useState } from 'react';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
@@ -11,10 +11,13 @@ import { useNavigate } from 'react-router-dom';
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 import XrToolMiddleLayer from '../Tools/XrToolMiddleLayer';
 import DoublePlayTimeSpeedButton from '../Tools/DoublePlayTimeSpeedButton';
+import { getProject } from '@theatre/core';
 
 
 
 function ShipHanger({ isPortraitPhoneScreen }) {
+    const scene3Project = getProject('Scene3 Sheet', { state: scene3State });
+    const scene3Sheet = scene3Project.sheet('Scene3 Sheet');
     const navigate = useNavigate();
     const welcomeMessageSent = useRef(false);
     const { messageApi } = useContext(GlobalNotificationContext);
@@ -60,7 +63,7 @@ function ShipHanger({ isPortraitPhoneScreen }) {
                 <CanvasProvider>
                     <XrToolMiddleLayer>
                         <SheetProvider sheet={scene3Sheet}>
-                            <SceneThree startPoint={getNextSceneStartPoint()} isPortraitPhoneScreen={isPortraitPhoneScreen} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
+                            <SceneThree scene3Sheet={scene3Sheet} scene3Project={scene3Project} startPoint={getNextSceneStartPoint()} isPortraitPhoneScreen={isPortraitPhoneScreen} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
                     </XrToolMiddleLayer>
                 </CanvasProvider>
             </div >

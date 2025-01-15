@@ -2,14 +2,13 @@ import { useContext, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck } from '@fortawesome/free-solid-svg-icons';
 import { sendDistressSignalContext } from '../sharedContexts/SendDistressSignalProvider';
-import { scene5Sheet } from '../pages/SceneManager';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import '../Tools/css/general.css';
 import { backendURL } from '../Settings';
 import axios from 'axios';
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 
-function DistressSignalForm({ isPortraitPhoneScreen }) {
+function DistressSignalForm({ scene5Sheet, isPortraitPhoneScreen }) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [messageContent, setMessageContent] = useState('');

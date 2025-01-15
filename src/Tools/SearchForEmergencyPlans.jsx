@@ -2,14 +2,12 @@ import { useContext, useState, useEffect, useRef } from 'react';
 import Typed from 'typed.js';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck } from '@fortawesome/free-solid-svg-icons';
-
-import { scene5Sheet } from '../pages/SceneManager';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import '../Tools/css/general.css';
 import { searchForEmergencyPlansContext } from '../sharedContexts/SearchForEmergencyPlansProvider';
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 
-function SearchForEmergencyPlans({ isPortraitPhoneScreen }) {
+function SearchForEmergencyPlans({ scene5Sheet, isPortraitPhoneScreen }) {
     const [isOutputDone, setIsOutputDone] = useState(false);
     const { showSearchForEmergencyPlansLayer, setShowSearchForEmergencyPlansLayer } = useContext(searchForEmergencyPlansContext);
     const { messageApi } = useContext(GlobalNotificationContext);

@@ -184,7 +184,9 @@ const GraphicSetting = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCal
     };
 
     return (
-        <>      {contextHolder}
+        <div style={{
+            fontFamily: 'Orbitron, sans-serif', // 显式设置字体
+        }}>      {contextHolder}
             <button style={buttonStyle} onClick={toggleSettings} ref={refGraphicSetting}>
                 <FontAwesomeIcon icon={showSettings ? faCheck : faCog} size="2x" color="black" />
             </button>
@@ -248,7 +250,7 @@ const GraphicSetting = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCal
                 </div>
             </div>
             <div style={tooltipStyle}>{tooltip.content}</div>
-        </>
+        </div>
     );
 });
 
