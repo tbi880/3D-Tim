@@ -13,8 +13,8 @@ const ReactCompilerConfig = {
 export default defineConfig({
   server: {
     https: {
-      key: fs.readFileSync('/Users/tianyuanbi/Downloads/3D Tim/localhost.key'),
-      cert: fs.readFileSync('/Users/tianyuanbi/Downloads/3D Tim/localhost.crt')
+      key: fs.readFileSync('localhost.key'),
+      cert: fs.readFileSync('localhost.crt')
     },
     host: true  // 允许局域网访问
   },
