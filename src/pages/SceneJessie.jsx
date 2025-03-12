@@ -6,7 +6,7 @@ import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { bucketURL, webGLPreserveDrawingBuffer } from '../Settings';
 import { SheetProvider } from '@theatre/r3f';
 import { Canvas } from '@react-three/fiber';
-import { types } from '@theatre/core';
+import { getProject, types } from '@theatre/core';
 import sceneJessieState from '../sceneJessie.json';
 import StreamMusic from '../modelComponents/StreamMusic';
 import ViewPort from '../modelComponents/ViewPort';
@@ -17,6 +17,7 @@ import PreloadAssets from '../modelComponents/preloadAssets';
 import { useGLTF } from '@react-three/drei';
 import { Helmet } from 'react-helmet';
 import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider';
+import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 
 
 function SceneJessie({ startPoint }) {
@@ -129,7 +130,9 @@ function SceneJessie({ startPoint }) {
                 <link rel="canonical" href="https://www.bty.co.nz/jessie" />
                 <meta name="author" content="Tim Bi" />
             </Helmet>
-            <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent" fallback={<div>Sorry no WebGL supported!</div>}>
+            <CanvasProvider>
+
+                {/* <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent" fallback={<div>Sorry no WebGL supported!</div>}> */}
                 <SheetProvider sheet={sceneJessieSheet}>
                     <PreloadAssets />
                     <Suspense fallback={<WaitingJessie />}>
@@ -193,7 +196,7 @@ function SceneJessie({ startPoint }) {
 
                     </Suspense>
                 </SheetProvider>
-            </Canvas>
+            </CanvasProvider>
         </>
     )
 }

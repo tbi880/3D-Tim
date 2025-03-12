@@ -18,10 +18,8 @@ import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { bucketURL, stageOfENV } from '../Settings';
 import Loading from '../modelComponents/Loading';
 import { types } from '@theatre/core';
-import { useFrame } from '@react-three/fiber';
 import Loader from './Loader';
-import { canvasContext } from '../sharedContexts/CanvasProvider';
-import { XrToolsContext } from '../sharedContexts/XrToolsProvider';
+// import { XrToolsContext } from '../sharedContexts/XrToolsProvider';
 import { Perf } from 'r3f-perf';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
 import { useAudioElement } from '../hooks/useAudioElement';
@@ -31,10 +29,10 @@ import { EffectComposer, Noise } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
 
 function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
-    const { isVRSupported, setIsVRSupported } = useContext(canvasContext);
-    const [player, setPlayer] = useState(null);
-    const [isPresenting, setIsPresenting] = useState(false);
-    const { xrPlayer, xrIsPresenting } = isVRSupported && useContext(XrToolsContext) ? useContext(XrToolsContext) : {};
+    // const { isVRSupported, setIsVRSupported } = useContext(canvasContext);
+    // const [player, setPlayer] = useState(null);
+    // const [isPresenting, setIsPresenting] = useState(false);
+    // const { xrPlayer, xrIsPresenting } = isVRSupported && useContext(XrToolsContext) ? useContext(XrToolsContext) : {};
     const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
         loadingComponents: {
             nioseEffect: true,
@@ -88,18 +86,19 @@ function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSeq
         }
     });
 
-    useEffect(() => {
-        setPlayer(xrPlayer);
-        setIsPresenting(xrIsPresenting);
-    }, [xrPlayer, xrIsPresenting]);
-    const [VRCordinate, setVRCordinate] = useState({ // mapped by sequence position to coordinates
-        0: [0, 0, 0],
-        20: [0.1, -0.4, -4.25],
-        32: [105, 75, -1100],
-        42: [0.18, -1.25, -0.2]
-    });
-    const VRCordinateKeysArray = Object.keys(VRCordinate);
-    const [currentVRCordinate, setCurrentVRCordinate] = useState(0);
+    // useEffect(() => {
+    //     setPlayer(xrPlayer);
+    //     setIsPresenting(xrIsPresenting);
+    // }, [xrPlayer, xrIsPresenting]);
+
+    // const [VRCordinate, setVRCordinate] = useState({ // mapped by sequence position to coordinates
+    //     0: [0, 0, 0],
+    //     20: [0.1, -0.4, -4.25],
+    //     32: [105, 75, -1100],
+    //     42: [0.18, -1.25, -0.2]
+    // });
+    // const VRCordinateKeysArray = Object.keys(VRCordinate);
+    // const [currentVRCordinate, setCurrentVRCordinate] = useState(0);
     const musicUrl = bucketURL + 'music/bgm3.mp3';
     const [ambientIntensity, setAmbientIntensity] = useState(5);
     // const [pointIntensity, setPointIntensity] = useState(5);
@@ -118,11 +117,11 @@ function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSeq
         });
     }, []);
 
-    useEffect(() => {
-        if (player) {
-            player.position.set(0, 0, 0);
-        }
-    }, []);
+    // useEffect(() => {
+    //     if (player) {
+    //         player.position.set(0, 0, 0);
+    //     }
+    // }, []);
 
     const [taskBoardContentMap, setTaskBoardContentMap] = useState({
         0: "Seems I am inside of the Tim's memory, let me have a look at the early life of Tim. (Click on the viewport to start.)",
@@ -136,25 +135,25 @@ function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSeq
         setTaskBoardContent(new Array(taskBoardContentMap[0]));
     }, []);
 
-    useFrame(() => {
-        if (isVRSupported) {
-            if (isPresenting) {
-                const nextSwitchPointIndex = ((VRCordinateKeysArray.indexOf(String(currentVRCordinate))) < (VRCordinateKeysArray.length - 1)) ? VRCordinateKeysArray.indexOf(String(currentVRCordinate)) + 1 : VRCordinateKeysArray.indexOf(String(currentVRCordinate));
-                const nextSwitchPoint = Number(VRCordinateKeysArray[nextSwitchPointIndex]);
-                if (scene3Sheet.sequence.position >= nextSwitchPoint) {
-                    setCurrentVRCordinate(nextSwitchPoint);
-                }
-                if (player) {
-                    player.position.set(VRCordinate[currentVRCordinate][0], VRCordinate[currentVRCordinate][1], VRCordinate[currentVRCordinate][2]);
-                }
-            } else {
-                if (player) {
-                    player.position.set(0, 0, 0);
-                }
-            }
-        }
-    }
-    );
+    // useFrame(() => {
+    //     if (isVRSupported) {
+    //         if (isPresenting) {
+    //             const nextSwitchPointIndex = ((VRCordinateKeysArray.indexOf(String(currentVRCordinate))) < (VRCordinateKeysArray.length - 1)) ? VRCordinateKeysArray.indexOf(String(currentVRCordinate)) + 1 : VRCordinateKeysArray.indexOf(String(currentVRCordinate));
+    //             const nextSwitchPoint = Number(VRCordinateKeysArray[nextSwitchPointIndex]);
+    //             if (scene3Sheet.sequence.position >= nextSwitchPoint) {
+    //                 setCurrentVRCordinate(nextSwitchPoint);
+    //             }
+    //             if (player) {
+    //                 player.position.set(VRCordinate[currentVRCordinate][0], VRCordinate[currentVRCordinate][1], VRCordinate[currentVRCordinate][2]);
+    //             }
+    //         } else {
+    //             if (player) {
+    //                 player.position.set(0, 0, 0);
+    //             }
+    //         }
+    //     }
+    // }
+    // );
 
     return (
         <>
@@ -231,6 +230,8 @@ function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSeq
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={29} onSequencePass={() => { toggleComponentDisplay("viewport_iphone") }} />
                 {showComponents.viewport_iphone && <ViewPort screenTitle={"iphone"} position={[0.11, 0.8, -4.88]} rotation={[0, 0, 0]} stopPoint={31} sequence={scene3Sheet.sequence} unloadPoint={30.75} onSequencePass={() => { toggleComponentDisplay("viewport_iphone") }} isSetNextScene={true} nextScene={"sceneTwo"} nextSceneStartPoint={22} />}
 
+                <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={31} onSequencePass={() => { toggleComponentDisplay("tunnel"); toggleComponentDisplay("noiseEffect") }} />
+
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={31.5} onSequencePass={() => { toggleComponentDisplay("auckland") }} />
                 {showComponents.auckland && <Auckland sequence={scene3Sheet.sequence} unloadPoint={39.75} onSequencePass={() => { toggleComponentDisplay("auckland") }} />}
 
@@ -243,7 +244,6 @@ function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSeq
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={36} onSequencePass={() => { toggleComponentDisplay("year2024") }} />
                 {showComponents.year2024 && <TextTitle text="2024" color="#000000" size={1} position={[-150, 167, -2000]} rotation={[0, 3.14, 0]} sequence={scene3Sheet.sequence} unloadPoint={39} onSequencePass={() => { toggleComponentDisplay("year2024") }} />}
 
-                <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={38} onSequencePass={() => { toggleComponentDisplay("tunnel"); toggleComponentDisplay("noiseEffect") }} />
                 {showComponents.tunnel && <Tunnel unloadPoint={42.75} sequence={scene3Sheet.sequence} onSequencePass={() => { toggleComponentDisplay("tunnel") }} />}
 
                 <SingleLoadManager sequence={scene3Sheet.sequence} loadPoint={41} onSequencePass={() => { toggleComponentDisplay("galaxy"); setBackgroundColor("black"); shipHangerAccess(); }} />

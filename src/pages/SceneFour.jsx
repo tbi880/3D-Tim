@@ -14,6 +14,7 @@ import Loader from './Loader'
 import { bucketURL } from '../Settings'
 import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider'
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider'
+import { CanvasProvider } from '../sharedContexts/CanvasProvider'
 
 
 
@@ -21,7 +22,9 @@ const GOLDENRATIO = 1.61803398875
 
 export const SceneFour = ({ images, isPortraitPhoneScreen }) => {
     const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
-    return <Canvas gl={{ antialias: antialias }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent" fallback={<div>Sorry no WebGL supported!</div>}> <SceneFourInsideOfCanvas isPortraitPhoneScreen={isPortraitPhoneScreen} images={images} /> </Canvas>
+    return <CanvasProvider>
+        <SceneFourInsideOfCanvas isPortraitPhoneScreen={isPortraitPhoneScreen} images={images} />
+    </CanvasProvider>
 }
 
 export const SceneFourInsideOfCanvas = ({ isPortraitPhoneScreen, images }) => {

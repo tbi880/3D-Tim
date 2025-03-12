@@ -48,7 +48,7 @@ function ShipEngineering(isPortraitPhoneScreen) {
                 <meta property="og:type" content="website" />
                 <meta property="og:url" content="https://www.bty.co.nz/ship_engineering" />
                 <meta property="og:image" content="https://www.bty.co.nz/Tim%20Bi.webp" />
-                <meta property="og:site_name" content="Tim Bi's World" />
+                <meta property="og:site_name" content="Tim Bi" />
                 <link rel="canonical" href="https://www.bty.co.nz/ship_engineering" />
                 <meta name="author" content="Tim Bi" />
 

@@ -9,7 +9,7 @@ import { useContext, useEffect, useRef, useState } from 'react';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import { useNavigate } from "react-router-dom";
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';
-import XrToolMiddleLayer from '../Tools/XrToolMiddleLayer';
+// import XrToolMiddleLayer from '../Tools/XrToolMiddleLayer';
 import DoublePlayTimeSpeedButton from '../Tools/DoublePlayTimeSpeedButton';
 import { getProject } from '@theatre/core';
 
@@ -51,20 +51,20 @@ function Bridge({ isPortraitPhoneScreen }) {
                 <meta property="og:type" content="website" />
                 <meta property="og:url" content="https://www.bty.co.nz/bridge" />
                 <meta property="og:image" content="https://www.bty.co.nz/Tim%20Bi.webp" />
-                <meta property="og:site_name" content="Tim Bi's World" />
+                <meta property="og:site_name" content="Tim Bi" />
                 <link rel="canonical" href="https://www.bty.co.nz/bridge" />
                 <meta name="author" content="Tim Bi" />
 
             </Helmet>
 
             <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
-                <CanvasProvider>
-                    <XrToolMiddleLayer>
+                <CanvasProvider >
+                    {/* <XrToolMiddleLayer> */}
 
-                        <SheetProvider sheet={scene2Sheet}>
-                            <SceneTwo scene2Sheet={scene2Sheet} scene2Project={scene2Project} startPoint={getNextSceneStartPoint()} isPortraitPhoneScreen={isPortraitPhoneScreen} unloadPoints={[38, 72, 96]} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
+                    <SheetProvider sheet={scene2Sheet}>
+                        <SceneTwo scene2Sheet={scene2Sheet} scene2Project={scene2Project} startPoint={getNextSceneStartPoint()} isPortraitPhoneScreen={isPortraitPhoneScreen} unloadPoints={[38, 72, 96]} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
 
-                    </XrToolMiddleLayer>
+                    {/* </XrToolMiddleLayer> */}
                 </CanvasProvider>
 
 

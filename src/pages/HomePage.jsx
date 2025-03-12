@@ -65,7 +65,7 @@ function HomePage({ isPortraitPhoneScreen }) {
                 <meta property="og:type" content="website" />
                 <meta property="og:url" content="https://www.bty.co.nz/" />
                 <meta property="og:image" content="https://www.bty.co.nz/Tim%20Bi.webp" />
-                <meta property="og:site_name" content="Tim Bi's World" />
+                <meta property="og:site_name" content="Tim Bi" />
                 <link rel="canonical" href="https://www.bty.co.nz/" />
                 <meta name="author" content="Tim Bi" />
 
@@ -73,7 +73,7 @@ function HomePage({ isPortraitPhoneScreen }) {
             {showComponents.header && <Header onAnimationEnd={() => toggleComponentDisplay("header")} />}
             <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
 
-                <CanvasProvider>
+                <CanvasProvider vrEnabled={true}>
                     <XrToolMiddleLayer>
 
                         <SheetProvider sheet={scene1Sheet}>

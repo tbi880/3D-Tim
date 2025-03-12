@@ -7,7 +7,7 @@ import { webGLPreserveDrawingBuffer } from '../Settings';
 
 export const canvasContext = createContext();
 
-export const CanvasProvider = ({ children }) => {
+export const CanvasProvider = ({ children, vrEnabled = false }) => {
     const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
 
     const [isVRSupported, setIsVRSupported] = useState(false);
@@ -23,12 +23,14 @@ export const CanvasProvider = ({ children }) => {
 
     }, []);
 
+    const shouldRenderVR = isVRSupported && vrEnabled;
+
 
     return (
         <canvasContext.Provider value={{ isVRSupported, setIsVRSupported }}>
-            {isVRSupported && <>
+            {shouldRenderVR && <>
                 <VRButton />
-                <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent" fallback={<div>Sorry no WebGL supported!</div>}>
+                <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer, stencil: false }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent" fallback={<div>Sorry no WebGL supported!</div>}>
                     <XR>
                         <Controllers rayMaterial={{ color: '#99FFFF' }} />
                         <Hands />
@@ -37,11 +39,11 @@ export const CanvasProvider = ({ children }) => {
                 </Canvas>
             </>}
 
-            {!isVRSupported &&
-                <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent" fallback={<div>Sorry no WebGL supported!</div>}>
+            {!shouldRenderVR &&
+                <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer, stencil: false }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent" fallback={<div>Sorry no WebGL supported!</div>}>
                     {children}
                 </Canvas>}
 
-        </canvasContext.Provider>
+        </canvasContext.Provider >
     );
 };

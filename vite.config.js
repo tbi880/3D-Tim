@@ -65,14 +65,30 @@ export default defineConfig({
           registerType: 'autoUpdate',
           // includeAssets: ['favicon.svg', 'robots.txt'], // 在PWA中额外缓存的资源
           manifest: {
-            name: 'Welcome to Tim\' world!',
-            short_name: 'Tim\'s',
-            description: 'Welcome to Tim\' world!',
+            name: 'Welcome to Tim Bi\'s world!',
+            short_name: 'Tim Bi',
+            description: 'Welcome to Tim Bi\'s world!',
             theme_color: '#ffffff',
+            start_url: "/",
+            display: "standalone",
+            scope: "/"
           },
           workbox: {
             maximumFileSizeToCacheInBytes: 4000000, // 将限制增加到 4 MiB
-          },
+            runtimeCaching: [
+              {
+                urlPattern: /\.(js|css|woff2|svg)$/, // 预缓存 JavaScript、CSS、字体、SVG 图标
+                handler: "CacheFirst",
+                options: {
+                  cacheName: "core-assets",
+                  expiration: {
+                    maxEntries: 50, // 最多缓存 50 个核心资源
+                    maxAgeSeconds: 60 * 60 * 24 * 7, // 7 天自动清理
+                  }
+                }
+              }
+            ]
+          }
         }),
       ],
     },

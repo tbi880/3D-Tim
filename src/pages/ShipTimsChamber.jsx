@@ -27,6 +27,7 @@ import TourGuide from '../Tools/TourGuide';
 import { useLocation } from 'wouter';
 import DoublePlayTimeSpeedButton from '../Tools/DoublePlayTimeSpeedButton';
 import { getProject } from '@theatre/core';
+import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 
 
 
@@ -93,7 +94,7 @@ function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
                 <meta property="og:type" content="website" />
                 <meta property="og:url" content="https://www.bty.co.nz/ship_captains_chamber" />
                 <meta property="og:image" content="https://www.bty.co.nz/Tim%20Bi.webp" />
-                <meta property="og:site_name" content="Tim Bi's World" />
+                <meta property="og:site_name" content="Tim Bi" />
                 <link rel="canonical" href="https://www.bty.co.nz/ship_captains_chamber" />
                 <meta name="author" content="Tim Bi" />
 
@@ -123,13 +124,13 @@ function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
                         {showHeaderSubTitle && <Header onAnimationEnd={() => { setShowHeaderSubTitle(false) }} defaultBaseDuration={7} defaultNotice={{ noticeContent: "If you’re watching this, it’s our last moment. ‘Project Dawn’ can probably save the ship, but it will consume all remaining resources. It's a tough decision to make but I trust you. Lead them out of the darkness before dawn arrives.", noticeLink: null }} />}
 
                         <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
-
-                            <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent" fallback={<div>Sorry no WebGL supported!</div>}>
+                            <CanvasProvider>
+                                {/* <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent" fallback={<div>Sorry no WebGL supported!</div>}> */}
                                 <SheetProvider sheet={scene5Sheet}>
                                     <SceneFive scene5Sheet={scene5Sheet} scene5Project={scene5Project} startPoint={getNextSceneStartPoint()} unloadPoint={207} onSequencePass={() => checkThenJumpToTheNextScene()} isPortraitPhoneScreen={isPortraitPhoneScreen} /></SheetProvider>
 
-                            </Canvas>
-
+                                {/* </Canvas> */}
+                            </CanvasProvider>
                         </div>
                         <TourGuide stepsConfig={stepsConfig} open={open} onClose={() => { setOpen(false); setIsHide(false); }} onChange={() => { setIsHide(prev => !prev) }} />
                     </CoreEnergyProvider>
