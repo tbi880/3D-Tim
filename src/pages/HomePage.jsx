@@ -57,10 +57,10 @@ function HomePage({ isPortraitPhoneScreen }) {
     return (
         <>
             <Helmet>
-                <title>Welcome to Tim Bi's world - 2025</title>
+                <title>Welcome to Tim Bi's world</title>
                 <meta name="description" content="Ready for a 3D ride in Tim Bi's universe? I think you would know me very well after you finish this 'adventure'" />
-                <meta name="keywords" content="Tim Bi, 毕天元" />
-                <meta property="og:title" content="Welcome to Tim Bi's world - 2025" />
+                <meta name="keywords" content="Tim Bi, 毕天元, Tianyuan Bi" />
+                <meta property="og:title" content="Welcome to Tim Bi's world" />
                 <meta property="og:description" content="Ready for a 3D ride in Tim Bi's universe? I think you would know me very well after you finish this 'adventure'" />
                 <meta property="og:type" content="website" />
                 <meta property="og:url" content="https://www.bty.co.nz/" />

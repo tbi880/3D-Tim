@@ -4,6 +4,8 @@ function importantNotice() {
     const noticeMap = {
         '0101': ['Tim wishes you a happy new year! 新年快乐！', 'https://www.bty.co.nz'],
         '0214': ['Tim wishes you have someone to hug with today! 情人节快乐！', 'https://www.bty.co.nz'],
+        '0420': ['Tim wishes you have a nice Easter break! 复活节快乐！', 'https://www.bty.co.nz'],
+        '0620': ['Mānawatia a Matariki – kia hari, kia hauora, kia noho tahi ai tātou i raro i ngā whetū. 毛利新年快乐！愿我们在星辰下团聚，拥有幸福与健康！Celebrate Matariki – may we be happy, healthy, and together beneath the stars.', 'https://www.bty.co.nz'],
         '0714': ["Tim's girlfriend Sandra just had her birthday recently! Click here to see the gift that Tim prepared for her", 'https://www.bty.co.nz/hb_to_qxl/index.html'],
         '1225': ['Tim wishes you a marry xmas! 圣诞节快乐！', 'https://www.bty.co.nz'],
     };
