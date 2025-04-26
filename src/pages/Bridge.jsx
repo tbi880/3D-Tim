@@ -12,17 +12,6 @@ import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 // import XrToolMiddleLayer from '../Tools/XrToolMiddleLayer';
 import DoublePlayTimeSpeedButton from '../Tools/DoublePlayTimeSpeedButton';
 import { getProject } from '@theatre/core';
-import { stageOfENV } from '../Settings';
-import studio from '@theatre/studio'
-import extension from '@theatre/r3f/dist/extension'
-
-
-
-if (stageOfENV != "prod") {
-
-    studio.initialize()
-    studio.extend(extension)
-}
 
 
 function Bridge({ isPortraitPhoneScreen }) {
