@@ -53,13 +53,12 @@ function SearchForEmergencyPlans({ scene5Sheet, isPortraitPhoneScreen }) {
                 "Initiating multi-layer encryption decryption...",
                 "Data retrieved...",
                 "Initiating search protocol: Query parameters—‘Emergency Protocols’ and ‘Contingency Plans’.",
-                "Decrypting classified folders… Folder 1: ‘Omega Contingencies’… Accessing subfolder: ‘Emergency Maneuvers’.",
                 "Analyzing document headers… Keywords: ‘Catastrophic Event’, ‘System Override’, ‘Last Resort’.",
                 "Access granted. Loading document ‘Project Dawn’—Status: Inactive.",
                 "Identifying sub-protocols within ‘Project Dawn’...",
                 "Access complete. Emergency plan loaded: ‘Protocol: Dawn Ascendant’"
             ],
-            typeSpeed: 10,
+            typeSpeed: 1,
             loop: false,
             showCursor: false,
             onStringTyped: (index) => {
@@ -127,7 +126,7 @@ function SearchForEmergencyPlans({ scene5Sheet, isPortraitPhoneScreen }) {
                         <div className="divider"></div>
                         <div className="button-container">
                             <button className={`button submit-button`} onClick={handleAfterPlay}>
-                                <FontAwesomeIcon icon={faCheck} />  Check it out
+                                <FontAwesomeIcon icon={faCheck} />  Execute Emergency Plan
                             </button>
                         </div>
                     </>}

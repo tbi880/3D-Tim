@@ -24,13 +24,13 @@ function ViewPort({ screenTitle, position, rotation, sequence, stopPoint, unload
     const theatreKey = ("ViewPort: " + screenTitle).trim();
 
     useEffect(() => {
-        ViewPortModel.scene.traverse((child) => {
+        scene.traverse((child) => {
             if (child instanceof THREE.Mesh) {
                 child.material.transparent = true;
                 child.material.opacity = opacity;
             }
         });
-    }, [ViewPortModel.scene, opacity]);
+    }, [scene, opacity]);
 
     useEffect(() => {
         const action = actions[animationNames[0]];

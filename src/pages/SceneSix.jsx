@@ -1,7 +1,6 @@
 import Galaxy from '../modelComponents/Galaxy';
 import ShipOutside from '../modelComponents/ShipOutside';
 import { Suspense, useState, useCallback, useEffect, useRef, useContext, useMemo } from 'react';
-import PreloadAssets from '../modelComponents/preloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { bucketURL, stageOfENV } from '../Settings';
 import AnyModel from '../modelComponents/AnyModel';

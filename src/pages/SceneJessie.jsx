@@ -16,7 +16,6 @@ import WaitingJessie from './WaitingJessie';
 import PreloadAssets from '../modelComponents/preloadAssets';
 import { useGLTF } from '@react-three/drei';
 import { Helmet } from 'react-helmet';
-import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider';
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 
 
@@ -30,7 +29,6 @@ function SceneJessie({ startPoint }) {
     const age = (new Date().getFullYear().valueOf()) - 2001;
     const endingString1 = age + "岁生日快乐呀！";
     const endingString2 = "希望你每天都充满幸福快乐！";
-    const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
 
 
     useEffect(() => {

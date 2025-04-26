@@ -1,6 +1,6 @@
 
 import { useState, useCallback } from 'react';
-import { getNextScene, getNextSceneStartPoint, getNextSceneURI } from './Status';
+import { getNextSceneStartPoint } from './Status';
 import Header from '../Tools/Header';
 import Status from './Status';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -8,10 +8,10 @@ import { Helmet } from 'react-helmet';
 import SceneOne from './SceneOne';
 import scene1State from '../scene1.json';
 import { SheetProvider } from '@theatre/r3f';
-import { useNavigate } from "react-router-dom";
 import XrToolMiddleLayer from '../Tools/XrToolMiddleLayer';
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 import { getProject } from '@theatre/core';
+import { useJumpToNextScene } from '../hooks/useJumpToNextScene';
 
 
 
@@ -20,7 +20,6 @@ function HomePage({ isPortraitPhoneScreen }) {
     const scene1Project = getProject('Scene1 Sheet', { state: scene1State });
     const scene1Sheet = scene1Project.sheet('Scene1 Sheet');
 
-    const navigate = useNavigate();
     const [showComponents, setShowComponents] = useState({
         header: true,
     });
@@ -33,14 +32,7 @@ function HomePage({ isPortraitPhoneScreen }) {
 
     }, []);
 
-    const [isJumping, setIsJumping] = useState(false);
-
-    function checkThenJumpToTheNextScene() {
-        if (!isJumping) {
-            setIsJumping(true);
-            navigate(getNextSceneURI(getNextScene()));
-        }
-    }
+    const { checkThenJumpToTheNextScene } = useJumpToNextScene();
 
     return (
         <>

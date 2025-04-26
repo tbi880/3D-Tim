@@ -1,37 +1,16 @@
-
-import Status, { getNextScene, getNextSceneStartPoint, getNextSceneURI } from './Status';
-import { useNavigate } from "react-router-dom";
+import Status, { getNextSceneStartPoint } from './Status';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
-import { Canvas } from '@react-three/fiber';
 import { SheetProvider } from '@theatre/r3f';
 import scene6State from '../scene6.json';
-import { useContext, useEffect, useRef, useState } from 'react';
-import { webGLPreserveDrawingBuffer } from '../Settings';
-import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider';
 import SceneSix from './SceneSix';
 import { getProject } from '@theatre/core';
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 
 
-
-
-
 function ProjectDawn({ vrSupported, isPortraitPhoneScreen }) {
     const scene6Project = getProject('Scene6', { state: scene6State });
     const scene6Sheet = scene6Project.sheet('Scene6');
-    const refShipStatus = useRef(null);
-    const navigate = useNavigate();
-    const [isJumping, setIsJumping] = useState(false);
-    const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
-
-    function checkThenJumpToTheNextScene() {
-        if (!isJumping) {
-            setIsJumping(true);
-            navigate(getNextSceneURI(getNextScene()));
-
-        }
-    }
 
     return (
         <>
@@ -55,7 +34,7 @@ function ProjectDawn({ vrSupported, isPortraitPhoneScreen }) {
 
                     {/* <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent" fallback={<div>Sorry no WebGL supported!</div>}> */}
                     <SheetProvider sheet={scene6Sheet}>
-                        <SceneSix scene6Sheet={scene6Sheet} scene6Project={scene6Project} startPoint={getNextSceneStartPoint()} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} isPortraitPhoneScreen={isPortraitPhoneScreen} /></SheetProvider>
+                        <SceneSix scene6Sheet={scene6Sheet} scene6Project={scene6Project} startPoint={getNextSceneStartPoint()} isPortraitPhoneScreen={isPortraitPhoneScreen} /></SheetProvider>
 
                     {/* </Canvas> */}
                 </CanvasProvider>

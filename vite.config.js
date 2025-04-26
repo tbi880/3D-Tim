@@ -4,10 +4,26 @@ import react from '@vitejs/plugin-react'
 import { terser } from 'rollup-plugin-terser';
 import compressPlugin from 'vite-plugin-compression';
 import { VitePWA } from 'vite-plugin-pwa';
+import { stageOfENV } from './src/Settings';
 
 const ReactCompilerConfig = {
   target: '18' // '17' | '18' | '19'
 };
+
+function checkStagePlugin() {
+  return {
+    name: 'check-stage-of-env',
+    config(_, { command }) {
+      if (command === 'build' && stageOfENV !== 'prod') {
+        throw new Error(
+          `❌  stageOfENV = "${stageOfENV}"，Can't build non Prod env！\n` +
+          `Please set stageOfENV = "prod" in src/Settings.jsx and try again.`
+        );
+      }
+    }
+  };
+}
+
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -20,6 +36,7 @@ export default defineConfig({
   },
 
   plugins: [
+    checkStagePlugin(), // 检查 stageOfENV 是否为 prod
     react({
       babel: {
         plugins: [

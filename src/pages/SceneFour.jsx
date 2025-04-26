@@ -1,45 +1,36 @@
-import { engineeringAccess, getNextScene, getNextSceneURI, setNextScene, setNextSceneStartPoint } from './Status'
+import { engineeringAccess, setNextScene, setNextSceneStartPoint } from './Status'
 import * as THREE from 'three'
 import { useContext, useEffect, useRef, useState } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
-import { useCursor, MeshReflectorMaterial, Image, Text, Environment, } from '@react-three/drei'
+import { useFrame } from '@react-three/fiber'
+import { useCursor, MeshReflectorMaterial, Image, Text, Environment } from '@react-three/drei'
 import { useRoute, useLocation } from 'wouter'
 import { easing } from 'maath'
 import getUuid from 'uuid-by-string'
 import { Suspense } from 'react'
-import { useCallback } from 'react'
-import AnyModel from '../modelComponents/AnyModel'
-import { useNavigate } from "react-router-dom";
 import Loader from './Loader'
 import { bucketURL } from '../Settings'
-import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider'
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider'
-import { CanvasProvider } from '../sharedContexts/CanvasProvider'
-
+import Loading from '../modelComponents/Loading'
+import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider'
+import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager'
 
 
 const GOLDENRATIO = 1.61803398875
 
-export const SceneFour = ({ images, isPortraitPhoneScreen }) => {
-    const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
-    return <CanvasProvider>
-        <SceneFourInsideOfCanvas isPortraitPhoneScreen={isPortraitPhoneScreen} images={images} />
-    </CanvasProvider>
-}
-
-export const SceneFourInsideOfCanvas = ({ isPortraitPhoneScreen, images }) => {
-    const navigate = useNavigate();
+export const SceneFour = ({ scene4Sheet, images, isPortraitPhoneScreen, unloadPoint, onSequencePass }) => {
     const [visitedIds, setVisitedIds] = useState(new Set());
     const [cameraReached, setCameraReached] = useState(false);
-    const startPosition = [0, 2, 15];
-    const targetPosition = [0, 0, 5.5];
-    const [showComponents, setShowComponents] = useState({
-        loading: false
+    const startCameraPosition = [0, 2, 15];
+    const targetCameraPosition = [0, 0, 5.5];
+    const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
+        loadingComponents: {
+            loading: true,
+        }, initialComponents: {
+            loading: false,
+        }
     });
-    const [loadingOpacity, setLoadingOpacity] = useState(0);
 
-    const [countDown, setCountDown] = useState(3);
-
+    const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
     const { taskBoardContent, setTaskBoardContent } = useContext(TaskBoardContentContext);
 
     const [taskBoardContentMap, setTaskBoardContentMap] = useState({
@@ -51,43 +42,14 @@ export const SceneFourInsideOfCanvas = ({ isPortraitPhoneScreen, images }) => {
     }, []);
 
 
-    const toggleComponentDisplay = useCallback((componentKey) => {
-        setShowComponents((prev) => ({
-            ...prev,
-            [componentKey]: !prev[componentKey],
-
-        }));
-    }, []);
-
-
     useEffect(() => {
-        let opacityInterval; // 提升到 useEffect 作用域顶部
-        let intervalId; // 同样提升 intervalId
+        let intervalId;
 
         if (visitedIds.size === images.length && cameraReached) {
             if (!showComponents.loading) {
                 toggleComponentDisplay("loading");
-                let opacity = 0;
-                opacityInterval = setInterval(() => {
-                    opacity += 0.01;
-                    setLoadingOpacity(opacity);
-                    if (opacity >= 1) {
-                        clearInterval(opacityInterval);
-                    }
-                }, 20);
+                playOnce({ sequence: scene4Sheet.sequence, range: [0, 3] });
             }
-
-            intervalId = setInterval(() => {
-                setCountDown((prev) => {
-                    if (prev > 0) {
-                        return prev - 1;
-                    } else {
-                        clearInterval(intervalId);
-                        navigate(getNextSceneURI(getNextScene()));
-                        return 0;
-                    }
-                });
-            }, 1000);
 
         }
     }, [visitedIds, images.length, cameraReached]);
@@ -105,7 +67,7 @@ export const SceneFourInsideOfCanvas = ({ isPortraitPhoneScreen, images }) => {
             state.camera.position.z,
         ];
 
-        if (position[0] === targetPosition[0] && position[1] === targetPosition[1] && position[2] === targetPosition[2]) {
+        if (position[0] === targetCameraPosition[0] && position[1] === targetCameraPosition[1] && position[2] === targetCameraPosition[2]) {
             if (!cameraReached) {
                 setCameraReached(true);
             }
@@ -119,8 +81,7 @@ export const SceneFourInsideOfCanvas = ({ isPortraitPhoneScreen, images }) => {
     return (
 
         <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["Now you'll see some of my previous work", "treat it as a museum, a gallery", "Check them all, then I will bring you back with half of the access to my command chamber."]} />}>
-
-            <camera position={startPosition} />
+            <camera position={startCameraPosition} makeDefault />
             <Text
                 position={[0, -0.4, 3.75]}
                 fontSize={0.1}
@@ -171,75 +132,35 @@ export const SceneFourInsideOfCanvas = ({ isPortraitPhoneScreen, images }) => {
                 {"that were built & designed & optimized by me."}
             </Text>
 
-
-            <Text
-                position={[0, 2.5, 0.1]}
-                fontSize={0.2}
-                color="white"
-                maxWidth={200}
-                lineHeight={1}
-                anchorX="center"
-                anchorY="middle"
-                visible={showComponents.loading}
-            >
-                Time to head back to the bridge!
-            </Text>
-            <Text
-                position={[0, 2, 0.1]}
-                fontSize={0.2}
-                color="white"
-                maxWidth={200}
-                lineHeight={1}
-                anchorX="center"
-                anchorY="middle"
-                visible={showComponents.loading}
-            >
-                {"Head back in " + countDown + " seconds"}
-            </Text>
-
-            <Text
-                position={[0, -0.1, 0.1]}
-                fontSize={0.4}
-                color="#00FFFF"
-                maxWidth={200}
-                lineHeight={1}
-                anchorX="center"
-                anchorY="middle"
-                visible={showComponents.loading}
-            >
-                {"Disconnected\nfrom Tim's\nnamespace"}
-            </Text>
-
-
-
-            {!showComponents.loading && <>
-                <color attach="background" args={['#191920']} />
-                <fog attach="fog" args={['#191920', 0, 15]} />
-                <group position={[0, -0.5, 0]}>
-                    <Frames images={images} onVisit={(id) => setVisitedIds(new Set(visitedIds.add(id)))} />
-                    <mesh rotation={[-Math.PI / 2, 0, 0]}>
-                        <planeGeometry args={[50, 50]} />
-                        <MeshReflectorMaterial
-                            blur={[300, 100]}
-                            resolution={2048}
-                            mixBlur={1}
-                            mixStrength={80}
-                            roughness={1}
-                            depthScale={1.2}
-                            minDepthThreshold={0.4}
-                            maxDepthThreshold={1.4}
-                            color="#050505"
-                            metalness={0.5}
-                        />
-                    </mesh>
-                </group>
-                <Environment files={bucketURL + 'pic/city.hdr'} background={false} resolution={512} /></>}
+            {!showComponents.loading &&
+                <>
+                    <color attach="background" args={['#191920']} />
+                    <fog attach="fog" args={['#191920', 0, 15]} />
+                    <group position={[0, -0.5, 0]}>
+                        <Frames images={images} onVisit={(id) => setVisitedIds(new Set(visitedIds.add(id)))} />
+                        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+                            <planeGeometry args={[50, 50]} />
+                            <MeshReflectorMaterial
+                                blur={[300, 100]}
+                                resolution={2048}
+                                mixBlur={1}
+                                mixStrength={80}
+                                roughness={1}
+                                depthScale={1.2}
+                                minDepthThreshold={0.4}
+                                maxDepthThreshold={1.4}
+                                color="#050505"
+                                metalness={0.5}
+                            />
+                        </mesh>
+                    </group>
+                </>
+            }
+            <Environment files={bucketURL + 'pic/city.hdr'} background={false} resolution={512} />
 
             {showComponents.loading && <>
-                <color attach='background' args={["white"]} />
-
-                <AnyModel modelURL="loading.glb" useTheatre={false} position={[-1.5, 0, 8]} rotation={[0, 0, 0]} scale={0.4} opacity={loadingOpacity} animationNames={["Take 01"]} animationAutoStart={true} animationStartPoint={0} />
-                <ambientLight intensity={10} color={"white"} />
+                <Loading THkey="BackToSceneTwo" title="BackToSceneTwo" lines={["Disconnected", "from Tim's", "namespace"]} position={[-1.5, 0, 8]} rotation={[0, 0, 0]} sequence={scene4Sheet.sequence} unloadPoint={3} onSequencePass={onSequencePass} textTitleVersion={2} />
+                <ambientLight intensity={5} color={"white"} />
             </>
             }
 

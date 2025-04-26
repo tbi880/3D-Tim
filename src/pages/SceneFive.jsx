@@ -42,7 +42,8 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
     const [ambientColor, setAmbientColor] = useState("white");
     const [backgroundColor, setBackgroundColor] = useState("black");
     const [isWarped, setIsWarped] = useState(false);
-    useSequenceUnloadSceneChecker(scene5Sheet.sequence, [unloadPoint], onSequencePass);
+    const unloadPointsMemo = useMemo(() => [unloadPoint], [unloadPoint]);
+    useSequenceUnloadSceneChecker(scene5Sheet.sequence, unloadPointsMemo, onSequencePass);
     const { estHitTimeCountDown, setEstHitTimeCountDown, initEstHitTimeCountDown } = useContext(estHitTimeCountDownContext);
     const { hullTemperature, setHullTemperature, initHullTemperature } = useContext(hullTemperatureContext);
     const { coreEnergy, setCoreEnergy, initCoreEnergy } = useContext(coreEnergyContext);
@@ -532,7 +533,6 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
 
                 </>}
 
-                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={207} onSequencePass={() => onSequencePass()} />
 
 
             </Suspense>

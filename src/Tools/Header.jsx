@@ -2,12 +2,12 @@ import { useEffect } from "react";
 
 function importantNotice() {
     const noticeMap = {
-        '0101': ['Tim wishes you a happy new year! 新年快乐！', 'https://www.bty.co.nz'],
-        '0214': ['Tim wishes you have someone to hug with today! 情人节快乐！', 'https://www.bty.co.nz'],
-        '0420': ['Tim wishes you have a nice Easter break! 复活节快乐！', 'https://www.bty.co.nz'],
-        '0620': ['Mānawatia a Matariki – kia hari, kia hauora, kia noho tahi ai tātou i raro i ngā whetū. 毛利新年快乐！愿我们在星辰下团聚，拥有幸福与健康！Celebrate Matariki – may we be happy, healthy, and together beneath the stars.', 'https://www.bty.co.nz'],
+        '0101': ['Tim wishes you a happy new year! 新年快乐！', ''],
+        '0214': ['Tim wishes you have someone to hug with today! 情人节快乐！', ''],
+        '0420': ['Tim wishes you have a nice Easter break! 复活节快乐！', ''],
+        '0620': ['Mānawatia a Matariki – kia hari, kia hauora, kia noho tahi ai tātou i raro i ngā whetū. 毛利新年快乐！愿我们在星辰下团聚，拥有幸福与健康！Celebrate Matariki – may we be happy, healthy, and together beneath the stars.', ''],
         '0714': ["Tim's girlfriend Sandra just had her birthday recently! Click here to see the gift that Tim prepared for her", 'https://www.bty.co.nz/hb_to_qxl/index.html'],
-        '1225': ['Tim wishes you a marry xmas! 圣诞节快乐！', 'https://www.bty.co.nz'],
+        '1225': ['Tim wishes you a marry xmas! 圣诞节快乐！', ''],
     };
 
     const defaultNotice = ['Welcome to Tim Bi\'s world! 欢迎来到Tim Bi的世界！ Recent notice happened around Tim: ' + noticeMap["0714"][0], 'https://www.bty.co.nz/hb_to_qxl/index.html'];
@@ -22,13 +22,13 @@ function importantNotice() {
         const noticeDate = new Date(today.getFullYear(), month - 1, day);
         const difference = Math.abs(noticeDate - today);
 
-        // 检查是否在前后三天的范围内
-        if (difference <= 3 * 24 * 60 * 60 * 1000) {
+        // 检查是否在前后14天的范围内，如果是的话则和当前最小差值进行比较再用更小的来替代
+        if (difference <= 14 * 24 * 60 * 60 * 1000) {
             if (difference < minDifference) {
                 minDifference = difference;
                 closestNotice = {
                     noticeContent: noticeMap[key][0],
-                    noticeLink: noticeMap[key][1]
+                    noticeLink: noticeMap[key][1] === '' ? null : noticeMap[key][1]
                 };
             }
         }
@@ -80,11 +80,12 @@ function Header({ onAnimationEnd, defaultNotice, defaultBaseDuration }) {
                 padding: '10px 0',
                 boxShadow: '0 2px 4px rgba(0,0,0,.1)',
                 color: 'white',
-                cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
-            }} onClick={noticeLink ? navigateToURL : null}>
+                justifyContent: 'center',
+                ...(noticeLink && { cursor: 'pointer' })
+            }}
+                {...(noticeLink && { onClick: navigateToURL })} >
                 <div className="container" style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
                     <h1 style={{
                         display: 'inline-block',

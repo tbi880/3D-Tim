@@ -1,14 +1,11 @@
 
-import Status, { getNextScene, getNextSceneStartPoint, getNextSceneURI, getTourMapFromLocalStorage, getUserAntialias, getUserDpr, hasTourGuided } from './Status';
-import { useNavigate } from "react-router-dom";
+import Status, { getNextSceneStartPoint, getTourMapFromLocalStorage, hasTourGuided } from './Status';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
 // import { Controllers, Hands, VRButton, XR } from '@react-three/xr';
-import { Canvas } from '@react-three/fiber';
 import { SheetProvider } from '@theatre/r3f';
 import scene5State from '../scene5.json';
 import { useContext, useEffect, useRef, useState } from 'react';
-import { webGLPreserveDrawingBuffer } from '../Settings';
 import ShipStatus from '../Tools/ShipStatus';
 import { EstHitTimeCountDownProvider } from '../sharedContexts/EstHitTimeCountDownProvider';
 import { CoreEnergyProvider } from '../sharedContexts/CoreEnergyProvider';
@@ -28,10 +25,11 @@ import { useLocation } from 'wouter';
 import DoublePlayTimeSpeedButton from '../Tools/DoublePlayTimeSpeedButton';
 import { getProject } from '@theatre/core';
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';
+import { useJumpToNextScene } from '../hooks/useJumpToNextScene';
 
 
 
-function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
+function ShipTimsChamber({ isPortraitPhoneScreen }) {
     const scene5Project = getProject('Scene5', { state: scene5State });
     const scene5Sheet = scene5Project.sheet('Scene5');
     const [location, setLocation] = useLocation();
@@ -39,8 +37,6 @@ function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
     const refShipStatus = useRef(null);
     const [open, setOpen] = useState(false);
     const [isHide, setIsHide] = useState(false);
-    const navigate = useNavigate();
-    const [isJumping, setIsJumping] = useState(false);
     const { showSendDistressSignalForm, setShowSendDistressSignalForm } = useContext(sendDistressSignalContext);
     const { showAuthorizationCheckForm, setShowAuthorizationCheckForm } = useContext(authorizationCheckContext);
     const { showSearchForEmergencyPlansLayer, setShowSearchForEmergencyPlansLayer } = useContext(searchForEmergencyPlansContext);
@@ -71,13 +67,7 @@ function ShipTimsChamber({ vrSupported, isPortraitPhoneScreen }) {
         hasTourGuided(location);
     }, [location]);
 
-    function checkThenJumpToTheNextScene() {
-        if (!isJumping) {
-            setIsJumping(true);
-            navigate(getNextSceneURI(getNextScene()));
-
-        }
-    }
+    const { checkThenJumpToTheNextScene } = useJumpToNextScene();
 
     function onClickCallback() {
         setIsHide(!isHide);

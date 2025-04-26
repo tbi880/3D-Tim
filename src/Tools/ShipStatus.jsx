@@ -4,6 +4,8 @@ import "./css/menu.css";
 import { estHitTimeCountDownContext } from "../sharedContexts/EstHitTimeCountDownProvider";
 import { hullTemperatureContext } from "../sharedContexts/HullTemperatureProvider";
 import { coreEnergyContext } from "../sharedContexts/CoreEnergyProvider";
+import { CaretUpOutlined, CaretDownOutlined } from "@ant-design/icons";
+
 
 const ShipStatus = forwardRef(({ isPortraitPhoneScreen, isHide, onClick }, refShipStatus, hideSwitchFromOutside = false) => {
     const [stepsCount, setStepsCount] = useState(6);
@@ -17,15 +19,19 @@ const ShipStatus = forwardRef(({ isPortraitPhoneScreen, isHide, onClick }, refSh
     const maxCoreEnergy = 1000; // ship's maximum core energy
     const coreEnergyPercent = (coreEnergy / maxCoreEnergy * 100).toFixed(1);
 
+    const arrowStyle = {
+        position: "absolute",
+        bottom: 4,
+        left: "50%",
+        transform: "translateX(-50%)",
+        fontSize: 16,
+        color: "#fff",
+        pointerEvents: "none",   // 让整个盒子仍然捕获点击
+        userSelect: "none",
+    };
+
     const containerStyle = {
         width: "300px",
-        height: isPortraitPhoneScreen
-            ? isHide
-                ? "5vh"
-                : "30vh"
-            : isHide
-                ? "3.5vh"
-                : "17.5vh",
         position: "fixed",
         top: "50px",
         left: "50%",
@@ -111,7 +117,11 @@ const ShipStatus = forwardRef(({ isPortraitPhoneScreen, isHide, onClick }, refSh
                         </Typography.Title>
                     </div>
                 </div>
+
             )}
+            <div style={arrowStyle}>
+                {isHide ? <CaretDownOutlined /> : <CaretUpOutlined />}
+            </div>
         </div>
     );
 });

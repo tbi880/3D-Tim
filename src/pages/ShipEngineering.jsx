@@ -5,9 +5,15 @@ import { SceneFour } from "./SceneFour";
 import { bucketURL } from '../Settings';
 import { useContext, useEffect, useRef } from "react";
 import { GlobalNotificationContext } from "../sharedContexts/GlobalNotificationProvider";
+import { getProject } from '@theatre/core'
+import scene4State from '../scene4.json';
+import { SheetProvider } from '@theatre/r3f'
+import { CanvasProvider } from "../sharedContexts/CanvasProvider";
+import { useJumpToNextScene } from "../hooks/useJumpToNextScene";
 
 
 function ShipEngineering(isPortraitPhoneScreen) {
+    const scene4Sheet = getProject('Scene4 Sheet', { state: scene4State }).sheet('Scene4 Sheet');
     const welcomeMessageSent = useRef(false);
     const { messageApi } = useContext(GlobalNotificationContext);
     useEffect(() => {
@@ -37,6 +43,8 @@ function ShipEngineering(isPortraitPhoneScreen) {
         // { position: [2, 0, 2.75], rotation: [0, -Math.PI / 2.5, 0], url: pexel(9) }
     ]
 
+    const { checkThenJumpToTheNextScene } = useJumpToNextScene();
+
     return (
         <>
             <Helmet>
@@ -53,9 +61,14 @@ function ShipEngineering(isPortraitPhoneScreen) {
                 <meta name="author" content="Tim Bi" />
 
             </Helmet>
-
-            <SceneFour images={images} isPortraitPhoneScreen={isPortraitPhoneScreen} />
-            <Status />
+            <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
+                <CanvasProvider>
+                    <SheetProvider sheet={scene4Sheet}>
+                        <SceneFour scene4Sheet={scene4Sheet} images={images} isPortraitPhoneScreen={isPortraitPhoneScreen} unloadPoint={3} onSequencePass={() => checkThenJumpToTheNextScene()} />
+                    </SheetProvider>
+                </CanvasProvider>
+                <Status />
+            </div>
         </>
     )
 

@@ -1,24 +1,23 @@
 
-import Status, { getNextScene, getNextSceneStartPoint, getNextSceneURI } from './Status';
+import Status, { getNextSceneStartPoint } from './Status';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
 import { SheetProvider } from '@theatre/r3f';
 import scene3State from '../scene3.json';
 import SceneThree from './SceneThree';
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef } from 'react';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
-import { useNavigate } from 'react-router-dom';
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 // import XrToolMiddleLayer from '../Tools/XrToolMiddleLayer';
 import DoublePlayTimeSpeedButton from '../Tools/DoublePlayTimeSpeedButton';
 import { getProject } from '@theatre/core';
+import { useJumpToNextScene } from '../hooks/useJumpToNextScene';
 
 
 
 function ShipHanger({ isPortraitPhoneScreen }) {
     const scene3Project = getProject('Scene3 Sheet', { state: scene3State });
     const scene3Sheet = scene3Project.sheet('Scene3 Sheet');
-    const navigate = useNavigate();
     const welcomeMessageSent = useRef(false);
     const { messageApi } = useContext(GlobalNotificationContext);
     useEffect(() => {
@@ -31,15 +30,7 @@ function ShipHanger({ isPortraitPhoneScreen }) {
         )
     }, [messageApi])
 
-    const [isJumping, setIsJumping] = useState(false);
-
-    function checkThenJumpToTheNextScene() {
-        if (!isJumping) {
-            setIsJumping(true);
-            navigate(getNextSceneURI(getNextScene()));
-
-        }
-    }
+    const { checkThenJumpToTheNextScene } = useJumpToNextScene();
 
     return (
         <>
