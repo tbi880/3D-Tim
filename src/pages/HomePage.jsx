@@ -3,9 +3,6 @@ import { useState, useCallback } from 'react';
 import { getNextScene, getNextSceneStartPoint, getNextSceneURI } from './Status';
 import Header from '../Tools/Header';
 import Status from './Status';
-import { stageOfENV } from '../Settings';
-import studio from '@theatre/studio'
-import extension from '@theatre/r3f/dist/extension'
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
 import SceneOne from './SceneOne';
@@ -15,15 +12,6 @@ import { useNavigate } from "react-router-dom";
 import XrToolMiddleLayer from '../Tools/XrToolMiddleLayer';
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 import { getProject } from '@theatre/core';
-
-
-if (stageOfENV != "prod") {
-
-    studio.initialize()
-    studio.extend(extension)
-}
-
-
 
 
 

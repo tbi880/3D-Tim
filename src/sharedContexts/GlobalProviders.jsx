@@ -6,6 +6,7 @@ import { HeaderSubTitleProvider } from "./HeaderSubTitleProvider";
 import { GraphicSettingProvider } from "./GraphicSettingProvider";
 import { TaskBoardContentProvider } from "./TaskBoardContentProvider";
 import { SheetSequencePlayControlProvider } from "./SheetSequencePlayControlProvider";
+import { TheatreStudioProvider } from "./TheatreStudioProvider";
 
 function GlobalProviders({ children }) {
     return (
@@ -17,7 +18,9 @@ function GlobalProviders({ children }) {
                             <GraphicSettingProvider>
                                 <TaskBoardContentProvider>
                                     <SheetSequencePlayControlProvider>
-                                        {children}
+                                        <TheatreStudioProvider>
+                                            {children}
+                                        </TheatreStudioProvider>
                                     </SheetSequencePlayControlProvider>
                                 </TaskBoardContentProvider>
                             </GraphicSettingProvider>
