@@ -6,7 +6,7 @@ import { editable as e } from '@theatre/r3f';
 import { types } from '@theatre/core';
 import { bucketURL } from '../Settings';
 
-const fontFile = bucketURL + "fonts/Orbitron_Bold.json";
+export const fontFile = bucketURL + "fonts/Orbitron_Bold.json";
 extend({ TextGeometry });
 
 

@@ -36,6 +36,25 @@
               "y": 0.35,
               "x": -0.9299999999999995
             }
+          },
+          "TextTitle_v2: SceneFour: Welcome to my gallery": {
+            "position": {
+              "y": -0.45,
+              "z": 3.25,
+              "x": -0.9
+            },
+            "scale": {
+              "x": 0.001,
+              "y": 0.001,
+              "z": 0.001
+            }
+          },
+          "TextTitle: Welcome to my galler": {
+            "scale": {
+              "x": 0.01,
+              "y": 0.1,
+              "z": 0.1
+            }
           }
         }
       },
@@ -1066,6 +1085,212 @@
               "[\"scale\",\"y\"]": "BH_6IkbmHJ",
               "[\"scale\",\"z\"]": "NTNnLtgwVS"
             }
+          },
+          "TextTitle_v2: SceneFour: Welcome to my gallery": {
+            "trackData": {
+              "3hA1atr85g": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: SceneFour: Welcome to my gallery:[\"opacity\"]",
+                "keyframes": [
+                  {
+                    "id": "SwHbofHxDe",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              },
+              "d8dYtINakN": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: SceneFour: Welcome to my gallery:[\"position\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "XalO4Hg0Ox",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": -0.9
+                  }
+                ]
+              },
+              "pDK183gxHd": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: SceneFour: Welcome to my gallery:[\"position\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "nx89NBpmRd",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": -0.45
+                  }
+                ]
+              },
+              "pd02_-iLeL": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: SceneFour: Welcome to my gallery:[\"position\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "z8LyTG4c5B",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 3.25
+                  }
+                ]
+              },
+              "UTmU__W8ZG": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: SceneFour: Welcome to my gallery:[\"rotation\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "ZZDh2anIkU",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "Y6MxHJDgiW": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: SceneFour: Welcome to my gallery:[\"rotation\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "HHejXZTlyM",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "2NSkO0yn8A": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: SceneFour: Welcome to my gallery:[\"rotation\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "fKsMam5qCo",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "aiGGGxjRhN": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: SceneFour: Welcome to my gallery:[\"scale\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "l21xfzmbbd",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0.001
+                  }
+                ]
+              },
+              "dM-XBw8dbJ": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: SceneFour: Welcome to my gallery:[\"scale\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "ComdpGG98S",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0.001
+                  }
+                ]
+              },
+              "_k58pqjUDH": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: SceneFour: Welcome to my gallery:[\"scale\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "1mOkYwnnck",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0.001
+                  }
+                ]
+              }
+            },
+            "trackIdByPropPath": {
+              "[\"opacity\"]": "3hA1atr85g",
+              "[\"position\",\"x\"]": "d8dYtINakN",
+              "[\"position\",\"y\"]": "pDK183gxHd",
+              "[\"position\",\"z\"]": "pd02_-iLeL",
+              "[\"rotation\",\"x\"]": "UTmU__W8ZG",
+              "[\"rotation\",\"y\"]": "Y6MxHJDgiW",
+              "[\"rotation\",\"z\"]": "2NSkO0yn8A",
+              "[\"scale\",\"x\"]": "aiGGGxjRhN",
+              "[\"scale\",\"y\"]": "dM-XBw8dbJ",
+              "[\"scale\",\"z\"]": "_k58pqjUDH"
+            }
           }
         }
       }
@@ -1073,6 +1298,7 @@
   },
   "definitionVersion": "0.4.0",
   "revisionHistory": [
+    "RLS2WpEr0srTpCwu",
     "1_L28UruIiptXPE6"
   ]
 }

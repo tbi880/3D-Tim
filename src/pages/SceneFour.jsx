@@ -13,6 +13,7 @@ import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvi
 import Loading from '../modelComponents/Loading'
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider'
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager'
+import TextTitle_v2 from '../modelComponents/TextTitle_v2'
 
 
 const GOLDENRATIO = 1.61803398875
@@ -82,57 +83,49 @@ export const SceneFour = ({ scene4Sheet, images, isPortraitPhoneScreen, unloadPo
 
         <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["Now you'll see some of my previous work", "treat it as a museum, a gallery", "Check them all, then I will bring you back with half of the access to my command chamber."]} />}>
             <camera position={startCameraPosition} makeDefault />
-            <Text
-                position={[0, -0.4, 3.75]}
-                fontSize={0.1}
-                color="white"
-                maxWidth={200}
-                lineHeight={1}
-                anchorX="center"
-                anchorY="middle"
-                visible={!showComponents.loading}
-            >
-                Welcome to my gallery
-            </Text>
+            {!showComponents.loading && <><TextTitle_v2
+                theatreKey={"SceneFour: " + "Welcome to my gallery"}
+                text={"Welcome to my gallery"}
+                sequence={scene4Sheet.sequence}
+                position={[-0.9, -0.45, 3.25]}
+                color={"white"}
+            />
 
-            <Text
-                position={[0, 3.25, 0.1]}
-                fontSize={0.15}
-                color="white"
-                maxWidth={200}
-                lineHeight={1}
-                anchorX="center"
-                anchorY="middle"
-                visible={!showComponents.loading}
-            >
-                {"You have browsed "}
-            </Text>
-            <Text
-                position={[0, 3, 0.1]}
-                fontSize={0.25}
-                color="white"
-                maxWidth={200}
-                lineHeight={1}
-                anchorX="center"
-                anchorY="middle"
-                visible={!showComponents.loading}
-            >
-                {(visitedIds.size + 1) + " out of " + (images.length + 1) + " websites "}
-            </Text>
-            <Text
-                position={[0, 2.75, 0.1]}
-                fontSize={0.15}
-                color="white"
-                maxWidth={200}
-                lineHeight={1}
-                anchorX="center"
-                anchorY="middle"
-                visible={!showComponents.loading}
-            >
-                {"that were built & designed & optimized by me."}
-            </Text>
+                <Text
+                    position={[0, 3.25, 0.1]}
+                    fontSize={0.15}
+                    color="white"
+                    maxWidth={200}
+                    lineHeight={1}
+                    anchorX="center"
+                    anchorY="middle"
+                >
+                    {"You have browsed "}
+                </Text>
+                <Text
+                    position={[0, 3, 0.1]}
+                    fontSize={0.25}
+                    color="white"
+                    maxWidth={200}
+                    lineHeight={1}
+                    anchorX="center"
+                    anchorY="middle"
+                >
+                    {(visitedIds.size + 1) + " out of " + (images.length + 1) + " websites "}
+                </Text>
+                <Text
+                    position={[0, 2.75, 0.1]}
+                    fontSize={0.15}
+                    color="white"
+                    maxWidth={200}
+                    lineHeight={1}
+                    anchorX="center"
+                    anchorY="middle"
+                    visible={!showComponents.loading}
+                >
+                    {"that were built & designed & optimized by me."}
+                </Text>
 
-            {!showComponents.loading &&
                 <>
                     <color attach="background" args={['#191920']} />
                     <fog attach="fog" args={['#191920', 0, 15]} />
@@ -155,6 +148,7 @@ export const SceneFour = ({ scene4Sheet, images, isPortraitPhoneScreen, unloadPo
                         </mesh>
                     </group>
                 </>
+            </>
             }
             <Environment files={bucketURL + 'pic/city.hdr'} background={false} resolution={512} />
 
