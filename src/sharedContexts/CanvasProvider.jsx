@@ -30,7 +30,7 @@ export const CanvasProvider = ({ children, vrEnabled = false }) => {
         <canvasContext.Provider value={{ isVRSupported, setIsVRSupported }}>
             {shouldRenderVR && <>
                 <VRButton />
-                <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer, stencil: false }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent" fallback={<div>Sorry no WebGL supported!</div>}>
+                <Canvas gl={{ antialias: antialias, powerPreference: dpr > 1.5 ? "high-performance" : "default", preserveDrawingBuffer: webGLPreserveDrawingBuffer, stencil: false }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent" fallback={<div>Sorry no WebGL supported!</div>}>
                     <XR>
                         <Controllers rayMaterial={{ color: '#99FFFF' }} />
                         <Hands />
