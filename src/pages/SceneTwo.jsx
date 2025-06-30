@@ -5,12 +5,12 @@ import Galaxy from '../modelComponents/Galaxy';
 import TextTitle from '../modelComponents/TextTitle';
 import InfoScreenDisplay from '../modelComponents/InfoScreenDisplay';
 import SingleLoadManager from '../modelComponents/SingleLoadManager';
-import Button from '../modelComponents/button';
+import Button from '../modelComponents/Button';
 import ViewPort from '../modelComponents/ViewPort';
 import StreamMusic from '../modelComponents/StreamMusic';
 import Robots from '../modelComponents/Robot';
 import { Suspense, useState, useEffect, useContext } from 'react';
-import PreloadAssets from '../modelComponents/preloadAssets';
+import PreloadAssets from '../modelComponents/PreloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { bucketURL, stageOfENV } from '../Settings';
 import Loading from '../modelComponents/Loading';

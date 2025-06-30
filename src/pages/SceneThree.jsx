@@ -1,5 +1,5 @@
 import { shipHangerAccess } from './Status';
-import Technology from '../modelComponents/technology';
+import Technology from '../modelComponents/Technology';
 import Tunnel from '../modelComponents/Tunnel';
 import Iphone14pro from '../modelComponents/Iphone14pro';
 import ProgrammingOffice from '../modelComponents/ProgrammingOffice';
@@ -13,7 +13,7 @@ import ProgrammingFuture from '../modelComponents/ProgrammingFuture';
 import StreamMusic from '../modelComponents/StreamMusic';
 import Auckland from '../modelComponents/Auckland';
 import { Suspense, useState, useEffect, useContext } from 'react';
-import PreloadAssets from '../modelComponents/preloadAssets';
+import PreloadAssets from '../modelComponents/PreloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { bucketURL, stageOfENV } from '../Settings';
 import Loading from '../modelComponents/Loading';

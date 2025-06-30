@@ -10,7 +10,7 @@ import SingleLoadManager from '../modelComponents/SingleLoadManager';
 import ViewPort from '../modelComponents/ViewPort';
 // import AsyncMusic, { createAudioLoader } from '../modelComponents/AsyncMusic';
 import { Suspense, useState, useEffect, useContext } from 'react';
-import PreloadAssets from '../modelComponents/preloadAssets';
+import PreloadAssets from '../modelComponents/PreloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { bucketURL } from '../Settings';
 import StreamMusic from '../modelComponents/StreamMusic';

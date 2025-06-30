@@ -2,7 +2,7 @@ import Galaxy from '../modelComponents/Galaxy';
 import ShipOutside from '../modelComponents/ShipOutside';
 import StreamMusic from '../modelComponents/StreamMusic';
 import { Suspense, useState, useCallback, useEffect, useRef, useContext, useMemo } from 'react';
-import PreloadAssets from '../modelComponents/preloadAssets';
+import PreloadAssets from '../modelComponents/PreloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { bucketURL, stageOfENV } from '../Settings';
 import StrangerStar from '../modelComponents/StrangerStar';
@@ -17,7 +17,7 @@ import { estHitTimeCountDownContext } from '../sharedContexts/EstHitTimeCountDow
 import { hullTemperatureContext } from '../sharedContexts/HullTemperatureProvider';
 import { coreEnergyContext } from '../sharedContexts/CoreEnergyProvider';
 import { useFrame } from '@react-three/fiber';
-import Button from '../modelComponents/button';
+import Button from '../modelComponents/Button';
 import { sendDistressSignalContext } from '../sharedContexts/SendDistressSignalProvider';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import { authorizationCheckContext } from '../sharedContexts/AuthorizationCheckProvider';
