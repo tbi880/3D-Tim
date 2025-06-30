@@ -39,6 +39,7 @@
     "react-router-dom": "^7.0.0",
     "sitemap": "^8.0.0",
     "three": "^0.161.0",
+    "three-mesh-bvh": "^0.9.1",
     "typed.js": "^2.1.0",
     "typeit": "^8.8.7",
     "uuid-by-string": "4.0.0",

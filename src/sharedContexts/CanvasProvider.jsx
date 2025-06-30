@@ -3,9 +3,16 @@ import { Controllers, Hands, VRButton, XR } from '@react-three/xr';
 import { graphicSettingContext } from "./GraphicSettingProvider";
 import { Canvas } from "@react-three/fiber";
 import { webGLPreserveDrawingBuffer } from '../Settings';
-
+import * as THREE from 'three';
+import { acceleratedRaycast, computeBoundsTree, disposeBoundsTree } from 'three-mesh-bvh';
 
 export const canvasContext = createContext();
+
+// Override the raycast method of THREE.Mesh to use accelerated raycasting
+THREE.Mesh.prototype.raycast = acceleratedRaycast;
+THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
+THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
+
 
 export const CanvasProvider = ({ children, vrEnabled = false }) => {
     const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);

@@ -55,6 +55,22 @@ function InfoScreenDisplay({ title, content, sequence, stopPoints = [], loadPoin
     const [positionInFrontOfCameraForTextTitle, setPositionInFrontOfCameraForTextTitle] = useState([0, 0, 0]);
     const [rotationInFrontOfCameraForTextTitle, setRotationInFrontOfCameraForTextTitle] = useState([0, 0, 0]);
 
+    // given the model is loaded, compute the bounds tree for each mesh
+    useEffect(() => {
+        if (!screenModel.scene) return;
+        screenModel.scene.traverse((child) => {
+            if (child.isMesh) {
+                const geometry = child.geometry;
+                if (!geometry.boundsTree) {
+                    geometry.computeBoundsTree();
+                }
+                child.castShadow = false; // Disable shadow casting for the arrow mesh
+                child.receiveShadow = false; // Disable shadow receiving for the arrow mesh
+                child.frustumCulled = true; // Enable frustum culling for the arrow mesh
+            }
+        });
+    }, [screenModel.scene]);
+
     useEffect(() => {
         screenModel.scene.traverse((child) => {
             if (child instanceof THREE.Mesh) {

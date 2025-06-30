@@ -37,6 +37,21 @@ function Arrow({ screenTitle, isNext, position, rotation, sequence, stopPoints, 
     useCursor(hovered);
 
 
+    // given the model is loaded, compute the bounds tree for each mesh
+    useEffect(() => {
+        if (!scene) return;
+        scene.traverse((child) => {
+            if (child.isMesh) {
+                const geometry = child.geometry;
+                if (!geometry.boundsTree) {
+                    geometry.computeBoundsTree();
+                }
+                child.castShadow = false; // Disable shadow casting for the arrow mesh
+                child.receiveShadow = false; // Disable shadow receiving for the arrow mesh
+                child.frustumCulled = true; // Enable frustum culling for the arrow mesh
+            }
+        });
+    }, [scene]);
 
     useEffect(() => {
         arrowModel.scene.traverse((child) => {

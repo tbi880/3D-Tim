@@ -20,14 +20,6 @@ function ShipInside({ sequence, unloadPoint, onSequencePass }) {
     }, [scene, opacity]);
 
 
-    // useFrame(() => {
-    //     // 当sequence.position超过结束点时触发
-    //     if (sequence && sequence.position > unloadPoint) {
-    //         onSequencePass();
-    //     }
-    // });
-
-
     return (
         <>
             <e.mesh theatreKey="ShipInside" scale={1} additionalProps={{

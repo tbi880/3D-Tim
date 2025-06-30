@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { bucketURL } from '../Settings';
 import { useFrame } from '@react-three/fiber';
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
+import { MeshBVH } from 'three-mesh-bvh';
 
 
 function AnyModel(props) {
@@ -165,6 +166,23 @@ function AnyModel(props) {
         });
     }, [anyModel.scene, opacity]);
 
+
+    // given the model is loaded, compute the bounds tree for each mesh
+    useEffect(() => {
+        if (!anyModel || !anyModel.scene) return;
+        anyModel.scene.traverse((child) => {
+            if (child.isMesh) {
+                const geometry = child.geometry;
+                if (!geometry.boundsTree) {
+                    geometry.computeBoundsTree();
+                }
+
+                child.castShadow = props.castShadow;
+                child.receiveShadow = props.receiveShadow;
+                child.frustumCulled = props.frustumCulled;
+            }
+        });
+    }, [anyModel.scene, props.castShadow, props.receiveShadow, props.frustumCulled]);
 
     const play = useCallback(() => {
         let currentTimePosition = props.sequence.position;
@@ -325,6 +343,9 @@ AnyModel.propTypes = {
     animationOnClick: PropTypes.bool,
     isMultiple: PropTypes.bool,
     modelNodeVisibility: PropTypes.object,
+    castShadow: PropTypes.bool,
+    receiveShadow: PropTypes.bool,
+    frustumCulled: PropTypes.bool,
 };
 
 AnyModel.defaultProps = {
@@ -348,6 +369,9 @@ AnyModel.defaultProps = {
     animationOnClick: false,
     isMultiple: false,
     modelNodeVisibility: {},
+    castShadow: false,
+    receiveShadow: false,
+    frustumCulled: true,
 };
 
 export default AnyModel;
