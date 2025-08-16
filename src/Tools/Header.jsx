@@ -7,6 +7,7 @@ function importantNotice() {
         '0420': ['Tim wishes you have a nice Easter break! 复活节快乐！', ''],
         '0620': ['Mānawatia a Matariki – kia hari, kia hauora, kia noho tahi ai tātou i raro i ngā whetū. 毛利新年快乐！愿我们在星辰下团聚，拥有幸福与健康！Celebrate Matariki – may we be happy, healthy, and together beneath the stars.', ''],
         '0714': ["Tim's girlfriend Sandra just had her birthday recently! Click here to see the gift that Tim prepared for her", 'https://www.bty.co.nz/hb_to_qxl/index.html'],
+        '0825': ['Tim & his girlfriend Sandra just had their anniversary! Click here to see the gift that Tim prepared for her', 'https://www.bty.co.nz/365/index.html'],
         '1225': ['Tim wishes you a marry xmas! 圣诞节快乐！', ''],
     };
 
@@ -56,11 +57,6 @@ function Header({ onAnimationEnd, defaultNotice, defaultBaseDuration }) {
 }
 `;
 
-    // 导航函数
-    const navigateToURL = () => {
-        window.location.href = noticeLink;
-    };
-
     useEffect(() => {
         const timer = setTimeout(onAnimationEnd, duration * 1000); // 将duration转换为毫秒
         return () => clearTimeout(timer); // 组件卸载时清理计时器
@@ -84,14 +80,24 @@ function Header({ onAnimationEnd, defaultNotice, defaultBaseDuration }) {
                 alignItems: 'center',
                 justifyContent: 'center',
                 ...(noticeLink && { cursor: 'pointer' })
-            }}
-                {...(noticeLink && { onClick: navigateToURL })} >
+            }}>
                 <div className="container" style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                    <h1 style={{
-                        display: 'inline-block',
-                        animation: styleAnimation,
-                        fontSize: '1.5rem',
-                    }}>{noticeContent}</h1>
+                    {noticeLink ? <a
+                        href={noticeLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: 'inherit', textDecoration: 'none' }}>
+                        <h1 style={{
+                            display: 'inline-block',
+                            animation: styleAnimation,
+                            fontSize: '1.5rem',
+                        }}>{noticeContent}</h1>
+                    </a> :
+                        <h1 style={{
+                            display: 'inline-block',
+                            animation: styleAnimation,
+                            fontSize: '1.5rem',
+                        }}>{noticeContent}</h1>}
                 </div>
             </div>
         </>
