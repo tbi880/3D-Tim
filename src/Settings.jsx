@@ -1,7 +1,7 @@
 // settings.js
 
 // Define the stage of the environment : dev, prod
-const stageOfENV = "prod";
+const stageOfENV = "dev";
 
 // Set the URL based on the environment stage
 const url = stageOfENV === "prod" ? "https://www.bty.co.nz" : "http://localhost:5173";
