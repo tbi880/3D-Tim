@@ -321,7 +321,7 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
                 }} />
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={25} onSequencePass={() => { toggleComponentDisplay("insideAmbientLight") }} />
-                {/* {!isPortraitPhoneScreen && showComponents.insideAmbientLight && isFirstPersonCamera && <ambientLight color={ambientColor} intensity={ambientIntensity} visible={isFirstPersonCamera} />} */}
+                {!isPortraitPhoneScreen && showComponents.insideAmbientLight && isFirstPersonCamera && <ambientLight color={ambientColor} intensity={ambientIntensity} visible={isFirstPersonCamera} />}
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={19.25} onSequencePass={() => { toggleComponentDisplay("robot") }} />
                 {showComponents.robot && <Robot title="Robot" position={[562, 32.75, 0]} rotation={[0, 1.2, 0]} sequence={scene5Sheet.sequence} onSequencePass={() => { toggleComponentDisplay("robot") }} />}
