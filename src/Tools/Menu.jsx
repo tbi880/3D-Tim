@@ -79,7 +79,7 @@ const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, r
             <button style={buttonStyle} onClick={toggleMenu} ref={refMenu}>
                 <FontAwesomeIcon icon={showMenu ? faChevronLeft : faChevronRight} size="2x" color="black" />
             </button>
-            <div style={menuStyle}>
+            <div style={menuStyle} className="menu-container">
                 <h1 style={titleStyle}>Storyline - Menu</h1>
                 <ul style={{ padding: 0, listStyleType: 'none' }}>
 

@@ -15,7 +15,6 @@ import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { bucketURL, stageOfENV } from '../Settings';
 import Loading from '../modelComponents/Loading';
 import { Environment, useGLTF } from '@react-three/drei';
-import { useFrame } from '@react-three/fiber';
 import Loader from './Loader';
 // import { canvasContext } from '../sharedContexts/CanvasProvider';
 // import { XrToolsContext } from '../sharedContexts/XrToolsProvider';
@@ -26,7 +25,7 @@ import { useAudioElement } from '../hooks/useAudioElement';
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
-import { BrightnessContrast, ChromaticAberration, DepthOfField, EffectComposer, Glitch, Vignette } from "@react-three/postprocessing";
+import { Bloom, BrightnessContrast, ChromaticAberration, DepthOfField, EffectComposer, Glitch, ToneMapping, Vignette } from "@react-three/postprocessing";
 
 
 function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequencePass, isPortraitPhoneScreen }) {
@@ -255,15 +254,19 @@ function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequ
                 />
 
                 <SingleLoadManager loadPoint={1} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('openEyes')} />
-                <EffectComposer>
+                <EffectComposer enableNormalPass>
                     {showComponents.openEyes && <>
                         <DepthOfField focusDistance={0.03} focalLength={0.1} bokehScale={5} />
                         <ChromaticAberration offset={[0.002, 0.002]} />
-                        <Vignette eskil={false} offset={0.25} darkness={1.5} /></>}
+                        <Vignette eskil={false} offset={0.25} darkness={1.5} />
+                    </>}
 
                     {(!showComponents.openEyes) && <>
                         <BrightnessContrast brightness={0.1} />
                         <Glitch isActive={true} delay={15} duration={0.5} />
+                        <Bloom intensity={0.4} luminanceThreshold={0.3} />
+                        <ToneMapping adaptive />
+                        <Vignette eskil={false} offset={0.1} darkness={0.7} />
                     </>}
 
 

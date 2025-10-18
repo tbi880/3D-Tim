@@ -33,6 +33,19 @@
     /* 灰色表示禁用状态 */
 }
 
+/* 针对 Webkit 内核浏览器（Chrome、Edge、Safari） */
+.menu-container::-webkit-scrollbar {
+    width: 0;
+    /* 隐藏滚动条 */
+    background: transparent;
+}
+
+/* 针对 Firefox */
+.menu-container {
+    scrollbar-width: none;
+    /* 隐藏滚动条 */
+}
+
 .vr-icon {
     margin-right: 8px;
     /* 设置VR图标和文字之间的间隔 */

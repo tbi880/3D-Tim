@@ -32,6 +32,8 @@ import { useCameraSwitcher } from '../hooks/useCameraSwitcher';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
+import { Bloom, BrightnessContrast, EffectComposer, ToneMapping, Vignette } from '@react-three/postprocessing';
+import * as THREE from 'three';
 
 
 function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
@@ -284,15 +286,17 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
                     files={bucketURL + 'pic/studio.hdr'}
                     resolution={4}
                     background={false}
-                    intensity={3.5}
-                    environmentIntensity={1}
+                    intensity={0}
+                    environmentIntensity={0}
+                    backgroundIntensity={0}
                 />}
                 {showComponents.chamberInside && isFirstPersonCamera && <Environment
                     files={bucketURL + 'pic/studio.hdr'}
                     resolution={4}
                     background={false}
-                    intensity={3.5}
-                    environmentIntensity={1}
+                    intensity={0}
+                    environmentIntensity={0}
+                    backgroundIntensity={0}
                 />}
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={13} onSequencePass={() => { switchCamera(false) }} />
@@ -317,7 +321,7 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
                 }} />
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={25} onSequencePass={() => { toggleComponentDisplay("insideAmbientLight") }} />
-                {!isPortraitPhoneScreen && showComponents.insideAmbientLight && isFirstPersonCamera && <ambientLight color={ambientColor} intensity={ambientIntensity} visible={isFirstPersonCamera} />}
+                {/* {!isPortraitPhoneScreen && showComponents.insideAmbientLight && isFirstPersonCamera && <ambientLight color={ambientColor} intensity={ambientIntensity} visible={isFirstPersonCamera} />} */}
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={19.25} onSequencePass={() => { toggleComponentDisplay("robot") }} />
                 {showComponents.robot && <Robot title="Robot" position={[562, 32.75, 0]} rotation={[0, 1.2, 0]} sequence={scene5Sheet.sequence} onSequencePass={() => { toggleComponentDisplay("robot") }} />}
@@ -533,7 +537,14 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
 
                 </>}
 
-
+                <EffectComposer enableNormalPass>
+                    <>
+                        <BrightnessContrast brightness={-0.05} contrast={0.05} />
+                        <Bloom intensity={0.4} luminanceThreshold={0.3} />
+                        <ToneMapping toneMapping={THREE.CineonToneMapping} exposure={0.8} />
+                        <Vignette eskil={false} offset={0.1} darkness={0.3} />
+                    </>
+                </EffectComposer>
 
             </Suspense>
         </>
