@@ -41,7 +41,6 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
     const [ambientIntensity, setAmbientIntensity] = useState(0);
     const [warningFrequency, setWarningFrequency] = useState(10000);
     const [outAmbientIntensity, setOutAmbientIntensity] = useState(0);
-    const [ambientColor, setAmbientColor] = useState("white");
     const [backgroundColor, setBackgroundColor] = useState("black");
     const [isWarped, setIsWarped] = useState(false);
     const unloadPointsMemo = useMemo(() => [unloadPoint], [unloadPoint]);
@@ -134,8 +133,8 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
 
     const timeoutRef = useRef(null);
 
-    const changeColor = useCallback(() => {
-        setAmbientColor("#ff0000");
+    const alarmLight = useCallback(() => {
+        toggleComponentDisplay("insideAmbientLight");
         // Clear previous timeout to ensure no leftover timeouts
         if (timeoutRef.current) {
             clearTimeout(timeoutRef.current);
@@ -167,10 +166,9 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
                 updateIntensity(0, maxIntensity, 1000, () => {
 
                     updateIntensity(maxIntensity, 0, 1000, () => {
-                        setAmbientColor("white");
-
+                        toggleComponentDisplay("insideAmbientLight");
                         timeoutRef.current = setTimeout(() => {
-                            changeColor();
+                            alarmLight();
                         }, warningFrequency);
                     });
                 });
@@ -179,16 +177,13 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
     }, [warningFrequency]);
 
     useEffect(() => {
-        if (!isPortraitPhoneScreen) {
-            changeColor(); // Initial call
-        }
         return () => {
             // Clear timeout on component unmount to prevent memory leaks
             if (timeoutRef.current) {
                 clearTimeout(timeoutRef.current);
             }
         };
-    }, [changeColor, isPortraitPhoneScreen]);
+    }, [isPortraitPhoneScreen]);
 
     useEffect(() => {
         // Initialize values
@@ -320,8 +315,8 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
                     );
                 }} />
 
-                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={25} onSequencePass={() => { toggleComponentDisplay("insideAmbientLight") }} />
-                {!isPortraitPhoneScreen && showComponents.insideAmbientLight && isFirstPersonCamera && <ambientLight color={ambientColor} intensity={ambientIntensity} visible={isFirstPersonCamera} />}
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={25} onSequencePass={() => { alarmLight(); }} />
+                {!isPortraitPhoneScreen && showComponents.insideAmbientLight && isFirstPersonCamera && <ambientLight color={"#ff0000"} intensity={ambientIntensity} visible={isFirstPersonCamera} />}
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={19.25} onSequencePass={() => { toggleComponentDisplay("robot") }} />
                 {showComponents.robot && <Robot title="Robot" position={[562, 32.75, 0]} rotation={[0, 1.2, 0]} sequence={scene5Sheet.sequence} onSequencePass={() => { toggleComponentDisplay("robot") }} />}
