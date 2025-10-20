@@ -1,9 +1,9 @@
 
-import Status, { getNextSceneStartPoint } from './Status';
+import Status, { getNextSceneStartPoint } from '../pages/Status';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
 import { SheetProvider } from '@theatre/r3f';
-import SceneTwo from './SceneTwo';
+import SceneTwo from '../pages/SceneTwo';
 import scene2State from '../scene2.json';
 import { useContext, useEffect, useRef, useState } from 'react';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';

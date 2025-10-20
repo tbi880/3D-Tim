@@ -46,6 +46,40 @@
     /* 隐藏滚动条 */
 }
 
+.menu-viewport {
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.menu-track {
+    will-change: transform;
+}
+
+/* dots */
+.menu-dots .dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    outline: none;
+}
+
+/* active: filled */
+.menu-dots .dot.active {
+    background: #fff;
+    border-color: #fff;
+}
+
+/* small accessibility focus */
+.menu-dots .dot:focus {
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.12);
+}
+
 .vr-icon {
     margin-right: 8px;
     /* 设置VR图标和文字之间的间隔 */

@@ -5,14 +5,13 @@ import TextTitle from '../modelComponents/TextTitle';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { bucketURL, webGLPreserveDrawingBuffer } from '../Settings';
 import { SheetProvider } from '@theatre/r3f';
-import { Canvas } from '@react-three/fiber';
 import { getProject, types } from '@theatre/core';
 import sceneJessieState from '../SceneJessie.json';
 import StreamMusic from '../modelComponents/StreamMusic';
 import ViewPort from '../modelComponents/ViewPort';
 import Fireworks from '../modelComponents/Fireworks';
 import TextTitle_v2 from '../modelComponents/TextTitle_v2';
-import WaitingJessie from './WaitingJessie';
+import WaitingJessie from '../pages/WaitingJessie';
 import PreloadAssets from '../modelComponents/PreloadAssets';
 import { useGLTF } from '@react-three/drei';
 import { Helmet } from 'react-helmet';

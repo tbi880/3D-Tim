@@ -1,9 +1,9 @@
-import Status, { getNextSceneStartPoint } from './Status';
+import Status, { getNextSceneStartPoint } from '../pages/Status';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
 import { SheetProvider } from '@theatre/r3f';
 import scene6State from '../scene6.json';
-import SceneSix from './SceneSix';
+import SceneSix from '../pages/SceneSix';
 import { getProject } from '@theatre/core';
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 

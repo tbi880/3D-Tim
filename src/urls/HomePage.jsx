@@ -1,11 +1,11 @@
 
 import { useState, useCallback } from 'react';
-import { getNextSceneStartPoint } from './Status';
+import { getNextSceneStartPoint } from '../pages/Status';
 import Header from '../Tools/Header';
-import Status from './Status';
+import Status from '../pages/Status';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
-import SceneOne from './SceneOne';
+import SceneOne from '../pages/SceneOne';
 import scene1State from '../scene1.json';
 import { SheetProvider } from '@theatre/r3f';
 import XrToolMiddleLayer from '../Tools/XrToolMiddleLayer';

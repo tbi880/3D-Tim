@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet";
-import Status from "./Status";
+import Status from "../pages/Status";
 import '../Tools/css/scene4.css';
-import { SceneFour } from "./SceneFour";
+import { SceneFour } from "../pages/SceneFour";
 import { bucketURL } from '../Settings';
 import { useContext, useEffect, useRef } from "react";
 import { GlobalNotificationContext } from "../sharedContexts/GlobalNotificationProvider";

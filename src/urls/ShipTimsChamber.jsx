@@ -1,5 +1,5 @@
 
-import Status, { getNextSceneStartPoint, getTourMapFromLocalStorage, hasTourGuided } from './Status';
+import Status, { getNextSceneStartPoint, getTourMapFromLocalStorage, hasTourGuided } from '../pages/Status';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
 // import { Controllers, Hands, VRButton, XR } from '@react-three/xr';
@@ -19,7 +19,7 @@ import SearchForEmergencyPlans from '../Tools/SearchForEmergencyPlans';
 import Header from '../Tools/Header';
 import { headerSubTitleContext } from '../sharedContexts/HeaderSubTitleProvider';
 import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider';
-import SceneFive from './SceneFive';
+import SceneFive from '../pages/SceneFive';
 import TourGuide from '../Tools/TourGuide';
 import { useLocation } from 'wouter';
 import DoublePlayTimeSpeedButton from '../Tools/DoublePlayTimeSpeedButton';

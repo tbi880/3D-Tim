@@ -1,10 +1,10 @@
 
-import Status, { getNextSceneStartPoint } from './Status';
+import Status, { getNextSceneStartPoint } from '../pages/Status';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
 import { SheetProvider } from '@theatre/r3f';
 import scene3State from '../scene3.json';
-import SceneThree from './SceneThree';
+import SceneThree from '../pages/SceneThree';
 import { useContext, useEffect, useRef } from 'react';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';

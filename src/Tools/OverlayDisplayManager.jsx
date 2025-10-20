@@ -12,6 +12,7 @@ import { getTourMapFromLocalStorage, hasTourGuided } from "../pages/Status";
 export function OverlayDisplayManager({ isPortraitPhoneScreen }) {
     const tourStartSceneURI = "/bridge";
     const [location, setLocation] = useLocation();
+    const [shouldDisplayTaskBoard, setShouldDisplayTaskBoard] = useState(false);
     const [displayOverlay, setDisplayOverlay] = useState("none");
     const setDisplayOverlayCallback = (overlay) => {
         setDisplayOverlay(overlay);
@@ -81,12 +82,27 @@ export function OverlayDisplayManager({ isPortraitPhoneScreen }) {
         hasTourGuided(location);
     }, [location]);
 
+    useEffect(() => {
+        if (location === "/bridge") {
+            setShouldDisplayTaskBoard(true);
+        } else if (location === "/ship_hanger") {
+            setShouldDisplayTaskBoard(true);
+        } else if (location === "/ship_engineering") {
+            setShouldDisplayTaskBoard(true);
+        } else if (location === "/ship_captains_chamber") {
+            setShouldDisplayTaskBoard(true);
+        } else if (location === "/project_dawn") {
+            setShouldDisplayTaskBoard(true);
+        } else {
+            setShouldDisplayTaskBoard(false);
+        }
+    }, [location]);
 
     return (
         <>
             {(displayOverlay === "none" || displayOverlay === "menu") && <Menu ref={refMenu} isPortraitPhoneScreen={isPortraitPhoneScreen} setDisplayOverlayCallback={setDisplayOverlayCallback} />}
             {(displayOverlay === "none" || displayOverlay === "setting") && <GraphicSetting ref={refGraphicSetting} isPortraitPhoneScreen={isPortraitPhoneScreen} setDisplayOverlayCallback={setDisplayOverlayCallback} />}
-            {(location != "/") && (displayOverlay === "none" || displayOverlay === "taskBoard") && <TaskBoard ref={refTaskBoard} isPortraitPhoneScreen={isPortraitPhoneScreen} setDisplayOverlayCallback={setDisplayOverlayCallback} currentUri={location} />}
+            {shouldDisplayTaskBoard && (displayOverlay === "none" || displayOverlay === "taskBoard") && <TaskBoard ref={refTaskBoard} isPortraitPhoneScreen={isPortraitPhoneScreen} setDisplayOverlayCallback={setDisplayOverlayCallback} currentUri={location} />}
             <div ref={refSpeedControl} className={"double-speed-button"} style={{ zIndex: -99999, height: "85px", width: "60px" }} />
             <TourGuide stepsConfig={stepsConfig} open={open} onClose={() => setOpen(false)} />
 

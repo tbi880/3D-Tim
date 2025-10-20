@@ -237,6 +237,9 @@ function AnyModel(props) {
 
                     action.time = props.animationStartPoint;
                 }
+                if (props.animationSpeeds) {
+                    action.timeScale = props.animationSpeeds;
+                }
                 action.play();
                 setIsPlaying(true);
             }

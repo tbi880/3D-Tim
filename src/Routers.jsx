@@ -5,14 +5,17 @@ import GlobalProviders from './sharedContexts/GlobalProviders';
 import { OverlayDisplayManager } from './Tools/OverlayDisplayManager';
 
 // 使用 React.lazy 动态加载页面组件
-const HomePage = lazy(() => import('./pages/HomePage'));
-const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
-const SceneJessie = lazy(() => import('./pages/SceneJessie'));
-const Bridge = lazy(() => import('./pages/Bridge'));
-const ShipHanger = lazy(() => import('./pages/ShipHanger'));
-const ShipEngineering = lazy(() => import('./pages/ShipEngineering'));
-const ShipTimsChamber = lazy(() => import('./pages/ShipTimsChamber'));
-const ProjectDawn = lazy(() => import('./pages/ProjectDawn'));
+const HomePage = lazy(() => import('./urls/HomePage'));
+const NotFoundPage = lazy(() => import('./urls/NotFoundPage'));
+const SceneJessie = lazy(() => import('./urls/SceneJessie'));
+const Bridge = lazy(() => import('./urls/Bridge'));
+const ShipHanger = lazy(() => import('./urls/ShipHanger'));
+const ShipEngineering = lazy(() => import('./urls/ShipEngineering'));
+const ShipTimsChamber = lazy(() => import('./urls/ShipTimsChamber'));
+const ProjectDawn = lazy(() => import('./urls/ProjectDawn'));
+
+const ShipCasino = lazy(() => import('./urls/ShipCasino'));
+const ShipQuarter = lazy(() => import('./urls/ShipQuarter'));
 
 function Routers() {
     const [isWeChatBrowser, setIsWeChatBrowser] = useState(false);
@@ -93,6 +96,8 @@ function Routers() {
                         <Route path="/ship_engineering" element={<ShipEngineering isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
                         <Route path="/ship_captains_chamber" element={<ShipTimsChamber isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
                         <Route path="/project_dawn" element={<ProjectDawn isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
+                        <Route path="/ship_casino" element={<ShipCasino isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
+                        <Route path="/ship_quarter" element={<ShipQuarter isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
                         <Route path="/jessie" element={<SceneJessie startPoint={0} />} />
                         <Route path="*" element={<NotFoundPage />} />
                     </Routes>
