@@ -43,7 +43,8 @@
     "typed.js": "^2.1.0",
     "typeit": "^8.8.7",
     "uuid-by-string": "4.0.0",
-    "wouter": "3.3.5"
+    "wouter": "3.3.5",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",

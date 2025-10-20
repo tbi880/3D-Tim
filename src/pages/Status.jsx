@@ -101,12 +101,6 @@ export function checkStauts() {
     }
 }
 
-// //废弃
-// export function jumpToTheNextScene(nextScene) {
-//     // 重新加载当前页面到映射到下一个场景的新 URI
-//     window.location.href = scene_uri_map[nextScene];
-// }
-
 export function getNextSceneURI(nextScene) {
     return scene_uri_map[nextScene];
 }

@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { stageOfENV } from './Settings';
 import GlobalProviders from './sharedContexts/GlobalProviders';
 import { OverlayDisplayManager } from './Tools/OverlayDisplayManager';
+import ProtectedRoute from './utils/ProtectedRoute';
 
 // 使用 React.lazy 动态加载页面组件
 const HomePage = lazy(() => import('./urls/HomePage'));
@@ -96,7 +97,7 @@ function Routers() {
                         <Route path="/ship_engineering" element={<ShipEngineering isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
                         <Route path="/ship_captains_chamber" element={<ShipTimsChamber isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
                         <Route path="/project_dawn" element={<ProjectDawn isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
-                        <Route path="/ship_casino" element={<ShipCasino isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
+                        <Route path="/ship_casino" element={<ProtectedRoute><ShipCasino isPortraitPhoneScreen={isPortraitPhoneScreen} /></ProtectedRoute>} />
                         <Route path="/ship_quarter" element={<ShipQuarter isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
                         <Route path="/jessie" element={<SceneJessie startPoint={0} />} />
                         <Route path="*" element={<NotFoundPage />} />
