@@ -1,27 +1,24 @@
 
-import Status, { getNextSceneStartPoint, getTourMapFromLocalStorage, hasTourGuided } from '../pages/Status';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
 // import { Controllers, Hands, VRButton, XR } from '@react-three/xr';
 import { SheetProvider } from '@theatre/r3f';
 import { useContext, useEffect, useRef, useState } from 'react';
 import { headerSubTitleContext } from '../sharedContexts/HeaderSubTitleProvider';
-import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider';
-import SceneFive from '../pages/SceneFive';
-import TourGuide from '../Tools/TourGuide';
-import DoublePlayTimeSpeedButton from '../Tools/DoublePlayTimeSpeedButton';
 import { getProject } from '@theatre/core';
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';
-import { useJumpToNextScene } from '../hooks/useJumpToNextScene';
 import Header from '../Tools/Header';
-
+import Casino from '../pages/Casino';
+import casinoState from '../Casino.json';
+import { casinoFormContext } from '../sharedContexts/CasinoFormProvider';
+import CasinoRoomForm from '../Tools/CasinoRoomForm';
 
 
 function ShipCasino({ isPortraitPhoneScreen }) {
-    // const scene5Project = getProject('Scene5', { state: scene5State });
-    // const scene5Sheet = scene5Project.sheet('Scene5');
+    const casinoProject = getProject('Casino', { state: casinoState });
+    const casinoSheet = casinoProject.sheet('Casino');
     const { showHeaderSubTitle, setShowHeaderSubTitle } = useContext(headerSubTitleContext);
-    const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
+    const { showCasinoForm, setShowCasinoForm } = useContext(casinoFormContext);
 
     return (
         <>
@@ -41,18 +38,17 @@ function ShipCasino({ isPortraitPhoneScreen }) {
             </Helmet>
 
             {showHeaderSubTitle && <Header onAnimationEnd={() => { setShowHeaderSubTitle(false) }} defaultBaseDuration={7} defaultNotice={{ noticeContent: "Welcome to Tim's casino, No real money involved! You can enjoy the games without any risk. However you can make custom agreement with your real life friends using the bets and save it here, you can comeback and review them anytime.", noticeLink: null }} />}
-
+            {showCasinoForm && <CasinoRoomForm />}
             <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
                 <CanvasProvider>
-                    <SheetProvider>
-
+                    <SheetProvider sheet={casinoSheet}>
+                        <Casino casinoSheet={casinoSheet} casinoProject={casinoProject} isPortraitPhoneScreen={isPortraitPhoneScreen} />
                     </SheetProvider>
-
                 </CanvasProvider>
+
             </div>
 
 
-            <Status />
         </>
     )
 

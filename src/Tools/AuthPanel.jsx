@@ -1,6 +1,6 @@
 import { useState, forwardRef, useContext, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUserCircle, faChevronUp, faEye, faEyeSlash, faIdBadge, faUser, faEnvelope, faDollarSign, faDice, faUserShield, } from '@fortawesome/free-solid-svg-icons';
+import { faUserCircle, faChevronUp, faEye, faEyeSlash, faIdBadge, faUser, faEnvelope, faDice, faUserShield, faMoneyCheckDollar, } from '@fortawesome/free-solid-svg-icons';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import { useAuthStore } from '../hooks/useAuthStore';
 import "./css/general.css";
@@ -17,6 +17,8 @@ const AuthPanel = forwardRef(({
     const [name, setName] = useState('');
     const [repeatPassword, setRepeatPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
 
     const { messageApi } = useContext(GlobalNotificationContext);
 
@@ -58,31 +60,45 @@ const AuthPanel = forwardRef(({
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        // basic client validation
-        if (!email || !password) {
-            messageApi('warning', 'Please supply email and password', 2);
-            return;
-        }
-        if (isRegisterMode) {
-            if (!name) {
-                messageApi('warning', 'Please enter your name', 2);
+
+        if (isSubmitting) return;
+        setIsSubmitting(true);
+        try {
+
+            // basic client validation
+            if (!email || !password) {
+                messageApi('warning', 'Please supply email and password', 1);
+                setIsSubmitting(false);
+
                 return;
             }
-            if (password !== repeatPassword) {
-                messageApi('warning', 'Passwords do not match', 2);
-                return;
+            if (isRegisterMode) {
+                if (!name) {
+                    messageApi('warning', 'Please enter your name', 1);
+                    setIsSubmitting(false);
+
+                    return;
+                }
+                if (password !== repeatPassword) {
+                    messageApi('warning', 'Passwords do not match', 1);
+                    setIsSubmitting(false);
+
+                    return;
+                }
+                // call register in store (inject messageApi)
+                const res = await registerAction(name, email, password, messageApi);
+                if (res && res.success) {
+                    // registerAction already auto-logged in; close panel
+                    setDisplayOverlayCallback("none");
+                }
+            } else {
+                const res = await loginAction(email, password, messageApi);
+                if (res && res.success) {
+                    setDisplayOverlayCallback("none");
+                }
             }
-            // call register in store (inject messageApi)
-            const res = await registerAction(name, email, password, messageApi);
-            if (res && res.success) {
-                // registerAction already auto-logged in; close panel
-                setDisplayOverlayCallback("none");
-            }
-        } else {
-            const res = await loginAction(email, password, messageApi);
-            if (res && res.success) {
-                setDisplayOverlayCallback("none");
-            }
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -159,7 +175,7 @@ const AuthPanel = forwardRef(({
                                 <span>Email: {profile.email}</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <FontAwesomeIcon icon={faDollarSign} />
+                                <FontAwesomeIcon icon={faMoneyCheckDollar} />
                                 <span>Money: {profile.money.toLocaleString()}</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -241,7 +257,7 @@ const AuthPanel = forwardRef(({
                             <div style={{ paddingTop: "18px" }}></div>
 
                             <div style={{ display: 'flex', gap: 8 }}>
-                                <button type="submit" className="button submit-button" style={{ flex: 1 }}>{isRegisterMode ? 'Register' : 'Login'}</button>
+                                <button type="submit" className={`button submit-button ${isSubmitting ? 'submit-button-submitting' : ''}`} style={{ flex: 1 }} disabled={isSubmitting}>{isSubmitting ? 'Connecting...' : (isRegisterMode ? 'Register' : 'Login')}</button>
                                 <button type="button" className="button close-button" onClick={() => { setShowLogin(false); setDisplayOverlayCallback("none"); }} style={{ flex: 1 }}>Close</button>
                             </div>
 

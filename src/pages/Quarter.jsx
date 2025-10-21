@@ -1,5 +1,4 @@
 import Galaxy from '../modelComponents/Galaxy';
-import StreamMusic from '../modelComponents/StreamMusic';
 import { Suspense, useCallback, useEffect, useRef, useContext } from 'react';
 import PreloadAssets from '../modelComponents/PreloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
@@ -11,17 +10,14 @@ import { headerSubTitleContext } from '../sharedContexts/HeaderSubTitleProvider'
 import Loader from './Loader';
 import { Perf } from 'r3f-perf';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
-import { useAudioElement } from '../hooks/useAudioElement';
 import { Bloom, BrightnessContrast, EffectComposer, ToneMapping, Vignette } from '@react-three/postprocessing';
 
 
 function Quarter({ quarterSheet, quarterProject, onSequencePass, isPortraitPhoneScreen }) {
-    const musicUrl = bucketURL + 'music/bgm5.mp3';
     const planetNumberRef = useRef(6);
 
     const { showHeaderSubTitle, setShowHeaderSubTitle } = useContext(headerSubTitleContext);
     const { messageApi } = useContext(GlobalNotificationContext);
-    const audioElement = useAudioElement(musicUrl);
     const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
         loadingComponents: {
             preloadAssets: true,
@@ -64,7 +60,6 @@ function Quarter({ quarterSheet, quarterProject, onSequencePass, isPortraitPhone
             <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["Alarm rings~", "Time to wake up", "You are about to back in your quarter"]} onFinished={() => { finishLoading() }} />}>
                 {stageOfENV != "prod" && !isPortraitPhoneScreen && <Perf position={"bottom-right"} openByDefault showGraph />}
                 {showComponents.preloadAssets && <PreloadAssets />}
-                {audioElement && <StreamMusic audioElement={audioElement} sequence={quarterSheet.sequence} startPoint={0} maxVolume={1} />}
                 <Galaxy />
 
                 <ambientLight color={"#FFFFFF"} intensity={1} />

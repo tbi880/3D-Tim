@@ -4,6 +4,7 @@ import { stageOfENV } from './Settings';
 import GlobalProviders from './sharedContexts/GlobalProviders';
 import { OverlayDisplayManager } from './Tools/OverlayDisplayManager';
 import ProtectedRoute from './utils/ProtectedRoute';
+import { useAuthStore } from './hooks/useAuthStore';
 
 // 使用 React.lazy 动态加载页面组件
 const HomePage = lazy(() => import('./urls/HomePage'));
@@ -22,6 +23,12 @@ function Routers() {
     const [isWeChatBrowser, setIsWeChatBrowser] = useState(false);
     // 检测屏幕是否为手机竖屏模式，即高度大于宽度
     const [isPortraitPhoneScreen, setIsPortraitPhoneScreen] = useState(false);
+
+    const initFromStorage = useAuthStore(state => state.initFromStorage);
+
+    useEffect(() => {
+        initFromStorage();
+    }, [initFromStorage]);
 
 
     useEffect(() => {

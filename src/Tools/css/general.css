@@ -70,11 +70,6 @@
     color: #fff;
 }
 
-.submit-button-submitting {
-    background-color: #888;
-    pointer-events: none;
-}
-
 .checkbox {
     margin-right: 10px;
 }
@@ -124,10 +119,6 @@
     color: #fff;
 }
 
-.close-button {
-    background-color: #555;
-    color: #fff;
-}
 
 @media (max-width: 520px) {
     .form {
@@ -140,4 +131,144 @@
         padding: 10px;
         font-size: 13px;
     }
+
+    .rb-card {
+        padding: 12px;
+    }
+
+    .title {
+        font-size: 22px;
+    }
+
+    .button-container {
+        flex-direction: column;
+    }
+}
+
+.rb-card {
+    background: rgba(255, 255, 255, 0.04);
+    padding: 18px;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    box-sizing: border-box;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+
+.rb-toggle {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.rb-toggle-btn {
+    padding: 8px 14px;
+    border-radius: 8px;
+    background: transparent;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    font-size: 15px;
+}
+
+.rb-toggle-btn.active {
+    background: linear-gradient(90deg, rgba(16, 142, 233, 1) 0%, rgba(10, 120, 210, 1) 100%);
+    color: #fff;
+    border: none;
+    box-shadow: 0 4px 12px rgba(16, 142, 233, 0.15);
+}
+
+select.input {
+    appearance: none;
+}
+
+.submit-button-submitting {
+    background-color: #888;
+    cursor: not-allowed;
+    opacity: 0.9;
+    pointer-events: none;
+}
+
+.casino-room-container {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.75);
+    z-index: 880;
+    overflow-y: auto;
+    box-sizing: border-box;
+    padding: 3%;
+}
+
+/* portrait 模式（手机或窄屏）——靠顶显示，防止被 header 遮挡 */
+.casino-room-container.portrait {
+    align-items: flex-start;
+    padding-top: 4%;
+    background-color: black;
+}
+
+.casino-card {
+    width: 100%;
+    max-width: 880px;
+    margin: 0 auto;
+    box-sizing: border-box;
+    font-family: 'Orbitron', sans-serif;
+    color: #fff;
+}
+
+.casino-card .form {
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+
+.casino-card .title {
+    text-align: center;
+    font-family: 'Orbitron', sans-serif !important;
+    margin-top: 6px;
+    margin-bottom: 12px;
+}
+
+@media (max-width: 520px) {
+    .casino-card .form>div[style] {
+        flex-direction: column !important;
+    }
+
+    .casino-card .title {
+        font-size: 22px;
+    }
+}
+
+.casino-card .rb-toggle {
+    justify-content: center;
+}
+
+.casino-card .input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+    background-color: #fff;
+    /* 白色输入框背景 */
+    color: #000;
+    /* 输入文字为黑色 */
+}
+
+.level-display {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 15px;
+    color: #fff;
+    /* 白色字体，与黑底协调 */
+    min-width: 120px;
+    text-align: center;
 }

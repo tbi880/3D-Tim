@@ -12,7 +12,9 @@ const backendURL = stageOfENV === "prod" ? "https://api.bty.co.nz/" : "http://lo
 
 const authURL = stageOfENV === "prod" ? "https://api.bty.co.nz/auth/" : "http://localhost:5130/auth/";
 
+const roomURL = stageOfENV === "prod" ? "https://api.bty.co.nz/room/" : "http://localhost:5130/room/";
+
 const webGLPreserveDrawingBuffer = stageOfENV === "prod" ? false : true;
 
 // Export the settings
-export { stageOfENV, url, bucketURL, backendURL, authURL, webGLPreserveDrawingBuffer };
+export { stageOfENV, url, bucketURL, backendURL, authURL, roomURL, webGLPreserveDrawingBuffer };

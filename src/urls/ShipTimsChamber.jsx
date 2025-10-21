@@ -18,7 +18,6 @@ import { searchForEmergencyPlansContext } from '../sharedContexts/SearchForEmerg
 import SearchForEmergencyPlans from '../Tools/SearchForEmergencyPlans';
 import Header from '../Tools/Header';
 import { headerSubTitleContext } from '../sharedContexts/HeaderSubTitleProvider';
-import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider';
 import SceneFive from '../pages/SceneFive';
 import TourGuide from '../Tools/TourGuide';
 import { useLocation } from 'wouter';
@@ -41,7 +40,6 @@ function ShipTimsChamber({ isPortraitPhoneScreen }) {
     const { showAuthorizationCheckForm, setShowAuthorizationCheckForm } = useContext(authorizationCheckContext);
     const { showSearchForEmergencyPlansLayer, setShowSearchForEmergencyPlansLayer } = useContext(searchForEmergencyPlansContext);
     const { showHeaderSubTitle, setShowHeaderSubTitle } = useContext(headerSubTitleContext);
-    const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
 
     const stepsConfig = useMemo(() => ([
         {

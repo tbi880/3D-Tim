@@ -1,11 +1,8 @@
-
-import Status, { getNextSceneStartPoint, getTourMapFromLocalStorage, hasTourGuided } from '../pages/Status';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
 import { SheetProvider } from '@theatre/r3f';
 import { useContext, useEffect, useRef, useState } from 'react';
 import { headerSubTitleContext } from '../sharedContexts/HeaderSubTitleProvider';
-import { graphicSettingContext } from '../sharedContexts/GraphicSettingProvider';
 import { getProject } from '@theatre/core';
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 import Header from '../Tools/Header';
@@ -18,7 +15,6 @@ function ShipQuarter({ isPortraitPhoneScreen }) {
     const quarterProject = getProject('Quarter', { state: quarterState });
     const quarterSheet = quarterProject.sheet('Quarter');
     const { showHeaderSubTitle, setShowHeaderSubTitle } = useContext(headerSubTitleContext);
-    const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
 
     return (
         <>
@@ -49,7 +45,6 @@ function ShipQuarter({ isPortraitPhoneScreen }) {
             </div>
 
 
-            <Status />
         </>
     )
 
