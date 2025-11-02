@@ -7,11 +7,14 @@ import '../Tools/css/general.css';
 import { backendURL } from '../Settings';
 import axios from 'axios';
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
+import { useTurnstile } from '../hooks/useTurnstile';
 
 function AuthorizationCheckForm({ scene5Sheet, isPortraitPhoneScreen }) {
     const [verificationCode, setVerificationCode] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { showAuthorizationCheckForm, setShowAuthorizationCheckForm } = useContext(authorizationCheckContext);
+    const { token: turnstileToken, containerRef: captchaRef } = useTurnstile();
+
     const { messageApi } = useContext(GlobalNotificationContext);
     const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
 
@@ -24,6 +27,13 @@ function AuthorizationCheckForm({ scene5Sheet, isPortraitPhoneScreen }) {
 
 
     const handleSubmit = async () => {
+        if (!turnstileToken) {
+            messageApi(
+                'error',
+                'Please complete the CAPTCHA verification.'
+            );
+            return;
+        }
         if (!verificationCode) {
             messageApi(
                 'error',
@@ -39,7 +49,8 @@ function AuthorizationCheckForm({ scene5Sheet, isPortraitPhoneScreen }) {
             const response = await axios.post(
                 backendURL + 'email_contacts/verify',
                 {
-                    verificationCode
+                    verificationCode,
+                    cf_turnstile_token: turnstileToken
                 },
                 {
                     headers: {
@@ -143,6 +154,8 @@ function AuthorizationCheckForm({ scene5Sheet, isPortraitPhoneScreen }) {
                         required
                         maxLength="10"
                     />
+                    <div className="captcha" ref={captchaRef}></div>
+
                     <div className="divider"></div>
 
 

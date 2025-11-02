@@ -7,6 +7,7 @@ import '../Tools/css/general.css';
 import { backendURL } from '../Settings';
 import axios from 'axios';
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
+import { useTurnstile } from '../hooks/useTurnstile';
 
 function DistressSignalForm({ scene5Sheet, isPortraitPhoneScreen }) {
     const [name, setName] = useState('');
@@ -15,9 +16,9 @@ function DistressSignalForm({ scene5Sheet, isPortraitPhoneScreen }) {
     const [allowSaveEmail, setAllowSaveEmail] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { showSendDistressSignalForm, setShowSendDistressSignalForm } = useContext(sendDistressSignalContext);
+    const { token: turnstileToken, containerRef: captchaRef } = useTurnstile();
     const { messageApi } = useContext(GlobalNotificationContext);
     const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
-
 
     const handleAfterPlay = () => {
         if (window.location.pathname.includes('/ship_captains_chamber')) {
@@ -32,6 +33,13 @@ function DistressSignalForm({ scene5Sheet, isPortraitPhoneScreen }) {
     };
 
     const handleSubmit = async () => {
+        if (!turnstileToken) {
+            messageApi(
+                'error',
+                'Please complete the CAPTCHA verification.'
+            );
+            return;
+        }
         if (!name || !email.includes('@')) {
             messageApi('error', 'Please fill in all required fields correctly.');
             return;
@@ -46,6 +54,7 @@ function DistressSignalForm({ scene5Sheet, isPortraitPhoneScreen }) {
                     name,
                     email,
                     message: messageContent,
+                    cf_turnstile_token: turnstileToken,
                     allowSaveEmail,
                 },
                 {
@@ -157,6 +166,8 @@ function DistressSignalForm({ scene5Sheet, isPortraitPhoneScreen }) {
 
                         <label>Allow Tim to save your email for future contact and cooperation.</label>
                     </div>
+
+                    <div className="captcha" ref={captchaRef}></div>
 
                     <div className="button-container">
                         <button className={`button submit-button ${isSubmitting ? 'submit-button-submitting' : ''}`} onClick={handleSubmit} disabled={isSubmitting}>

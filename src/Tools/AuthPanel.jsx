@@ -4,6 +4,7 @@ import { faUserCircle, faChevronUp, faEye, faEyeSlash, faIdBadge, faUser, faEnve
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import { useAuthStore } from '../hooks/useAuthStore';
 import "./css/general.css";
+import useTurnstile from '../hooks/useTurnstile';
 
 const AuthPanel = forwardRef(({
     isPortraitPhoneScreen,
@@ -17,9 +18,7 @@ const AuthPanel = forwardRef(({
     const [name, setName] = useState('');
     const [repeatPassword, setRepeatPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    const [turnstileToken, setTurnstileToken] = useState(null);
-    const widgetIdRef = useRef(null);
-    const captchaContainerRef = useRef(null);
+    const { token: turnstileToken, containerRef: captchaRef } = useTurnstile();
 
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -154,50 +153,6 @@ const AuthPanel = forwardRef(({
         boxShadow: '0px 2px 5px rgba(0,0,0,0.1)'
     };
 
-    useEffect(() => {
-        if (window.turnstile) return;
-        const s = document.createElement('script');
-        s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-        s.async = true;
-        s.defer = true;
-        document.head.appendChild(s);
-    }, []);
-
-    useEffect(() => {
-        if (!captchaContainerRef.current) return;
-        if (!window.turnstile) {
-            const t = setInterval(() => {
-                if (window.turnstile) {
-                    clearInterval(t);
-                    renderTurnstile();
-                }
-            }, 200);
-            return () => clearInterval(t);
-        }
-        renderTurnstile();
-
-        function renderTurnstile() {
-            setTurnstileToken(null);
-            if (widgetIdRef.current !== null && window.turnstile && window.turnstile.reset) {
-                try { window.turnstile.reset(widgetIdRef.current); } catch (e) { }
-            }
-            const id = window.turnstile.render(captchaContainerRef.current, {
-                sitekey: '0x4AAAAAAB-aBBE_EPA75daZ',
-                theme: 'dark',
-                callback: (token) => {
-                    setTurnstileToken(token);
-                },
-                'error-callback': () => {
-                    setTurnstileToken(null);
-                },
-                'expired-callback': () => {
-                    setTurnstileToken(null);
-                },
-            });
-            widgetIdRef.current = id;
-        }
-    }, []);
-
     if (initializing) return null;
 
     return (
@@ -316,7 +271,7 @@ const AuthPanel = forwardRef(({
 
                             <div style={{ paddingTop: "12px" }}></div>
                             <div className="captcha" aria-hidden="true">
-                                <div ref={captchaContainerRef} />
+                                <div ref={captchaRef} />
                             </div>
                             <div style={{ paddingTop: "18px" }}></div>
 
