@@ -99,16 +99,13 @@
     padding-bottom: 60px;
 }
 
-.captcha-placeholder {
+.captcha {
     width: 100%;
     max-width: 420px;
     min-height: 78px;
-    border-radius: 8px;
-    border: 1px dashed rgba(255, 255, 255, 0.15);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: rgba(255, 255, 255, 0.7);
     font-size: 14px;
     margin-top: 8px;
     padding: 8px;
@@ -125,11 +122,6 @@
         width: 100%;
         padding-left: 8%;
         padding-right: 8%;
-    }
-
-    .captcha-placeholder {
-        padding: 10px;
-        font-size: 13px;
     }
 
     .rb-card {

@@ -72,13 +72,15 @@ export const useAuthStore = create((set, get) => ({
         set({ initializing: false });
     },
 
-    register: async (name, email, password, notify) => {
+    register: async (name, email, password, notify, turnstileToken = null) => {
         try {
             const payload = { name, email, password };
+            if (turnstileToken) payload.cf_turnstile_token = turnstileToken;
+
             const resp = await axiosInstance.post('register', payload);
             if (resp.status === 204 || resp.status === 200) {
                 notify('success', 'Register success — signing you in...', 2);
-                await get().login(email, password, notify);
+                await get().login(email, password, notify, turnstileToken);
                 return { success: true };
             } else {
                 const errMsg = resp.data && resp.data.message ? resp.data.message : 'Registration failed';
@@ -97,9 +99,12 @@ export const useAuthStore = create((set, get) => ({
         }
     },
 
-    login: async (email, password, notify) => {
+    login: async (email, password, notify, turnstileToken = null) => {
         try {
-            const resp = await axiosInstance.post('login', { email, password });
+            const body = { email, password };
+            if (turnstileToken) body.cf_turnstile_token = turnstileToken;
+
+            const resp = await axiosInstance.post('login', body);
             if (resp.status === 200 && resp.data && resp.data.jwtToken) {
                 const token = resp.data.jwtToken;
                 const payload = parseJwt(token);

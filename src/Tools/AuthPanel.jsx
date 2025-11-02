@@ -1,4 +1,4 @@
-import { useState, forwardRef, useContext, useEffect } from 'react';
+import { useState, forwardRef, useContext, useEffect, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUserCircle, faChevronUp, faEye, faEyeSlash, faIdBadge, faUser, faEnvelope, faDice, faUserShield, faMoneyCheckDollar, } from '@fortawesome/free-solid-svg-icons';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
@@ -17,6 +17,10 @@ const AuthPanel = forwardRef(({
     const [name, setName] = useState('');
     const [repeatPassword, setRepeatPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [turnstileToken, setTurnstileToken] = useState(null);
+    const widgetIdRef = useRef(null);
+    const captchaContainerRef = useRef(null);
+
     const [isSubmitting, setIsSubmitting] = useState(false);
 
 
@@ -72,6 +76,12 @@ const AuthPanel = forwardRef(({
 
                 return;
             }
+
+            if (!turnstileToken) {
+                messageApi('warning', 'Please complete the captcha', 2);
+                return;
+            }
+
             if (isRegisterMode) {
                 if (!name) {
                     messageApi('warning', 'Please enter your name', 1);
@@ -86,15 +96,23 @@ const AuthPanel = forwardRef(({
                     return;
                 }
                 // call register in store (inject messageApi)
-                const res = await registerAction(name, email, password, messageApi);
+                const res = await registerAction(name, email, password, messageApi, turnstileToken);
                 if (res && res.success) {
                     // registerAction already auto-logged in; close panel
                     setDisplayOverlayCallback("none");
+                } else {
+                    if (window.turnstile && widgetIdRef.current !== null) {
+                        try { window.turnstile.reset(widgetIdRef.current); setTurnstileToken(null); } catch (e) { }
+                    }
                 }
             } else {
-                const res = await loginAction(email, password, messageApi);
+                const res = await loginAction(email, password, messageApi, turnstileToken);
                 if (res && res.success) {
                     setDisplayOverlayCallback("none");
+                } else {
+                    if (window.turnstile && widgetIdRef.current !== null) {
+                        try { window.turnstile.reset(widgetIdRef.current); setTurnstileToken(null); } catch (e) { }
+                    }
                 }
             }
         } finally {
@@ -135,6 +153,50 @@ const AuthPanel = forwardRef(({
         borderRadius: '0 0 5px 5px',
         boxShadow: '0px 2px 5px rgba(0,0,0,0.1)'
     };
+
+    useEffect(() => {
+        if (window.turnstile) return;
+        const s = document.createElement('script');
+        s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+        s.async = true;
+        s.defer = true;
+        document.head.appendChild(s);
+    }, []);
+
+    useEffect(() => {
+        if (!captchaContainerRef.current) return;
+        if (!window.turnstile) {
+            const t = setInterval(() => {
+                if (window.turnstile) {
+                    clearInterval(t);
+                    renderTurnstile();
+                }
+            }, 200);
+            return () => clearInterval(t);
+        }
+        renderTurnstile();
+
+        function renderTurnstile() {
+            setTurnstileToken(null);
+            if (widgetIdRef.current !== null && window.turnstile && window.turnstile.reset) {
+                try { window.turnstile.reset(widgetIdRef.current); } catch (e) { }
+            }
+            const id = window.turnstile.render(captchaContainerRef.current, {
+                sitekey: '0x4AAAAAAB-aBBE_EPA75daZ',
+                theme: 'dark',
+                callback: (token) => {
+                    setTurnstileToken(token);
+                },
+                'error-callback': () => {
+                    setTurnstileToken(null);
+                },
+                'expired-callback': () => {
+                    setTurnstileToken(null);
+                },
+            });
+            widgetIdRef.current = id;
+        }
+    }, []);
 
     if (initializing) return null;
 
@@ -253,7 +315,9 @@ const AuthPanel = forwardRef(({
                             )}
 
                             <div style={{ paddingTop: "12px" }}></div>
-                            <div className="captcha-placeholder" aria-hidden="true">Cloudflare Turnstile (captcha) placeholder</div>
+                            <div className="captcha" aria-hidden="true">
+                                <div ref={captchaContainerRef} />
+                            </div>
                             <div style={{ paddingTop: "18px" }}></div>
 
                             <div style={{ display: 'flex', gap: 8 }}>
@@ -279,7 +343,7 @@ const AuthPanel = forwardRef(({
                     </>
                 )}
             </div>
-        </div>
+        </div >
     );
 });
 
