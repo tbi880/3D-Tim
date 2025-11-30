@@ -16,7 +16,7 @@ function DistressSignalForm({ scene5Sheet, isPortraitPhoneScreen }) {
     const [allowSaveEmail, setAllowSaveEmail] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { showSendDistressSignalForm, setShowSendDistressSignalForm } = useContext(sendDistressSignalContext);
-    const { token: turnstileToken, containerRef: captchaRef } = useTurnstile();
+    const { token: turnstileToken, containerRef: captchaRef, refreshTurnstile } = useTurnstile();
     const { messageApi } = useContext(GlobalNotificationContext);
     const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
 
@@ -83,6 +83,7 @@ function DistressSignalForm({ scene5Sheet, isPortraitPhoneScreen }) {
             }
         } catch (error) {
             if (error.response) {
+                refreshTurnstile();
                 // 服务器返回错误信息
                 const errorData = error.response.data;
                 messageApi('error', errorData.message || 'An error occurred while sending your message.');

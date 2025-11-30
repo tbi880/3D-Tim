@@ -157,4 +157,36 @@ export const useAuthStore = create((set, get) => ({
         localStorage.removeItem(LS_PROFILE_KEY);
     },
 
+    adminSetMoney: async (userId, money, notify) => {
+        const token = get().token;
+
+        if (!token) {
+            notify('warning', 'Not authenticated', 1);
+            return { success: false };
+        }
+
+        try {
+            const res = await axiosInstance.put(
+                'profile/admin-set-money',
+                { userId, money },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                }
+            );
+
+            if (res.status === 200) {
+                notify('success', 'Money updated successfully', 1);
+                return { success: true };
+            } else {
+                notify('error', res.data.message || 'Failed to update money', 1);
+                return { success: false, message: res.data.message };
+            }
+        } catch (err) {
+            notify('error', 'Server error while updating money', 1);
+            return { success: false, message: err?.message };
+        }
+    },
+
 }));

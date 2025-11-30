@@ -7,7 +7,6 @@ import * as THREE from 'three';
 import { bucketURL } from '../Settings';
 import { useFrame } from '@react-three/fiber';
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
-import { MeshBVH } from 'three-mesh-bvh';
 
 
 function AnyModel(props) {
@@ -33,7 +32,12 @@ function AnyModel(props) {
     animationStartPoint: 动画的开始点
     animationOnClick: 是否点击模型触发动画播放
     isMultiple: 是否是多个相同的模型
+    modelNodeLoadMap: 模型节点的是否load的map对象 类似{obj_name1:true,obj_name2:false,...}
     modelNodeVisibility: 模型节点的可见性,传入一个usememo的map对象 类似{obj_name1:[unloadOrLoadTime1,unloadOrLoadTime2,unloadOrLoadTime3...]}
+    interactablePoints: 数组，包含多个点击触发动画的时间点
+    onClickPass: 函数，点击时传递当前时间点给父组件
+    onHoldPass: 函数，长按时传递当前时间点给父组件
+    holdDuration: 数字，长按的持续时间（毫秒）
     ...
     */
     const anyModel = useGLTF(bucketURL + props.modelURL, true, true);
@@ -42,11 +46,50 @@ function AnyModel(props) {
     const { actions } = useAnimations(animations, scene);
     const theatreKey = ("[ANY] " + props.theatreKey).trim();
     const [animationIsClicked, setAnimationIsClicked] = useState(props.animationOnClick ? false : true);
-    const clone = useMemo(() => anyModel.scene.clone(), [anyModel]);
     const [isPlaying, setIsPlaying] = useState(false);
     const timeBasedMapForModelNodeVisibilityRef = useRef({});
     const nodesInTransition = useRef(new Map());
     const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
+    const holdTimerRef = useRef(null);
+    const isHoldingRef = useRef(false);
+    const pointerDownTimeRef = useRef(0);
+
+    const clone = useMemo(() => {
+        if (!anyModel || !anyModel.scene) return null;
+        if (!props.isMultiple) return null;
+        const c = anyModel.scene.clone(true);
+
+        c.traverse((child) => {
+            if (child.isMesh) {
+                if (Array.isArray(child.material)) {
+                    child.material = child.material.map((m) => m.clone());
+                } else if (child.material) {
+                    child.material = child.material.clone();
+                }
+            }
+        });
+
+        if (!props.modelNodeLoadMap) return c;
+
+        Object.entries(props.modelNodeLoadMap).forEach(([nodeName, shouldShow]) => {
+            if (!shouldShow) {
+                const node = c.getObjectByName(nodeName);
+                if (node) {
+                    node.parent?.remove(node);
+                    node.geometry?.dispose();
+                    if (Array.isArray(node.material)) {
+                        node.material.forEach((material) => material.dispose());
+                    } else if (node.material) {
+                        node.material.dispose();
+                    }
+                }
+            }
+        });
+
+        return c;
+    }, [anyModel, props.isMultiple, props.modelNodeLoadMap]);
+
+    const targetRoot = props.isMultiple ? clone : anyModel.scene;
 
 
     function setNodeOpacity(node, opacity) {
@@ -124,7 +167,7 @@ function AnyModel(props) {
             if (timeBasedMap[currentTimePosition]) {
                 const nodesToToggle = [...timeBasedMap[currentTimePosition]];
                 nodesToToggle.forEach((objName) => {
-                    const node = scene.getObjectByName(objName);
+                    const node = targetRoot.getObjectByName(objName);
                     if (node) {
                         toggleNodeVisibilityWithTransition(node);
                     }
@@ -151,7 +194,8 @@ function AnyModel(props) {
     });
 
     useEffect(() => {
-        anyModel.scene.traverse((child) => {
+        if (!targetRoot) return;
+        targetRoot.traverse((child) => {
             if (child.isMesh) {
                 if (Array.isArray(child.material)) {
                     child.material.forEach((material) => {
@@ -164,13 +208,14 @@ function AnyModel(props) {
                 }
             }
         });
-    }, [anyModel.scene, opacity]);
+    }, [targetRoot, opacity]);
 
 
     // given the model is loaded, compute the bounds tree for each mesh
     useEffect(() => {
         if (!anyModel || !anyModel.scene) return;
-        anyModel.scene.traverse((child) => {
+        if (!targetRoot) return;
+        targetRoot.traverse((child) => {
             if (child.isMesh) {
                 const geometry = child.geometry;
                 if (!geometry.boundsTree) {
@@ -182,7 +227,7 @@ function AnyModel(props) {
                 child.frustumCulled = props.frustumCulled;
             }
         });
-    }, [anyModel.scene, props.castShadow, props.receiveShadow, props.frustumCulled]);
+    }, [targetRoot, anyModel, props.castShadow, props.receiveShadow, props.frustumCulled]);
 
     const play = useCallback(() => {
         let currentTimePosition = props.sequence.position;
@@ -197,27 +242,77 @@ function AnyModel(props) {
         }
     }, [props.sequence, props.stopPoints, props.clickablePoint]);
 
-    const eventHandlers = props.clickablePoint ? {
-        onClick: play,
-        onPointerOver: (e) => (e.stopPropagation(), hover(true)),
-        onPointerOut: () => hover(false),
-    } : {};
-
-
-
     const [hovered, hover] = useState(false);
-    useCursor(hovered);
 
+    const isClickable = props.clickablePoint !== null || (props.interactablePoints && props.interactablePoints.length > 0);
+    useCursor(isClickable && hovered);
+
+    const eventHandlers = {
+        onPointerDown: (e) => {
+            if (!isClickable) return;
+            e.stopPropagation();
+            isHoldingRef.current = true;
+            pointerDownTimeRef.current = performance.now();
+
+            const pos = props.sequence.position;
+
+            const isInteractive = props.interactablePoints?.includes(pos);
+
+            if (isInteractive) {
+                holdTimerRef.current = setTimeout(() => {
+                    if (isHoldingRef.current) {
+                        props.onHoldPass(pos);
+                    }
+                }, props.holdDuration);
+            }
+        },
+
+        onPointerUp: () => {
+            isHoldingRef.current = false;
+            clearTimeout(holdTimerRef.current);
+        },
+
+        onPointerOut: () => {
+            isHoldingRef.current = false;
+            clearTimeout(holdTimerRef.current);
+            hover(false);
+        },
+
+        onPointerOver: (e) => {
+            if (isClickable) {
+                e.stopPropagation();
+                hover(true);
+            }
+        },
+        onClick: (e) => {
+            if (props.clickablePoint && play) play();
+            if (props.interactablePoints?.length && props.onClickPass) {
+                const pos = props.sequence.position;
+                if (props.interactablePoints.includes(pos)) {
+                    props.onClickPass(pos);
+                }
+            }
+        },
+    };
+
+    useEffect(() => {
+        return () => {
+            if (holdTimerRef.current) {
+                clearTimeout(holdTimerRef.current);
+            }
+        };
+    }, []);
 
 
     useEffect(() => {
-        anyModel.scene.traverse((child) => {
+        if (!targetRoot) return;
+        targetRoot.traverse((child) => {
             if (child instanceof THREE.Mesh) {
                 child.material.transparent = true;
                 child.material.opacity = opacity;
             }
         });
-    }, [anyModel.scene, opacity]);
+    }, [targetRoot, opacity]);
 
 
     useEffect(() => {
@@ -292,7 +387,7 @@ function AnyModel(props) {
                         setOpacity(newValues.opacity);
                     });
                 }}>
-                < primitive key={props.key} object={props.isMultiple ? clone : anyModel.scene} />
+                < primitive key={props.key} object={targetRoot} />
 
             </e.mesh>
             :
@@ -304,7 +399,7 @@ function AnyModel(props) {
                         : [0.01, 0.01, 0.01] // 默认值
             } >
                 <primitive
-                    object={props.isMultiple ? clone : anyModel.scene}
+                    object={targetRoot}
                     position={props.position}
                     rotation={props.rotation}
                     visible={props.visible}
@@ -349,6 +444,10 @@ AnyModel.propTypes = {
     castShadow: PropTypes.bool,
     receiveShadow: PropTypes.bool,
     frustumCulled: PropTypes.bool,
+    interactablePoints: PropTypes.arrayOf(PropTypes.number),
+    onClickPass: PropTypes.func,
+    onHoldPass: PropTypes.func,
+    holdDuration: PropTypes.number,
 };
 
 AnyModel.defaultProps = {
@@ -375,6 +474,10 @@ AnyModel.defaultProps = {
     castShadow: false,
     receiveShadow: false,
     frustumCulled: true,
+    interactablePoints: [],
+    onClickPass: () => { },
+    onHoldPass: () => { },
+    holdDuration: 1000,
 };
 
 export default AnyModel;

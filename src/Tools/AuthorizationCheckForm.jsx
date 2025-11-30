@@ -13,7 +13,7 @@ function AuthorizationCheckForm({ scene5Sheet, isPortraitPhoneScreen }) {
     const [verificationCode, setVerificationCode] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { showAuthorizationCheckForm, setShowAuthorizationCheckForm } = useContext(authorizationCheckContext);
-    const { token: turnstileToken, containerRef: captchaRef } = useTurnstile();
+    const { token: turnstileToken, containerRef: captchaRef, refreshTurnstile } = useTurnstile();
 
     const { messageApi } = useContext(GlobalNotificationContext);
     const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
@@ -89,6 +89,7 @@ function AuthorizationCheckForm({ scene5Sheet, isPortraitPhoneScreen }) {
                 setIsSubmitting(false);
             }
         } catch (error) {
+            refreshTurnstile();
             if (error.response) {
                 // 服务器响应了一个错误
                 const errorData = error.response.data;

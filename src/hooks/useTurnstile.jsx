@@ -5,52 +5,47 @@ export function useTurnstile(sitekey = '0x4AAAAAAB-aBBE_EPA75daZ') {
     const widgetIdRef = useRef(null);
     const containerRef = useRef(null);
 
-    // 加载 Turnstile 脚本（只加载一次）
+    // Load Turnstile script once
     useEffect(() => {
         if (window.turnstile) return;
-        const s = document.createElement('script');
-        s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-        s.async = true;
-        s.defer = true;
-        document.head.appendChild(s);
+
+        const script = document.createElement('script');
+        script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?onload=turnstileCallback";
+        script.async = true;
+        document.body.appendChild(script);
+
+        window.turnstileCallback = () => {
+            // console.log("Turnstile script loaded");
+        };
+
+        return () => {
+            delete window.turnstileCallback;
+        };
     }, []);
 
-    // 渲染 widget
+    // Render widget
     useEffect(() => {
         if (!containerRef.current) return;
+        if (!window.turnstile) return;
 
-        const tryRender = () => {
-            if (!window.turnstile) {
-                const t = setInterval(() => {
-                    if (window.turnstile) {
-                        clearInterval(t);
-                        renderTurnstile();
-                    }
-                }, 200);
-                return () => clearInterval(t);
-            }
-            renderTurnstile();
-        };
+        // Avoid double render
+        if (widgetIdRef.current !== null) return;
 
-        const renderTurnstile = () => {
-            setToken(null);
-            if (widgetIdRef.current !== null && window.turnstile.reset) {
-                try { window.turnstile.reset(widgetIdRef.current); } catch (e) { }
-            }
-            const id = window.turnstile.render(containerRef.current, {
-                sitekey,
-                theme: 'dark',
-                callback: (t) => setToken(t),
-                'error-callback': () => setToken(null),
-                'expired-callback': () => setToken(null),
-            });
-            widgetIdRef.current = id;
-        };
+        widgetIdRef.current = window.turnstile.render(containerRef.current, {
+            sitekey,
+            theme: 'dark',
+            callback: (token) => setToken(token),
+        });
+    }, [containerRef.current, window.turnstile]);
 
-        tryRender();
-    }, [sitekey]);
+    // Refresh token
+    const refreshTurnstile = () => {
+        if (!window.turnstile || widgetIdRef.current === null) return;
+        window.turnstile.reset(widgetIdRef.current);
+        setToken(null);
+    };
 
-    return { token, containerRef, widgetIdRef };
+    return { token, containerRef, refreshTurnstile };
 }
 
 export default useTurnstile;

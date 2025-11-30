@@ -101,6 +101,15 @@ const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, r
         margin: '5% auto',
     };
 
+    const isCasinoUnlocked = () => {
+        const exp = localStorage.getItem("app_jwt_token_exp");
+        if (!exp) return false;
+
+        const now = Math.floor(Date.now() / 1000);
+        return Number(exp) > now;
+    };
+
+
     // Slider track transform: we use pixels during dragging for smooth feel
     const computeTrackTransform = (offsetPx = 0) => {
         // base offset to show the current page:
@@ -317,8 +326,8 @@ const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, r
                                 </li>
 
                                 <li style={listItemStyle} className="menu-item">
-                                    <a href="/ship_casino" className={`menu-link ${sceneMenuLockMap.sceneTwo ? 'locked' : ''}`} onClick={(e) => handleClick(e, sceneMenuLockMap.sceneTwo)} target="_blank" rel="noopener noreferrer">
-                                        {!sceneMenuLockMap.sceneTwo ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
+                                    <a href="/ship_casino" className={`menu-link ${!isCasinoUnlocked() ? 'locked' : ''}`} onClick={(e) => handleClick(e, false)} target="_blank" rel="noopener noreferrer">
+                                        {isCasinoUnlocked() ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
                                         Game - Ship's Casino</a>
                                     <div style={dividerStyle} ></div>
                                 </li>

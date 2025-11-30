@@ -3,10 +3,10 @@ import { useCallback, useEffect, useState } from "react";
 export function useComponentDisplayManager({ loadingComponents, initialComponents }) {
     const [showComponents, setShowComponents] = useState(loadingComponents);
 
-    const toggleComponentDisplay = useCallback((componentKey) => {
+    const toggleComponentDisplay = useCallback((componentKey, status) => {
         setShowComponents((prev) => ({
             ...prev,
-            [componentKey]: !prev[componentKey],
+            [componentKey]: status !== undefined ? status : !prev[componentKey],
         }));
     }, []);
 

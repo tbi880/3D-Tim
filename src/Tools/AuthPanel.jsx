@@ -18,9 +18,11 @@ const AuthPanel = forwardRef(({
     const [name, setName] = useState('');
     const [repeatPassword, setRepeatPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    const { token: turnstileToken, containerRef: captchaRef } = useTurnstile();
+    const { token: turnstileToken, containerRef: captchaRef, refreshTurnstile } = useTurnstile();
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [adminAddMoneyUserId, setAdminAddMoneyUserId] = useState('');
+    const [adminAddMoney, setAdminAddMoney] = useState('');
 
 
     const { messageApi } = useContext(GlobalNotificationContext);
@@ -33,6 +35,7 @@ const AuthPanel = forwardRef(({
     const profile = useAuthStore(state => state.profile);
     const isAuthenticated = useAuthStore(state => state.isAuthenticated);
     const initializing = useAuthStore(state => state.initializing);
+    const adminSetMoney = useAuthStore(s => s.adminSetMoney);
 
     useEffect(() => {
         initFromStorage();
@@ -100,24 +103,41 @@ const AuthPanel = forwardRef(({
                     // registerAction already auto-logged in; close panel
                     setDisplayOverlayCallback("none");
                 } else {
-                    if (window.turnstile && widgetIdRef.current !== null) {
-                        try { window.turnstile.reset(widgetIdRef.current); setTurnstileToken(null); } catch (e) { }
-                    }
+                    refreshTurnstile();
                 }
             } else {
                 const res = await loginAction(email, password, messageApi, turnstileToken);
                 if (res && res.success) {
                     setDisplayOverlayCallback("none");
                 } else {
-                    if (window.turnstile && widgetIdRef.current !== null) {
-                        try { window.turnstile.reset(widgetIdRef.current); setTurnstileToken(null); } catch (e) { }
-                    }
+                    refreshTurnstile();
                 }
             }
         } finally {
             setIsSubmitting(false);
         }
     };
+
+    const handleAdminSetMoney = async () => {
+        if (isSubmitting) return;
+        setIsSubmitting(true);
+        if (!adminAddMoneyUserId || !adminAddMoney) {
+            messageApi('warning', 'Please enter both User ID and Money', 1);
+            setIsSubmitting(false);
+            return;
+        }
+
+        try {
+            const userId = Number(adminAddMoneyUserId);
+            const money = Number(adminAddMoney);
+            await adminSetMoney(userId, money, messageApi);
+        } catch (err) {
+            messageApi('error', 'Server error while updating money', 1);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
 
     const containerStyle = {
         color: '#fff',
@@ -204,6 +224,50 @@ const AuthPanel = forwardRef(({
                                 <span>Role: {profile.role}</span>
                             </div>
                         </div>
+                        {profile.role === 'Admin' && <>
+                            <h1 className="title">Admin Panel</h1>
+                            <div
+                                className="profile-card"
+                                style={{
+                                    width: '100%',
+                                    maxWidth: 420,
+                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                    padding: '20px',
+                                    borderRadius: '12px',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '12px',
+                                }}
+                            >
+                                <label className="label">User ID</label>
+                                <input
+                                    className="input"
+                                    type="number"
+                                    placeholder="Enter user ID"
+                                    value={adminAddMoneyUserId}
+                                    onChange={(e) => setAdminAddMoneyUserId(e.target.value)}
+                                />
+
+                                <label className="label">Set Money</label>
+                                <input
+                                    className="input"
+                                    type="number"
+                                    placeholder="Enter money"
+                                    value={adminAddMoney}
+                                    onChange={(e) => setAdminAddMoney(e.target.value)}
+                                />
+
+                                <button
+                                    type="button"
+                                    className={`button submit-button ${isSubmitting ? 'submit-button-submitting' : ''}`}
+                                    disabled={isSubmitting}
+                                    onClick={handleAdminSetMoney}
+                                    style={{ marginTop: 10 }}
+                                >{isSubmitting ? 'Connecting...' : 'Confirm'}
+                                </button>
+                            </div>
+                        </>}
                     </>
                 ) : (
                     <>

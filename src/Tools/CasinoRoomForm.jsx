@@ -1,43 +1,27 @@
-import React, { useState, useMemo, useContext } from 'react';
+import React, { useState, useContext } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faDoorOpen, faPlus, faCheck } from '@fortawesome/free-solid-svg-icons';
 import './css/general.css';
 import { useRoomStore } from '../hooks/useRoomStore';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
+import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
+import { casinoFormContext } from '../sharedContexts/CasinoFormProvider';
 
-export default function CasinoRoomForm({ isPortraitPhoneScreen }) {
+export default function CasinoRoomForm({ sceneSheet, isPortraitPhoneScreen, fetchRoomStatus, levelOfBets, setLevelOfBets, levels, LevelMap, roomName, setRoomName, roomId, setRoomId, setCountdownMs }) {
     const [mode, setMode] = useState('join'); // 'join' | 'create'
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { joinRoom, createRoom, joining, creating, currentRoom } = useRoomStore();
     const { messageApi } = useContext(GlobalNotificationContext);
-
+    const { showCasinoForm, setShowCasinoForm } = useContext(casinoFormContext);
+    const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
 
     // join
     const [joinRoomId, setJoinRoomId] = useState('');
 
     // create
     const [gameMode, setGameMode] = useState('free');
-    const [roomName, setRoomName] = useState('');
     const [maxUsers, setMaxUsers] = useState(5);
     const [gameType] = useState('Baccarat');
-    const [levelOfBets, setLevelOfBets] = useState('lv1');
-
-    const levels = [
-        'lv1', 'lv2', 'lv3', 'lv4', 'lv5', 'lv6', 'lv7', 'lv8', 'lv9', 'lv10'
-    ];
-
-    const LevelMap = useMemo(() => ({
-        lv1: { min: 1000, max: 100000, unit: 100 },
-        lv2: { min: 2000, max: 200000, unit: 200 },
-        lv3: { min: 5000, max: 500000, unit: 500 },
-        lv4: { min: 10000, max: 1000000, unit: 1000 },
-        lv5: { min: 50000, max: 5000000, unit: 5000 },
-        lv6: { min: 100000, max: 10000000, unit: 10000 },
-        lv7: { min: 300000, max: 30000000, unit: 30000 },
-        lv8: { min: 500000, max: 50000000, unit: 50000 },
-        lv9: { min: 1000000, max: 100000000, unit: 100000 },
-        lv10: { min: 5000000, max: 500000000, unit: 500000 },
-    }), []);
 
     // helper：千位分隔格式
     const fmt = (n) => {
@@ -47,6 +31,23 @@ export default function CasinoRoomForm({ isPortraitPhoneScreen }) {
 
     // 当前等级对应的 min/max/unit（自动 derived）
     const currentLevelValues = LevelMap[levelOfBets] || LevelMap.lv1;
+
+    const handleAfterPlay = () => {
+        if (window.location.pathname.includes('/ship_casino')) {
+            setShowCasinoForm(false);
+            playOnce({ sequence: sceneSheet.sequence, range: [6, 10] });
+        }
+    };
+
+    const findLevelByMin = (minValue) => {
+        for (const [level, config] of Object.entries(LevelMap)) {
+            if (config.min === minValue) {
+                return level;
+            }
+        }
+        return null;
+    };
+
 
     const handleJoinSubmit = async (e) => {
         e.preventDefault();
@@ -58,7 +59,16 @@ export default function CasinoRoomForm({ isPortraitPhoneScreen }) {
                 messageApi('warning', 'Please enter room ID', 1);
                 return;
             }
-            await joinRoom(joinRoomId, messageApi);
+            const result = await joinRoom(joinRoomId, messageApi);
+            if (result.success) {
+                setRoomName(result.data.roomName || '');
+                setRoomId(result.data.roomId);
+                setLevelOfBets(findLevelByMin(result.data.roomMinBet));
+                fetchRoomStatus(result.data.roomId)
+                    .then((ok) => ok && handleAfterPlay());
+                console.log('Joined room with countdownMs:', result.data.countdownMs);
+                setCountdownMs(result.data.countDownMs || 0);
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -82,7 +92,11 @@ export default function CasinoRoomForm({ isPortraitPhoneScreen }) {
                 gameType,
             };
 
-            await createRoom(dto, messageApi);
+            const result = await createRoom(dto, messageApi);
+            if (result.success) {
+                fetchRoomStatus(result.data.roomId)
+                    .then((ok) => ok && handleAfterPlay());
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -90,7 +104,7 @@ export default function CasinoRoomForm({ isPortraitPhoneScreen }) {
 
     return (
         <div className={`casino-room-container ${isPortraitPhoneScreen ? 'portrait' : 'landscape'}`}>
-            <div className="casino-card rb-card">
+            <div className="casino-card rb-card" style={{ marginTop: isPortraitPhoneScreen ? "30px" : 0 }}>
                 <h1 className="title">Lobby</h1>
 
                 <div className="rb-toggle">

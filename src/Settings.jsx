@@ -14,7 +14,9 @@ const authURL = stageOfENV === "prod" ? "https://api.bty.co.nz/auth/" : "http://
 
 const roomURL = stageOfENV === "prod" ? "https://api.bty.co.nz/room/" : "http://localhost:5130/room/";
 
+const signalRConnectionURL = stageOfENV === "prod" ? "https://api.bty.co.nz/connect" : "http://localhost:5130/connect";
+
 const webGLPreserveDrawingBuffer = stageOfENV === "prod" ? false : true;
 
 // Export the settings
-export { stageOfENV, url, bucketURL, backendURL, authURL, roomURL, webGLPreserveDrawingBuffer };
+export { stageOfENV, url, bucketURL, backendURL, authURL, roomURL, signalRConnectionURL, webGLPreserveDrawingBuffer };
