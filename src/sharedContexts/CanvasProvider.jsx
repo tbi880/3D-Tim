@@ -33,6 +33,7 @@ export const CanvasProvider = ({ children, vrEnabled = false }) => {
     const shouldRenderVR = isVRSupported && vrEnabled;
 
 
+
     return (
         <canvasContext.Provider value={{ isVRSupported, setIsVRSupported }}>
             {shouldRenderVR && <>

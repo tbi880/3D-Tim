@@ -90,11 +90,18 @@ function Routers() {
         return <>微信内置浏览器限制性能，我也很难受。。。还是劳烦您手动复制到浏览器打开吧</>
     }
 
-
+    const canvasStyle = {
+        WebkitUserSelect: 'none',
+        MozUserSelect: 'none',
+        msUserSelect: 'none',
+        userSelect: 'none',
+        WebkitTouchCallout: 'none',
+        WebkitTapHighlightColor: 'transparent'
+    };
 
     return (
         <Router>
-            <GlobalProviders>
+            <GlobalProviders canvasStyle={canvasStyle}>
                 <OverlayDisplayManager isPortraitPhoneScreen={isPortraitPhoneScreen} />
                 <Suspense fallback={<div>Loading...</div>}>
                     <Routes>

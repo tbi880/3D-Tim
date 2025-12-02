@@ -246,7 +246,7 @@ const GraphicSetting = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCal
                 <div style={dividerStyle}></div>
                 <div style={optionStyle}>
                     <br />
-                    <div style={eachContainerStyle}>Note: For the best experience, avoid accessing this website on mobile devices.</div>
+                    <div style={eachContainerStyle}>Note: For the best experience, I strongly encourage you to access this website on a desktop or laptop, avoiding accessing this website on mobile devices. Not just because of the GPU constraints, but also due to the post processing and UI limitations on smaller screens which is not ideal.</div>
                 </div>
             </div>
             <div style={tooltipStyle}>{tooltip.content}</div>

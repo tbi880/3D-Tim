@@ -7,7 +7,7 @@ import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationP
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 import { casinoFormContext } from '../sharedContexts/CasinoFormProvider';
 
-export default function CasinoRoomForm({ sceneSheet, isPortraitPhoneScreen, fetchRoomStatus, levelOfBets, setLevelOfBets, levels, LevelMap, roomName, setRoomName, roomId, setRoomId, setCountdownMs }) {
+export default function CasinoRoomForm({ sceneSheet, isPortraitPhoneScreen, fetchRoomStatus, levelOfBets, setLevelOfBets, levels, LevelMap, roomName, setRoomName, roomId, setRoomId, setCountdownMs, setWaitingForJoinRoom }) {
     const [mode, setMode] = useState('join'); // 'join' | 'create'
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { joinRoom, createRoom, joining, creating, currentRoom } = useRoomStore();
@@ -64,10 +64,10 @@ export default function CasinoRoomForm({ sceneSheet, isPortraitPhoneScreen, fetc
                 setRoomName(result.data.roomName || '');
                 setRoomId(result.data.roomId);
                 setLevelOfBets(findLevelByMin(result.data.roomMinBet));
-                fetchRoomStatus(result.data.roomId)
+                fetchRoomStatus(result.data.roomId, true)
                     .then((ok) => ok && handleAfterPlay());
-                console.log('Joined room with countdownMs:', result.data.countdownMs);
                 setCountdownMs(result.data.countDownMs || 0);
+                setWaitingForJoinRoom(true);
             }
         } finally {
             setIsSubmitting(false);
@@ -94,7 +94,7 @@ export default function CasinoRoomForm({ sceneSheet, isPortraitPhoneScreen, fetc
 
             const result = await createRoom(dto, messageApi);
             if (result.success) {
-                fetchRoomStatus(result.data.roomId)
+                fetchRoomStatus(result.data.roomId, true)
                     .then((ok) => ok && handleAfterPlay());
             }
         } finally {

@@ -8,6 +8,7 @@ import { TaskBoardContentProvider } from "./TaskBoardContentProvider";
 import { SheetSequencePlayControlProvider } from "./SheetSequencePlayControlProvider";
 import { TheatreStudioProvider } from "./TheatreStudioProvider";
 import { CasinoFormProvider } from "./CasinoFormProvider";
+import { BaccaratGraphBoardContentProvider } from "./BaccaratGraphBoardContentProvider";
 
 function GlobalProviders({ children }) {
     return (
@@ -18,13 +19,15 @@ function GlobalProviders({ children }) {
                         <HeaderSubTitleProvider>
                             <GraphicSettingProvider>
                                 <TaskBoardContentProvider>
-                                    <CasinoFormProvider>
-                                        <SheetSequencePlayControlProvider>
-                                            <TheatreStudioProvider>
-                                                {children}
-                                            </TheatreStudioProvider>
-                                        </SheetSequencePlayControlProvider>
-                                    </CasinoFormProvider>
+                                    <BaccaratGraphBoardContentProvider>
+                                        <CasinoFormProvider>
+                                            <SheetSequencePlayControlProvider>
+                                                <TheatreStudioProvider>
+                                                    {children}
+                                                </TheatreStudioProvider>
+                                            </SheetSequencePlayControlProvider>
+                                        </CasinoFormProvider>
+                                    </BaccaratGraphBoardContentProvider>
                                 </TaskBoardContentProvider>
                             </GraphicSettingProvider>
                         </HeaderSubTitleProvider>

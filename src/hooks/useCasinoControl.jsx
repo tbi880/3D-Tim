@@ -479,6 +479,7 @@ export function useCasinoControl({
         }
         resetRoundState();
         setShowPlaceBets(true);
+        setShowSwitchCard(false);
     }, [casinoSheet, card2Sheet, chipSheet, showComponents, toggleComponentDisplay, setShowPlaceBets, resetRoundState]);
 
     return {

@@ -2,10 +2,8 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
 import { useContext, useState, useMemo, useEffect } from 'react';
-import { headerSubTitleContext } from '../sharedContexts/HeaderSubTitleProvider';
 import { getProject } from '@theatre/core';
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';
-import Header from '../Tools/Header';
 import Casino from '../pages/Casino';
 import casinoState from '../Casino.json';
 import { casinoFormContext } from '../sharedContexts/CasinoFormProvider';
@@ -17,7 +15,8 @@ import { CasinoStatusForm } from '../Tools/CasinoStatusForm';
 import { useAuthStore } from '../hooks/useAuthStore';
 import axios from 'axios';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
-
+import { roomURL } from '../Settings';
+import { BaccaratGraphBoardContentContext } from '../sharedContexts/BaccaratGraphBoardContentProvider';
 
 function ShipCasino({ isPortraitPhoneScreen }) {
     const { messageApi } = useContext(GlobalNotificationContext);
@@ -27,7 +26,6 @@ function ShipCasino({ isPortraitPhoneScreen }) {
     const card2Sheet = casinoProject.sheet('Card2');
     const casinoSheet = casinoProject.sheet('Casino');
     const chipSheet = casinoProject.sheet('Chip');
-    const { showHeaderSubTitle, setShowHeaderSubTitle } = useContext(headerSubTitleContext);
     const { showCasinoForm, setShowCasinoForm } = useContext(casinoFormContext);
     const [showPlaceBets, setShowPlaceBets] = useState(false);
     const [roomName, setRoomName] = useState("");
@@ -40,8 +38,10 @@ function ShipCasino({ isPortraitPhoneScreen }) {
     const [isOpeningFirstCard, setIsOpeningFirstCard] = useState(true);
     const [showSwitchCard, setShowSwitchCard] = useState(false);
     const [resultList, setResultList] = useState([]);
-
+    const [waitingForJoinRoom, setWaitingForJoinRoom] = useState(false);
     const [levelOfBets, setLevelOfBets] = useState('lv1');
+    const { baccaratGraphBoardContent, setBaccaratGraphBoardContent } = useContext(BaccaratGraphBoardContentContext);
+
 
     const levels = [
         'lv1', 'lv2', 'lv3', 'lv4', 'lv5', 'lv6', 'lv7', 'lv8', 'lv9', 'lv10'
@@ -71,7 +71,7 @@ function ShipCasino({ isPortraitPhoneScreen }) {
     const [bigTiger, setBigTiger] = useState(0);
     const [tigerTie, setTigerTie] = useState(0);
 
-    const fetchRoomStatus = async (roomId) => {
+    const fetchRoomStatus = async (roomId, updateMoney) => {
         return new Promise(async (resolve) => {
             if (!roomId || !profile?.userId || !token) {
                 console.warn("Missing roomId, profile.userId, or token");
@@ -80,7 +80,7 @@ function ShipCasino({ isPortraitPhoneScreen }) {
 
             try {
                 const response = await axios.get(
-                    `http://localhost:5130/room/baccarat-room/result-board/${roomId}`,
+                    `${roomURL}baccarat-room/result-board/${roomId}`,
                     {
                         headers: {
                             Authorization: `Bearer ${token}`,
@@ -103,16 +103,15 @@ function ShipCasino({ isPortraitPhoneScreen }) {
                 }
 
                 setRoomId(roomId);
-                setMoneyInRoom(userData.moneyInRoom);
+                if (updateMoney) {
+                    setMoneyInRoom(userData.moneyInRoom);
+                    setBaccaratGraphBoardContent(data.resultList || []);
+                }
                 setStatusInRoom(userData.statusInRoom);
                 setBetSides(userData.betSides ?? {});
                 if (Object.keys(data.usersInRoom).length > 1) {
                     if ((userData.statusInRoom === "dealing" || userData.statusInRoom === "results") && data.statusGeneralInRoom === "betting") {
-                        messageApi('info', 'The other players are placing their bets. Please wait a moment~', 5);
-                    } else if (userData.statusInRoom === "waiting" && (data.statusGeneralInRoom === "results")) {
-                        messageApi('info', 'The other players are still getting their bets. Please wait a moment~', 5);
-                    } else if (userData.statusInRoom === "waiting") {
-                        messageApi('info', 'The game is in progress. Please wait this round to finish then you can place the bets... Please be patient, this would not take long~', 15);
+                        messageApi('info', 'The other players are placing their bets. You might need to wait for a moment~', 5);
                     }
                 }
                 resolve(true); // 成功
@@ -161,7 +160,7 @@ function ShipCasino({ isPortraitPhoneScreen }) {
             <div
                 style={{
                     position: 'fixed',
-                    top: '10px',
+                    bottom: '10%',
                     right: '15px',
                     zIndex: 9999,
                     background: 'rgba(0,0,0,0.6)',
@@ -201,13 +200,12 @@ function ShipCasino({ isPortraitPhoneScreen }) {
                 {isOpeningFirstCard ? "Card 1" : "Card 2"}
             </div>}
             {!showPlaceBets && <CasinoStatusForm roomName={roomName} roomId={roomId} moneyInRoom={moneyInRoom} statusInRoom={statusInRoom} betSides={betSides} />}
-            {showHeaderSubTitle && <Header onAnimationEnd={() => { setShowHeaderSubTitle(false) }} defaultBaseDuration={7} defaultNotice={{ noticeContent: "Welcome to Tim's casino, No real money involved! You can enjoy the games without any risk. However you can make custom agreement with your real life friends using the bets and save it here, you can comeback and review them anytime.", noticeLink: null }} />}
-            {showCasinoForm && <CasinoRoomForm sceneSheet={casinoSheet} isPortraitPhoneScreen={isPortraitPhoneScreen} fetchRoomStatus={fetchRoomStatus} levelOfBets={levelOfBets} setLevelOfBets={setLevelOfBets} levels={levels} LevelMap={LevelMap} roomName={roomName} setRoomName={setRoomName} roomId={roomId} setRoomId={setRoomId} setCountdownMs={setCountdownMs} />}
-            {showPlaceBets && statusInRoom === "betting" && <PlaceBets isPortraitPhoneScreen={isPortraitPhoneScreen} moneyInRoom={moneyInRoom} roomId={roomId} fetchRoomStatus={fetchRoomStatus} levelOfBets={levelOfBets} LevelMap={LevelMap} mainChoice={mainChoice} setMainChoice={setMainChoice} mainBetValue={mainBetValue} setMainBetValue={setMainBetValue} sideOpen={sideOpen} setSideOpen={setSideOpen} smallTiger={smallTiger} setSmallTiger={setSmallTiger} bigTiger={bigTiger} setBigTiger={setBigTiger} tigerTie={tigerTie} setTigerTie={setTigerTie} chipSheet={chipSheet} setShowPlaceBets={setShowPlaceBets} statusInRoom={statusInRoom} />}
+            {showCasinoForm && <CasinoRoomForm sceneSheet={casinoSheet} isPortraitPhoneScreen={isPortraitPhoneScreen} fetchRoomStatus={fetchRoomStatus} levelOfBets={levelOfBets} setLevelOfBets={setLevelOfBets} levels={levels} LevelMap={LevelMap} roomName={roomName} setRoomName={setRoomName} roomId={roomId} setRoomId={setRoomId} setCountdownMs={setCountdownMs} setWaitingForJoinRoom={setWaitingForJoinRoom} />}
+            {showPlaceBets && (!waitingForJoinRoom) && (statusInRoom === "betting" || statusInRoom === "waiting") && <PlaceBets isPortraitPhoneScreen={isPortraitPhoneScreen} moneyInRoom={moneyInRoom} roomId={roomId} fetchRoomStatus={fetchRoomStatus} levelOfBets={levelOfBets} LevelMap={LevelMap} mainChoice={mainChoice} setMainChoice={setMainChoice} mainBetValue={mainBetValue} setMainBetValue={setMainBetValue} sideOpen={sideOpen} setSideOpen={setSideOpen} smallTiger={smallTiger} setSmallTiger={setSmallTiger} bigTiger={bigTiger} setBigTiger={setBigTiger} tigerTie={tigerTie} setTigerTie={setTigerTie} chipSheet={chipSheet} setShowPlaceBets={setShowPlaceBets} setMoneyInRoom={setMoneyInRoom} />}
             <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
                 <CanvasProvider>
                     const [isOpeningFirstCard, setIsOpeningFirstCard] = useState(true);
-                    <Casino casinoSheet={casinoSheet} card2Sheet={card2Sheet} chipSheet={chipSheet} casinoProject={casinoProject} isPortraitPhoneScreen={isPortraitPhoneScreen} showPlaceBets={showPlaceBets} setShowPlaceBets={setShowPlaceBets} mainChoice={mainChoice} setMainChoice={setMainChoice} mainBetValue={mainBetValue} setMainBetValue={setMainBetValue} roomId={roomId} token={token} statusInRoom={statusInRoom} setStatusInRoom={setStatusInRoom} moneyInRoom={moneyInRoom} setMoneyInRoom={setMoneyInRoom} countdownMs={countdownMs} setCountdownMs={setCountdownMs} betSides={betSides} setBetSides={setBetSides} isOpeningFirstCard={isOpeningFirstCard} setIsOpeningFirstCard={setIsOpeningFirstCard} setShowSwitchCard={setShowSwitchCard} resultList={resultList} setResultList={setResultList} winningSides={winningSides} setWinningSides={setWinningSides} fetchRoomStatus={fetchRoomStatus} />
+                    <Casino casinoSheet={casinoSheet} card2Sheet={card2Sheet} chipSheet={chipSheet} casinoProject={casinoProject} isPortraitPhoneScreen={isPortraitPhoneScreen} showPlaceBets={showPlaceBets} setShowPlaceBets={setShowPlaceBets} mainChoice={mainChoice} setMainChoice={setMainChoice} mainBetValue={mainBetValue} setMainBetValue={setMainBetValue} roomId={roomId} token={token} statusInRoom={statusInRoom} setStatusInRoom={setStatusInRoom} moneyInRoom={moneyInRoom} countdownMs={countdownMs} setCountdownMs={setCountdownMs} betSides={betSides} setBetSides={setBetSides} isOpeningFirstCard={isOpeningFirstCard} setIsOpeningFirstCard={setIsOpeningFirstCard} setShowSwitchCard={setShowSwitchCard} resultList={resultList} setResultList={setResultList} winningSides={winningSides} setWinningSides={setWinningSides} setWaitingForJoinRoom={setWaitingForJoinRoom} waitingForJoinRoom={waitingForJoinRoom} />
                 </CanvasProvider>
 
             </div>

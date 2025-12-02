@@ -6,8 +6,9 @@ import './css/general.css';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import { useAuthStore } from '../hooks/useAuthStore';
 import useCasinoControl from '../hooks/useCasinoControl';
+import { roomURL } from '../Settings';
 
-export default function PlaceBets({ isPortraitPhoneScreen, moneyInRoom, roomId, fetchRoomStatus, levelOfBets, LevelMap, mainChoice, setMainChoice, mainBetValue, setMainBetValue, sideOpen, setSideOpen, smallTiger, setSmallTiger, bigTiger, setBigTiger, tigerTie, setTigerTie, chipSheet, setShowPlaceBets, statusInRoom }) {
+export default function PlaceBets({ isPortraitPhoneScreen, moneyInRoom, roomId, fetchRoomStatus, levelOfBets, LevelMap, mainChoice, setMainChoice, mainBetValue, setMainBetValue, sideOpen, setSideOpen, smallTiger, setSmallTiger, bigTiger, setBigTiger, tigerTie, setTigerTie, chipSheet, setShowPlaceBets, setMoneyInRoom }) {
     const { messageApi } = useContext(GlobalNotificationContext);
     const token = useAuthStore(state => state.token);
     const currentLevelValues = LevelMap[levelOfBets] || LevelMap.lv1;
@@ -25,7 +26,7 @@ export default function PlaceBets({ isPortraitPhoneScreen, moneyInRoom, roomId, 
     ];
 
     useEffect(() => {
-        fetchRoomStatus(roomId)
+        fetchRoomStatus(roomId, true);
     }, []);
 
     const fmt = (n) => {
@@ -69,12 +70,13 @@ export default function PlaceBets({ isPortraitPhoneScreen, moneyInRoom, roomId, 
                 return;
             }
 
-            if (!isFreehand && (mainBetValue + smallTiger + bigTiger + tigerTie > moneyInRoom)) {
-                messageApi('error', `Insufficient balance for the bets placed, all bets combined ${mainBetValue + smallTiger + bigTiger + tigerTie} exceed your available balance ${moneyInRoom}`, 5);
+            const totalBetValue = (mainBetValue + (sideOpen ? (smallTiger + bigTiger + tigerTie) : 0));
+            if (!isFreehand && totalBetValue > moneyInRoom) {
+                messageApi('error', `Insufficient balance for the bets placed, all bets combined ${totalBetValue} exceed your available balance ${moneyInRoom}`, 5);
                 return;
             }
 
-            const response = await fetch("http://localhost:5130/room/baccarat-room/place-bets", {
+            const response = await fetch(`${roomURL}baccarat-room/place-bets`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -107,7 +109,10 @@ export default function PlaceBets({ isPortraitPhoneScreen, moneyInRoom, roomId, 
                     setMainChoice(null);
                     messageApi('success', 'Freehand for you this round', 1);
                 }
-                fetchRoomStatus(roomId);
+                fetchRoomStatus(roomId, false);
+                if (!isFreehand) {
+                    setMoneyInRoom(moneyInRoom - totalBetValue);
+                }
                 setShowPlaceBets(false);
             } else {
                 const errorText = await response.text();

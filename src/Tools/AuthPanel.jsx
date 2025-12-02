@@ -1,4 +1,4 @@
-import { useState, forwardRef, useContext, useEffect, useRef } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUserCircle, faChevronUp, faEye, faEyeSlash, faIdBadge, faUser, faEnvelope, faDice, faUserShield, faMoneyCheckDollar, } from '@fortawesome/free-solid-svg-icons';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
@@ -6,10 +6,11 @@ import { useAuthStore } from '../hooks/useAuthStore';
 import "./css/general.css";
 import useTurnstile from '../hooks/useTurnstile';
 
-const AuthPanel = forwardRef(({
+const AuthPanel = ({
     isPortraitPhoneScreen,
     setDisplayOverlayCallback
-}, refLogin) => {
+}) => {
+
     const [showLogin, setShowLogin] = useState(false);
     const [isRegisterMode, setIsRegisterMode] = useState(false);
 
@@ -177,7 +178,7 @@ const AuthPanel = forwardRef(({
 
     return (
         <div style={{ fontFamily: 'Orbitron, sans-serif' }}>
-            <button style={buttonStyle} onClick={toggleLogin} ref={refLogin} aria-label="Open login panel">
+            <button style={buttonStyle} onClick={toggleLogin} aria-label="Open login panel">
                 <FontAwesomeIcon icon={showLogin ? faChevronUp : faUserCircle} size="2x" color="black" />
             </button>
 
@@ -364,6 +365,6 @@ const AuthPanel = forwardRef(({
             </div>
         </div >
     );
-});
+};
 
 export default AuthPanel;

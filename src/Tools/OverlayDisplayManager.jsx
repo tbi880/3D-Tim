@@ -8,6 +8,7 @@ import TourGuide from "./TourGuide";
 import { bucketURL } from "../Settings";
 import { getTourMapFromLocalStorage, hasTourGuided } from "../pages/Status";
 import AuthPanel from "./AuthPanel";
+import BaccaratGraphBoard from "./BaccaratGraphBoard";
 
 
 export function OverlayDisplayManager({ isPortraitPhoneScreen }) {
@@ -15,6 +16,7 @@ export function OverlayDisplayManager({ isPortraitPhoneScreen }) {
     const [location, setLocation] = useLocation();
     const [shouldDisplayTaskBoard, setShouldDisplayTaskBoard] = useState(false);
     const [shouldDisplayAuthPanel, setShouldDisplayAuthPanel] = useState(false);
+    const [shouldDisplayBaccaratGraphBoard, setShouldDisplayBaccaratGraphBoard] = useState(false);
     const [displayOverlay, setDisplayOverlay] = useState("none");
     const setDisplayOverlayCallback = (overlay) => {
         setDisplayOverlay(overlay);
@@ -105,12 +107,20 @@ export function OverlayDisplayManager({ isPortraitPhoneScreen }) {
             setShouldDisplayAuthPanel(false);
         } else if (location === "/ship_quarter") {
             setShouldDisplayAuthPanel(true);
-        } else if (location === "/ship_casino") {
-            setShouldDisplayAuthPanel(true);
         } else {
             setShouldDisplayAuthPanel(false);
         }
     }, [shouldDisplayTaskBoard, location]);
+
+    useEffect(() => {
+        if (shouldDisplayAuthPanel) {
+            setShouldDisplayBaccaratGraphBoard(false);
+        } else if (location === "/ship_casino") {
+            setShouldDisplayBaccaratGraphBoard(true);
+        } else {
+            setShouldDisplayBaccaratGraphBoard(false);
+        }
+    }, [shouldDisplayAuthPanel, location]);
 
     return (
         <>
@@ -118,6 +128,7 @@ export function OverlayDisplayManager({ isPortraitPhoneScreen }) {
             {(displayOverlay === "none" || displayOverlay === "setting") && <GraphicSetting ref={refGraphicSetting} isPortraitPhoneScreen={isPortraitPhoneScreen} setDisplayOverlayCallback={setDisplayOverlayCallback} />}
             {shouldDisplayTaskBoard && (displayOverlay === "none" || displayOverlay === "taskBoard") && <TaskBoard ref={refTaskBoard} isPortraitPhoneScreen={isPortraitPhoneScreen} setDisplayOverlayCallback={setDisplayOverlayCallback} currentUri={location} />}
             {shouldDisplayAuthPanel && (displayOverlay === "none" || displayOverlay === "authPanel") && <AuthPanel isPortraitPhoneScreen={isPortraitPhoneScreen} setDisplayOverlayCallback={setDisplayOverlayCallback} />}
+            {shouldDisplayBaccaratGraphBoard && (displayOverlay === "none" || displayOverlay === "baccaratGraphBoard") && <BaccaratGraphBoard isPortraitPhoneScreen={isPortraitPhoneScreen} setDisplayOverlayCallback={setDisplayOverlayCallback} />}
             <div ref={refSpeedControl} className={"double-speed-button"} style={{ zIndex: -99999, height: "85px", width: "60px" }} />
             <TourGuide stepsConfig={stepsConfig} open={open} onClose={() => setOpen(false)} />
 

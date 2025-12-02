@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vite';
 import fs from 'fs';
-import react from '@vitejs/plugin-react'
+import react from '@vitejs/plugin-react';
 import { terser } from 'rollup-plugin-terser';
 import compressPlugin from 'vite-plugin-compression';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -16,7 +16,7 @@ function checkStagePlugin() {
     config(_, { command }) {
       if (command === 'build' && stageOfENV !== 'prod') {
         throw new Error(
-          `❌  stageOfENV = "${stageOfENV}"，Can't build non Prod env！\n` +
+          `❌  stageOfENV = "${stageOfENV}"，Can't build non-prod env！\n` +
           `Please set stageOfENV = "prod" in src/Settings.jsx and try again.`
         );
       }
@@ -24,90 +24,100 @@ function checkStagePlugin() {
   };
 }
 
+export default defineConfig(({ command, mode }) => {
+  const isBuild = command === 'build';
 
-// https://vitejs.dev/config/
-export default defineConfig({
-  server: {
-    https: {
-      key: fs.readFileSync('localhost.key'),
-      cert: fs.readFileSync('localhost.crt')
+  return {
+    server: {
+      https: {
+        key: fs.readFileSync('localhost-key.pem'),
+        cert: fs.readFileSync('localhost.pem'),
+      },
+      host: true, // 允许局域网访问
     },
-    host: true  // 允许局域网访问
-  },
 
-  plugins: [
-    checkStagePlugin(), // 检查 stageOfENV 是否为 prod
-    react({
-      babel: {
-        plugins: [
-          ["babel-plugin-react-compiler", ReactCompilerConfig],
-        ],
-      },
-    })
-  ],
-  build: {
-    // 输出目录
-    outDir: 'dist',
-    assetsDir: 'assets', // 资源文件目录，如图片、CSS 等
-    rollupOptions: {
-      output: {
-        // 配置 JS 文件输出到 assets/js 目录
-        entryFileNames: 'assets/js/[name].js',  // 输出主入口文件到 assets/js/
-        chunkFileNames: 'assets/js/[name].js',  // 输出动态 import 的 JS 文件到 assets/js/
-        assetFileNames: ({ name }) => {
-          if (/\.(gif|jpe?g|png|svg)$/.test(name ?? '')) {
-            return 'assets/images/[name].[hash][extname]';
-          }
-          if (/\.css$/.test(name ?? '')) {
-            return 'assets/css/[name].[hash][extname]';
-          }
-          if (/\.(woff2?|eot|ttf|otf)$/.test(name ?? '')) {
-            return 'assets/fonts/[name].[hash][extname]';
-          }
-          return 'assets/[name].[hash][extname]';
+    plugins: [
+      checkStagePlugin(),
+      react({
+        babel: {
+          plugins: [
+            ["babel-plugin-react-compiler", ReactCompilerConfig],
+          ],
         },
-      },
-      plugins: [
-        terser({
-          compress: {
-            // 移除console.* 函数调用
-            drop_console: true,
-          },
-        }),
+      }),
+      // build 时添加 compression & PWA
+      ...(isBuild ? [
         compressPlugin({
-          // 可以是'gzip'、'brotliCompress' 或 'deflate'
           algorithm: 'gzip',
         }),
         VitePWA({
           registerType: 'autoUpdate',
-          // includeAssets: ['favicon.svg', 'robots.txt'], // 在PWA中额外缓存的资源
           manifest: {
-            name: 'Welcome to Tim Bi\'s world!',
+            name: "Welcome to Tim Bi's world!",
             short_name: 'Tim Bi',
-            description: 'Welcome to Tim Bi\'s world!',
+            description: "Welcome to Tim Bi's world!",
             theme_color: '#ffffff',
             start_url: "/",
             display: "standalone",
             scope: "/"
           },
           workbox: {
-            maximumFileSizeToCacheInBytes: 4000000, // 将限制增加到 4 MiB
+            maximumFileSizeToCacheInBytes: 4_000_000,
             runtimeCaching: [
               {
-                urlPattern: /\.(js|css|woff2|svg)$/, // 预缓存 JavaScript、CSS、字体、SVG 图标
-                handler: "CacheFirst",
+                urlPattern: /\.(js|css|woff2?|eot|ttf|otf|svg)$/,
+                handler: 'CacheFirst',
                 options: {
-                  cacheName: "core-assets",
+                  cacheName: 'core-assets',
                   expiration: {
-                    maxEntries: 50, // 最多缓存 50 个核心资源
-                    maxAgeSeconds: 60 * 60 * 24 * 7, // 7 天自动清理
-                  }
-                }
-              }
-            ]
-          }
-        }),
-      ],
+                    maxEntries: 50,
+                    maxAgeSeconds: 60 * 60 * 24 * 7, // 7 天
+                  },
+                },
+              },
+            ],
+          },
+        })
+      ] : [])
+    ],
+
+    build: {
+      outDir: 'dist',
+      assetsDir: 'assets',
+      rollupOptions: {
+        output: {
+          entryFileNames: 'assets/js/[name].js',
+          chunkFileNames: 'assets/js/[name].js',
+          assetFileNames: ({ name }) => {
+            if (!name) return 'assets/[name].[hash][extname]';
+            if (/\.(gif|jpe?g|png|svg)$/.test(name)) {
+              return 'assets/images/[name].[hash][extname]';
+            }
+            if (/\.css$/.test(name)) {
+              return 'assets/css/[name].[hash][extname]';
+            }
+            if (/\.(woff2?|eot|ttf|otf)$/.test(name)) {
+              return 'assets/fonts/[name].[hash][extname]';
+            }
+            return 'assets/[name].[hash][extname]';
+          },
+        },
+        plugins: [
+          terser({
+            compress: {
+              drop_console: true,
+            },
+          }),
+        ],
+      },
+      // optionally enable minify via terser (you already use terser plugin above)
+      minify: false, // 已经通过 terser 控制，这里设为 false 避免重复
+      // 如果你希望用 esbuild minify，可以设为 'esbuild'
+      // target: 'esnext', // 可按需设置
     },
-  },
-})
+
+    // 如果你有 alias、define、env 等，可以按需添加
+    // resolve: { alias: { /* ... */ } },
+    // define: { /* ... */ },
+  };
+});

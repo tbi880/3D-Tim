@@ -19,7 +19,7 @@ import useCasinoControl from '../hooks/useCasinoControl';
 import { useAuthStore } from '../hooks/useAuthStore';
 
 
-function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitPhoneScreen, showPlaceBets, setShowPlaceBets, mainChoice, setMainChoice, mainBetValue, setMainBetValue, roomId, token, statusInRoom, setStatusInRoom, moneyInRoom, setMoneyInRoom, countdownMs, setCountdownMs, betSides, setBetSides, isOpeningFirstCard, setIsOpeningFirstCard, setShowSwitchCard, resultList, setResultList, winningSides, setWinningSides, fetchRoomStatus }) {
+function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitPhoneScreen, showPlaceBets, setShowPlaceBets, mainChoice, setMainChoice, mainBetValue, setMainBetValue, roomId, token, statusInRoom, setStatusInRoom, moneyInRoom, countdownMs, setCountdownMs, betSides, setBetSides, isOpeningFirstCard, setIsOpeningFirstCard, setShowSwitchCard, resultList, setResultList, winningSides, setWinningSides, setWaitingForJoinRoom, waitingForJoinRoom }) {
     const { messageApi } = useContext(GlobalNotificationContext);
     const { showCasinoForm, setShowCasinoForm } = useContext(casinoFormContext);
     const [gameHands, setGameHands] = useState([]);
@@ -68,8 +68,6 @@ function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitP
     });
 
     const { connectionRef, connectionState } = useRoomHub(token, casinoSheet, card2Sheet, chipSheet, showComponents, toggleComponentDisplay, setShowPlaceBets, roomId);
-
-
 
     useEffect(() => {
         if (connectionState !== 'connected') return;
@@ -147,6 +145,7 @@ function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitP
 
             await removeAllCards();
             await changeUserStatusInRoom("waiting");
+            setWaitingForJoinRoom(false);
         };
 
         const NextGameLastHand = async (data) => {
@@ -172,7 +171,7 @@ function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitP
                     messageApi('info', 'The other players are driving the game by opening the cards. Please wait for them to finish~', 5);
                 } else if (data.roomUserStatus === "waiting" && (data.generalStatusInRoom === "results")) {
                     messageApi('info', 'The other players are still getting their bets. Please wait a moment~', 5);
-                } else if (userData.statusInRoom === "waiting") {
+                } else if (data.statusInRoom === "waiting") {
                     messageApi('info', 'The game is in progress. Please wait this round to finish then you can place the bets... Please be patient, this would not take long~', 5);
                 }
             }
