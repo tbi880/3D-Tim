@@ -19,7 +19,7 @@ import useCasinoControl from '../hooks/useCasinoControl';
 import { useAuthStore } from '../hooks/useAuthStore';
 
 
-function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitPhoneScreen, showPlaceBets, setShowPlaceBets, mainChoice, setMainChoice, mainBetValue, setMainBetValue, roomId, token, statusInRoom, setStatusInRoom, moneyInRoom, countdownMs, setCountdownMs, betSides, setBetSides, isOpeningFirstCard, setIsOpeningFirstCard, setShowSwitchCard, resultList, setResultList, winningSides, setWinningSides, gameHands, setGameHands, setBaccaratPointDisplayManager }) {
+function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitPhoneScreen, showPlaceBets, setShowPlaceBets, mainChoice, setMainChoice, mainBetValue, setMainBetValue, roomId, token, statusInRoom, setStatusInRoom, moneyInRoom, countdownMs, setCountdownMs, betSides, setBetSides, isOpeningFirstCard, setIsOpeningFirstCard, setShowSwitchCard, resultList, setResultList, winningSides, setWinningSides, gameHands, setGameHands, setBaccaratPointDisplayManager, setPlayersData }) {
     const { messageApi } = useContext(GlobalNotificationContext);
     const { showCasinoForm, setShowCasinoForm } = useContext(casinoFormContext);
     const mainBetChoiceRef = useRef(mainChoice);
@@ -118,6 +118,7 @@ function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitP
                 if (mainBetChoiceRef.current === 'Player') {
                     if (data.resultList[data.resultList.length - 1] === "Player") {
                         winBetOnPlayer();
+                        messageApi('success', 'Your bet on Player has won!', 2);
                     } else if (data.resultList[data.resultList.length - 1] === "Tie") {
                         messageApi('info', 'Your bet on Player is returned due to Tie.', 3);
                     }
@@ -127,6 +128,7 @@ function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitP
                 } else if (mainBetChoiceRef.current === 'Banker') {
                     if (data.resultList[data.resultList.length - 1] === "Banker") {
                         winBetOnBanker();
+                        messageApi('success', 'Your bet on Banker has won!', 2);
                     } else if (data.resultList[data.resultList.length - 1] === "Tie") {
                         messageApi('info', 'Your bet on Banker is returned due to Tie.', 3);
                     }
@@ -136,6 +138,7 @@ function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitP
                 } else if (mainBetChoiceRef.current === 'Tie') {
                     if (data.resultList[data.resultList.length - 1] === "Tie") {
                         winBetOnTie();
+                        messageApi('success', 'Your bet on Tie has won!', 2);
                     } else {
                         loseBetOnTie();
                     }
@@ -162,26 +165,28 @@ function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitP
             }
             messageApi('info', `User ${data.username} has been removed from the room due to inactivity.`, 5);
         };
-
         const UserActionNotification = (data) => {
-            if (data.userId === profile?.userId) {
-                if (data.roomUserStatus === "betting" && data.generalStatusInRoom === "waiting") {
-                    messageApi('info', 'The other players are still waiting for the last round to finish. Please be patient~', 5);
-                } else if (data.roomUserStatus === "results" && data.generalStatusInRoom === "dealing") {
-                    messageApi('info', 'The other players are driving the game by opening the cards. Please wait for them to finish~', 5);
-                } else if (data.roomUserStatus === "waiting" && (data.generalStatusInRoom === "results")) {
-                    messageApi('info', 'The other players are still getting their bets. Please wait a moment~', 5);
-                } else if (data.statusInRoom === "waiting") {
-                    messageApi('info', 'The game is in progress. Please wait this round to finish then you can place the bets... Please be patient, this would not take long~', 5);
-                }
-            }
-            else {
-                if (data.countOfUsersStillIsGeneralInRoomStatus > 0) {
-                    messageApi('info', `User ${data.userName} action changed to ${data.roomUserStatus}. Now we are still waiting for ${data.countOfUsersStillIsGeneralInRoomStatus} players to finish their current actions.`, 3);
-                }
-            }
-        }
 
+            if (data.users) {
+                // 找到当前用户
+                const currentUserData = data.users.find(u => u.userId === profile?.userId);
+
+                if (currentUserData) {
+                    if (currentUserData.roomUserStatus === "betting" && data.generalStatusInRoom === "waiting") {
+                        messageApi('info', 'The other players are still waiting for the last round to finish. Please be patient~', 3);
+                    } else if (currentUserData.roomUserStatus === "results" && data.generalStatusInRoom === "dealing") {
+                        messageApi('info', 'The other players are still opening their cards. Please wait for them to finish~', 3);
+                    } else if (currentUserData.roomUserStatus === "waiting" && data.generalStatusInRoom === "results") {
+                        messageApi('info', 'The other players are still getting their bets. Please wait a moment~', 3);
+                    } else if (currentUserData.roomUserStatus === "waiting") {
+                        messageApi('info', 'The game is in progress. Please wait this round to finish then you can place the bets... Please be patient, this would not take long~', 5);
+                    }
+
+                }
+                setPlayersData(data);
+
+            }
+        };
         conn.on('UserJoined', UserJoined);
         conn.on('UserStatusChanged', UserStatusChanged);
         conn.on('ResultsReady', ResultsReady);

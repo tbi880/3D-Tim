@@ -38,7 +38,7 @@ export const CanvasProvider = ({ children, vrEnabled = false }) => {
         <canvasContext.Provider value={{ isVRSupported, setIsVRSupported }}>
             {shouldRenderVR && <>
                 <VRButton />
-                <Canvas gl={{ antialias: antialias, precision: "lowp", powerPreference: dpr > 1 ? "high-performance" : "low-power", preserveDrawingBuffer: webGLPreserveDrawingBuffer, stencil: false }} dpr={dpr} performance={{ min: 0.25 }} mode="concurrent" fallback={<div>Sorry no WebGL supported!</div>}>
+                <Canvas frameloop="demand" gl={{ antialias: antialias, precision: "lowp", powerPreference: dpr > 1 ? "high-performance" : "low-power", preserveDrawingBuffer: webGLPreserveDrawingBuffer, stencil: false }} dpr={dpr} performance={{ min: 0.25 }} mode="concurrent" fallback={<div>Sorry no WebGL supported!</div>}>
                     <XR>
                         <Controllers rayMaterial={{ color: '#99FFFF' }} />
                         <Hands />
@@ -48,7 +48,7 @@ export const CanvasProvider = ({ children, vrEnabled = false }) => {
             </>}
 
             {!shouldRenderVR &&
-                <Canvas gl={{ antialias: antialias, precision: "lowp", powerPreference: dpr > 1 ? "high-performance" : "low-power", preserveDrawingBuffer: webGLPreserveDrawingBuffer, stencil: false }} dpr={dpr} performance={{ min: 0.25 }} mode="concurrent" fallback={<div>Sorry no WebGL supported!</div>}>
+                <Canvas frameloop="demand" gl={{ antialias: antialias, precision: "lowp", powerPreference: dpr > 1 ? "high-performance" : "low-power", preserveDrawingBuffer: webGLPreserveDrawingBuffer, stencil: false }} dpr={dpr} performance={{ min: 0.25 }} mode="concurrent" fallback={<div>Sorry no WebGL supported!</div>}>
                     {children}
                 </Canvas>}
 

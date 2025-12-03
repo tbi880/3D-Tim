@@ -18,6 +18,7 @@ import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationP
 import { roomURL } from '../Settings';
 import { BaccaratGraphBoardContentContext } from '../sharedContexts/BaccaratGraphBoardContentProvider';
 import { BaccaratPointDisplay } from '../Tools/BaccaratPointDisplay';
+import { CasinoMultiPlayersStatusForm } from '../Tools/CasinoMultiPlayersStatusForm';
 
 function ShipCasino({ isPortraitPhoneScreen }) {
     const { messageApi } = useContext(GlobalNotificationContext);
@@ -42,7 +43,7 @@ function ShipCasino({ isPortraitPhoneScreen }) {
     const [levelOfBets, setLevelOfBets] = useState('lv1');
     const { baccaratGraphBoardContent, setBaccaratGraphBoardContent } = useContext(BaccaratGraphBoardContentContext);
     const [gameHands, setGameHands] = useState([]);
-
+    const [playersData, setPlayersData] = useState(null);
 
     const levels = [
         'lv1', 'lv2', 'lv3', 'lv4', 'lv5', 'lv6', 'lv7', 'lv8', 'lv9', 'lv10'
@@ -122,8 +123,18 @@ function ShipCasino({ isPortraitPhoneScreen }) {
                 setBetSides(userData.betSides ?? {});
                 if (Object.keys(data.usersInRoom).length > 1) {
                     if ((userData.statusInRoom === "dealing" || userData.statusInRoom === "results") && data.statusGeneralInRoom === "betting") {
-                        messageApi('info', 'The other players are placing their bets. You might need to wait for a moment~', 5);
+                        messageApi('info', 'The other players are placing their bets. You might need to wait for a moment~', 3);
                     }
+                    const usersArray = Object.values(data.usersInRoom).map(u => ({
+                        userId: u.userId,
+                        userName: u.userName,
+                        roomUserStatus: u.statusInRoom
+                    }));
+                    setPlayersData({
+                        countOfUsersInRoom: usersArray.length,
+                        users: usersArray,
+                        generalStatusInRoom: data.statusGeneralInRoom
+                    });
                 }
                 resolve(true); // 成功
             } catch (err) {
@@ -186,6 +197,7 @@ function ShipCasino({ isPortraitPhoneScreen }) {
             >
                 {displayCountDown}s
             </div>
+            {playersData && <CasinoMultiPlayersStatusForm playersData={playersData} />}
             <BaccaratPointDisplay gameHands={gameHands || [[], []]} baccaratPointDisplayManager={baccaratPointDisplayManager} />
             {showSwitchCard && <div
                 style={{
@@ -216,7 +228,7 @@ function ShipCasino({ isPortraitPhoneScreen }) {
             {showPlaceBets && (statusInRoom === "betting") && <PlaceBets isPortraitPhoneScreen={isPortraitPhoneScreen} moneyInRoom={moneyInRoom} roomId={roomId} fetchRoomStatus={fetchRoomStatus} levelOfBets={levelOfBets} LevelMap={LevelMap} mainChoice={mainChoice} setMainChoice={setMainChoice} mainBetValue={mainBetValue} setMainBetValue={setMainBetValue} sideOpen={sideOpen} setSideOpen={setSideOpen} smallTiger={smallTiger} setSmallTiger={setSmallTiger} bigTiger={bigTiger} setBigTiger={setBigTiger} tigerTie={tigerTie} setTigerTie={setTigerTie} chipSheet={chipSheet} setShowPlaceBets={setShowPlaceBets} setMoneyInRoom={setMoneyInRoom} />}
             <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
                 <CanvasProvider>
-                    <Casino casinoSheet={casinoSheet} card2Sheet={card2Sheet} chipSheet={chipSheet} casinoProject={casinoProject} isPortraitPhoneScreen={isPortraitPhoneScreen} showPlaceBets={showPlaceBets} setShowPlaceBets={setShowPlaceBets} mainChoice={mainChoice} setMainChoice={setMainChoice} mainBetValue={mainBetValue} setMainBetValue={setMainBetValue} roomId={roomId} token={token} statusInRoom={statusInRoom} setStatusInRoom={setStatusInRoom} moneyInRoom={moneyInRoom} countdownMs={countdownMs} setCountdownMs={setCountdownMs} betSides={betSides} setBetSides={setBetSides} isOpeningFirstCard={isOpeningFirstCard} setIsOpeningFirstCard={setIsOpeningFirstCard} setShowSwitchCard={setShowSwitchCard} resultList={resultList} setResultList={setResultList} winningSides={winningSides} setWinningSides={setWinningSides} gameHands={gameHands} setGameHands={setGameHands} setBaccaratPointDisplayManager={setBaccaratPointDisplayManager} />
+                    <Casino casinoSheet={casinoSheet} card2Sheet={card2Sheet} chipSheet={chipSheet} casinoProject={casinoProject} isPortraitPhoneScreen={isPortraitPhoneScreen} showPlaceBets={showPlaceBets} setShowPlaceBets={setShowPlaceBets} mainChoice={mainChoice} setMainChoice={setMainChoice} mainBetValue={mainBetValue} setMainBetValue={setMainBetValue} roomId={roomId} token={token} statusInRoom={statusInRoom} setStatusInRoom={setStatusInRoom} moneyInRoom={moneyInRoom} countdownMs={countdownMs} setCountdownMs={setCountdownMs} betSides={betSides} setBetSides={setBetSides} isOpeningFirstCard={isOpeningFirstCard} setIsOpeningFirstCard={setIsOpeningFirstCard} setShowSwitchCard={setShowSwitchCard} resultList={resultList} setResultList={setResultList} winningSides={winningSides} setWinningSides={setWinningSides} gameHands={gameHands} setGameHands={setGameHands} setBaccaratPointDisplayManager={setBaccaratPointDisplayManager} setPlayersData={setPlayersData} />
                 </CanvasProvider>
 
             </div>

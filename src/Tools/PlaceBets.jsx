@@ -7,6 +7,8 @@ import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationP
 import { useAuthStore } from '../hooks/useAuthStore';
 import useCasinoControl from '../hooks/useCasinoControl';
 import { roomURL } from '../Settings';
+import { motion, useMotionValue, useTransform, animate } from "motion/react";
+import { BetterSlider } from './BetterSlider';
 
 export default function PlaceBets({ isPortraitPhoneScreen, moneyInRoom, roomId, fetchRoomStatus, levelOfBets, LevelMap, mainChoice, setMainChoice, mainBetValue, setMainBetValue, sideOpen, setSideOpen, smallTiger, setSmallTiger, bigTiger, setBigTiger, tigerTie, setTigerTie, chipSheet, setShowPlaceBets, setMoneyInRoom }) {
     const { messageApi } = useContext(GlobalNotificationContext);
@@ -15,6 +17,15 @@ export default function PlaceBets({ isPortraitPhoneScreen, moneyInRoom, roomId, 
     const { placeBetOnPlayer, placeBetOnBanker, placeBetOnTie } = useCasinoControl({ chipSheet: chipSheet });
     const [isPlacing, setIsPlacing] = useState(false);
     const [thinkingChoice, setThinkingChoice] = useState(null);
+    const roomValue = useMotionValue(moneyInRoom);
+    const display = useTransform(roomValue, (latest) => {
+        return Number(latest).toLocaleString();
+    });
+    useEffect(() => {
+        const controls = animate(roomValue, moneyInRoom, { duration: 1.5 });
+        return () => controls.stop();
+    }, [moneyInRoom]);
+
 
     const odds = [
         ["SmallTiger", 22],
@@ -33,24 +44,6 @@ export default function PlaceBets({ isPortraitPhoneScreen, moneyInRoom, roomId, 
         if (typeof n !== 'number') return n;
         return n.toLocaleString();
     };
-
-    const adjust = (setter, value, delta, min, unit) => {
-        if (delta > 0) {
-            if (value === 0) {
-                setter(min);
-            } else {
-                setter(Math.max(0, value + delta));
-            }
-        } else {
-            if (value === min) {
-                setter(0);
-            } else {
-                setter(Math.max(0, value + delta));
-            }
-        }
-    };
-
-    const isOverBalance = (val) => (val > moneyInRoom && val < currentLevelValues.max);
 
     const handlePlaceBets = async (isFreehand) => {
         try {
@@ -133,7 +126,12 @@ export default function PlaceBets({ isPortraitPhoneScreen, moneyInRoom, roomId, 
 
                 <div className="divider"></div>
 
-                <label className="label">In Room Chip Value: <span className="level-display" style={{ marginLeft: 8 }}>{fmt(moneyInRoom)}</span></label>
+                <label className="label">
+                    In Room Chip Value:&nbsp;
+                    <motion.span className="level-display" style={{ marginLeft: 8 }}>
+                        {display}
+                    </motion.span>
+                </label>
 
                 <div className="divider"></div>
 
@@ -188,65 +186,7 @@ export default function PlaceBets({ isPortraitPhoneScreen, moneyInRoom, roomId, 
                 </div>
 
                 <div style={{ height: 12 }}></div>
-
-                <label className="label">Bet Amount</label>
-
-                {/* 金额显示：放在 Bet Amount 下方 */}
-                <div style={{ marginBottom: 8 }}>
-                    <div
-                        className="level-display"
-                        style={{
-                            width: '100%',
-                            backgroundColor: isOverBalance(mainBetValue) ? 'rgba(255,0,0,0.15)' : undefined,
-                            textAlign: 'left'
-                        }}
-                    >
-                        {fmt(mainBetValue)}
-                    </div>
-                </div>
-
-                {/* Slider + 加减号 单独一行 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <button
-                        className="button"
-                        onClick={() => adjust(
-                            setMainBetValue,
-                            mainBetValue,
-                            -currentLevelValues.unit,
-                            currentLevelValues.min,
-                            currentLevelValues.unit
-                        )}
-                    >
-                        <FontAwesomeIcon icon={faMinus} />
-                    </button>
-
-                    <div style={{ flex: 1 }}>
-                        <Slider
-                            min={currentLevelValues.min}
-                            max={currentLevelValues.max}
-                            step={currentLevelValues.unit}
-                            value={mainBetValue}
-                            onChange={(v) => setMainBetValue(v)}
-                        />
-                    </div>
-
-                    <button
-                        className="button"
-                        onClick={() => adjust(
-                            setMainBetValue,
-                            mainBetValue,
-                            currentLevelValues.unit,
-                            currentLevelValues.min,
-                            currentLevelValues.unit
-                        )}
-                    >
-                        <FontAwesomeIcon icon={faPlus} />
-                    </button>
-                </div>
-
-                {isOverBalance(mainBetValue) && (
-                    <div style={{ color: 'salmon', marginTop: 8 }}>余额不足</div>
-                )}
+                <BetterSlider label={"Bet Amount"} moneyInRoom={moneyInRoom} min={currentLevelValues.min} max={currentLevelValues.max} unit={currentLevelValues.unit} step={currentLevelValues.unit} value={mainBetValue} setValue={setMainBetValue} isMainBets={true} />
 
                 <div style={{ height: 12 }}></div>
 
@@ -260,126 +200,38 @@ export default function PlaceBets({ isPortraitPhoneScreen, moneyInRoom, roomId, 
                     <div style={{ marginTop: 12 }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-                            <div>
-                                <label className="label">Small Tiger — Odds: 22 : 1</label>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <button className="button" onClick={() => adjust(
-                                        setSmallTiger,
-                                        smallTiger,
-                                        -currentLevelValues.unit / 5,
-                                        currentLevelValues.min / 5,
-                                        currentLevelValues.unit / 5
-                                    )}>
-                                        <FontAwesomeIcon icon={faMinus} />
-                                    </button>
+                            <BetterSlider
+                                label="Small Tiger — Odds: 22 : 1"
+                                moneyInRoom={moneyInRoom}
+                                min={currentLevelValues.min / 5}
+                                max={currentLevelValues.max / 5}
+                                unit={currentLevelValues.unit / 5}
+                                step={currentLevelValues.unit / 5}
+                                value={smallTiger}
+                                setValue={setSmallTiger}
+                            />
 
-                                    <div style={{ flex: 1 }}>
-                                        <Slider
-                                            min={0}
-                                            max={currentLevelValues.max / 5}
-                                            step={currentLevelValues.unit / 5}
-                                            value={smallTiger}
-                                            onChange={(v) => setSmallTiger(v)}
-                                        />
-                                    </div>
+                            <BetterSlider
+                                label="Big Tiger — Odds: 50 : 1"
+                                moneyInRoom={moneyInRoom}
+                                min={currentLevelValues.min / 5}
+                                max={currentLevelValues.max / 5}
+                                unit={currentLevelValues.unit / 5}
+                                step={currentLevelValues.unit / 5}
+                                value={bigTiger}
+                                setValue={setBigTiger}
+                            />
 
-                                    <button className="button" onClick={() => adjust(
-                                        setSmallTiger,
-                                        smallTiger,
-                                        currentLevelValues.unit / 5,
-                                        currentLevelValues.min / 5,
-                                        currentLevelValues.unit / 5
-                                    )}>
-                                        <FontAwesomeIcon icon={faPlus} />
-                                    </button>
-
-                                    <div style={{ minWidth: 120, textAlign: 'right' }}>
-                                        <div className="level-display" style={{ backgroundColor: isOverBalance(smallTiger) ? 'rgba(255,0,0,0.15)' : undefined }}>{fmt(smallTiger)}</div>
-                                    </div>
-                                </div>
-                                {isOverBalance(smallTiger) && <div style={{ color: 'salmon', marginTop: 6 }}>余额不足</div>}
-                            </div>
-
-                            <div>
-                                <label className="label">Big Tiger — Odds: 50 : 1</label>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <button className="button" onClick={() => adjust(
-                                        setBigTiger,
-                                        bigTiger,
-                                        -currentLevelValues.unit / 5,
-                                        currentLevelValues.min / 5,
-                                        currentLevelValues.unit / 5
-                                    )}>
-                                        <FontAwesomeIcon icon={faMinus} />
-                                    </button>
-
-                                    <div style={{ flex: 1 }}>
-                                        <Slider
-                                            min={0}
-                                            max={currentLevelValues.max / 5}
-                                            step={currentLevelValues.unit / 5}
-                                            value={bigTiger}
-                                            onChange={(v) => setBigTiger(v)}
-                                        />
-                                    </div>
-
-                                    <button className="button" onClick={() => adjust(
-                                        setBigTiger,
-                                        bigTiger,
-                                        currentLevelValues.unit / 5,
-                                        currentLevelValues.min / 5,
-                                        currentLevelValues.unit / 5
-                                    )}>
-                                        <FontAwesomeIcon icon={faPlus} />
-                                    </button>
-
-                                    <div style={{ minWidth: 120, textAlign: 'right' }}>
-                                        <div className="level-display" style={{ backgroundColor: isOverBalance(bigTiger) ? 'rgba(255,0,0,0.15)' : undefined }}>{fmt(bigTiger)}</div>
-                                    </div>
-                                </div>
-                                {isOverBalance(bigTiger) && <div style={{ color: 'salmon', marginTop: 6 }}>余额不足</div>}
-                            </div>
-
-                            <div>
-                                <label className="label">Tiger Tie — Odds: 35 : 1</label>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <button className="button" onClick={() => adjust(
-                                        setTigerTie,
-                                        tigerTie,
-                                        -currentLevelValues.unit / 5,
-                                        currentLevelValues.min / 5,
-                                        currentLevelValues.unit / 5
-                                    )}>
-                                        <FontAwesomeIcon icon={faMinus} />
-                                    </button>
-
-                                    <div style={{ flex: 1 }}>
-                                        <Slider
-                                            min={0}
-                                            max={currentLevelValues.max / 5}
-                                            step={currentLevelValues.unit / 5}
-                                            value={tigerTie}
-                                            onChange={(v) => setTigerTie(v)}
-                                        />
-                                    </div>
-
-                                    <button className="button" onClick={() => adjust(
-                                        setTigerTie,
-                                        tigerTie,
-                                        currentLevelValues.unit / 5,
-                                        currentLevelValues.min / 5,
-                                        currentLevelValues.unit / 5
-                                    )}>
-                                        <FontAwesomeIcon icon={faPlus} />
-                                    </button>
-
-                                    <div style={{ minWidth: 120, textAlign: 'right' }}>
-                                        <div className="level-display" style={{ backgroundColor: isOverBalance(tigerTie) ? 'rgba(255,0,0,0.15)' : undefined }}>{fmt(tigerTie)}</div>
-                                    </div>
-                                </div>
-                                {isOverBalance(tigerTie) && <div style={{ color: 'salmon', marginTop: 6 }}>余额不足</div>}
-                            </div>
-
+                            <BetterSlider
+                                label="Tiger Tie — Odds: 35 : 1"
+                                moneyInRoom={moneyInRoom}
+                                min={currentLevelValues.min / 5}
+                                max={currentLevelValues.max / 5}
+                                unit={currentLevelValues.unit / 5}
+                                step={currentLevelValues.unit / 5}
+                                value={tigerTie}
+                                setValue={setTigerTie}
+                            />
                         </div>
                     </div>
                 )}

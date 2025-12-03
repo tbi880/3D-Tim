@@ -2,7 +2,7 @@ import { forwardRef, useState, useRef, useEffect } from "react";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronRight, faChevronLeft, faLock, faVrCardboard, faFileDownload } from '@fortawesome/free-solid-svg-icons';
 import "./css/menu.css";
-import { getMenuLockMapFromLocalStorage } from "../pages/Status";
+import { getMenuLockMapFromLocalStorage, isCasinoUnlocked } from "../pages/Status";
 
 const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, refMenu) => {
     // menu open/close
@@ -99,14 +99,6 @@ const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, r
         height: '2px',
         background: 'linear-gradient(to right, rgba(255, 255, 255, 0), #fff, rgba(255, 255, 255, 0))',
         margin: '5% auto',
-    };
-
-    const isCasinoUnlocked = () => {
-        const exp = localStorage.getItem("app_jwt_token_exp");
-        if (!exp) return false;
-
-        const now = Math.floor(Date.now() / 1000);
-        return Number(exp) > now;
     };
 
 

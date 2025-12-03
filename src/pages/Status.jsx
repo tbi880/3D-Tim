@@ -1,3 +1,4 @@
+"use memo";
 let nextScene = sessionStorage.getItem('nextScene') || "sceneOne";
 let nextSceneStartPoint = JSON.parse(sessionStorage.getItem('nextSceneStartPoint')) || 0;
 let engineeringHasBeenAccessed = JSON.parse(localStorage.getItem('engineeringHasBeenAccessed')) || false;
@@ -48,6 +49,13 @@ if (!getMenuLockMapFromLocalStorage()) {
     saveMapToLocalStorage(scene_menu_lock_map);
 }
 
+export function isCasinoUnlocked() {
+    const exp = localStorage.getItem("app_jwt_token_exp");
+    if (!exp) return false;
+
+    const now = Math.floor(Date.now() / 1000);
+    return Number(exp) > now;
+};
 
 export function unlockScene(scene) {
     const map = getMenuLockMapFromLocalStorage();

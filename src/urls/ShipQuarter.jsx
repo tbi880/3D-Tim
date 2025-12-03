@@ -1,7 +1,7 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
 import { SheetProvider } from '@theatre/r3f';
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useContext } from 'react';
 import { headerSubTitleContext } from '../sharedContexts/HeaderSubTitleProvider';
 import { getProject } from '@theatre/core';
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';

@@ -6,7 +6,6 @@ import compressPlugin from 'vite-plugin-compression';
 import { VitePWA } from 'vite-plugin-pwa';
 import { stageOfENV } from './src/Settings';
 
-
 const ReactCompilerConfig = {
   target: '18', // '17' | '18' | '19'
 };

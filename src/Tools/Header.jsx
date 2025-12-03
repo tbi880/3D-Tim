@@ -11,7 +11,7 @@ function importantNotice() {
         '1225': ['Tim wishes you a marry xmas! 圣诞节快乐！', ''],
     };
 
-    const defaultNotice = ['Welcome to Tim Bi\'s world! 欢迎来到Tim Bi的世界！ Recent notice happened around Tim: ' + noticeMap["0714"][0], 'https://www.bty.co.nz/hb_to_qxl/index.html'];
+    const defaultNotice = ['Welcome to Tim Bi\'s world! 欢迎来到Tim Bi的世界！', 'https://www.bty.co.nz'];
 
     const today = new Date();
     let closestNotice = null;

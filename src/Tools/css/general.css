@@ -200,7 +200,7 @@ select.input {
 /* portrait 模式（手机或窄屏）——靠顶显示，防止被 header 遮挡 */
 .casino-room-container.portrait {
     align-items: flex-start;
-    padding-top: 4%;
+    padding-top: 7.5%;
 }
 
 .casino-card {
