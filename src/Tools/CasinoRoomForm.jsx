@@ -7,7 +7,7 @@ import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationP
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 import { casinoFormContext } from '../sharedContexts/CasinoFormProvider';
 
-export default function CasinoRoomForm({ sceneSheet, isPortraitPhoneScreen, fetchRoomStatus, levelOfBets, setLevelOfBets, levels, LevelMap, roomName, setRoomName, roomId, setRoomId, setCountdownMs, setWaitingForJoinRoom }) {
+export default function CasinoRoomForm({ sceneSheet, isPortraitPhoneScreen, fetchRoomStatus, levelOfBets, setLevelOfBets, levels, LevelMap, roomName, setRoomName, roomId, setRoomId, setCountdownMs }) {
     const [mode, setMode] = useState('join'); // 'join' | 'create'
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { joinRoom, createRoom, joining, creating, currentRoom } = useRoomStore();
@@ -64,10 +64,11 @@ export default function CasinoRoomForm({ sceneSheet, isPortraitPhoneScreen, fetc
                 setRoomName(result.data.roomName || '');
                 setRoomId(result.data.roomId);
                 setLevelOfBets(findLevelByMin(result.data.roomMinBet));
+                await new Promise(resolve => setTimeout(resolve, 1500));
                 fetchRoomStatus(result.data.roomId, true)
                     .then((ok) => ok && handleAfterPlay());
                 setCountdownMs(result.data.countDownMs || 0);
-                setWaitingForJoinRoom(true);
+                messageApi('info', `You might need to wait for a moment till this round ends~`, 10);
             }
         } finally {
             setIsSubmitting(false);
@@ -94,6 +95,7 @@ export default function CasinoRoomForm({ sceneSheet, isPortraitPhoneScreen, fetc
 
             const result = await createRoom(dto, messageApi);
             if (result.success) {
+                await new Promise(resolve => setTimeout(resolve, 1500));
                 fetchRoomStatus(result.data.roomId, true)
                     .then((ok) => ok && handleAfterPlay());
             }

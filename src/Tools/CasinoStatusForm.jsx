@@ -2,7 +2,7 @@ export function CasinoStatusForm({ roomName, roomId, moneyInRoom, statusInRoom, 
     return <div
         style={{
             position: 'fixed',
-            bottom: '10%',
+            bottom: '2.5%',
             left: '10px',
             padding: '6px 12px',
             background: 'rgba(0,0,0,0.6)',

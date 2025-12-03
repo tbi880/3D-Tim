@@ -7,6 +7,8 @@ import * as THREE from 'three';
 import { bucketURL } from '../Settings';
 import { useFrame } from '@react-three/fiber';
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+
 
 
 function AnyModel(props) {
@@ -57,10 +59,21 @@ function AnyModel(props) {
     const clone = useMemo(() => {
         if (!anyModel || !anyModel.scene) return null;
         if (!props.isMultiple) return null;
+
         const c = anyModel.scene.clone(true);
 
         c.traverse((child) => {
             if (child.isMesh) {
+
+                // 1. 确保使用 BufferGeometry
+                if (!(child.geometry instanceof THREE.BufferGeometry)) {
+                    child.geometry = new THREE.BufferGeometry().fromGeometry(child.geometry);
+                }
+
+                // 2. 合并重复顶点
+                child.geometry = BufferGeometryUtils.mergeVertices(child.geometry);
+
+                // 3. 克隆材质而不是几何体（材质独立即可）
                 if (Array.isArray(child.material)) {
                     child.material = child.material.map((m) => m.clone());
                 } else if (child.material) {
@@ -69,22 +82,23 @@ function AnyModel(props) {
             }
         });
 
-        if (!props.modelNodeLoadMap) return c;
-
-        Object.entries(props.modelNodeLoadMap).forEach(([nodeName, shouldShow]) => {
-            if (!shouldShow) {
-                const node = c.getObjectByName(nodeName);
-                if (node) {
-                    node.parent?.remove(node);
-                    node.geometry?.dispose();
-                    if (Array.isArray(node.material)) {
-                        node.material.forEach((material) => material.dispose());
-                    } else if (node.material) {
-                        node.material.dispose();
+        // 4. 删除不需要显示的节点（和原来逻辑一样）
+        if (props.modelNodeLoadMap) {
+            Object.entries(props.modelNodeLoadMap).forEach(([nodeName, shouldShow]) => {
+                if (!shouldShow) {
+                    const node = c.getObjectByName(nodeName);
+                    if (node) {
+                        node.parent?.remove(node);
+                        node.geometry?.dispose();
+                        if (Array.isArray(node.material)) {
+                            node.material.forEach((material) => material.dispose());
+                        } else if (node.material) {
+                            node.material.dispose();
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
 
         return c;
     }, [anyModel, props.isMultiple, props.modelNodeLoadMap]);

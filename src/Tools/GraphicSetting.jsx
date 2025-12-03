@@ -37,7 +37,7 @@ const GraphicSetting = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCal
 
     const handleDprChange = (e) => {
         const value = parseFloat(e.target.value);
-        if (value > 1.5 && isPortraitPhoneScreen) {
+        if (value > 1 && isPortraitPhoneScreen) {
             messageApi.error("The current DPR setting is not optimal for mobile devices. For the best experience, I strongly recommend accessing here on a desktop device!");
             return;
         }
@@ -47,6 +47,10 @@ const GraphicSetting = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCal
     };
 
     const handleAntialiasToggle = () => {
+        if (isPortraitPhoneScreen) {
+            messageApi.error("Antialiasing is disabled on mobile devices for better performance.");
+            return;
+        }
         const newValue = !antialias;
         setAntialias(newValue);
         setUserAntialias(newValue);

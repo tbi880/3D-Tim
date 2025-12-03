@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { onChange, val } from '@theatre/core';
+import { all } from "axios";
 
 export function useCasinoControl({
     casinoSheet = null,
@@ -13,6 +14,7 @@ export function useCasinoControl({
     mainBetChoiceRef = null,
     changeUserStatusInRoom = async () => { },
     resetRoundState = () => { },
+    setBaccaratPointDisplayManager = () => { },
 } = {}) {
 
     async function waitForSequenceThen(sheet, action, destinationPosition = null) {
@@ -132,6 +134,7 @@ export function useCasinoControl({
                     if (casinoSheet.sequence.position >= 29) return;
                     await casinoSheet.sequence.play({ range: [26, 29], rate: openNow ? 5 : 1 });
                 });
+                setBaccaratPointDisplayManager(prev => ({ ...prev, player1: true }));
                 await waitForSequenceThen(casinoSheet, async () => {
                     setIsOpeningFirstCard(false);
                     if (card2Sheet.sequence.position === 16) {
@@ -141,7 +144,7 @@ export function useCasinoControl({
 
             }
         }
-    }, [casinoSheet, card2Sheet, setShowSwitchCard, setIsOpeningFirstCard, showComponents, waitForSequenceThen]);
+    }, [casinoSheet, card2Sheet, setShowSwitchCard, setIsOpeningFirstCard, showComponents, waitForSequenceThen, setBaccaratPointDisplayManager]);
 
     const openCard2Player = useCallback(async (openNow = false) => {
         if (!card2Sheet || !casinoSheet) return;
@@ -172,6 +175,7 @@ export function useCasinoControl({
                     if (seq.position >= 16) return;
                     await seq.play({ range: [13, 16], rate: openNow ? 5 : 1 });
                 });
+                setBaccaratPointDisplayManager(prev => ({ ...prev, player2: true }));
 
                 await waitForSequenceThen(card2Sheet, async () => {
                     setIsOpeningFirstCard(true);
@@ -181,7 +185,7 @@ export function useCasinoControl({
                 });
             }
         }
-    }, [card2Sheet, casinoSheet, setShowSwitchCard, setIsOpeningFirstCard, showComponents, waitForSequenceThen]);
+    }, [card2Sheet, casinoSheet, setShowSwitchCard, setIsOpeningFirstCard, showComponents, waitForSequenceThen, setBaccaratPointDisplayManager]);
 
     const openCard1Banker = useCallback(async (openNow = false) => {
         if (!casinoSheet || !card2Sheet) return;
@@ -215,25 +219,15 @@ export function useCasinoControl({
 
                 await waitForSequenceThen(casinoSheet, async () => {
                     setIsOpeningFirstCard(false);
+                    setBaccaratPointDisplayManager(prev => ({ ...prev, banker1: true }));
+
                     if (card2Sheet.sequence.position === 29) {
                         await bankerAfterOpenTwoCards(showComponents);
                     }
                 });
-
             }
         }
-    }, [casinoSheet, card2Sheet, showComponents, setShowSwitchCard, setIsOpeningFirstCard]);
-
-
-    const openPlayer1And2CardsFree = useCallback(async () => {
-        if (!casinoSheet || !card2Sheet) return;
-        await waitForSequenceThen(casinoSheet, async () => {
-            await casinoSheet.sequence.play({ range: [28, 29] });
-        });
-        await waitForSequenceThen(card2Sheet, async () => {
-            await card2Sheet.sequence.play({ range: [15, 16] });
-        });
-    }, [casinoSheet, card2Sheet, waitForSequenceThen]);
+    }, [casinoSheet, card2Sheet, showComponents, setShowSwitchCard, setIsOpeningFirstCard, setBaccaratPointDisplayManager]);
 
     const openCard2Banker = useCallback(async (openNow = false) => {
         if (!card2Sheet || !casinoSheet) return;
@@ -264,6 +258,7 @@ export function useCasinoControl({
                     if (seq.position >= 29) return;
                     await seq.play({ range: [26, 29], rate: openNow ? 5 : 1 });
                 });
+                setBaccaratPointDisplayManager(prev => ({ ...prev, banker2: true }));
 
                 await waitForSequenceThen(card2Sheet, async () => {
                     setIsOpeningFirstCard(true);
@@ -273,8 +268,19 @@ export function useCasinoControl({
                 });
             }
         }
-    }, [card2Sheet, casinoSheet, showComponents, setShowSwitchCard, setIsOpeningFirstCard]);
+    }, [card2Sheet, casinoSheet, showComponents, setShowSwitchCard, setIsOpeningFirstCard, setBaccaratPointDisplayManager]);
 
+    const openPlayer1And2CardsFree = useCallback(async () => {
+        if (!casinoSheet || !card2Sheet) return;
+        await waitForSequenceThen(casinoSheet, async () => {
+            await casinoSheet.sequence.play({ range: [28, 29] });
+            setBaccaratPointDisplayManager(prev => ({ ...prev, player1: true }));
+        });
+        await waitForSequenceThen(card2Sheet, async () => {
+            await card2Sheet.sequence.play({ range: [15, 16] });
+            setBaccaratPointDisplayManager(prev => ({ ...prev, player2: true }));
+        });
+    }, [casinoSheet, card2Sheet, waitForSequenceThen, setBaccaratPointDisplayManager]);
 
     const openBanker1And2CardsFree = useCallback(async () => {
         if (!casinoSheet || !card2Sheet) return;
@@ -282,12 +288,14 @@ export function useCasinoControl({
         await Promise.all([
             waitForSequenceThen(card2Sheet, async () => {
                 await card2Sheet.sequence.play({ range: [28, 29] });
+                setBaccaratPointDisplayManager(prev => ({ ...prev, banker1: true }));
             }),
             waitForSequenceThen(casinoSheet, async () => {
                 await casinoSheet.sequence.play({ range: [42, 43] });
+                setBaccaratPointDisplayManager(prev => ({ ...prev, banker2: true }));
             })
         ]);
-    }, [casinoSheet, card2Sheet, waitForSequenceThen]);
+    }, [casinoSheet, card2Sheet, waitForSequenceThen, setBaccaratPointDisplayManager]);
 
     const dealPlayer3Card = useCallback(async () => {
         if (!casinoSheet) return;
@@ -326,21 +334,23 @@ export function useCasinoControl({
                     if (seq.position >= 57) return;
                     await seq.play({ range: [54, 57], rate: openNow ? 5 : 1 });
                 });
+                setBaccaratPointDisplayManager(prev => ({ ...prev, player3: true }));
+
                 await waitForSequenceThen(casinoSheet, async () => {
                     playerAfterOpenThreeCards(showComponents);
                 });
-
             }
         }
-    }, [casinoSheet, showComponents]);
+    }, [casinoSheet, showComponents, waitForSequenceThen, setBaccaratPointDisplayManager]);
 
 
     const openPlayer3CardFree = useCallback(async () => {
         if (!casinoSheet) return;
         await waitForSequenceThen(casinoSheet, async () => {
             await casinoSheet.sequence.play({ range: [56, 57] });
+            setBaccaratPointDisplayManager(prev => ({ ...prev, player3: true }));
         });
-    }, [casinoSheet]);
+    }, [casinoSheet, waitForSequenceThen, setBaccaratPointDisplayManager]);
 
     const dealBanker3Card = useCallback(async () => {
         if (!casinoSheet || !card2Sheet) return;
@@ -379,21 +389,22 @@ export function useCasinoControl({
                     if (seq.position >= 43) return;
                     await seq.play({ range: [40, 43], rate: openNow ? 5 : 1 });
                 });
+                setBaccaratPointDisplayManager(prev => ({ ...prev, banker3: true }));
                 await waitForSequenceThen(card2Sheet, async () => {
                     await changeUserStatusInRoom("results");
                 });
-
             }
         }
-    }, [card2Sheet]);
+    }, [card2Sheet, waitForSequenceThen, setBaccaratPointDisplayManager]);
 
 
     const openBanker3CardFree = useCallback(async () => {
         if (!card2Sheet) return;
         await waitForSequenceThen(card2Sheet, async () => {
             await card2Sheet.sequence.play({ range: [42, 43] });
+            setBaccaratPointDisplayManager(prev => ({ ...prev, banker3: true }));
         });
-    }, [card2Sheet]);
+    }, [card2Sheet, waitForSequenceThen, setBaccaratPointDisplayManager]);
 
     const playerAfterOpenTwoCardsIsPlaying = useRef(false);
 
@@ -477,6 +488,7 @@ export function useCasinoControl({
             toggleComponentDisplay("card3_banker");
             toggleComponentDisplay("cardCover3_banker");
         }
+        setBaccaratPointDisplayManager({ player1: false, player2: false, player3: false, banker1: false, banker2: false, banker3: false, finalResult: false });
         resetRoundState();
         setShowPlaceBets(true);
         setShowSwitchCard(false);

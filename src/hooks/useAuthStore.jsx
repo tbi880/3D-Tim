@@ -79,8 +79,7 @@ export const useAuthStore = create((set, get) => ({
 
             const resp = await axiosInstance.post('register', payload);
             if (resp.status === 204 || resp.status === 200) {
-                notify('success', 'Register success — signing you in...', 2);
-                await get().login(email, password, notify, turnstileToken);
+                notify('success', 'Register success — Please log in.', 2);
                 return { success: true };
             } else {
                 const errMsg = resp.data && resp.data.message ? resp.data.message : 'Registration failed';

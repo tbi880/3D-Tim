@@ -19,10 +19,9 @@ import useCasinoControl from '../hooks/useCasinoControl';
 import { useAuthStore } from '../hooks/useAuthStore';
 
 
-function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitPhoneScreen, showPlaceBets, setShowPlaceBets, mainChoice, setMainChoice, mainBetValue, setMainBetValue, roomId, token, statusInRoom, setStatusInRoom, moneyInRoom, countdownMs, setCountdownMs, betSides, setBetSides, isOpeningFirstCard, setIsOpeningFirstCard, setShowSwitchCard, resultList, setResultList, winningSides, setWinningSides, setWaitingForJoinRoom, waitingForJoinRoom }) {
+function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitPhoneScreen, showPlaceBets, setShowPlaceBets, mainChoice, setMainChoice, mainBetValue, setMainBetValue, roomId, token, statusInRoom, setStatusInRoom, moneyInRoom, countdownMs, setCountdownMs, betSides, setBetSides, isOpeningFirstCard, setIsOpeningFirstCard, setShowSwitchCard, resultList, setResultList, winningSides, setWinningSides, gameHands, setGameHands, setBaccaratPointDisplayManager }) {
     const { messageApi } = useContext(GlobalNotificationContext);
     const { showCasinoForm, setShowCasinoForm } = useContext(casinoFormContext);
-    const [gameHands, setGameHands] = useState([]);
     const mainBetChoiceRef = useRef(mainChoice);
     mainBetChoiceRef.current = mainChoice;
     const profile = useAuthStore(state => state.profile);
@@ -142,10 +141,11 @@ function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitP
                     }
                 }
             }
+            setBaccaratPointDisplayManager(prev => ({ ...prev, finalResult: true }));
+
 
             await removeAllCards();
             await changeUserStatusInRoom("waiting");
-            setWaitingForJoinRoom(false);
         };
 
         const NextGameLastHand = async (data) => {
@@ -269,6 +269,7 @@ function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitP
         mainBetChoiceRef,
         changeUserStatusInRoom,
         resetRoundState,
+        setBaccaratPointDisplayManager
     });
 
 
@@ -422,14 +423,14 @@ function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitP
                     backgroundIntensity={0}
                 />
 
-                <EffectComposer enableNormalPass>
+                {!isPortraitPhoneScreen && <EffectComposer enableNormalPass>
                     <>
                         <BrightnessContrast brightness={0} contrast={0.05} />
                         <Bloom intensity={0.4} luminanceThreshold={0.3} />
                         <ToneMapping adaptive={true} />
                         <Vignette eskil={false} offset={0.1} darkness={0.3} />
                     </>
-                </EffectComposer>
+                </EffectComposer>}
 
             </Suspense>
         </>

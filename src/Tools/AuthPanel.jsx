@@ -101,11 +101,13 @@ const AuthPanel = ({
                 // call register in store (inject messageApi)
                 const res = await registerAction(name, email, password, messageApi, turnstileToken);
                 if (res && res.success) {
-                    // registerAction already auto-logged in; close panel
-                    setDisplayOverlayCallback("none");
-                } else {
-                    refreshTurnstile();
+                    setIsRegisterMode(false);
+                    setPassword('');
+                    setRepeatPassword('');
+                    setName('');
+
                 }
+                refreshTurnstile();
             } else {
                 const res = await loginAction(email, password, messageApi, turnstileToken);
                 if (res && res.success) {
