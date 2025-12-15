@@ -19,7 +19,7 @@ import useCasinoControl from '../hooks/useCasinoControl';
 import { useAuthStore } from '../hooks/useAuthStore';
 
 
-function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitPhoneScreen, showPlaceBets, setShowPlaceBets, mainChoice, setMainChoice, mainBetValue, setMainBetValue, roomId, token, statusInRoom, setStatusInRoom, moneyInRoom, countdownMs, setCountdownMs, betSides, setBetSides, isOpeningFirstCard, setIsOpeningFirstCard, setShowSwitchCard, resultList, setResultList, winningSides, setWinningSides, gameHands, setGameHands, setBaccaratPointDisplayManager, setPlayersData }) {
+function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitPhoneScreen, setShowPlaceBets, mainChoice, setMainChoice, mainBetValue, setMainBetValue, roomId, token, setStatusInRoom, setCountdownMs, setBetSides, isOpeningFirstCard, setIsOpeningFirstCard, setShowSwitchCard, setResultList, setWinningSides, gameHands, setGameHands, setBaccaratPointDisplayManager, setPlayersData }) {
     const { messageApi } = useContext(GlobalNotificationContext);
     const { showCasinoForm, setShowCasinoForm } = useContext(casinoFormContext);
     const mainBetChoiceRef = useRef(mainChoice);

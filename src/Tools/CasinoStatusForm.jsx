@@ -1,4 +1,4 @@
-export function CasinoStatusForm({ roomName, roomId, moneyInRoom, statusInRoom, betSides }) {
+export function CasinoStatusForm({ roomName, roomId, moneyInRoom }) {
     return <div
         style={{
             position: 'fixed',
@@ -17,10 +17,6 @@ export function CasinoStatusForm({ roomName, roomId, moneyInRoom, statusInRoom, 
         <br />
         Room ID: {roomId}
         <br />
-        User Status: {statusInRoom}
-        <br />
         In Room Chip Value: {moneyInRoom}
-        <br />
-        Bet Sides: {betSides && Object.keys(betSides).length > 0 ? Object.entries(betSides).map(([side, amount]) => `${side}: ${amount}`).join(', ') : 'None'}
     </div>
 }

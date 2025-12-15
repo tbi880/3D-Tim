@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronRight, faChevronLeft, faLock, faVrCardboard, faFileDownload } from '@fortawesome/free-solid-svg-icons';
 import "./css/menu.css";
 import { getMenuLockMapFromLocalStorage, isCasinoUnlocked } from "../pages/Status";
+import { url } from "../Settings";
 
 const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, refMenu) => {
     // menu open/close
@@ -293,7 +294,7 @@ const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, r
                             </div>
                             <br /><br />
                             <a
-                                href="https://www.bty.co.nz/Tim_Bi_resume.pdf"
+                                href={`${url}Tim_Bi_resume.pdf`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className={"vr-link"}

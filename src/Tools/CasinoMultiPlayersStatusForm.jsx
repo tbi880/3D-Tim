@@ -1,6 +1,13 @@
 export function CasinoMultiPlayersStatusForm({ playersData }) {
     if (!playersData || !playersData.users) return null;
 
+    const statusMapToDisplay = {
+        'betting': 'still betting',
+        'dealing': 'opening cards',
+        'results': 'waiting for results',
+        'waiting': 'waiting for next round'
+    };
+
     return (
         <div
             style={{
@@ -17,10 +24,10 @@ export function CasinoMultiPlayersStatusForm({ playersData }) {
                 userSelect: 'none'
             }}
         >
-            <div><b>{playersData.countOfUsersInRoom} players in room:</b></div>
+            <div><b>{playersData.countOfUsersInRoom} {playersData.countOfUsersInRoom === 1 ? 'player' : 'players'} in room:</b></div>
             {playersData.users.map(u => (
                 <div key={u.userId} style={{ marginTop: 2 }}>
-                    {u.userName} - {u.roomUserStatus}
+                    {u.userName} - {statusMapToDisplay[u.roomUserStatus]}
                 </div>
             ))}
         </div>

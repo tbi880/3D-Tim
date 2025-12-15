@@ -67,15 +67,15 @@ export default function Chips({ chipSheet, betValue }) {
     useEffect(() => {
         if (betValue > 100000000) {
             setModelNodeLoadMap(null);
-        } else if (betValue > 10000000) {
+        } else if (betValue >= 10000000) {
             setModelNodeLoadMap({ ...showChipsNode_1M });
-        } else if (betValue > 1000001) {
+        } else if (betValue >= 1000000) {
             setModelNodeLoadMap({ ...showChipsNode_100k });
-        } else if (betValue > 100000) {
+        } else if (betValue >= 100000) {
             setModelNodeLoadMap({ ...showChipsNode_50k });
-        } else if (betValue > 50000) {
+        } else if (betValue >= 50000) {
             setModelNodeLoadMap({ ...showChipsNode_10000 });
-        } else if (betValue > 10000) {
+        } else if (betValue >= 10000) {
             setModelNodeLoadMap({ ...showChipsNode_1000 });
         } else {
             setModelNodeLoadMap({ ...showChipsNode_100 });

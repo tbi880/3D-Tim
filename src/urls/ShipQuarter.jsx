@@ -36,7 +36,7 @@ function ShipQuarter({ isPortraitPhoneScreen }) {
             {showHeaderSubTitle && <Header onAnimationEnd={() => { setShowHeaderSubTitle(false) }} defaultBaseDuration={7} defaultNotice={{ noticeContent: "Welcome to your quarter, please log in to continue.", noticeLink: null }} />}
 
             <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
-                <CanvasProvider>
+                <CanvasProvider frameLoopSetting='demand'>
                     <SheetProvider sheet={quarterSheet}>
                         <Quarter quarterSheet={quarterSheet} quarterProject={quarterProject} isPortraitPhoneScreen={isPortraitPhoneScreen} />
                     </SheetProvider>

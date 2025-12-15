@@ -10,7 +10,7 @@ import { roomURL } from '../Settings';
 import { motion, useMotionValue, useTransform, animate } from "motion/react";
 import { BetterSlider } from './BetterSlider';
 
-export default function PlaceBets({ isPortraitPhoneScreen, moneyInRoom, roomId, fetchRoomStatus, levelOfBets, LevelMap, mainChoice, setMainChoice, mainBetValue, setMainBetValue, sideOpen, setSideOpen, smallTiger, setSmallTiger, bigTiger, setBigTiger, tigerTie, setTigerTie, chipSheet, setShowPlaceBets, setMoneyInRoom }) {
+export default function PlaceBets({ isPortraitPhoneScreen, moneyInRoom, roomId, fetchRoomStatus, levelOfBets, LevelMap, setMainChoice, mainBetValue, setMainBetValue, sideOpen, setSideOpen, smallTiger, setSmallTiger, bigTiger, setBigTiger, tigerTie, setTigerTie, chipSheet, setShowPlaceBets, setMoneyInRoom }) {
     const { messageApi } = useContext(GlobalNotificationContext);
     const token = useAuthStore(state => state.token);
     const currentLevelValues = LevelMap[levelOfBets] || LevelMap.lv1;

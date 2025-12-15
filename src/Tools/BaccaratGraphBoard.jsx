@@ -77,6 +77,32 @@ const BaccaratGraphBoard = ({
                     maxWidth: "600px"
                 }}>
                     <BigRoad results={baccaratGraphBoardContent ? baccaratGraphBoardContent : []} />
+
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gridTemplateRows: '1fr 1fr',
+                        gap: '10px',
+                        marginTop: '20px',
+                        width: '100%',
+                        textAlign: 'center'
+                    }}>
+                        {(() => {
+                            const totalGames = baccaratGraphBoardContent.length;
+                            const bankerWins = baccaratGraphBoardContent.filter(r => r === "Banker").length;
+                            const playerWins = baccaratGraphBoardContent.filter(r => r === "Player").length;
+                            const ties = baccaratGraphBoardContent.filter(r => r === "Tie").length;
+
+                            return (
+                                <>
+                                    <div>Total Games<br /><strong>{totalGames}</strong></div>
+                                    <div>Banker Wins<br /><strong>{bankerWins}</strong></div>
+                                    <div>Player Wins<br /><strong>{playerWins}</strong></div>
+                                    <div>Ties<br /><strong>{ties}</strong></div>
+                                </>
+                            );
+                        })()}
+                    </div>
                 </div>
             </div>
         </div>

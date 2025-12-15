@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import fs from 'fs';
 import react from '@vitejs/plugin-react';
-import { terser } from 'rollup-plugin-terser';
+import terser from '@rollup/plugin-terser';
 import compressPlugin from 'vite-plugin-compression';
 import { VitePWA } from 'vite-plugin-pwa';
 import { stageOfENV } from './src/Settings';
@@ -49,6 +49,9 @@ export default defineConfig(({ command, mode }) => {
       ...(isBuild ? [
         compressPlugin({
           algorithm: 'gzip',
+          ext: '.gz',
+          threshold: 1025,
+          deleteOriginFile: false
         }),
         VitePWA({
           registerType: 'autoUpdate',
@@ -110,14 +113,8 @@ export default defineConfig(({ command, mode }) => {
           }),
         ],
       },
-      // optionally enable minify via terser (you already use terser plugin above)
-      minify: false, // 已经通过 terser 控制，这里设为 false 避免重复
-      // 如果你希望用 esbuild minify，可以设为 'esbuild'
-      // target: 'esnext', // 可按需设置
-    },
+      minify: false,
 
-    // 如果你有 alias、define、env 等，可以按需添加
-    // resolve: { alias: { /* ... */ } },
-    // define: { /* ... */ },
+    },
   };
 });

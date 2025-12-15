@@ -4,9 +4,9 @@
 const stageOfENV = "prod";
 
 // Set the URL based on the environment stage
-const url = stageOfENV === "prod" ? "https://www.bty.co.nz" : "https://192.168.18.120:5173/";
+const url = stageOfENV === "dev" ? "https://www.bty.co.nz/" : "https://192.168.18.120:5173/";
 
-const bucketURL = stageOfENV === "prod" ? "https://f005.backblazeb2.com/file/tim3Dweb/" : "/assets/";
+const bucketURL = stageOfENV === "prod" ? "https://assets.bty.co.nz/file/tim3Dweb/" : "/assets/";
 
 const backendURL = stageOfENV === "prod" ? "https://api.bty.co.nz/" : "http://192.168.18.120:5133/";
 
