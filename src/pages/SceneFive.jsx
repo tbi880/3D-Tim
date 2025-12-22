@@ -290,7 +290,7 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
                     resolution={4}
                     background={false}
                     intensity={0}
-                    environmentIntensity={0}
+                    environmentIntensity={0.75}
                     backgroundIntensity={0}
                 />}
 

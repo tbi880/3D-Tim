@@ -129,17 +129,17 @@ function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequ
     //     }
     // });
 
-    const handleLeftSqueeze = () => {
-        setCurrentVRCordinate((prev) => {
-            return prev === 0 ? Object.keys(VRCordinate).length - 1 : prev - 1;
-        });
-    };
+    // const handleLeftSqueeze = () => {
+    //     setCurrentVRCordinate((prev) => {
+    //         return prev === 0 ? Object.keys(VRCordinate).length - 1 : prev - 1;
+    //     });
+    // };
 
-    const handleRightSqueeze = () => {
-        setCurrentVRCordinate((prev) => {
-            return prev < Object.keys(VRCordinate).length - 1 ? prev + 1 : 0;
-        });
-    };
+    // const handleRightSqueeze = () => {
+    //     setCurrentVRCordinate((prev) => {
+    //         return prev < Object.keys(VRCordinate).length - 1 ? prev + 1 : 0;
+    //     });
+    // };
 
 
     const [taskBoardContentMap, setTaskBoardContentMap] = useState({
@@ -165,13 +165,10 @@ function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequ
                 {showComponents.preloadAssets && <PreloadAssets />}
 
                 {/* {isVRSupported && <XrSqueezeEventListener onLeftSqueeze={handleLeftSqueeze} onRightSqueeze={handleRightSqueeze} />} */}
-                {audioElement && <StreamMusic audioElement={audioElement} sequence={scene2Sheet.sequence} startPoint={0.5} />}
-                {/* <AsyncMusic audioBuffer={audioBuffer} sequence={scene2Sheet.sequence} startPoint={0.5} lowVolumePoints={[1]} highVolumePoints={[3]} maxVolume={0.75} /> */}
+                {audioElement && <StreamMusic audioElement={audioElement} sequence={scene2Sheet.sequence} startPoint={1} />}
                 <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault position={[498, -19, -61]} rotation={[0, 1.55, 0]} fov={75} near={0.01} />
 
                 <color attach='background' args={['black']} />
-
-                {/* <ambientLight intensity={3} /> */}
 
                 <Galaxy />
                 <StrangerStar />
@@ -182,7 +179,7 @@ function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequ
                     intensity={0.5}
                     background={false}
                     backgroundIntensity={0}
-                    environmentIntensity={0}
+                    environmentIntensity={1}
                 />
                 <ShipInside sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('shipInside')} />
                 {showComponents.viewPortIntro && <ViewPort screenTitle="Intro" position={[613, -15.5, -106]} rotation={[0, 0, 0]} sequence={scene2Sheet.sequence} stopPoint={1} unloadPoint={1} onSequencePass={() => toggleComponentDisplay('viewPortIntro')} />}

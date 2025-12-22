@@ -1,3 +1,4 @@
+import { useFrame } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
 
 function StreamMusic({ audioElement, sequence, startPoint, }) {
@@ -44,8 +45,8 @@ function StreamMusic({ audioElement, sequence, startPoint, }) {
         };
     }, [audioElement]);
 
-    useEffect(() => {
-        if (sequence.position < startPoint || isPlayingRef.current) {
+    useFrame(() => {
+        if (isPlayingRef.current || sequence.position < startPoint) {
             return;
         }
 
@@ -58,7 +59,7 @@ function StreamMusic({ audioElement, sequence, startPoint, }) {
         return () => {
             isPlayingRef.current = false;
         };
-    }, [sequence.position, startPoint, audioElement]);
+    });
 
     return null;
 }

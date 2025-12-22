@@ -378,7 +378,7 @@ function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitP
 
                 <SheetProvider sheet={casinoSheet}>
 
-                    <ambientLight color={"#FFFFFF"} intensity={1} />
+                    <ambientLight color={"#FFFFFF"} intensity={0.5} />
 
                     <AnyModel modelURL={'casino/baccaratTable.glb'} sequence={casinoSheet.sequence} useTheatre={true} theatreKey={"baccaratTable"} position={[0, 0, 0]} rotation={[0, 0, 0]} scale={[1, 1, 1]} visible={true} />
                     <AnyModel modelURL={'casino/shuffer-transformed.glb'} sequence={casinoSheet.sequence} useTheatre={true} theatreKey={"shuffer"} position={[0, 0, 0]} rotation={[0, 0, 0]} scale={[1, 1, 1]} visible={true} />
@@ -420,11 +420,11 @@ function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitP
 
 
                 <Environment
-                    files={bucketURL + 'pic/warehouse.hdr'}
+                    preset='warehouse'
                     resolution={4}
                     background={false}
                     intensity={0}
-                    environmentIntensity={0}
+                    environmentIntensity={1.5}
                     backgroundIntensity={0}
                 />
 

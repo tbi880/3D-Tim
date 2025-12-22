@@ -14,7 +14,6 @@ import { getProject } from '@theatre/core';
 import { useJumpToNextScene } from '../hooks/useJumpToNextScene';
 
 
-
 function HomePage({ isPortraitPhoneScreen }) {
 
     const scene1Project = getProject('Scene1 Sheet', { state: scene1State });

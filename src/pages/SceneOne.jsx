@@ -127,7 +127,7 @@ function SceneOne({ scene1Sheet, scene1Project, unloadPoint, onSequencePass, isP
             <Suspense fallback={<Loader />}>
                 {showComponents.preloadAssets && <PreloadAssets />}
 
-                {audioElement && <StreamMusic audioElement={audioElement} sequence={scene1Sheet.sequence} startPoint={1} />}
+                {audioElement && <StreamMusic audioElement={audioElement} sequence={scene1Sheet.sequence} startPoint={2.5} />}
                 {isVRSupported && <XrSqueezeEventListener onLeftSqueeze={handleLeftSqueeze} onRightSqueeze={handleRightSqueeze} />}
 
                 <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault={isFirstPersonCamera} position={[600, 20, -61]} rotation={[0, 0.33, 0]} fov={75} near={0.01} />
@@ -138,8 +138,6 @@ function SceneOne({ scene1Sheet, scene1Project, unloadPoint, onSequencePass, isP
                 {showComponents.warping && <AnyModel modelURL={'FTL travelling.glb'} sequence={scene1Sheet.sequence} useTheatre={true} theatreKey={"FTL travelling"} position={[900, -19, -40]} rotation={[0, -1.6, 0]} scale={[10, 10, 100]} animationNames={["Animation"]} animationOnClick={false} animationPlayTimes={1} animationSpeeds={2} animationStartPoint={0} unloadPoint={116} onSequencePass={() => { toggleComponentDisplay("warping") }} visible={!isFirstPersonCamera} />}
                 <SingleLoadManager loadPoint={26} sequence={scene1Sheet.sequence} onSequencePass={() => { switchCamera(true); toggleComponentDisplay("warping"); }} />
 
-                <ambientLight intensity={5} />
-
                 <color attach='background' args={['black']} />
 
                 <Galaxy />
@@ -148,7 +146,7 @@ function SceneOne({ scene1Sheet, scene1Project, unloadPoint, onSequencePass, isP
                     files={bucketURL + 'pic/space.exr'}
                     background={false}
                     intensity={3.5}
-                    environmentIntensity={1}
+                    environmentIntensity={20}
                 />
                 <ShipOutside sequence={scene1Sheet.sequence} onSequencePass={() => toggleComponentDisplay('shipOutside')} />
 

@@ -220,8 +220,8 @@ const GraphicSetting = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCal
                     <div style={eachContainerStyle}>
                         <FontAwesomeIcon
                             icon={faQuestionCircle}
-                            onClick={(e) => handleTooltipClick(e, 'Turning antialias on improves edge smoothness but may impact performance. IOS devices may not support antialias, do not turn it on!!!')}
-                            onMouseEnter={(e) => !isPortraitPhoneScreen && showTooltip(e, 'Turning antialias on improves edge smoothness but may impact performance. IOS devices may not support antialias, do not turn it on!!!')}
+                            onClick={(e) => handleTooltipClick(e, 'Turning antialias on improves edge smoothness but may impact performance. Only WebGL supports antialias, for WebGPU, antialias is always off.')}
+                            onMouseEnter={(e) => !isPortraitPhoneScreen && showTooltip(e, 'Turning antialias on improves edge smoothness but may impact performance. Only WebGL supports antialias, for WebGPU, antialias is always off.')}
                             onMouseLeave={() => !isPortraitPhoneScreen && hideTooltip()}
                             style={{ cursor: 'pointer' }}
                         />
@@ -251,6 +251,10 @@ const GraphicSetting = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCal
                 <div style={optionStyle}>
                     <br />
                     <div style={eachContainerStyle}>Note: For the best experience, I strongly encourage you to access this website on a desktop or laptop, avoiding accessing this website on mobile devices. Not just because of the GPU constraints, but also due to the post processing and UI limitations on smaller screens which is not ideal.</div>
+                </div>
+                <div style={optionStyle}>
+                    <br />
+                    <div style={eachContainerStyle}>Dev log: WebGPU support is experimental and may not work on all devices or browsers. It would be automatically disabled if not supported. Updated since 22/12/2025.</div>
                 </div>
             </div>
             <div style={tooltipStyle}>{tooltip.content}</div>

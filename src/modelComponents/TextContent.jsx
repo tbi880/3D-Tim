@@ -57,7 +57,7 @@ function TextContent({ title, order, lines, color, size, position = [0, 0, 0], r
         }}>
             {lines.map((line, index) => (
                 <mesh key={index} ref={ref => meshRefs.current[index] = ref} position={[0, -(index * size * 1.3), 0]}>
-                    <textGeometry args={[line, { font: font, size: size, height: 0, curveSegments: 12 }]} />
+                    <textGeometry args={[line, { font: font, size: size, depth: 0, curveSegments: 12 }]} />
                     <meshStandardMaterial color={color} transparent={true} opacity={opacity} />
                 </mesh>
             ))}

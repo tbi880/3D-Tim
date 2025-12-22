@@ -58,7 +58,7 @@ function TextTitle_v2({ theatreKey, text, fontURL, color, size, position = [0, 0
             });
         }}>
             <mesh>
-                <textGeometry args={[text, { font: font, size: size, height: 0, curveSegments: 12 }]} />
+                <textGeometry args={[text, { font: font, size: size, depth: 0, curveSegments: 12 }]} />
                 <meshStandardMaterial color={color} transparent={true} opacity={opacity} />
             </mesh>
         </e.mesh>

@@ -294,7 +294,7 @@ const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, r
                             </div>
                             <br /><br />
                             <a
-                                href={`${url}Tim_Bi_resume.pdf`}
+                                href="/Tim_Bi_resume.pdf"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className={"vr-link"}

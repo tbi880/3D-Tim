@@ -81,7 +81,7 @@ function Quarter({ quarterSheet, quarterProject, onSequencePass, isPortraitPhone
                     resolution={4}
                     background={false}
                     intensity={0}
-                    environmentIntensity={0}
+                    environmentIntensity={0.75}
                     backgroundIntensity={0}
                 />}
 
@@ -90,7 +90,7 @@ function Quarter({ quarterSheet, quarterProject, onSequencePass, isPortraitPhone
                     resolution={4}
                     background={false}
                     intensity={0}
-                    environmentIntensity={0}
+                    environmentIntensity={0.75}
                     backgroundIntensity={0}
                 />}
 
