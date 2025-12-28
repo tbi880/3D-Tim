@@ -22,7 +22,7 @@ export const CanvasProvider = ({ children, vrEnabled = false, frameLoopSetting =
     const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
 
     const [isVRSupported, setIsVRSupported] = useState(false);
-    const [frameloop, setFrameloop] = useState(frameLoopSetting);
+    const [frameloop, setFrameloop] = useState("never");
     const rendererRef = useRef(null);
 
 
@@ -67,8 +67,7 @@ export const CanvasProvider = ({ children, vrEnabled = false, frameLoopSetting =
         rendererRef.current = renderer;
 
         // WebGPU init 完成后再开始渲染
-        setFrameloop("always");
-
+        setFrameloop(frameLoopSetting);
         return renderer;
     };
 

@@ -195,6 +195,10 @@ select.input {
     overflow-y: auto;
     box-sizing: border-box;
     padding: 3%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    overscroll-behavior: contain;
 }
 
 /* portrait 模式（手机或窄屏）——靠顶显示，防止被 header 遮挡 */

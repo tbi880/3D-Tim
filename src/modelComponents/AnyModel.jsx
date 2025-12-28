@@ -491,7 +491,7 @@ AnyModel.defaultProps = {
     interactablePoints: [],
     onClickPass: () => { },
     onHoldPass: () => { },
-    holdDuration: 1000,
+    holdDuration: 500,
 };
 
 export default AnyModel;

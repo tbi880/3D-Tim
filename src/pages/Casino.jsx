@@ -315,7 +315,7 @@ function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitP
 
     return (
         <>
-            <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["Here is a good place to have fun", "Don't lose them all", "If you lose them all you have wait for the second day to get your salary as your daily reward."]} onFinished={() => { finishLoading() }} />}>
+            <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["Here is a good place to have fun", "If you lose all your money", "Just ask Tim to make you rich again"]} onFinished={() => { finishLoading() }} />}>
                 {stageOfENV != "prod" && !isPortraitPhoneScreen && <Perf position={"bottom-right"} openByDefault showGraph />}
                 {showComponents.preloadAssets && <PreloadAssets />}
                 {showComponents.preloadAssets && <>
@@ -420,7 +420,7 @@ function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitP
 
 
                 <Environment
-                    preset='warehouse'
+                    files={bucketURL + 'pic/warehouse2.hdr'}
                     resolution={4}
                     background={false}
                     intensity={0}
