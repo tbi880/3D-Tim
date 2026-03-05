@@ -223,7 +223,7 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
 
         // Clear the interval to avoid memory leaks
         return () => clearInterval(interval);
-    }, [isWarped, setEstHitTimeCountDown, setHullTemperature, setCoreEnergy]);
+    }, [isWarped]);
 
     const [taskBoardContentMap, setTaskBoardContentMap] = useState({
         0: "The warning is constantly flashing, the ship is in extreme danger. ",

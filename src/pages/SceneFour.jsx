@@ -1,6 +1,6 @@
 import { engineeringAccess, setNextScene, setNextSceneStartPoint } from './Status'
 import * as THREE from 'three'
-import { useContext, useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useCursor, MeshReflectorMaterial, Image, Text, Environment } from '@react-three/drei'
 import { useRoute, useLocation } from 'wouter'
@@ -165,8 +165,8 @@ export const SceneFour = ({ scene4Sheet, images, isPortraitPhoneScreen, unloadPo
 function Frames({ images, onVisit }) {
     const ref = useRef()
     const clicked = useRef()
-    const q = useRef(new THREE.Quaternion()).current
-    const p = useRef(new THREE.Vector3()).current
+    const q = useMemo(() => new THREE.Quaternion(), [])
+    const p = useMemo(() => new THREE.Vector3(), [])
     const [, params] = useRoute('/ship_engineering/item/:id')
     const [, setLocation] = useLocation()
     useEffect(() => {
@@ -205,7 +205,7 @@ function Frames({ images, onVisit }) {
 function Frame({ url, ...props }) {
     const image = useRef()
     const frame = useRef()
-    const c = useRef(new THREE.Color()).current
+    const c = useMemo(() => new THREE.Color(), [])
     const [, params] = useRoute('/ship_engineering/item/:id')
     const [hovered, hover] = useState(false)
     const name = getUuid(url)
