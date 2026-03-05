@@ -132,6 +132,7 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
     }, []);
 
     const timeoutRef = useRef(null);
+    const rafRef = useRef(null);
 
     const alarmLight = useCallback(() => {
         toggleComponentDisplay("insideAmbientLight");
@@ -151,12 +152,12 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
                 setAmbientIntensity(newValue);
 
                 if (progress < 1) {
-                    requestAnimationFrame(step);
+                    rafRef.current = requestAnimationFrame(step);
                 } else if (callback) {
                     callback();
                 }
             };
-            requestAnimationFrame(step);
+            rafRef.current = requestAnimationFrame(step);
         };
 
         updateIntensity(0, maxIntensity, 1000, () => {
@@ -178,9 +179,12 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
 
     useEffect(() => {
         return () => {
-            // Clear timeout on component unmount to prevent memory leaks
+            // Clear timeout and animation frame on component unmount to prevent memory leaks
             if (timeoutRef.current) {
                 clearTimeout(timeoutRef.current);
+            }
+            if (rafRef.current) {
+                cancelAnimationFrame(rafRef.current);
             }
         };
     }, [isPortraitPhoneScreen]);
@@ -219,7 +223,7 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
 
         // Clear the interval to avoid memory leaks
         return () => clearInterval(interval);
-    }, [estHitTimeCountDown, setEstHitTimeCountDown, hullTemperature, setHullTemperature, coreEnergy, setCoreEnergy]);
+    }, [isWarped, setEstHitTimeCountDown, setHullTemperature, setCoreEnergy]);
 
     const [taskBoardContentMap, setTaskBoardContentMap] = useState({
         0: "The warning is constantly flashing, the ship is in extreme danger. ",

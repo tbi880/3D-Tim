@@ -162,9 +162,11 @@ export const SceneFour = ({ scene4Sheet, images, isPortraitPhoneScreen, unloadPo
 
     )
 }
-function Frames({ images, onVisit, q = new THREE.Quaternion(), p = new THREE.Vector3() }) {
+function Frames({ images, onVisit }) {
     const ref = useRef()
     const clicked = useRef()
+    const q = useRef(new THREE.Quaternion()).current
+    const p = useRef(new THREE.Vector3()).current
     const [, params] = useRoute('/ship_engineering/item/:id')
     const [, setLocation] = useLocation()
     useEffect(() => {
@@ -200,9 +202,10 @@ function Frames({ images, onVisit, q = new THREE.Quaternion(), p = new THREE.Vec
     )
 }
 
-function Frame({ url, c = new THREE.Color(), ...props }) {
+function Frame({ url, ...props }) {
     const image = useRef()
     const frame = useRef()
+    const c = useRef(new THREE.Color()).current
     const [, params] = useRoute('/ship_engineering/item/:id')
     const [hovered, hover] = useState(false)
     const name = getUuid(url)
