@@ -21,6 +21,7 @@ import XrSqueezeEventListener from '../Tools/XrSqueezeEventListener';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
 import { useAudioElement } from '../hooks/useAudioElement';
 import { useCameraSwitcher } from '../hooks/useCameraSwitcher';
+import { useSequenceAutoSave, getResumePosition } from '../hooks/useSequenceAutoSave';
 import AnyModel from '../modelComponents/AnyModel';
 
 
@@ -29,6 +30,7 @@ function SceneOne({ scene1Sheet, scene1Project, unloadPoint, onSequencePass, isP
     const [player, setPlayer] = useState(null);
     const [isPresenting, setIsPresenting] = useState(false);
     const { xrPlayer, xrIsPresenting } = isVRSupported && useContext(XrToolsContext) ? useContext(XrToolsContext) : {};
+    useSequenceAutoSave('scene1', scene1Sheet.sequence);
     useEffect(() => {
         setPlayer(xrPlayer);
         setIsPresenting(xrIsPresenting);
@@ -105,6 +107,15 @@ function SceneOne({ scene1Sheet, scene1Project, unloadPoint, onSequencePass, isP
         useGLTF.preload(bucketURL + "arrow-transformed.glb");
         useGLTF.preload(bucketURL + "galaxy.glb");
         useGLTF.preload(bucketURL + "sci-fi-screen-transformed.glb");
+    }, []);
+
+    useEffect(() => {
+        scene1Project.ready.then(() => {
+            const savedPosition = getResumePosition('scene1');
+            if (savedPosition !== null && savedPosition > 0) {
+                scene1Sheet.sequence.position = savedPosition;
+            }
+        });
     }, []);
 
 

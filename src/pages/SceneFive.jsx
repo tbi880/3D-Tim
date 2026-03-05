@@ -33,6 +33,7 @@ import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvi
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
 import { Bloom, BrightnessContrast, EffectComposer, ToneMapping, Vignette } from '@react-three/postprocessing';
+import { useSequenceAutoSave, getResumePosition } from '../hooks/useSequenceAutoSave';
 import * as THREE from 'three';
 
 
@@ -45,6 +46,7 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
     const [isWarped, setIsWarped] = useState(false);
     const unloadPointsMemo = useMemo(() => [unloadPoint], [unloadPoint]);
     useSequenceUnloadSceneChecker(scene5Sheet.sequence, unloadPointsMemo, onSequencePass);
+    useSequenceAutoSave('scene5', scene5Sheet.sequence);
     const { estHitTimeCountDown, setEstHitTimeCountDown, initEstHitTimeCountDown } = useContext(estHitTimeCountDownContext);
     const { hullTemperature, setHullTemperature, initHullTemperature } = useContext(hullTemperatureContext);
     const { coreEnergy, setCoreEnergy, initCoreEnergy } = useContext(coreEnergyContext);
@@ -126,8 +128,13 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
 
     const finishLoading = useCallback(() => {
         scene5Project.ready.then(() => {
-            scene5Sheet.sequence.position = 0;
-            playOnce({ sequence: scene5Sheet.sequence, range: [0, 20] });
+            const savedPosition = getResumePosition('scene5');
+            if (savedPosition !== null && savedPosition > 0) {
+                scene5Sheet.sequence.position = savedPosition;
+            } else {
+                scene5Sheet.sequence.position = 0;
+                playOnce({ sequence: scene5Sheet.sequence, range: [0, 20] });
+            }
         });
     }, []);
 
