@@ -131,6 +131,9 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
             const savedPosition = getResumePosition('scene5');
             if (savedPosition !== null && savedPosition > 0) {
                 scene5Sheet.sequence.position = savedPosition;
+                if (savedPosition < 20) {
+                    playOnce({ sequence: scene5Sheet.sequence, range: [savedPosition, 20] });
+                }
             } else {
                 scene5Sheet.sequence.position = 0;
                 playOnce({ sequence: scene5Sheet.sequence, range: [0, 20] });
