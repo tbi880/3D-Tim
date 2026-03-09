@@ -7,7 +7,9 @@ const CLICKABLE_POINT_TOLERANCE = 0.1;
 export function getResumePosition(sceneKey) {
     try {
         const saved = sessionStorage.getItem(STORAGE_KEY_PREFIX + sceneKey);
-        return saved !== null ? parseFloat(saved) : null;
+        if (saved === null) return null;
+        const position = parseFloat(saved);
+        return position % 1 !== 0 ? Math.floor(position) : position;
     } catch {
         return null;
     }
