@@ -179,6 +179,10 @@ const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, r
         onPointerUp();
     };
 
+    // track document mouse listeners for cleanup on unmount
+    const docMoveRef = useRef(null);
+    const docUpRef = useRef(null);
+
     // mouse handlers for desktop dragging
     const handleMouseDown = (e) => {
         e.preventDefault();
@@ -189,10 +193,29 @@ const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, r
             onPointerUp();
             document.removeEventListener('mousemove', onMouseMoveDoc);
             document.removeEventListener('mouseup', onMouseUpDoc);
+            docMoveRef.current = null;
+            docUpRef.current = null;
         };
+        docMoveRef.current = onMouseMoveDoc;
+        docUpRef.current = onMouseUpDoc;
         document.addEventListener('mousemove', onMouseMoveDoc);
         document.addEventListener('mouseup', onMouseUpDoc);
     };
+
+    // cleanup document listeners if component unmounts during drag
+    useEffect(() => {
+        return () => {
+            if (docMoveRef.current) {
+                document.removeEventListener('mousemove', docMoveRef.current);
+            }
+            if (docUpRef.current) {
+                document.removeEventListener('mouseup', docUpRef.current);
+            }
+            if (animationFrameRef.current) {
+                cancelAnimationFrame(animationFrameRef.current);
+            }
+        };
+    }, []);
 
     // click on dots
     const goToPage = (index) => {

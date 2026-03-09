@@ -62,9 +62,10 @@ const BigRoad = ({ results }) => {
     useEffect(() => {
         const el = scrollRef.current;
         if (el) {
-            requestAnimationFrame(() => {
+            const rafId = requestAnimationFrame(() => {
                 el.scrollLeft = el.scrollWidth;
             });
+            return () => cancelAnimationFrame(rafId);
         }
     }, [results]);
 

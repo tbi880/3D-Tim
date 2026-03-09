@@ -18,7 +18,10 @@ function Tunnel({ unloadPoint, sequence, onSequencePass }) {
     useEffect(() => {
         action1.play()
         action1.timeScale = 1;
-    })
+        return () => {
+            action1.stop();
+        };
+    }, [])
 
 
     useEffect(() => {
