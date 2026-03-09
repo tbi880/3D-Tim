@@ -28,6 +28,8 @@ import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequence
 import { useSequenceAutoSave, getResumePosition, getNextClickablePoint } from '../hooks/useSequenceAutoSave';
 import { Bloom, BrightnessContrast, ChromaticAberration, DepthOfField, EffectComposer, Glitch, ToneMapping, Vignette } from "@react-three/postprocessing";
 
+const SCENE2_CLICKABLE_POINTS = [1, 1.5, 2, 2.5, 22.5, 38, 72, 96];
+
 
 function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequencePass, isPortraitPhoneScreen }) {
     const screenIntro = "You finally awaken, chief designer! Our ship is about to enter the black hole ahead of us. The ship is damaged quite severe due to the strong gravitational force. As AI, we cannot change the course of the ship because the first captain, Tim Bi, set it up millennia ago. Additionally, we have been blocked from answering the questions to unlock the captain's chamber. We need your help to find the answers to the root access questions so we can alter the ship's course or initiate an emergency stop. Please follow me to the bridge. Let's start by checking the structure of the ship first. This will probably help you to rewind your memory about the ship.";
@@ -112,8 +114,7 @@ function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequ
             const savedPosition = getResumePosition('scene2');
             if (savedPosition !== null && savedPosition > 0) {
                 scene2Sheet.sequence.position = savedPosition;
-                const clickablePoints = [1, 1.5, 2, 2.5, 22.5, 38, 72, 96];
-                const nextPoint = getNextClickablePoint(savedPosition, clickablePoints);
+                const nextPoint = getNextClickablePoint(savedPosition, SCENE2_CLICKABLE_POINTS);
                 if (nextPoint !== null) {
                     playOnce({ sequence: scene2Sheet.sequence, range: [savedPosition, nextPoint] });
                 }

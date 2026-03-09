@@ -16,6 +16,8 @@ import { useCameraSwitcher } from '../hooks/useCameraSwitcher';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
 import { useSequenceAutoSave, getResumePosition, getNextClickablePoint } from '../hooks/useSequenceAutoSave';
 
+const SCENE6_CLICKABLE_POINTS = [84.3];
+
 function SceneSix({ scene6Sheet, scene6Project, startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     const musicUrl = bucketURL + 'music/bgm6.mp3';
     const [outAmbientIntensity, setOutAmbientIntensity] = useState(1);
@@ -63,8 +65,7 @@ function SceneSix({ scene6Sheet, scene6Project, startPoint, unloadPoint, onSeque
             const savedPosition = getResumePosition('scene6');
             if (savedPosition !== null && savedPosition > 0) {
                 scene6Sheet.sequence.position = savedPosition;
-                const clickablePoints = [84.3];
-                const nextPoint = getNextClickablePoint(savedPosition, clickablePoints);
+                const nextPoint = getNextClickablePoint(savedPosition, SCENE6_CLICKABLE_POINTS);
                 if (nextPoint !== null) {
                     scene6Sheet.sequence.play({ range: [savedPosition, nextPoint] });
                 }

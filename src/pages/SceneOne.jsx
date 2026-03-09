@@ -24,6 +24,8 @@ import { useCameraSwitcher } from '../hooks/useCameraSwitcher';
 import { useSequenceAutoSave, getResumePosition, getNextClickablePoint } from '../hooks/useSequenceAutoSave';
 import AnyModel from '../modelComponents/AnyModel';
 
+const SCENE1_CLICKABLE_POINTS = [0.034, 27.5, 30, 30.5, 31, 31.5, 32, 32.5, 39];
+
 
 function SceneOne({ scene1Sheet, scene1Project, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     const { isVRSupported, setIsVRSupported } = useContext(canvasContext);
@@ -114,8 +116,7 @@ function SceneOne({ scene1Sheet, scene1Project, unloadPoint, onSequencePass, isP
             const savedPosition = getResumePosition('scene1');
             if (savedPosition !== null && savedPosition > 0) {
                 scene1Sheet.sequence.position = savedPosition;
-                const clickablePoints = [0.034, 27.5, 30, 30.5, 31, 31.5, 32, 32.5, 39];
-                const nextPoint = getNextClickablePoint(savedPosition, clickablePoints);
+                const nextPoint = getNextClickablePoint(savedPosition, SCENE1_CLICKABLE_POINTS);
                 if (nextPoint !== null) {
                     scene1Sheet.sequence.play({ range: [savedPosition, nextPoint] });
                 }

@@ -29,6 +29,8 @@ import { useSequenceAutoSave, getResumePosition, getNextClickablePoint } from '.
 import { EffectComposer, Noise } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
 
+const SCENE3_CLICKABLE_POINTS = [30, 31, 50.5, 51, 51.5, 64];
+
 function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     // const { isVRSupported, setIsVRSupported } = useContext(canvasContext);
     // const [player, setPlayer] = useState(null);
@@ -118,8 +120,7 @@ function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSeq
             const savedPosition = getResumePosition('scene3');
             if (savedPosition !== null && savedPosition > 0) {
                 scene3Sheet.sequence.position = savedPosition;
-                const clickablePoints = [30, 31, 50.5, 51, 51.5, 64];
-                const nextPoint = getNextClickablePoint(savedPosition, clickablePoints);
+                const nextPoint = getNextClickablePoint(savedPosition, SCENE3_CLICKABLE_POINTS);
                 if (nextPoint !== null) {
                     scene3Sheet.sequence.play({ range: [savedPosition, nextPoint] });
                 }

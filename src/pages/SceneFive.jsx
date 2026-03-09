@@ -36,6 +36,8 @@ import { Bloom, BrightnessContrast, EffectComposer, ToneMapping, Vignette } from
 import { useSequenceAutoSave, getResumePosition, getNextClickablePoint } from '../hooks/useSequenceAutoSave';
 import * as THREE from 'three';
 
+const SCENE5_CLICKABLE_POINTS = [23, 23.5, 24, 24.5, 25, 30, 68, 68.5, 69, 75, 144, 207];
+
 
 function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     const musicUrl = bucketURL + 'music/bgm5.mp3';
@@ -131,8 +133,7 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
             const savedPosition = getResumePosition('scene5');
             if (savedPosition !== null && savedPosition > 0) {
                 scene5Sheet.sequence.position = savedPosition;
-                const clickablePoints = [23, 23.5, 24, 24.5, 25, 30, 68, 68.5, 69, 75, 144, 207];
-                const nextPoint = getNextClickablePoint(savedPosition, clickablePoints);
+                const nextPoint = getNextClickablePoint(savedPosition, SCENE5_CLICKABLE_POINTS);
                 if (nextPoint !== null) {
                     playOnce({ sequence: scene5Sheet.sequence, range: [savedPosition, nextPoint] });
                 }
