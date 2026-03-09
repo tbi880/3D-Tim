@@ -9,7 +9,7 @@ export function getResumePosition(sceneKey) {
         const saved = sessionStorage.getItem(STORAGE_KEY_PREFIX + sceneKey);
         if (saved === null) return null;
         const position = parseFloat(saved);
-        return position % 1 !== 0 ? Math.floor(position) : position;
+        return Math.floor(position);
     } catch {
         return null;
     }
