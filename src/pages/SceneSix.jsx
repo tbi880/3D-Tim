@@ -14,7 +14,7 @@ import { Perf } from 'r3f-perf';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
 import { useCameraSwitcher } from '../hooks/useCameraSwitcher';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
-import { useSequenceAutoSave, getResumePosition } from '../hooks/useSequenceAutoSave';
+import { useSequenceAutoSave, getResumePosition, getNextClickablePoint } from '../hooks/useSequenceAutoSave';
 
 function SceneSix({ scene6Sheet, scene6Project, startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     const musicUrl = bucketURL + 'music/bgm6.mp3';
@@ -63,6 +63,11 @@ function SceneSix({ scene6Sheet, scene6Project, startPoint, unloadPoint, onSeque
             const savedPosition = getResumePosition('scene6');
             if (savedPosition !== null && savedPosition > 0) {
                 scene6Sheet.sequence.position = savedPosition;
+                const clickablePoints = [84.3];
+                const nextPoint = getNextClickablePoint(savedPosition, clickablePoints);
+                if (nextPoint !== null) {
+                    scene6Sheet.sequence.play({ range: [savedPosition, nextPoint] });
+                }
             } else {
                 scene6Sheet.sequence.position = 0;
             }

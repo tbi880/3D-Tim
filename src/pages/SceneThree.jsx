@@ -25,7 +25,7 @@ import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager'
 import { useAudioElement } from '../hooks/useAudioElement';
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
-import { useSequenceAutoSave, getResumePosition } from '../hooks/useSequenceAutoSave';
+import { useSequenceAutoSave, getResumePosition, getNextClickablePoint } from '../hooks/useSequenceAutoSave';
 import { EffectComposer, Noise } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
 
@@ -118,6 +118,11 @@ function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSeq
             const savedPosition = getResumePosition('scene3');
             if (savedPosition !== null && savedPosition > 0) {
                 scene3Sheet.sequence.position = savedPosition;
+                const clickablePoints = [30, 31, 50.5, 51, 51.5, 64];
+                const nextPoint = getNextClickablePoint(savedPosition, clickablePoints);
+                if (nextPoint !== null) {
+                    scene3Sheet.sequence.play({ range: [savedPosition, nextPoint] });
+                }
             } else {
                 scene3Sheet.sequence.position = 0;
             }

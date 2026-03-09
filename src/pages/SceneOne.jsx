@@ -21,7 +21,7 @@ import XrSqueezeEventListener from '../Tools/XrSqueezeEventListener';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
 import { useAudioElement } from '../hooks/useAudioElement';
 import { useCameraSwitcher } from '../hooks/useCameraSwitcher';
-import { useSequenceAutoSave, getResumePosition } from '../hooks/useSequenceAutoSave';
+import { useSequenceAutoSave, getResumePosition, getNextClickablePoint } from '../hooks/useSequenceAutoSave';
 import AnyModel from '../modelComponents/AnyModel';
 
 
@@ -114,6 +114,11 @@ function SceneOne({ scene1Sheet, scene1Project, unloadPoint, onSequencePass, isP
             const savedPosition = getResumePosition('scene1');
             if (savedPosition !== null && savedPosition > 0) {
                 scene1Sheet.sequence.position = savedPosition;
+                const clickablePoints = [0.034, 27.5, 30, 30.5, 31, 31.5, 32, 32.5, 39];
+                const nextPoint = getNextClickablePoint(savedPosition, clickablePoints);
+                if (nextPoint !== null) {
+                    scene1Sheet.sequence.play({ range: [savedPosition, nextPoint] });
+                }
             }
         });
     }, []);

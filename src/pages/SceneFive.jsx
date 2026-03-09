@@ -33,7 +33,7 @@ import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvi
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
 import { Bloom, BrightnessContrast, EffectComposer, ToneMapping, Vignette } from '@react-three/postprocessing';
-import { useSequenceAutoSave, getResumePosition } from '../hooks/useSequenceAutoSave';
+import { useSequenceAutoSave, getResumePosition, getNextClickablePoint } from '../hooks/useSequenceAutoSave';
 import * as THREE from 'three';
 
 
@@ -131,8 +131,10 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
             const savedPosition = getResumePosition('scene5');
             if (savedPosition !== null && savedPosition > 0) {
                 scene5Sheet.sequence.position = savedPosition;
-                if (savedPosition < 20) {
-                    playOnce({ sequence: scene5Sheet.sequence, range: [savedPosition, 20] });
+                const clickablePoints = [23, 23.5, 24, 24.5, 25, 30, 68, 68.5, 69, 75, 144, 207];
+                const nextPoint = getNextClickablePoint(savedPosition, clickablePoints);
+                if (nextPoint !== null) {
+                    playOnce({ sequence: scene5Sheet.sequence, range: [savedPosition, nextPoint] });
                 }
             } else {
                 scene5Sheet.sequence.position = 0;

@@ -25,7 +25,7 @@ import { useAudioElement } from '../hooks/useAudioElement';
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
-import { useSequenceAutoSave, getResumePosition } from '../hooks/useSequenceAutoSave';
+import { useSequenceAutoSave, getResumePosition, getNextClickablePoint } from '../hooks/useSequenceAutoSave';
 import { Bloom, BrightnessContrast, ChromaticAberration, DepthOfField, EffectComposer, Glitch, ToneMapping, Vignette } from "@react-three/postprocessing";
 
 
@@ -112,6 +112,11 @@ function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequ
             const savedPosition = getResumePosition('scene2');
             if (savedPosition !== null && savedPosition > 0) {
                 scene2Sheet.sequence.position = savedPosition;
+                const clickablePoints = [1, 1.5, 2, 2.5, 22.5, 38, 72, 96];
+                const nextPoint = getNextClickablePoint(savedPosition, clickablePoints);
+                if (nextPoint !== null) {
+                    playOnce({ sequence: scene2Sheet.sequence, range: [savedPosition, nextPoint] });
+                }
             } else if (startPoint && startPoint != 0) {
                 playOnce({ sequence: scene2Sheet.sequence, range: [startPoint, startPoint + 0.5] });
             }
