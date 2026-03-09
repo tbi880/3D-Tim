@@ -25,8 +25,11 @@ import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager'
 import { useAudioElement } from '../hooks/useAudioElement';
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
+import { useSequenceAutoSave, getResumePosition, getNextClickablePoint } from '../hooks/useSequenceAutoSave';
 import { EffectComposer, Noise } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
+
+const SCENE3_CLICKABLE_POINTS = [30, 31, 50.5, 51, 51.5, 64];
 
 function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     // const { isVRSupported, setIsVRSupported } = useContext(canvasContext);
@@ -108,12 +111,22 @@ function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSeq
     const resumeString = "I embarked on my tech journey at the age of 15, contributing to four commercial projects since then. During my previous work, I encompassed practical skills from developing applications and websites to manage my own server. In addition, my experience as a stage performing keyboardist has sharpened my teamwork skills and stress handling. I am a diligent professional with extensive experience in the field of software engineering, who likes details and always looks for runtime optimizations. I am currently seeking a junior / intermediate level opportunity to further develop my skills.";
     const audioElement = useAudioElement(musicUrl);
     useSequenceUnloadSceneChecker(scene3Sheet.sequence, [unloadPoint], onSequencePass);
+    useSequenceAutoSave('scene3', scene3Sheet.sequence);
     const { taskBoardContent, setTaskBoardContent } = useContext(TaskBoardContentContext);
 
 
     useEffect(() => {
         scene3Project.ready.then(() => {
-            scene3Sheet.sequence.position = 0;
+            const savedPosition = getResumePosition('scene3');
+            if (savedPosition !== null && savedPosition > 0) {
+                scene3Sheet.sequence.position = savedPosition;
+                const nextPoint = getNextClickablePoint(savedPosition, SCENE3_CLICKABLE_POINTS);
+                if (nextPoint !== null) {
+                    scene3Sheet.sequence.play({ range: [savedPosition, nextPoint] });
+                }
+            } else {
+                scene3Sheet.sequence.position = 0;
+            }
         });
     }, []);
 
