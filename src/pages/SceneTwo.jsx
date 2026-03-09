@@ -24,6 +24,7 @@ import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager'
 import { useAudioElement } from '../hooks/useAudioElement';
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
+import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 import { useSequenceAutoSave, getResumePosition, getNextClickablePoint } from '../hooks/useSequenceAutoSave';
 import { Bloom, BrightnessContrast, ChromaticAberration, DepthOfField, EffectComposer, Glitch, ToneMapping, Vignette } from "@react-three/postprocessing";
@@ -42,6 +43,7 @@ function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequ
     useSequenceUnloadSceneChecker(scene2Sheet.sequence, unloadPoints, onSequencePass);
     useSequenceAutoSave('scene2', scene2Sheet.sequence);
     const { taskBoardContent, setTaskBoardContent } = useContext(TaskBoardContentContext);
+    const { messageApi } = useContext(GlobalNotificationContext);
     const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
 
 
@@ -113,6 +115,7 @@ function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequ
         scene2Project.ready.then(() => {
             const savedPosition = getResumePosition('scene2');
             if (savedPosition !== null && savedPosition > 0) {
+                messageApi('info', 'Progress has been picked up from the last checkpoint.', 3);
                 scene2Sheet.sequence.position = savedPosition;
                 const nextPoint = getNextClickablePoint(savedPosition, SCENE2_CLICKABLE_POINTS);
                 if (nextPoint !== null) {

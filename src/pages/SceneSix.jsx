@@ -64,6 +64,7 @@ function SceneSix({ scene6Sheet, scene6Project, startPoint, unloadPoint, onSeque
         scene6Project.ready.then(() => {
             const savedPosition = getResumePosition('scene6');
             if (savedPosition !== null && savedPosition > 0) {
+                messageApi('info', 'Progress has been picked up from the last checkpoint.', 3);
                 scene6Sheet.sequence.position = savedPosition;
                 const nextPoint = getNextClickablePoint(savedPosition, SCENE6_CLICKABLE_POINTS);
                 if (nextPoint !== null) {

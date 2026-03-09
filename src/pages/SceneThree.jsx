@@ -25,6 +25,7 @@ import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager'
 import { useAudioElement } from '../hooks/useAudioElement';
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
+import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import { useSequenceAutoSave, getResumePosition, getNextClickablePoint } from '../hooks/useSequenceAutoSave';
 import { EffectComposer, Noise } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
@@ -113,12 +114,14 @@ function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSeq
     useSequenceUnloadSceneChecker(scene3Sheet.sequence, [unloadPoint], onSequencePass);
     useSequenceAutoSave('scene3', scene3Sheet.sequence);
     const { taskBoardContent, setTaskBoardContent } = useContext(TaskBoardContentContext);
+    const { messageApi } = useContext(GlobalNotificationContext);
 
 
     useEffect(() => {
         scene3Project.ready.then(() => {
             const savedPosition = getResumePosition('scene3');
             if (savedPosition !== null && savedPosition > 0) {
+                messageApi('info', 'Progress has been picked up from the last checkpoint.', 3);
                 scene3Sheet.sequence.position = savedPosition;
                 const nextPoint = getNextClickablePoint(savedPosition, SCENE3_CLICKABLE_POINTS);
                 if (nextPoint !== null) {

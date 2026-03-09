@@ -16,6 +16,7 @@ import { bucketURL } from '../Settings';
 import StreamMusic from '../modelComponents/StreamMusic';
 import { Environment, useGLTF } from '@react-three/drei';
 import { canvasContext } from '../sharedContexts/CanvasProvider';
+import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import { XrToolsContext } from '../sharedContexts/XrToolsProvider';
 import XrSqueezeEventListener from '../Tools/XrSqueezeEventListener';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
@@ -33,6 +34,7 @@ function SceneOne({ scene1Sheet, scene1Project, unloadPoint, onSequencePass, isP
     const [isPresenting, setIsPresenting] = useState(false);
     const { xrPlayer, xrIsPresenting } = isVRSupported && useContext(XrToolsContext) ? useContext(XrToolsContext) : {};
     useSequenceAutoSave('scene1', scene1Sheet.sequence);
+    const { messageApi } = useContext(GlobalNotificationContext);
     useEffect(() => {
         setPlayer(xrPlayer);
         setIsPresenting(xrIsPresenting);
@@ -115,6 +117,7 @@ function SceneOne({ scene1Sheet, scene1Project, unloadPoint, onSequencePass, isP
         scene1Project.ready.then(() => {
             const savedPosition = getResumePosition('scene1');
             if (savedPosition !== null && savedPosition > 0) {
+                messageApi('info', 'Progress has been picked up from the last checkpoint.', 3);
                 scene1Sheet.sequence.position = savedPosition;
                 const nextPoint = getNextClickablePoint(savedPosition, SCENE1_CLICKABLE_POINTS);
                 if (nextPoint !== null) {

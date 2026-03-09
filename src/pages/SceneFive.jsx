@@ -132,6 +132,7 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
         scene5Project.ready.then(() => {
             const savedPosition = getResumePosition('scene5');
             if (savedPosition !== null && savedPosition > 0) {
+                messageApi('info', 'Progress has been picked up from the last checkpoint.', 3);
                 scene5Sheet.sequence.position = savedPosition;
                 const nextPoint = getNextClickablePoint(savedPosition, SCENE5_CLICKABLE_POINTS);
                 if (nextPoint !== null) {
