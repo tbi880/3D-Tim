@@ -38,6 +38,8 @@ import * as THREE from 'three';
 
 const SCENE5_CLICKABLE_POINTS = [20, 23, 23.5, 24, 24.5, 25, 30, 41, 68, 68.5, 69, 75, 144, 153, 165, 186, 207];
 const SCENE5_JUMP_POINTS_MAP = [[41, 55], [69, 75], [186, 207]];
+const SIGNAL_SENT_KEY = "sceneState_scene5_signalSent";
+const SIMULATION_DONE_KEY = "sceneState_scene5_simulationDone";
 
 function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     const musicUrl = bucketURL + 'music/bgm5.mp3';
@@ -124,8 +126,20 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
     const damageReport = "The external temperature of the ship is rising rapidly; the hull surface has reached a red-hot state. Based on the current rate of temperature increase, it is estimated that the hull structure will begin to melt in 15 minutes, at which point life support systems will fail. I have shared a calculated countdown to structural failure on your retinal display. Currently, the main thrusters lack sufficient power to escape the star's gravity. The backup thrusters are damaged. Ten minutes ago, our power reserves were at 30%. I initiated an emergency override to redirect energy, and the current power reserve is 48%, which is insufficient to support any high-power operations. In one minute, we can attempt a warp engine jump, but it may deplete all remaining energy and has an 80% chance of failure due to insufficient power.";
     const simulationResult = "After each time traveling for hundreds of years in empty space, we finally passed by a star system. We truly need the energy from this star to increase core energy, but we didn’t anticipate the star’s gravity would be so strong. As for whether we can use the star’s gravity to perform a gravitational slingshot maneuver and break free from its pull, all calculations for possible close-approach slingshot trajectories have been completed. The results indicate that, at our current speed and energy levels, none are feasible. The good news, however, is that we now have enough energy to activate the warp engine and can attempt to warp past the star, escaping its gravitational field to leave this star system.";
     const { isFirstPersonCamera, switchCamera } = useCameraSwitcher(false);
-    const [signalSent, setSignalSent] = useState(false);
-    const [simulationDone, setSimulationDone] = useState(false);
+    const [signalSent, _setSignalSent] = useState(() => {
+        try { return sessionStorage.getItem(SIGNAL_SENT_KEY) === 'true'; } catch { return false; }
+    });
+    const [simulationDone, _setSimulationDone] = useState(() => {
+        try { return sessionStorage.getItem(SIMULATION_DONE_KEY) === 'true'; } catch { return false; }
+    });
+    const setSignalSent = useCallback((value) => {
+        _setSignalSent(value);
+        try { sessionStorage.setItem(SIGNAL_SENT_KEY, String(value)); } catch { /* ignore */ }
+    }, []);
+    const setSimulationDone = useCallback((value) => {
+        _setSimulationDone(value);
+        try { sessionStorage.setItem(SIMULATION_DONE_KEY, String(value)); } catch { /* ignore */ }
+    }, []);
     const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
 
     const finishLoading = useCallback(() => {

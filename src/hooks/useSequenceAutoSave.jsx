@@ -2,6 +2,7 @@ import { useEffect } from "react";
 
 const SAVE_INTERVAL_MS = 2000;
 const STORAGE_KEY_PREFIX = "sceneResumePosition_";
+const SCENE_STATE_PREFIX = "sceneState_";
 const CLICKABLE_POINT_TOLERANCE = 0.1;
 const LAST_SCENE_URI_KEY = "lastSceneURI";
 
@@ -29,7 +30,7 @@ export function clearAllResumePositions() {
         const keysToRemove = [];
         for (let i = 0; i < sessionStorage.length; i++) {
             const key = sessionStorage.key(i);
-            if (key && key.startsWith(STORAGE_KEY_PREFIX)) {
+            if (key && (key.startsWith(STORAGE_KEY_PREFIX) || key.startsWith(SCENE_STATE_PREFIX))) {
                 keysToRemove.push(key);
             }
         }
