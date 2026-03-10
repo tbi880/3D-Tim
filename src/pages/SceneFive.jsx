@@ -518,7 +518,7 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
                 {showComponents.buttonSearchForEmergencyPlans && <Button title={"Search for last-hand plans"} position={[246.15, 33.25, -73.5]} buttonLength={1.5} rotation={[0, 3.67, 0]} sequence={scene5Sheet.sequence} clickablePoint={144} IsPreJump={false} jumpToPoint={144} stopPoint={153} unloadPoint={145} onSequencePass={() => { toggleComponentDisplay("buttonSearchForEmergencyPlans") }} />}
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={153} onSequencePass={() => {
-                    setShowAuthorizationCheckForm(true);
+                    if (scene5Sheet.sequence.position < 154) { setShowAuthorizationCheckForm(true); }
                     setTaskBoardContent(prev => [...prev, taskBoardContentMap[8]]);
                 }
                 } />
@@ -530,7 +530,7 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
                 }} />
                 {showComponents.decryption && <AnyModel modelURL={'circuits_in_motion-transformed.glb'} sequence={scene5Sheet.sequence} useTheatre={true} theatreKey={"Decryption"} position={[257.75, 34, -71.6]} rotation={[0, 3, 0]} scale={[0.001, 0.001, 0.001]} animationNames={["GltfAnimation 0"]} animationOnClick={false} animationPlayTimes={1} animationSpeeds={0.5} unloadPoint={164} onSequencePass={() => { toggleComponentDisplay("decryption"); }} />}
 
-                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={164} onSequencePass={() => { setShowSearchForEmergencyPlansLayer(true); }} />
+                <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={164} onSequencePass={() => { if (scene5Sheet.sequence.position < 165) { setShowSearchForEmergencyPlansLayer(true); } }} />
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={165.5} onSequencePass={() => { messageApi('info', 'You received a video recording from the captain Tim!!!', 3) }} />
 
