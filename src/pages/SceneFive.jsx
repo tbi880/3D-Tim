@@ -33,7 +33,7 @@ import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvi
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
 import { Bloom, BrightnessContrast, EffectComposer, ToneMapping, Vignette } from '@react-three/postprocessing';
-import { useSequenceAutoSave, getResumePosition, getNextClickablePoint } from '../hooks/useSequenceAutoSave';
+import { useSequenceAutoSave, getResumePosition, getNextClickablePoint, getJumpPointResumePosition, clearResumePositionsIfNavigated } from '../hooks/useSequenceAutoSave';
 import * as THREE from 'three';
 
 const SCENE5_CLICKABLE_POINTS = [20, 23, 23.5, 24, 24.5, 25, 30, 41, 68, 68.5, 69, 75, 144, 153, 165, 186, 207];
@@ -130,13 +130,19 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
 
     const finishLoading = useCallback(() => {
         scene5Project.ready.then(() => {
+            clearResumePositionsIfNavigated();
             const savedPosition = getResumePosition('scene5');
             if (savedPosition !== null && savedPosition > 0) {
                 messageApi('info', 'Progress has been picked up from the last checkpoint.', 3);
-                scene5Sheet.sequence.position = savedPosition;
-                const nextPoint = getNextClickablePoint(savedPosition, SCENE5_CLICKABLE_POINTS);
-                if (nextPoint !== null) {
-                    playOnce({ sequence: scene5Sheet.sequence, range: [savedPosition, nextPoint] });
+                const jumpPoint = getJumpPointResumePosition(savedPosition, SCENE5_JUMP_POINTS_MAP);
+                if (jumpPoint !== null) {
+                    scene5Sheet.sequence.position = jumpPoint;
+                } else {
+                    scene5Sheet.sequence.position = savedPosition;
+                    const nextPoint = getNextClickablePoint(savedPosition, SCENE5_CLICKABLE_POINTS);
+                    if (nextPoint !== null) {
+                        playOnce({ sequence: scene5Sheet.sequence, range: [savedPosition, nextPoint] });
+                    }
                 }
             } else {
                 scene5Sheet.sequence.position = 0;

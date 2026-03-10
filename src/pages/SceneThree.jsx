@@ -26,7 +26,7 @@ import { useAudioElement } from '../hooks/useAudioElement';
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
-import { useSequenceAutoSave, getResumePosition, getNextClickablePoint } from '../hooks/useSequenceAutoSave';
+import { useSequenceAutoSave, getResumePosition, getNextClickablePoint, getJumpPointResumePosition, clearResumePositionsIfNavigated } from '../hooks/useSequenceAutoSave';
 import { EffectComposer, Noise } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
 
@@ -120,13 +120,19 @@ function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSeq
 
     useEffect(() => {
         scene3Project.ready.then(() => {
+            clearResumePositionsIfNavigated();
             const savedPosition = getResumePosition('scene3');
             if (savedPosition !== null && savedPosition > 0) {
                 messageApi('info', 'Progress has been picked up from the last checkpoint.', 3);
-                scene3Sheet.sequence.position = savedPosition;
-                const nextPoint = getNextClickablePoint(savedPosition, SCENE3_CLICKABLE_POINTS);
-                if (nextPoint !== null) {
-                    scene3Sheet.sequence.play({ range: [savedPosition, nextPoint] });
+                const jumpPoint = getJumpPointResumePosition(savedPosition, SCENE3_JUMP_POINTS_MAP);
+                if (jumpPoint !== null) {
+                    scene3Sheet.sequence.position = jumpPoint;
+                } else {
+                    scene3Sheet.sequence.position = savedPosition;
+                    const nextPoint = getNextClickablePoint(savedPosition, SCENE3_CLICKABLE_POINTS);
+                    if (nextPoint !== null) {
+                        scene3Sheet.sequence.play({ range: [savedPosition, nextPoint] });
+                    }
                 }
             } else {
                 scene3Sheet.sequence.position = 0;

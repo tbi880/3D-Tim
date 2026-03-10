@@ -14,7 +14,7 @@ import { Perf } from 'r3f-perf';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
 import { useCameraSwitcher } from '../hooks/useCameraSwitcher';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
-import { useSequenceAutoSave, getResumePosition, getNextClickablePoint } from '../hooks/useSequenceAutoSave';
+import { useSequenceAutoSave, getResumePosition, getNextClickablePoint, clearResumePositionsIfNavigated } from '../hooks/useSequenceAutoSave';
 
 const SCENE6_CLICKABLE_POINTS = [84.3];
 
@@ -62,6 +62,7 @@ function SceneSix({ scene6Sheet, scene6Project, startPoint, unloadPoint, onSeque
 
     const finishLoading = useCallback(() => {
         scene6Project.ready.then(() => {
+            clearResumePositionsIfNavigated();
             const savedPosition = getResumePosition('scene6');
             if (savedPosition !== null && savedPosition > 0) {
                 messageApi('info', 'Progress has been picked up from the last checkpoint.', 3);
