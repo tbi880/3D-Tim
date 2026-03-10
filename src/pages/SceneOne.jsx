@@ -22,7 +22,7 @@ import XrSqueezeEventListener from '../Tools/XrSqueezeEventListener';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
 import { useAudioElement } from '../hooks/useAudioElement';
 import { useCameraSwitcher } from '../hooks/useCameraSwitcher';
-import { useSequenceAutoSave, getResumePosition, getNextClickablePoint } from '../hooks/useSequenceAutoSave';
+import { useSequenceAutoSave, getResumePosition, getNextClickablePoint, getJumpPointResumePosition, clearResumePositionsIfNavigated } from '../hooks/useSequenceAutoSave';
 import AnyModel from '../modelComponents/AnyModel';
 
 const SCENE1_CLICKABLE_POINTS = [0.034, 27.5, 30, 30.5, 31, 31.5, 32, 32.5, 39];
@@ -116,13 +116,19 @@ function SceneOne({ scene1Sheet, scene1Project, unloadPoint, onSequencePass, isP
 
     useEffect(() => {
         scene1Project.ready.then(() => {
+            clearResumePositionsIfNavigated();
             const savedPosition = getResumePosition('scene1');
             if (savedPosition !== null && savedPosition > 0) {
                 messageApi('info', 'Progress has been picked up from the last checkpoint.', 3);
-                scene1Sheet.sequence.position = savedPosition;
-                const nextPoint = getNextClickablePoint(savedPosition, SCENE1_CLICKABLE_POINTS);
-                if (nextPoint !== null) {
-                    scene1Sheet.sequence.play({ range: [savedPosition, nextPoint] });
+                const jumpPoint = getJumpPointResumePosition(savedPosition, SCENE1_JUMP_POINTS_MAP);
+                if (jumpPoint !== null) {
+                    scene1Sheet.sequence.position = jumpPoint;
+                } else {
+                    scene1Sheet.sequence.position = savedPosition;
+                    const nextPoint = getNextClickablePoint(savedPosition, SCENE1_CLICKABLE_POINTS);
+                    if (nextPoint !== null) {
+                        scene1Sheet.sequence.play({ range: [savedPosition, nextPoint] });
+                    }
                 }
             }
         });

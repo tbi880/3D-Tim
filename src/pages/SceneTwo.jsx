@@ -26,7 +26,7 @@ import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneCh
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
-import { useSequenceAutoSave, getResumePosition, getNextClickablePoint } from '../hooks/useSequenceAutoSave';
+import { useSequenceAutoSave, getResumePosition, getNextClickablePoint, getJumpPointResumePosition, clearResumePositionsIfNavigated } from '../hooks/useSequenceAutoSave';
 import { Bloom, BrightnessContrast, ChromaticAberration, DepthOfField, EffectComposer, Glitch, ToneMapping, Vignette } from "@react-three/postprocessing";
 
 const SCENE2_CLICKABLE_POINTS = [1, 1.5, 2, 2.5, 22.5, 33, 68, 86];
@@ -114,13 +114,19 @@ function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequ
         useGLTF.preload(bucketURL + 'loading.glb');
 
         scene2Project.ready.then(() => {
+            clearResumePositionsIfNavigated();
             const savedPosition = getResumePosition('scene2');
             if (savedPosition !== null && savedPosition > 0) {
                 messageApi('info', 'Progress has been picked up from the last checkpoint.', 3);
-                scene2Sheet.sequence.position = savedPosition;
-                const nextPoint = getNextClickablePoint(savedPosition, SCENE2_CLICKABLE_POINTS);
-                if (nextPoint !== null) {
-                    playOnce({ sequence: scene2Sheet.sequence, range: [savedPosition, nextPoint] });
+                const jumpPoint = getJumpPointResumePosition(savedPosition, SCENE2_JUMP_POINTS_MAP);
+                if (jumpPoint !== null) {
+                    scene2Sheet.sequence.position = jumpPoint;
+                } else {
+                    scene2Sheet.sequence.position = savedPosition;
+                    const nextPoint = getNextClickablePoint(savedPosition, SCENE2_CLICKABLE_POINTS);
+                    if (nextPoint !== null) {
+                        playOnce({ sequence: scene2Sheet.sequence, range: [savedPosition, nextPoint] });
+                    }
                 }
             } else if (startPoint && startPoint != 0) {
                 playOnce({ sequence: scene2Sheet.sequence, range: [startPoint, startPoint + 0.5] });
