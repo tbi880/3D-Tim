@@ -339,7 +339,6 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
                     toggleComponentDisplay("chamberInside");
                 }} />
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={20.5} onSequencePass={() => {
-                    toggleComponentDisplay("shipOutside");
                     toggleComponentDisplay("spaceEnv");
                 }} />
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={20} onSequencePass={() => {
