@@ -36,6 +36,13 @@ export function useTurnstile(sitekey = '0x4AAAAAAB-aBBE_EPA75daZ') {
             theme: 'dark',
             callback: (token) => setToken(token),
         });
+
+        return () => {
+            if (widgetIdRef.current !== null && window.turnstile) {
+                window.turnstile.remove(widgetIdRef.current);
+                widgetIdRef.current = null;
+            }
+        };
     }, [containerRef.current, window.turnstile]);
 
     // Refresh token

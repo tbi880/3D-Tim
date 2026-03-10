@@ -14,6 +14,9 @@ import { Perf } from 'r3f-perf';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
 import { useCameraSwitcher } from '../hooks/useCameraSwitcher';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
+import { useSequenceAutoSave, getResumePosition, getNextClickablePoint } from '../hooks/useSequenceAutoSave';
+
+const SCENE6_CLICKABLE_POINTS = [84.3];
 
 function SceneSix({ scene6Sheet, scene6Project, startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     const musicUrl = bucketURL + 'music/bgm6.mp3';
@@ -22,6 +25,7 @@ function SceneSix({ scene6Sheet, scene6Project, startPoint, unloadPoint, onSeque
 
     const { messageApi } = useContext(GlobalNotificationContext);
     const { taskBoardContent, setTaskBoardContent } = useContext(TaskBoardContentContext);
+    useSequenceAutoSave('scene6', scene6Sheet.sequence);
     const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
         loadingComponents: {
             preloadEnv: true,
@@ -58,7 +62,17 @@ function SceneSix({ scene6Sheet, scene6Project, startPoint, unloadPoint, onSeque
 
     const finishLoading = useCallback(() => {
         scene6Project.ready.then(() => {
-            scene6Sheet.sequence.position = 0;
+            const savedPosition = getResumePosition('scene6');
+            if (savedPosition !== null && savedPosition > 0) {
+                messageApi('info', 'Progress has been picked up from the last checkpoint.', 3);
+                scene6Sheet.sequence.position = savedPosition;
+                const nextPoint = getNextClickablePoint(savedPosition, SCENE6_CLICKABLE_POINTS);
+                if (nextPoint !== null) {
+                    scene6Sheet.sequence.play({ range: [savedPosition, nextPoint] });
+                }
+            } else {
+                scene6Sheet.sequence.position = 0;
+            }
         });
     }, []);
 

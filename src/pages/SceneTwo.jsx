@@ -24,8 +24,13 @@ import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager'
 import { useAudioElement } from '../hooks/useAudioElement';
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
+import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
+import { useSequenceAutoSave, getResumePosition, getNextClickablePoint } from '../hooks/useSequenceAutoSave';
 import { Bloom, BrightnessContrast, ChromaticAberration, DepthOfField, EffectComposer, Glitch, ToneMapping, Vignette } from "@react-three/postprocessing";
+
+const SCENE2_CLICKABLE_POINTS = [1, 1.5, 2, 2.5, 22.5, 33, 68, 86];
+const SCENE2_JUMP_POINTS_MAP = [[33, 38], [68, 72], [86, 96]];
 
 
 function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequencePass, isPortraitPhoneScreen }) {
@@ -37,7 +42,9 @@ function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequ
     // const { xrPlayer, xrIsPresenting } = isVRSupported && useContext(XrToolsContext) ? useContext(XrToolsContext) : {};
     const audioElement = useAudioElement(musicUrl);
     useSequenceUnloadSceneChecker(scene2Sheet.sequence, unloadPoints, onSequencePass);
+    useSequenceAutoSave('scene2', scene2Sheet.sequence);
     const { taskBoardContent, setTaskBoardContent } = useContext(TaskBoardContentContext);
+    const { messageApi } = useContext(GlobalNotificationContext);
     const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
 
 
@@ -107,7 +114,15 @@ function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequ
         useGLTF.preload(bucketURL + 'loading.glb');
 
         scene2Project.ready.then(() => {
-            if (startPoint && startPoint != 0) {
+            const savedPosition = getResumePosition('scene2');
+            if (savedPosition !== null && savedPosition > 0) {
+                messageApi('info', 'Progress has been picked up from the last checkpoint.', 3);
+                scene2Sheet.sequence.position = savedPosition;
+                const nextPoint = getNextClickablePoint(savedPosition, SCENE2_CLICKABLE_POINTS);
+                if (nextPoint !== null) {
+                    playOnce({ sequence: scene2Sheet.sequence, range: [savedPosition, nextPoint] });
+                }
+            } else if (startPoint && startPoint != 0) {
                 playOnce({ sequence: scene2Sheet.sequence, range: [startPoint, startPoint + 0.5] });
             }
         });

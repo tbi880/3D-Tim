@@ -14,7 +14,10 @@ const StrangerStar = () => {
     useEffect(() => {
         action1.play()
         action1.timeScale = 0.3;
-    })
+        return () => {
+            action1.stop();
+        };
+    }, [])
 
     return (<>
         <mesh scale={90}>

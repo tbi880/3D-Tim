@@ -15,7 +15,10 @@ const Fireworks = () => {
     useEffect(() => {
         action1.play()
         action1.timeScale = 2;
-    })
+        return () => {
+            action1.stop();
+        };
+    }, [])
 
     return (<>
         <e.mesh theatreKey={theatreKey} scale={5} position={[0, 0, 0]} rotation={[0, 0, 0]} >

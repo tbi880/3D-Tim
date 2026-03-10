@@ -7,7 +7,9 @@ export function createAudioLoader(url) {
         .then(response => response.arrayBuffer())
         .then(arrayBuffer => {
             const audioContext = new AudioContext();
-            return audioContext.decodeAudioData(arrayBuffer);
+            return audioContext.decodeAudioData(arrayBuffer).finally(() => {
+                audioContext.close();
+            });
         });
 }
 // export function createAudioLoader(url) {
@@ -41,7 +43,7 @@ export function createAudioLoader(url) {
 
 function AsyncMusic({ audioBuffer, sequence, startPoint, lowVolumePoints, highVolumePoints, maxVolume, isLoaded }) {
     // const [audioBuffer, setAudioBuffer] = useState(null);
-    const audioContextRef = useRef(new AudioContext());
+    const audioContextRef = useRef(null);
     const gainNodeRef = useRef(null);
     const audioBufferSourceNodeRef = useRef(null);
     const isPlayingRef = useRef(false);

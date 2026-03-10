@@ -33,8 +33,11 @@ import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvi
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
 import { Bloom, BrightnessContrast, EffectComposer, ToneMapping, Vignette } from '@react-three/postprocessing';
+import { useSequenceAutoSave, getResumePosition, getNextClickablePoint } from '../hooks/useSequenceAutoSave';
 import * as THREE from 'three';
 
+const SCENE5_CLICKABLE_POINTS = [20, 23, 23.5, 24, 24.5, 25, 30, 41, 68, 68.5, 69, 75, 144, 153, 165, 186, 207];
+const SCENE5_JUMP_POINTS_MAP = [[41, 55], [69, 75], [186, 207]];
 
 function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     const musicUrl = bucketURL + 'music/bgm5.mp3';
@@ -45,6 +48,7 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
     const [isWarped, setIsWarped] = useState(false);
     const unloadPointsMemo = useMemo(() => [unloadPoint], [unloadPoint]);
     useSequenceUnloadSceneChecker(scene5Sheet.sequence, unloadPointsMemo, onSequencePass);
+    useSequenceAutoSave('scene5', scene5Sheet.sequence);
     const { estHitTimeCountDown, setEstHitTimeCountDown, initEstHitTimeCountDown } = useContext(estHitTimeCountDownContext);
     const { hullTemperature, setHullTemperature, initHullTemperature } = useContext(hullTemperatureContext);
     const { coreEnergy, setCoreEnergy, initCoreEnergy } = useContext(coreEnergyContext);
@@ -126,12 +130,23 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
 
     const finishLoading = useCallback(() => {
         scene5Project.ready.then(() => {
-            scene5Sheet.sequence.position = 0;
-            playOnce({ sequence: scene5Sheet.sequence, range: [0, 20] });
+            const savedPosition = getResumePosition('scene5');
+            if (savedPosition !== null && savedPosition > 0) {
+                messageApi('info', 'Progress has been picked up from the last checkpoint.', 3);
+                scene5Sheet.sequence.position = savedPosition;
+                const nextPoint = getNextClickablePoint(savedPosition, SCENE5_CLICKABLE_POINTS);
+                if (nextPoint !== null) {
+                    playOnce({ sequence: scene5Sheet.sequence, range: [savedPosition, nextPoint] });
+                }
+            } else {
+                scene5Sheet.sequence.position = 0;
+                playOnce({ sequence: scene5Sheet.sequence, range: [0, 20] });
+            }
         });
     }, []);
 
     const timeoutRef = useRef(null);
+    const rafRef = useRef(null);
 
     const alarmLight = useCallback(() => {
         toggleComponentDisplay("insideAmbientLight");
@@ -151,12 +166,12 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
                 setAmbientIntensity(newValue);
 
                 if (progress < 1) {
-                    requestAnimationFrame(step);
+                    rafRef.current = requestAnimationFrame(step);
                 } else if (callback) {
                     callback();
                 }
             };
-            requestAnimationFrame(step);
+            rafRef.current = requestAnimationFrame(step);
         };
 
         updateIntensity(0, maxIntensity, 1000, () => {
@@ -178,9 +193,12 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
 
     useEffect(() => {
         return () => {
-            // Clear timeout on component unmount to prevent memory leaks
+            // Clear timeout and animation frame on component unmount to prevent memory leaks
             if (timeoutRef.current) {
                 clearTimeout(timeoutRef.current);
+            }
+            if (rafRef.current) {
+                cancelAnimationFrame(rafRef.current);
             }
         };
     }, [isPortraitPhoneScreen]);
@@ -219,7 +237,7 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
 
         // Clear the interval to avoid memory leaks
         return () => clearInterval(interval);
-    }, [estHitTimeCountDown, setEstHitTimeCountDown, hullTemperature, setHullTemperature, coreEnergy, setCoreEnergy]);
+    }, [isWarped]);
 
     const [taskBoardContentMap, setTaskBoardContentMap] = useState({
         0: "The warning is constantly flashing, the ship is in extreme danger. ",
