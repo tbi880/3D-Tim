@@ -8,17 +8,18 @@ export const XrToolsProvider = ({ children }) => {
     const { isVRSupported, setIsVRSupported } = useContext(canvasContext);
     const [xrPlayer, setXrPlayer] = useState(null);
     const [xrIsPresenting, setXrIsPresenting] = useState(false);
-    const { player, isPresenting } = useXR();
+    const origin = useXR((state) => state.origin);
+    const session = useXR((state) => state.session);
 
     useEffect(() => {
         if (isVRSupported) {
-            setXrPlayer(player);
-            setXrIsPresenting(isPresenting);
+            setXrPlayer(origin ?? null);
+            setXrIsPresenting(Boolean(session));
         } else {
             setXrPlayer(null);
             setXrIsPresenting(false);
         }
-    }, [isVRSupported, player, isPresenting]);
+    }, [isVRSupported, origin, session]);
 
     return (
         <XrToolsContext.Provider value={{ xrPlayer, xrIsPresenting }}>

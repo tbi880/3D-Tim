@@ -1,11 +1,12 @@
-import { createContext, useContext, useEffect, useState, useRef } from "react";
-import { Controllers, Hands, VRButton, XR } from '@react-three/xr';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { XR, createXRStore } from '@react-three/xr';
 import { graphicSettingContext } from "./GraphicSettingProvider";
 import { Canvas, extend } from "@react-three/fiber";
 import { webGLPreserveDrawingBuffer } from '../Settings';
 import * as THREE from 'three';
 import * as THREE_WEBGPU from "three/webgpu";
 import { acceleratedRaycast, computeBoundsTree, disposeBoundsTree } from 'three-mesh-bvh';
+import { useStore } from "zustand";
 
 extend(THREE);
 extend(THREE_WEBGPU);
@@ -24,6 +25,16 @@ export const CanvasProvider = ({ children, vrEnabled = false, frameLoopSetting =
     const [isVRSupported, setIsVRSupported] = useState(false);
     const [frameloop, setFrameloop] = useState("never");
     const rendererRef = useRef(null);
+    const xrStore = useMemo(() => createXRStore({
+        offerSession: false,
+        emulate: false,
+        controller: {
+            rayPointer: {
+                rayModel: { color: "#99FFFF" },
+            },
+        },
+    }), []);
+    const xrSession = useStore(xrStore, (state) => state.session);
 
 
     useEffect(() => {
@@ -101,7 +112,18 @@ export const CanvasProvider = ({ children, vrEnabled = false, frameLoopSetting =
             {/* ---------- VR 模式：强制 WebGL ---------- */}
             {shouldRenderVR && (
                 <>
-                    <VRButton />
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (xrSession) {
+                                xrSession.end();
+                            } else {
+                                xrStore.enterVR().catch(console.error);
+                            }
+                        }}
+                    >
+                        {xrSession ? "Exit VR" : "Enter VR"}
+                    </button>
                     <Canvas
                         frameloop={frameLoopSetting}
                         gl={webGLProps}
@@ -110,9 +132,7 @@ export const CanvasProvider = ({ children, vrEnabled = false, frameLoopSetting =
                         mode="concurrent"
                         fallback={<div>Sorry no WebGPU / WebGL supported!</div>}
                     >
-                        <XR>
-                            <Controllers rayMaterial={{ color: "#99FFFF" }} />
-                            <Hands />
+                        <XR store={xrStore}>
                             {children}
                         </XR>
                     </Canvas>
