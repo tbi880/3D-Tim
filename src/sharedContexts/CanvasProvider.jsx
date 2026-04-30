@@ -118,7 +118,9 @@ export const CanvasProvider = ({ children, vrEnabled = false, frameLoopSetting =
                             if (xrSession) {
                                 xrSession.end();
                             } else {
-                                xrStore.enterVR().catch(console.error);
+                                xrStore.enterVR().catch((error) => {
+                                    console.error("Failed to enter VR session", error);
+                                });
                             }
                         }}
                     >
