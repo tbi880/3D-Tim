@@ -8,7 +8,6 @@ import SceneThree from '../pages/SceneThree';
 import { useContext, useEffect, useRef } from 'react';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';
-// import XrToolMiddleLayer from '../Tools/XrToolMiddleLayer';
 import DoublePlayTimeSpeedButton from '../Tools/DoublePlayTimeSpeedButton';
 import { getProject } from '@theatre/core';
 import { useJumpToNextScene } from '../hooks/useJumpToNextScene';
@@ -52,10 +51,8 @@ function ShipHanger({ isPortraitPhoneScreen }) {
             <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
 
                 <CanvasProvider>
-                    {/* <XrToolMiddleLayer> */}
                     <SheetProvider sheet={scene3Sheet}>
                         <SceneThree scene3Sheet={scene3Sheet} scene3Project={scene3Project} startPoint={getNextSceneStartPoint()} isPortraitPhoneScreen={isPortraitPhoneScreen} unloadPoint={64} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
-                    {/* </XrToolMiddleLayer> */}
                 </CanvasProvider>
             </div >
             <DoublePlayTimeSpeedButton sheetSequence={scene3Sheet.sequence} />
@@ -67,4 +64,3 @@ function ShipHanger({ isPortraitPhoneScreen }) {
 }
 
 export default ShipHanger;
-

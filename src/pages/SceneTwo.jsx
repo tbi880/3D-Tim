@@ -16,9 +16,6 @@ import { bucketURL, stageOfENV } from '../Settings';
 import Loading from '../modelComponents/Loading';
 import { Environment, useGLTF } from '@react-three/drei';
 import Loader from './Loader';
-// import { canvasContext } from '../sharedContexts/CanvasProvider';
-// import { XrToolsContext } from '../sharedContexts/XrToolsProvider';
-// import { XrSqueezeEventListener } from '../Tools/XrSqueezeEventListener';
 import { Perf } from 'r3f-perf';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
 import { useAudioElement } from '../hooks/useAudioElement';
@@ -36,10 +33,6 @@ const SCENE2_JUMP_POINTS_MAP = [[33, 38], [68, 72], [86, 96]];
 function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequencePass, isPortraitPhoneScreen }) {
     const screenIntro = "You finally awaken, chief designer! Our ship is about to enter the black hole ahead of us. The ship is damaged quite severe due to the strong gravitational force. As AI, we cannot change the course of the ship because the first captain, Tim Bi, set it up millennia ago. Additionally, we have been blocked from answering the questions to unlock the captain's chamber. We need your help to find the answers to the root access questions so we can alter the ship's course or initiate an emergency stop. Please follow me to the bridge. Let's start by checking the structure of the ship first. This will probably help you to rewind your memory about the ship.";
     const musicUrl = bucketURL + 'music/bgm2.mp3';
-    // const { isVRSupported, setIsVRSupported } = useContext(canvasContext);
-    // const [player, setPlayer] = useState(null);
-    // const [isPresenting, setIsPresenting] = useState(false);
-    // const { xrPlayer, xrIsPresenting } = isVRSupported && useContext(XrToolsContext) ? useContext(XrToolsContext) : {};
     const audioElement = useAudioElement(musicUrl);
     useSequenceUnloadSceneChecker(scene2Sheet.sequence, unloadPoints, onSequencePass);
     useSequenceAutoSave('scene2', scene2Sheet.sequence);
@@ -86,29 +79,6 @@ function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequ
         }
     });
 
-    // useEffect(() => {
-    //     setPlayer(xrPlayer);
-    //     setIsPresenting(xrIsPresenting);
-    // }, [xrPlayer, xrIsPresenting]);
-
-
-    // const [VRCordinate, setVRCordinate] = useState({
-    //     0: [499, -24, -60],
-    //     1: [630, -18, -106],
-    //     2: [565, -18, -106],
-    //     3: [668, -21.3, 0.3],
-    //     4: [562, -19, 65],
-    //     5: [505, -27, 22.5],
-    //     6: [552, 7, 16],
-    //     7: [526, -16, -20],
-    // });
-    // const [currentVRCordinate, setCurrentVRCordinate] = useState(0);
-
-    // useEffect(() => {
-    //     if (player) {
-    //         player.position.set(499, -24, -60);
-    //     }
-    // }, [player]);
 
     useEffect(() => {
         useGLTF.preload(bucketURL + 'loading.glb');
@@ -136,31 +106,6 @@ function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequ
 
 
 
-    // useFrame(() => {
-    //     if (isVRSupported) {
-    //         if (isPresenting) {
-    //             if (player) {
-    //                 player.position.set(VRCordinate[currentVRCordinate][0], VRCordinate[currentVRCordinate][1], VRCordinate[currentVRCordinate][2]);
-    //             }
-    //         } else {
-    //             if (player) {
-    //                 player.position.set(0, 0, 0);
-    //             }
-    //         }
-    //     }
-    // });
-
-    // const handleLeftSqueeze = () => {
-    //     setCurrentVRCordinate((prev) => {
-    //         return prev === 0 ? Object.keys(VRCordinate).length - 1 : prev - 1;
-    //     });
-    // };
-
-    // const handleRightSqueeze = () => {
-    //     setCurrentVRCordinate((prev) => {
-    //         return prev < Object.keys(VRCordinate).length - 1 ? prev + 1 : 0;
-    //     });
-    // };
 
 
     const [taskBoardContentMap, setTaskBoardContentMap] = useState({
@@ -185,7 +130,6 @@ function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequ
 
                 {showComponents.preloadAssets && <PreloadAssets />}
 
-                {/* {isVRSupported && <XrSqueezeEventListener onLeftSqueeze={handleLeftSqueeze} onRightSqueeze={handleRightSqueeze} />} */}
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene2Sheet.sequence} startPoint={1} />}
                 <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault position={[498, -19, -61]} rotation={[0, 1.55, 0]} fov={75} near={0.01} />
 

@@ -19,7 +19,6 @@ import { bucketURL, stageOfENV } from '../Settings';
 import Loading from '../modelComponents/Loading';
 import { types } from '@theatre/core';
 import Loader from './Loader';
-// import { XrToolsContext } from '../sharedContexts/XrToolsProvider';
 import { Perf } from 'r3f-perf';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
 import { useAudioElement } from '../hooks/useAudioElement';
@@ -34,10 +33,6 @@ const SCENE3_CLICKABLE_POINTS = [30, 31, 50, 50.5, 51, 51.5, 64];
 const SCENE3_JUMP_POINTS_MAP = [[51.5, 64]];
 
 function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
-    // const { isVRSupported, setIsVRSupported } = useContext(canvasContext);
-    // const [player, setPlayer] = useState(null);
-    // const [isPresenting, setIsPresenting] = useState(false);
-    // const { xrPlayer, xrIsPresenting } = isVRSupported && useContext(XrToolsContext) ? useContext(XrToolsContext) : {};
     const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
         loadingComponents: {
             nioseEffect: true,
@@ -91,19 +86,6 @@ function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSeq
         }
     });
 
-    // useEffect(() => {
-    //     setPlayer(xrPlayer);
-    //     setIsPresenting(xrIsPresenting);
-    // }, [xrPlayer, xrIsPresenting]);
-
-    // const [VRCordinate, setVRCordinate] = useState({ // mapped by sequence position to coordinates
-    //     0: [0, 0, 0],
-    //     20: [0.1, -0.4, -4.25],
-    //     32: [105, 75, -1100],
-    //     42: [0.18, -1.25, -0.2]
-    // });
-    // const VRCordinateKeysArray = Object.keys(VRCordinate);
-    // const [currentVRCordinate, setCurrentVRCordinate] = useState(0);
     const musicUrl = bucketURL + 'music/bgm3.mp3';
     const [ambientIntensity, setAmbientIntensity] = useState(5);
     // const [pointIntensity, setPointIntensity] = useState(5);
@@ -140,11 +122,6 @@ function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSeq
         });
     }, []);
 
-    // useEffect(() => {
-    //     if (player) {
-    //         player.position.set(0, 0, 0);
-    //     }
-    // }, []);
 
     const [taskBoardContentMap, setTaskBoardContentMap] = useState({
         0: "Seems I am inside of the Tim's memory, let me have a look at the early life of Tim. (Click on the viewport to start.)",
@@ -158,25 +135,6 @@ function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSeq
         setTaskBoardContent(new Array(taskBoardContentMap[0]));
     }, []);
 
-    // useFrame(() => {
-    //     if (isVRSupported) {
-    //         if (isPresenting) {
-    //             const nextSwitchPointIndex = ((VRCordinateKeysArray.indexOf(String(currentVRCordinate))) < (VRCordinateKeysArray.length - 1)) ? VRCordinateKeysArray.indexOf(String(currentVRCordinate)) + 1 : VRCordinateKeysArray.indexOf(String(currentVRCordinate));
-    //             const nextSwitchPoint = Number(VRCordinateKeysArray[nextSwitchPointIndex]);
-    //             if (scene3Sheet.sequence.position >= nextSwitchPoint) {
-    //                 setCurrentVRCordinate(nextSwitchPoint);
-    //             }
-    //             if (player) {
-    //                 player.position.set(VRCordinate[currentVRCordinate][0], VRCordinate[currentVRCordinate][1], VRCordinate[currentVRCordinate][2]);
-    //             }
-    //         } else {
-    //             if (player) {
-    //                 player.position.set(0, 0, 0);
-    //             }
-    //         }
-    //     }
-    // }
-    // );
 
     return (
         <>

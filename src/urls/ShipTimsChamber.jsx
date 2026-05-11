@@ -2,7 +2,6 @@
 import Status, { getNextSceneStartPoint, getTourMapFromLocalStorage, hasTourGuided } from '../pages/Status';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
-// import { Controllers, Hands, VRButton, XR } from '@react-three/xr';
 import { SheetProvider } from '@theatre/r3f';
 import scene5State from '../scene5.json';
 import { useContext, useEffect, useRef, useState } from 'react';
@@ -133,4 +132,3 @@ function ShipTimsChamber({ isPortraitPhoneScreen }) {
 }
 
 export default ShipTimsChamber;
-
