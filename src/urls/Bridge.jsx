@@ -8,7 +8,6 @@ import scene2State from '../scene2.json';
 import { useContext, useEffect, useRef, useState } from 'react';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';
-// import XrToolMiddleLayer from '../Tools/XrToolMiddleLayer';
 import DoublePlayTimeSpeedButton from '../Tools/DoublePlayTimeSpeedButton';
 import { getProject } from '@theatre/core';
 import { useJumpToNextScene } from '../hooks/useJumpToNextScene';
@@ -50,12 +49,8 @@ function Bridge({ isPortraitPhoneScreen }) {
 
             <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
                 <CanvasProvider >
-                    {/* <XrToolMiddleLayer> */}
-
                     <SheetProvider sheet={scene2Sheet}>
                         <SceneTwo scene2Sheet={scene2Sheet} scene2Project={scene2Project} startPoint={getNextSceneStartPoint()} isPortraitPhoneScreen={isPortraitPhoneScreen} unloadPoints={[38, 72, 96]} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
-
-                    {/* </XrToolMiddleLayer> */}
                 </CanvasProvider>
 
 
@@ -68,4 +63,3 @@ function Bridge({ isPortraitPhoneScreen }) {
 }
 
 export default Bridge;
-
