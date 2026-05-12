@@ -1,10 +1,8 @@
-import { useFrame } from '@react-three/fiber';
 import Loader from './Loader';
 import StrangerStar from '../modelComponents/StrangerStar';
 import ShipOutside from '../modelComponents/ShipOutside';
 import Galaxy from '../modelComponents/Galaxy';
 import TextTitle from '../modelComponents/TextTitle';
-import TextTitle_v2 from '../modelComponents/TextTitle_v2';
 import InfoScreenDisplay from '../modelComponents/InfoScreenDisplay';
 import SingleLoadManager from '../modelComponents/SingleLoadManager';
 import ViewPort from '../modelComponents/ViewPort';
@@ -15,10 +13,7 @@ import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { bucketURL } from '../Settings';
 import StreamMusic from '../modelComponents/StreamMusic';
 import { Environment, useGLTF } from '@react-three/drei';
-import { canvasContext } from '../sharedContexts/CanvasProvider';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
-import { XrToolsContext } from '../sharedContexts/XrToolsProvider';
-import XrSqueezeEventListener from '../Tools/XrSqueezeEventListener';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
 import { useAudioElement } from '../hooks/useAudioElement';
 import { useCameraSwitcher } from '../hooks/useCameraSwitcher';
@@ -30,25 +25,8 @@ const SCENE1_JUMP_POINTS_MAP = [[32.5, 39]];
 
 
 function SceneOne({ scene1Sheet, scene1Project, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
-    const { isVRSupported, setIsVRSupported } = useContext(canvasContext);
-    const [player, setPlayer] = useState(null);
-    const [isPresenting, setIsPresenting] = useState(false);
-    const { xrPlayer, xrIsPresenting } = isVRSupported && useContext(XrToolsContext) ? useContext(XrToolsContext) : {};
     useSequenceAutoSave('scene1', scene1Sheet.sequence);
     const { messageApi } = useContext(GlobalNotificationContext);
-    useEffect(() => {
-        setPlayer(xrPlayer);
-        setIsPresenting(xrIsPresenting);
-    }, [xrPlayer, xrIsPresenting]);
-
-    const [VRCordinate, setVRCordinate] = useState({
-        0: [600, 19, -61],
-        1: [0, 20, -61],
-        2: [750, -19, -45],
-        3: [750, -19, -40],
-        4: [750, -19, -35],
-    });
-    const [currentVRCordinate, setCurrentVRCordinate] = useState(0);
     const musicUrl = bucketURL + 'music/bgm1.mp3';
     const [year, setYear] = useState(new Date().getFullYear());
     const [month, setMonth] = useState(new Date().getMonth());
@@ -74,7 +52,6 @@ function SceneOne({ scene1Sheet, scene1Project, unloadPoint, onSequencePass, isP
             shipOutside: true,
             viewPortStarShipInfo: true,
             infoScreenDisplayStarShipInfo: false,
-            textTitleVRVIEWPORT: true,
             warping: true,
 
         }, initialComponents: {
@@ -86,26 +63,9 @@ function SceneOne({ scene1Sheet, scene1Project, unloadPoint, onSequencePass, isP
             shipOutside: true,
             viewPortStarShipInfo: true,
             infoScreenDisplayStarShipInfo: false,
-            textTitleVRVIEWPORT: true,
             warping: false,
         }
     });
-
-
-    useFrame(() => {
-        if (isVRSupported) {
-            if (isPresenting) {
-                if (player) {
-                    player.position.set(VRCordinate[currentVRCordinate][0], VRCordinate[currentVRCordinate][1], VRCordinate[currentVRCordinate][2]);
-                }
-            } else {
-                if (player) {
-                    player.position.set(0, 0, 0);
-                }
-            }
-        }
-    });
-
 
 
     useEffect(() => {
@@ -135,19 +95,6 @@ function SceneOne({ scene1Sheet, scene1Project, unloadPoint, onSequencePass, isP
     }, []);
 
 
-    const handleLeftSqueeze = () => {
-        setCurrentVRCordinate((prev) => {
-            return prev === 0 ? Object.keys(VRCordinate).length - 1 : prev - 1;
-        });
-    };
-
-    const handleRightSqueeze = () => {
-        setCurrentVRCordinate((prev) => {
-            return prev < Object.keys(VRCordinate).length - 1 ? prev + 1 : 0;
-        });
-    };
-
-
     return (
         <>
 
@@ -155,8 +102,6 @@ function SceneOne({ scene1Sheet, scene1Project, unloadPoint, onSequencePass, isP
                 {showComponents.preloadAssets && <PreloadAssets />}
 
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene1Sheet.sequence} startPoint={2.5} />}
-                {isVRSupported && <XrSqueezeEventListener onLeftSqueeze={handleLeftSqueeze} onRightSqueeze={handleRightSqueeze} />}
-
                 <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault={isFirstPersonCamera} position={[600, 20, -61]} rotation={[0, 0.33, 0]} fov={75} near={0.01} />
                 <SingleLoadManager loadPoint={23} sequence={scene1Sheet.sequence} onSequencePass={() => { switchCamera(false); }} />
                 <PerspectiveCamera theatreKey="ThirdPersonCamera" makeDefault={!isFirstPersonCamera} position={[908, -18, -40]} rotation={[0, -Math.PI / 2, 0]} fov={75} near={0.01} />
@@ -177,16 +122,11 @@ function SceneOne({ scene1Sheet, scene1Project, unloadPoint, onSequencePass, isP
                 />
                 <ShipOutside sequence={scene1Sheet.sequence} onSequencePass={() => toggleComponentDisplay('shipOutside')} />
 
-                {isVRSupported && isPresenting && <TextTitle_v2 theatreKey={"_VR_WELCOME"} text="Try to squeeze one of your controller" color="#FFFFFF" size={1} sequence={scene1Sheet.sequence} position={[580, 25, -75]} rotation={[0, 0.33, 0]} />}
-
-
                 {showComponents.infoScreenWelcome && (<InfoScreenDisplay title="Welcome" content={screenWelcomeContent} sequence={scene1Sheet.sequence} stopPoints={[0.034, 27.5]} loadPoints={[0, 0.033]} unloadPoints={[0.034, 2.5]} onSequencePass={() => toggleComponentDisplay('infoScreenWelcome')} />)}
 
                 {showComponents.textTitleAD32101 && (<TextTitle text="AD 32101" color="#FFD700" size={1} sequence={scene1Sheet.sequence} unloadPoint={5} onSequencePass={() => toggleComponentDisplay('textTitleAD32101')} />)}
                 {showComponents.textTitleOuterArm && (<TextTitle text="Outer arm of the galaxy" color="#FFD700" size={1} sequence={scene1Sheet.sequence} unloadPoint={9} onSequencePass={() => toggleComponentDisplay('textTitleOuterArm')} />)}
                 {showComponents.textTitleApproximately && (<TextTitle text="Approximately 18,000 light years from Earth" color="#FFD700" size={1} sequence={scene1Sheet.sequence} unloadPoint={15} onSequencePass={() => toggleComponentDisplay('textTitleApproximately')} />)}
-
-                {isVRSupported && isPresenting && showComponents.textTitleVRVIEWPORT && <TextTitle_v2 theatreKey={"_VR_VIEWPORT"} text="Come back here again when you see the VIEWPORT" color="#FFFFFF" size={1} sequence={scene1Sheet.sequence} unloadPoint={25} position={[725, -19, -60]} onSequencePass={() => toggleComponentDisplay('textTitleVRVIEWPORT')} />}
 
                 {showComponents.viewPortStarShipInfo && (<ViewPort screenTitle={"StarShip Info"} position={[745, -16, 38]} rotation={[-1.13, -0.654, 5.2]} sequence={scene1Sheet.sequence} stopPoint={30} unloadPoint={37} onSequencePass={() => toggleComponentDisplay('viewPortStarShipInfo')} isSetNextScene={true} nextScene={"sceneTwo"} />)}
                 <SingleLoadManager loadPoint={29.5} sequence={scene1Sheet.sequence} onSequencePass={() => toggleComponentDisplay('infoScreenDisplayStarShipInfo')} />

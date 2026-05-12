@@ -1,5 +1,4 @@
-import { createContext, useContext, useEffect, useState, useRef } from "react";
-import { Controllers, Hands, VRButton, XR } from '@react-three/xr';
+import { useContext, useEffect, useState, useRef } from "react";
 import { graphicSettingContext } from "./GraphicSettingProvider";
 import { Canvas, extend } from "@react-three/fiber";
 import { webGLPreserveDrawingBuffer } from '../Settings';
@@ -10,44 +9,25 @@ import { acceleratedRaycast, computeBoundsTree, disposeBoundsTree } from 'three-
 extend(THREE);
 extend(THREE_WEBGPU);
 
-export const canvasContext = createContext();
-
 // Override the raycast method of THREE.Mesh to use accelerated raycasting
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 
 
-export const CanvasProvider = ({ children, vrEnabled = false, frameLoopSetting = "always", enableWebGPU = true }) => {
+export const CanvasProvider = ({ children, frameLoopSetting = "always", enableWebGPU = true }) => {
     const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
 
-    const [isVRSupported, setIsVRSupported] = useState(false);
     const [frameloop, setFrameloop] = useState("never");
     const rendererRef = useRef(null);
 
-
-    useEffect(() => {
-        if (navigator.xr) {
-            navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
-                if (supported) {
-                    setIsVRSupported(true);
-                }
-            });
-        }
-
-    }, []);
-
-    const shouldRenderVR = isVRSupported && vrEnabled;
-
     /**
  * WebGPU 仅在：
- * - 非 VR
- * - 浏览器支持
- * - 用户允许
+ * - 用户允许（enableWebGPU）
+ * - 浏览器支持（navigator.gpu）
  */
     const canUseWebGPU =
         enableWebGPU &&
-        !shouldRenderVR &&
         typeof navigator !== "undefined" &&
         !!navigator.gpu;
 
@@ -97,47 +77,20 @@ export const CanvasProvider = ({ children, vrEnabled = false, frameLoopSetting =
 
 
     return (
-        <canvasContext.Provider value={{ isVRSupported, setIsVRSupported }}>
-            {/* ---------- VR 模式：强制 WebGL ---------- */}
-            {shouldRenderVR && (
-                <>
-                    <VRButton />
-                    <Canvas
-                        frameloop={frameLoopSetting}
-                        gl={webGLProps}
-                        dpr={dpr}
-                        performance={{ min: 0.25 }}
-                        mode="concurrent"
-                        fallback={<div>Sorry no WebGPU / WebGL supported!</div>}
-                    >
-                        <XR>
-                            <Controllers rayMaterial={{ color: "#99FFFF" }} />
-                            <Hands />
-                            {children}
-                        </XR>
-                    </Canvas>
-                </>
-            )}
-
-            {/* ---------- 非 VR：WebGPU / WebGL ---------- */}
-            {!shouldRenderVR && (
-                <Canvas
-                    shadows="variance"
-                    frameloop={canUseWebGPU ? frameloop : frameLoopSetting}
-                    dpr={dpr}
-                    performance={{ min: 0.25 }}
-                    mode="concurrent"
-                    fallback={<div>Sorry no WebGPU / WebGL supported!</div>}
-                    gl={
-                        canUseWebGPU
-                            ? (canvas) => createWebGPURenderer(canvas)
-                            : webGLProps
-                    }
-                >
-                    {children}
-                </Canvas>
-            )}
-
-        </canvasContext.Provider >
+        <Canvas
+            shadows="variance"
+            frameloop={canUseWebGPU ? frameloop : frameLoopSetting}
+            dpr={dpr}
+            performance={{ min: 0.25 }}
+            mode="concurrent"
+            fallback={<div>Sorry no WebGPU / WebGL supported!</div>}
+            gl={
+                canUseWebGPU
+                    ? (canvas) => createWebGPURenderer(canvas)
+                    : webGLProps
+            }
+        >
+            {children}
+        </Canvas>
     );
 };

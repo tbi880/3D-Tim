@@ -8,7 +8,6 @@ import { Helmet } from 'react-helmet';
 import SceneOne from '../pages/SceneOne';
 import scene1State from '../scene1.json';
 import { SheetProvider } from '@theatre/r3f';
-import XrToolMiddleLayer from '../Tools/XrToolMiddleLayer';
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 import { getProject } from '@theatre/core';
 import { useJumpToNextScene } from '../hooks/useJumpToNextScene';
@@ -52,12 +51,10 @@ function HomePage({ isPortraitPhoneScreen }) {
             {showComponents.header && <Header onAnimationEnd={() => toggleComponentDisplay("header")} />}
             <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
 
-                <CanvasProvider vrEnabled={true}>
-                    <XrToolMiddleLayer>
-
-                        <SheetProvider sheet={scene1Sheet}>
-                            <SceneOne scene1Sheet={scene1Sheet} scene1Project={scene1Project} startPoint={getNextSceneStartPoint()} isPortraitPhoneScreen={isPortraitPhoneScreen} unloadPoint={39} onSequencePass={() => checkThenJumpToTheNextScene()} /></SheetProvider>
-                    </XrToolMiddleLayer>
+                <CanvasProvider>
+                    <SheetProvider sheet={scene1Sheet}>
+                        <SceneOne scene1Sheet={scene1Sheet} scene1Project={scene1Project} startPoint={getNextSceneStartPoint()} isPortraitPhoneScreen={isPortraitPhoneScreen} unloadPoint={39} onSequencePass={() => checkThenJumpToTheNextScene()} />
+                    </SheetProvider>
                 </CanvasProvider>
 
             </div >
@@ -69,4 +66,3 @@ function HomePage({ isPortraitPhoneScreen }) {
 }
 
 export default HomePage;
-
