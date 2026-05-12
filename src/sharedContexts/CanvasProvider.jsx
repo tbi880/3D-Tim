@@ -23,9 +23,8 @@ export const CanvasProvider = ({ children, frameLoopSetting = "always", enableWe
 
     /**
  * WebGPU 仅在：
- * - 用户允许
- * - 浏览器支持
- * - 设备提供 WebGPU
+ * - 用户允许（enableWebGPU）
+ * - 浏览器支持（navigator.gpu）
  */
     const canUseWebGPU =
         enableWebGPU &&
