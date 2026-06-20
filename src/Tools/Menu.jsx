@@ -313,11 +313,11 @@ const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, r
 
                             <div className="vr-container" style={{ marginTop: '10%' }}>
                                 <FontAwesomeIcon icon={faVrCardboard} className="vr-icon" />
-                                <span>VR is now supported, to experience in a different view with more hidden places on the ship to unlock.</span>
+                                <span>VR is mode is temporary disabled, will be back soon.</span>
                             </div>
                             <br /><br />
                             <a
-                                href="/Tim_Bi_resume.pdf"
+                                href="https://static.bty.co.nz/Tim_Bi_resume.pdf"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className={"vr-link"}
