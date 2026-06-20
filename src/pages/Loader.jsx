@@ -2,6 +2,7 @@ import { Html, useProgress } from '@react-three/drei';
 import { useEffect, useState, useRef, useContext } from 'react';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import { Progress } from 'antd';
+import Lightfall from '../utils/Lightfall';
 
 function Loader({ isIntroNeeded = true, extraContent, onFinished }) {
 
@@ -10,6 +11,18 @@ function Loader({ isIntroNeeded = true, extraContent, onFinished }) {
     const { messageApi } = useContext(GlobalNotificationContext);
 
     const isMobile = window.innerWidth <= 768; // 判断是否为移动端
+
+    const centerColumn = {
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center'
+    };
+
+    const subtitleStyle = {
+        fontSize: isMobile ? '3vw' : '1.5vw',
+        padding: '10px'
+    }
 
     useEffect(() => {
         return () => {
@@ -73,67 +86,99 @@ function Loader({ isIntroNeeded = true, extraContent, onFinished }) {
 
     return (
         <Html center>
-            <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: isMobile ? '80vw' : '60vw', // 电脑端更窄
-                margin: '0 auto',
-                padding: '10px',
-                color: 'black',
-                fontFamily: 'Orbitron, sans-serif', // 显式设置字体
-
-            }}>
-                <h1 style={{
-                    fontSize: isMobile ? '5vw' : '3vw', // 电脑端字体更小
-                    marginBottom: isMobile ? '10vw' : '5vw'
-                }}>
-                    Welcome to Tim Bi's world.
-                </h1>
-                {isIntroNeeded && (
-                    <>
-                        <h2 style={{ fontSize: isMobile ? '3vw' : '1.5vw', padding: '10px' }}>Ready for a 3D ride in my universe?</h2>
-                        <h2 style={{ fontSize: isMobile ? '3vw' : '1.5vw', padding: '10px' }}>I think you would know me very well after you finish this "space adventure".</h2>
-                        <h2 style={{ fontSize: isMobile ? '3vw' : '1.5vw', padding: '10px' }}>Please be patient. The first time access would take approximately 20 seconds.</h2>
-                    </>
-                )}
-                {extraContent && (
-                    <>
-                        {extraContent.map((text, index) => (
-                            <h2 key={index} style={{ fontSize: isMobile ? '3vw' : '1.5vw', padding: '10px' }}>{text}</h2>
-                        ))}
-                    </>
-                )}
-            </div>
-            <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                width: isMobile ? '80%' : '60%', // 电脑端更窄
-                margin: '0 auto',
-                paddingTop: '3vh',
-                marginTop: isMobile ? '5vh' : '2vh',
-            }}>
-                <div className="loading" style={{
-                    fontSize: isMobile ? '5vw' : '2vw', // 电脑端字体更小
-                    color: 'black',
-                    textAlign: 'center'
-                }}>
-                    {Math.ceil(simulatedProgress)} % loaded
-                </div>
-                <Progress
-                    percent={simulatedProgress}
-                    status="active"
-                    strokeColor={{
-                        from: '#108ee9',
-                        to: '#add8e6',
-                    }}
-                    percentPosition={{
-                        align: 'center',
-                        type: 'outer',
-                    }}
+            <div
+                style={{
+                    width: '100vw',
+                    height: '100vh',
+                    overflow: 'hidden',
+                }}
+            >
+                <Lightfall
+                    colors={[
+                        '#60A5FA',
+                        '#8B5CF6',
+                        '#EC4899'
+                    ]}
+                    backgroundColor="#050816"
+                    speed={0.5}
+                    streakCount={1}
+                    streakWidth={1}
+                    streakLength={1}
+                    density={0.5}
+                    glow={1}
+                    twinkle={1}
+                    zoom={1}
+                    backgroundGlow={1.2}
+                    cursorStrength={0.5}
+                    cursorRadius={0.5}
+                    mouseInteraction={simulatedProgress > 0}
                 />
+
+                <div
+                    style={{
+                        position: 'absolute',
+                        inset: 0,
+                        pointerEvents: 'none',
+                        ...centerColumn
+                    }}
+                >
+                    <div style={{
+                        ...centerColumn,
+                        width: isMobile ? '80vw' : '60vw', // 电脑端更窄
+                        padding: '10px',
+                        color: 'white',
+                        fontFamily: 'Orbitron, sans-serif', // 显式设置字体
+
+                    }}>
+                        <h1 style={{
+                            fontSize: isMobile ? '5vw' : '3vw', // 电脑端字体更小
+                            marginBottom: isMobile ? '10vw' : '5vw'
+                        }}>
+                            Welcome to Tim Bi's world.
+                        </h1>
+                        {isIntroNeeded && (
+                            <>
+                                <h2 style={subtitleStyle}>Ready for a 3D ride in my universe?</h2>
+                                <h2 style={subtitleStyle}>I think you would know me very well after you finish this "space adventure".</h2>
+                                <h2 style={subtitleStyle}>Please be patient. The first time access would take approximately 20 seconds.</h2>
+                            </>
+                        )}
+                        {extraContent && (
+                            <>
+                                {extraContent.map((text, index) => (
+                                    <h2 key={index} style={subtitleStyle}>{text}</h2>
+                                ))}
+                            </>
+                        )}
+                    </div>
+                    <div style={{
+                        ...centerColumn,
+                        width: isMobile ? '80%' : '60%', // 电脑端更窄
+                        paddingTop: '3vh',
+                        marginTop: isMobile ? '5vh' : '2vh',
+                    }}>
+                        <div className="loading" style={{
+                            fontSize: isMobile ? '5vw' : '2vw', // 电脑端字体更小
+                            color: 'white',
+                            textAlign: 'center'
+                        }}>
+                            {Math.ceil(simulatedProgress)} % loaded
+                        </div>
+                        <Progress
+                            percent={simulatedProgress}
+                            status="active"
+                            strokeColor={{
+                                from: '#108ee9',
+                                to: '#add8e6',
+                            }}
+                            percentPosition={{
+                                align: 'center',
+                                type: 'outer',
+                            }}
+                            showInfo={false}
+                        />
+                    </div>
+                </div>
             </div>
         </Html>
     );
