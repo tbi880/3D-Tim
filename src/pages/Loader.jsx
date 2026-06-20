@@ -4,13 +4,49 @@ import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationP
 import { Progress } from 'antd';
 import Lightfall from '../utils/Lightfall';
 
-function Loader({ isIntroNeeded = true, extraContent, onFinished }) {
+function Loader({ isIntroNeeded = true, extraContent, onFinished, onFadeComplete }) {
 
-    const { progress: actualProgress } = useProgress(); // 实际加载进度
+    const { progress: actualProgress, active } = useProgress(); // 实际加载进度
     const [simulatedProgress, setSimulatedProgress] = useState(0); // 模拟的进度
     const { messageApi } = useContext(GlobalNotificationContext);
 
     const isMobile = window.innerWidth <= 768; // 判断是否为移动端
+
+    const [isFadingOut, setIsFadingOut] = useState(false);
+    const FADE_DURATION = 1600;
+
+    const ZOOM_START = 1;
+    const ZOOM_END = 5;
+    const easeInCubic = (t) => t * t * t;
+
+    const [zoomValue, setZoomValue] = useState(ZOOM_START);
+    const zoomRafRef = useRef(null);
+    const zoomRef = useRef(ZOOM_START);
+
+    useEffect(() => {
+        if (!active && simulatedProgress >= 100 && !isFadingOut) {
+            setIsFadingOut(true);
+        }
+    }, [active, simulatedProgress, isFadingOut]);
+
+
+    useEffect(() => {
+        if (!isFadingOut) return;
+
+        const start = performance.now();
+
+        const tick = (now) => {
+            const t = Math.min((now - start) / FADE_DURATION, 1);
+            setZoomValue(ZOOM_START + (ZOOM_END - ZOOM_START) * easeInCubic(t));
+            if (t < 1) {
+                zoomRafRef.current = requestAnimationFrame(tick);
+            }
+        };
+
+        zoomRafRef.current = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(zoomRafRef.current);
+    }, [isFadingOut]);
+
 
     const centerColumn = {
         display: 'flex',
@@ -36,53 +72,62 @@ function Loader({ isIntroNeeded = true, extraContent, onFinished }) {
     const timer2Ref = useRef(null);
 
     useEffect(() => {
-        // 模拟加载进度
-        if (simulatedProgress < actualProgress) {
-            const timerId = setTimeout(() => {
-                setSimulatedProgress(prevProgress => Math.min(prevProgress + 1, actualProgress));
-            }, 20);
-            return () => clearTimeout(timerId);
-        } else if (simulatedProgress >= 100 && actualProgress < 100) {
-            setSimulatedProgress(99);
-        }
+        if (simulatedProgress >= actualProgress) return;
+
+        const timer = setTimeout(() => {
+            setSimulatedProgress(prev =>
+                Math.min(prev + 2, actualProgress)
+            );
+        }, 100);
+
+        return () => clearTimeout(timer);
     }, [simulatedProgress, actualProgress]);
 
+    const warningTimer = useRef();
+    const reloadTimer = useRef();
+
     useEffect(() => {
-        const checkProgress = () => {
+        clearTimeout(warningTimer.current);
+        clearTimeout(reloadTimer.current);
+
+        if (simulatedProgress !== actualProgress) {
+            return;
+        }
+
+        warningTimer.current = setTimeout(() => {
             if (simulatedProgress === actualProgress) {
-                timer1Ref.current = setTimeout(() => {
-                    if (simulatedProgress === actualProgress) {
-                        messageApi(
-                            'warning',
-                            "Your internet is too slow! Please check your network connection and try again. The page will reload in 10 seconds if the progress remains unchanged.",
-                            8,
-                        )
-                    }
-                }, 15000);
-
-                timer2Ref.current = setTimeout(() => {
-                    if (simulatedProgress === actualProgress) {
-                        window.location.reload();
-                    }
-                }, 25000); // 弹窗后10秒后检查进度是否更新
+                messageApi(
+                    'warning',
+                    'Your internet is too slow! Please check your network connection and try again. The page will reload in 10 seconds if the progress remains unchanged.',
+                    8
+                );
             }
+        }, 7500);
+
+        reloadTimer.current = setTimeout(() => {
+            if (simulatedProgress === actualProgress) {
+                window.location.reload();
+            }
+        }, 12500);
+
+        return () => {
+            clearTimeout(warningTimer.current);
+            clearTimeout(reloadTimer.current);
         };
+    }, [simulatedProgress, actualProgress, messageApi]);
 
-        checkProgress();
-
-        const onlineHandler = () => checkProgress();
+    useEffect(() => {
+        const onlineHandler = () => { };
         const offlineHandler = () => window.location.reload();
 
         window.addEventListener('online', onlineHandler);
         window.addEventListener('offline', offlineHandler);
 
         return () => {
-            clearTimeout(timer1Ref.current);
-            clearTimeout(timer2Ref.current);
             window.removeEventListener('online', onlineHandler);
             window.removeEventListener('offline', offlineHandler);
         };
-    }, [simulatedProgress, actualProgress]);
+    }, []);
 
     return (
         <Html center>
@@ -91,6 +136,14 @@ function Loader({ isIntroNeeded = true, extraContent, onFinished }) {
                     width: '100vw',
                     height: '100vh',
                     overflow: 'hidden',
+                    opacity: isFadingOut ? 0 : 1,
+                    transition: `opacity ${FADE_DURATION}ms cubic-bezier(0.7, 0, 1, 1)`,
+                    pointerEvents: isFadingOut ? 'none' : 'auto',
+                }}
+                onTransitionEnd={(e) => {
+                    if (e.target === e.currentTarget && e.propertyName === 'opacity' && isFadingOut) {
+                        onFadeComplete?.(); // <-- resolves the gate, letting Suspense swap
+                    }
                 }}
             >
                 <Lightfall
@@ -107,11 +160,11 @@ function Loader({ isIntroNeeded = true, extraContent, onFinished }) {
                     density={0.5}
                     glow={1}
                     twinkle={1}
-                    zoom={1}
+                    zoom={zoomValue}
                     backgroundGlow={1.2}
                     cursorStrength={0.5}
-                    cursorRadius={0.5}
-                    mouseInteraction={simulatedProgress > 0}
+                    cursorRadius={0.1}
+                    mouseInteraction={simulatedProgress > 0 && simulatedProgress < 100}
                 />
 
                 <div

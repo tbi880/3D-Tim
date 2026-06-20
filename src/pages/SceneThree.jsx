@@ -28,6 +28,7 @@ import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationP
 import { useSequenceAutoSave, getResumePosition, getNextClickablePoint, getJumpPointResumePosition, clearResumePositionsIfNavigated } from '../hooks/useSequenceAutoSave';
 import { EffectComposer, Noise } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
+import { createSuspenseGate, SuspenseGate } from '../utils/createSuspenseGate';
 
 const SCENE3_CLICKABLE_POINTS = [30, 31, 50, 50.5, 51, 51.5, 64];
 const SCENE3_JUMP_POINTS_MAP = [[51.5, 64]];
@@ -86,6 +87,7 @@ function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSeq
         }
     });
 
+    const [gate] = useState(() => createSuspenseGate());
     const musicUrl = bucketURL + 'music/bgm3.mp3';
     const [ambientIntensity, setAmbientIntensity] = useState(5);
     // const [pointIntensity, setPointIntensity] = useState(5);
@@ -139,10 +141,11 @@ function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSeq
     return (
         <>
 
-            <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["Now you'll see some of my stories during my tech journey", "You can click on the viewport after the loading is finished", "You will be ported back to the previous page to see the other options after viewing this", "or you can download my resume as PDF"]} />}>
+            <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["Now you'll see some of my stories during my tech journey", "You can click on the viewport after the loading is finished", "You will be ported back to the previous page to see the other options after viewing this", "or you can download my resume as PDF"]} onFadeComplete={() => gate.resolve()} />}>
                 {stageOfENV != "prod" && !isPortraitPhoneScreen && <Perf position={"bottom-right"} openByDefault showGraph />}
 
                 {showComponents.preloadAssets && <PreloadAssets />}
+                <SuspenseGate gate={gate} />
 
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene3Sheet.sequence} startPoint={1} maxVolume={1} />}
 

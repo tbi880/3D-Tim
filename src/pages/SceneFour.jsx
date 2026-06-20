@@ -14,6 +14,7 @@ import Loading from '../modelComponents/Loading'
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider'
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager'
 import TextTitle_v2 from '../modelComponents/TextTitle_v2'
+import { createSuspenseGate, SuspenseGate } from '../utils/createSuspenseGate';
 
 
 const GOLDENRATIO = 1.61803398875
@@ -30,6 +31,7 @@ export const SceneFour = ({ scene4Sheet, images, isPortraitPhoneScreen, unloadPo
             loading: false,
         }
     });
+    const [gate] = useState(() => createSuspenseGate());
 
     const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
     const { taskBoardContent, setTaskBoardContent } = useContext(TaskBoardContentContext);
@@ -81,7 +83,9 @@ export const SceneFour = ({ scene4Sheet, images, isPortraitPhoneScreen, unloadPo
 
     return (
 
-        <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["Now you'll see some of my previous work", "treat it as a museum, a gallery", "Check them all, then I will bring you back with half of the access to my command chamber."]} />}>
+        <Suspense fallback={<Loader onFadeComplete={() => gate.resolve()} isIntroNeeded={false} extraContent={["Now you'll see some of my previous work", "treat it as a museum, a gallery", "Check them all, then I will bring you back with half of the access to my command chamber."]} />}>
+            <SuspenseGate gate={gate} />
+
             <camera position={startCameraPosition} makeDefault />
             {!showComponents.loading && <><TextTitle_v2
                 theatreKey={"SceneFour: " + "Welcome to my gallery"}

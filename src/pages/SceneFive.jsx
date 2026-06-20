@@ -34,6 +34,7 @@ import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequence
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
 import { Bloom, BrightnessContrast, EffectComposer, ToneMapping, Vignette } from '@react-three/postprocessing';
 import { useSequenceAutoSave, getResumePosition, getNextClickablePoint, getJumpPointResumePosition, clearResumePositionsIfNavigated } from '../hooks/useSequenceAutoSave';
+import { createSuspenseGate, SuspenseGate } from '../utils/createSuspenseGate';
 import * as THREE from 'three';
 
 const SCENE5_CLICKABLE_POINTS = [20, 23, 23.5, 24, 24.5, 25, 30, 41, 68, 68.5, 69, 75, 144, 153, 165, 186, 207];
@@ -60,6 +61,7 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
     const { showHeaderSubTitle, setShowHeaderSubTitle } = useContext(headerSubTitleContext);
     const { messageApi } = useContext(GlobalNotificationContext);
     const audioElement = useAudioElement(musicUrl);
+    const [gate] = useState(() => createSuspenseGate());
     const { taskBoardContent, setTaskBoardContent } = useContext(TaskBoardContentContext);
     const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
         loadingComponents: {
@@ -279,9 +281,11 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
 
     return (
         <>
-            <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["You made it!", "You are about to enter the command chamber", "You are about to experience some of my technical skills of backend development.", "Which involve .Net, message queue(RabbitMQ), async programming...", "Anyway, you'll see."]} onFinished={() => { finishLoading(); }} />}>
+            <Suspense fallback={<Loader onFadeComplete={() => gate.resolve()} isIntroNeeded={false} extraContent={["You made it!", "You are about to enter the command chamber", "You are about to experience some of my technical skills of backend development.", "Which involve .Net, message queue(RabbitMQ), async programming...", "Anyway, you'll see."]} onFinished={() => { finishLoading(); }} />}>
                 {stageOfENV != "prod" && !isPortraitPhoneScreen && <Perf position={"bottom-right"} openByDefault showGraph />}
                 {showComponents.preloadAssets && <PreloadAssets />}
+                <SuspenseGate gate={gate} />
+
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene5Sheet.sequence} startPoint={20.1} maxVolume={1} />}
                 <Galaxy />
                 <StrangerStar />

@@ -25,6 +25,7 @@ import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationP
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 import { useSequenceAutoSave, getResumePosition, getNextClickablePoint, getJumpPointResumePosition, clearResumePositionsIfNavigated } from '../hooks/useSequenceAutoSave';
 import { Bloom, BrightnessContrast, ChromaticAberration, DepthOfField, EffectComposer, Glitch, ToneMapping, Vignette } from "@react-three/postprocessing";
+import { createSuspenseGate, SuspenseGate } from '../utils/createSuspenseGate';
 
 const SCENE2_CLICKABLE_POINTS = [1, 1.5, 2, 2.5, 22.5, 33, 68, 86];
 const SCENE2_JUMP_POINTS_MAP = [[33, 38], [68, 72], [86, 96]];
@@ -39,6 +40,7 @@ function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequ
     const { taskBoardContent, setTaskBoardContent } = useContext(TaskBoardContentContext);
     const { messageApi } = useContext(GlobalNotificationContext);
     const { isSequencePlaying, setIsSequencePlaying, rate, setRate, targetPosition, setTargetPosition, playOnce } = useContext(SheetSequencePlayControlContext);
+    const [gate] = useState(() => createSuspenseGate());
 
 
     const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
@@ -123,12 +125,11 @@ function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequ
 
     return (
         <>
-            {/* <Canvas gl={{ preserveDrawingBuffer: true }} >
-                <SheetProvider sheet={scene1Sheet}> */}
-            <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["You will see some options", "Where you want to go depends on what you want to know about me", "My journey in tech or my previous work experience.", "or you want to meet me in person in my command chamber"]} />}>
+            <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["You will see some options", "Where you want to go depends on what you want to know about me", "My journey in tech or my previous work experience.", "or you want to meet me in person in my command chamber"]} onFadeComplete={() => gate.resolve()} />}>
                 {stageOfENV != "prod" && !isPortraitPhoneScreen && <Perf position={"bottom-right"} openByDefault showGraph />}
 
                 {showComponents.preloadAssets && <PreloadAssets />}
+                <SuspenseGate gate={gate} />
 
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene2Sheet.sequence} startPoint={1} />}
                 <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault position={[498, -19, -61]} rotation={[0, 1.55, 0]} fov={75} near={0.01} />

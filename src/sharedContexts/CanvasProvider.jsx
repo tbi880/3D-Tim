@@ -89,6 +89,7 @@ export const CanvasProvider = ({ children, frameLoopSetting = "always", enableWe
                     ? (canvas) => createWebGPURenderer(canvas)
                     : webGLProps
             }
+            style={{ background: '#000000' }}
         >
             {children}
         </Canvas>

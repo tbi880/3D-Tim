@@ -1,5 +1,5 @@
 import Galaxy from '../modelComponents/Galaxy';
-import { Suspense, useCallback, useEffect, useRef, useContext } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useContext, useState } from 'react';
 import PreloadAssets from '../modelComponents/PreloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { bucketURL, stageOfENV } from '../Settings';
@@ -11,11 +11,12 @@ import Loader from './Loader';
 import { Perf } from 'r3f-perf';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
 import { Bloom, BrightnessContrast, EffectComposer, ToneMapping, Vignette } from '@react-three/postprocessing';
+import { createSuspenseGate, SuspenseGate } from '../utils/createSuspenseGate';
 
 
 function Quarter({ quarterSheet, quarterProject, onSequencePass, isPortraitPhoneScreen }) {
     const planetNumberRef = useRef(6);
-
+    const [gate] = useState(() => createSuspenseGate());
     const { showHeaderSubTitle, setShowHeaderSubTitle } = useContext(headerSubTitleContext);
     const { messageApi } = useContext(GlobalNotificationContext);
     const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
@@ -57,9 +58,11 @@ function Quarter({ quarterSheet, quarterProject, onSequencePass, isPortraitPhone
 
     return (
         <>
-            <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["Alarm rings~", "Time to wake up", "You are about to back in your quarter"]} onFinished={() => { finishLoading() }} />}>
+            <Suspense fallback={<Loader onFadeComplete={() => gate.resolve()} isIntroNeeded={false} extraContent={["Alarm rings~", "Time to wake up", "You are about to back in your quarter"]} onFinished={() => { finishLoading() }} />}>
                 {stageOfENV != "prod" && !isPortraitPhoneScreen && <Perf position={"bottom-right"} openByDefault showGraph />}
                 {showComponents.preloadAssets && <PreloadAssets />}
+                <SuspenseGate gate={gate} />
+
                 <Galaxy />
 
                 <ambientLight color={"#FFFFFF"} intensity={1} />

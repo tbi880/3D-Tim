@@ -15,6 +15,7 @@ import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager'
 import { useCameraSwitcher } from '../hooks/useCameraSwitcher';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
 import { useSequenceAutoSave, getResumePosition, getNextClickablePoint, clearResumePositionsIfNavigated } from '../hooks/useSequenceAutoSave';
+import { createSuspenseGate, SuspenseGate } from '../utils/createSuspenseGate';
 
 const SCENE6_CLICKABLE_POINTS = [84.3];
 
@@ -26,6 +27,7 @@ function SceneSix({ scene6Sheet, scene6Project, startPoint, unloadPoint, onSeque
     const { messageApi } = useContext(GlobalNotificationContext);
     const { taskBoardContent, setTaskBoardContent } = useContext(TaskBoardContentContext);
     useSequenceAutoSave('scene6', scene6Sheet.sequence);
+    const [gate] = useState(() => createSuspenseGate());
     const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
         loadingComponents: {
             preloadEnv: true,
@@ -91,8 +93,10 @@ function SceneSix({ scene6Sheet, scene6Project, startPoint, unloadPoint, onSeque
 
     return (
         <>
-            <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["Now, the final moment!", "You are about to witness the transform of the ship", "With a short 3D movie but fully coded", "Please sit back and relax"]} onFinished={() => { finishLoading(); }} />}>
+            <Suspense fallback={<Loader onFadeComplete={() => gate.resolve()} isIntroNeeded={false} extraContent={["Now, the final moment!", "You are about to witness the transform of the ship", "With a short 3D movie but fully coded", "Please sit back and relax"]} onFinished={() => { finishLoading(); }} />}>
                 {stageOfENV != "prod" && !isPortraitPhoneScreen && <Perf position={"bottom-right"} openByDefault showGraph />}
+                <SuspenseGate gate={gate} />
+
                 <SingleLoadManager sequence={scene6Sheet.sequence} loadPoint={0} onSequencePass={() => { toggleComponentDisplay("chamberInside"); toggleComponentDisplay("starRing"); }} />
 
                 <Galaxy />

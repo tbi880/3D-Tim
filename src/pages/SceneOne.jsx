@@ -19,6 +19,8 @@ import { useAudioElement } from '../hooks/useAudioElement';
 import { useCameraSwitcher } from '../hooks/useCameraSwitcher';
 import { useSequenceAutoSave, getResumePosition, getNextClickablePoint, getJumpPointResumePosition, clearResumePositionsIfNavigated } from '../hooks/useSequenceAutoSave';
 import AnyModel from '../modelComponents/AnyModel';
+import { createSuspenseGate, SuspenseGate } from '../utils/createSuspenseGate';
+
 
 const SCENE1_CLICKABLE_POINTS = [0.034, 27.5, 30, 30.5, 31, 31.5, 32, 32.5, 39];
 const SCENE1_JUMP_POINTS_MAP = [[32.5, 39]];
@@ -34,6 +36,7 @@ function SceneOne({ scene1Sheet, scene1Project, unloadPoint, onSequencePass, isP
         "July", "August", "September", "October", "November", "December"];
     const monthName = monthNames[month];
     const audioElement = useAudioElement(musicUrl);
+    const [gate] = useState(() => createSuspenseGate());
 
     const screenWelcomeContent = "You are about to awaken on a starship that has been voyaging for centuries. The course has been mysteriously affected by an external force. Please click on the 'Next' button down below(>>>).        Good! Now you have a basic idea of how to use this 3D website. Please enjoy the trip. Hopefully, we can see each other face to face in AD " + year + " " + monthName + " in NZ on earth!";
 
@@ -98,8 +101,9 @@ function SceneOne({ scene1Sheet, scene1Project, unloadPoint, onSequencePass, isP
     return (
         <>
 
-            <Suspense fallback={<Loader />}>
+            <Suspense fallback={<Loader onFadeComplete={() => gate.resolve()} />}>
                 {showComponents.preloadAssets && <PreloadAssets />}
+                <SuspenseGate gate={gate} />
 
                 {audioElement && <StreamMusic audioElement={audioElement} sequence={scene1Sheet.sequence} startPoint={2.5} />}
                 <PerspectiveCamera theatreKey="FirstPersonCamera" makeDefault={isFirstPersonCamera} position={[600, 20, -61]} rotation={[0, 0.33, 0]} fov={75} near={0.01} />

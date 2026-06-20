@@ -17,6 +17,7 @@ import useRoomHub from '../hooks/useRoomHub';
 import { cardStringToModelUrl } from '../utils/cardMapping';
 import useCasinoControl from '../hooks/useCasinoControl';
 import { useAuthStore } from '../hooks/useAuthStore';
+import { createSuspenseGate, SuspenseGate } from '../utils/createSuspenseGate';
 
 
 function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitPhoneScreen, setShowPlaceBets, mainChoice, setMainChoice, mainBetValue, setMainBetValue, roomId, token, setStatusInRoom, setCountdownMs, setBetSides, isOpeningFirstCard, setIsOpeningFirstCard, setShowSwitchCard, setResultList, setWinningSides, gameHands, setGameHands, setBaccaratPointDisplayManager, setPlayersData }) {
@@ -25,6 +26,7 @@ function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitP
     const mainBetChoiceRef = useRef(mainChoice);
     mainBetChoiceRef.current = mainChoice;
     const profile = useAuthStore(state => state.profile);
+    const [gate] = useState(() => createSuspenseGate());
 
 
     const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
@@ -315,8 +317,10 @@ function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitP
 
     return (
         <>
-            <Suspense fallback={<Loader isIntroNeeded={false} extraContent={["Here is a good place to have fun", "If you lose all your money", "Just ask Tim to make you rich again"]} onFinished={() => { finishLoading() }} />}>
+            <Suspense fallback={<Loader onFadeComplete={() => gate.resolve()} isIntroNeeded={false} extraContent={["Here is a good place to have fun", "If you lose all your money", "Just ask Tim to make you rich again"]} onFinished={() => { finishLoading() }} />}>
                 {stageOfENV != "prod" && !isPortraitPhoneScreen && <Perf position={"bottom-right"} openByDefault showGraph />}
+                <SuspenseGate gate={gate} />
+
                 {showComponents.preloadAssets && <PreloadAssets />}
                 {showComponents.preloadAssets && <>
                     <AnyModel modelURL={'casino/cards/clubs_1.glb'} sequence={casinoSheet.sequence} useTheatre={true} theatreKey={"clubs_1"} position={[0, 0, 0]} rotation={[1.5, 0, 0]} scale={[3, 3, 3]} visible={true} isMultiple={true} />
