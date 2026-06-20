@@ -317,7 +317,7 @@ const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, r
                             </div>
                             <br /><br />
                             <a
-                                href="https://static.bty.co.nz/Tim_Bi_resume.pdf"
+                                href="https://www.bty.co.nz/Tim_Bi_resume.pdf"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className={"vr-link"}

@@ -101,7 +101,7 @@ function Routers() {
                         <Route path="/" element={<HomePage isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
                         <Route path="/bridge" element={<Bridge isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
                         <Route path="/ship_hanger" element={<ShipHanger isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
-                        <Route path="/ship_engineering" element={<ShipEngineering isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
+                        <Route path="/ship_engineering/*" element={<ShipEngineering isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
                         <Route path="/ship_captains_chamber" element={<ShipTimsChamber isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
                         <Route path="/project_dawn" element={<ProjectDawn isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
                         <Route path="/ship_casino" element={<ProtectedRoute><ShipCasino isPortraitPhoneScreen={isPortraitPhoneScreen} /></ProtectedRoute>} />

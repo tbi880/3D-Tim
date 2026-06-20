@@ -8,7 +8,6 @@
     "build": "vite build",
     "lint": "eslint src --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "generate-sitemap": "node generate-sitemap.js",
     "start": "vite",
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject"
@@ -41,7 +40,6 @@
     "react-fontawesome": "^1.7.1",
     "react-helmet": "^6.1.0",
     "react-router-dom": "^7.18.0",
-    "sitemap": "^8.0.0",
     "three": "^0.182.0",
     "three-mesh-bvh": "^0.9.1",
     "typed.js": "^2.1.0",

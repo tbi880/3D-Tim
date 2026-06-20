@@ -5,6 +5,7 @@ import terser from '@rollup/plugin-terser';
 import compressPlugin from 'vite-plugin-compression';
 import { VitePWA } from 'vite-plugin-pwa';
 import { stageOfENV } from './src/Settings';
+import { resolve } from 'path';
 
 const ReactCompilerConfig = {
   target: '18', // '17' | '18' | '19'
@@ -24,10 +25,41 @@ function checkStagePlugin() {
   };
 }
 
+function staticFilePlugin() {
+  return {
+    name: 'serve-static-files',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (
+          req.url === '/robots.txt' ||
+          req.url === '/sitemap.xml'
+        ) {
+          res.setHeader(
+            'Content-Type',
+            req.url.endsWith('.xml')
+              ? 'application/xml'
+              : 'text/plain'
+          );
+
+          res.end(
+            fs.readFileSync(`public${req.url}`)
+          );
+
+          return;
+        }
+
+        next();
+      });
+    }
+  };
+}
+
 export default defineConfig(({ command, mode }) => {
   const isBuild = command === 'build';
 
   return {
+    publicDir: resolve(__dirname, 'public'),
+
     server: {
       https: {
         key: fs.readFileSync('localhost-key.pem'),
@@ -38,6 +70,7 @@ export default defineConfig(({ command, mode }) => {
 
     plugins: [
       checkStagePlugin(),
+      staticFilePlugin(),
       react({
         babel: {
           plugins: [
@@ -65,6 +98,11 @@ export default defineConfig(({ command, mode }) => {
             scope: "/"
           },
           workbox: {
+            navigateFallbackDenylist: [
+              /^\/robots\.txt$/,
+              /^\/sitemap\.xml$/,
+              /^\/Tim_Bi_resume\.pdf$/
+            ],
             maximumFileSizeToCacheInBytes: 4_000_000,
             runtimeCaching: [
               {

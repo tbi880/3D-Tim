@@ -107,7 +107,6 @@ function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSeq
             clearResumePositionsIfNavigated();
             const savedPosition = getResumePosition('scene3');
             if (savedPosition !== null && savedPosition > 0) {
-                messageApi('info', 'Progress has been picked up from the last checkpoint.', 3);
                 const jumpPoint = getJumpPointResumePosition(savedPosition, SCENE3_JUMP_POINTS_MAP);
                 if (jumpPoint !== null) {
                     scene3Sheet.sequence.position = jumpPoint;
