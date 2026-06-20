@@ -19,9 +19,8 @@ function Loader({ isIntroNeeded = true, extraContent, onFinished, onFadeComplete
     const ZOOM_END = 5;
     const easeInCubic = (t) => t * t * t;
 
-    const [zoomValue, setZoomValue] = useState(ZOOM_START);
     const zoomRafRef = useRef(null);
-    const zoomRef = useRef(ZOOM_START);
+    const lightfallRef = useRef();
 
     useEffect(() => {
         if (!active && simulatedProgress >= 100 && !isFadingOut) {
@@ -36,15 +35,33 @@ function Loader({ isIntroNeeded = true, extraContent, onFinished, onFadeComplete
         const start = performance.now();
 
         const tick = (now) => {
-            const t = Math.min((now - start) / FADE_DURATION, 1);
-            setZoomValue(ZOOM_START + (ZOOM_END - ZOOM_START) * easeInCubic(t));
-            if (t < 1) {
-                zoomRafRef.current = requestAnimationFrame(tick);
-            }
-        };
+            const t =
+                Math.min(
+                    (now - start) / FADE_DURATION,
+                    1
+                );
+
+            const zoom =
+                ZOOM_START +
+                (ZOOM_END - ZOOM_START)
+                *
+                easeInCubic(t);
+
+            lightfallRef.current?.setZoom(zoom);
+
+            if (t < 1)
+                zoomRafRef.current =
+                    requestAnimationFrame(tick);
+        }
 
         zoomRafRef.current = requestAnimationFrame(tick);
-        return () => cancelAnimationFrame(zoomRafRef.current);
+        return () => {
+            if (zoomRafRef.current) {
+                cancelAnimationFrame(
+                    zoomRafRef.current
+                );
+            }
+        };
     }, [isFadingOut]);
 
 
@@ -152,6 +169,7 @@ function Loader({ isIntroNeeded = true, extraContent, onFinished, onFadeComplete
                         '#8B5CF6',
                         '#EC4899'
                     ]}
+                    ref={lightfallRef}
                     backgroundColor="#050816"
                     speed={0.5}
                     streakCount={1}
@@ -160,7 +178,7 @@ function Loader({ isIntroNeeded = true, extraContent, onFinished, onFadeComplete
                     density={0.5}
                     glow={1}
                     twinkle={1}
-                    zoom={zoomValue}
+                    zoom={1}
                     backgroundGlow={1.2}
                     cursorStrength={0.5}
                     cursorRadius={0.1}

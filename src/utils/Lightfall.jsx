@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { forwardRef, useEffect, useRef, useImperativeHandle } from 'react';
 import { Renderer, Program, Mesh, Triangle } from 'ogl';
 import '../Tools/css/lightfall.css';
 
@@ -166,7 +166,7 @@ void main() {
 }
 `;
 
-const Lightfall = ({
+const Lightfall = forwardRef(({
     className,
     dpr,
     paused = false,
@@ -187,7 +187,7 @@ const Lightfall = ({
     mouseRadius = 1,
     mouseDampening = 0.15,
     mixBlendMode
-}) => {
+}, ref) => {
     const containerRef = useRef(null);
     const rafRef = useRef(null);
     const programRef = useRef(null);
@@ -196,6 +196,14 @@ const Lightfall = ({
     const rendererRef = useRef(null);
     const mouseTargetRef = useRef([0, 0]);
     const lastTimeRef = useRef(0);
+
+    useImperativeHandle(ref, () => ({
+        setZoom(value) {
+            if (programRef.current?.uniforms?.uZoom) {
+                programRef.current.uniforms.uZoom.value = value;
+            }
+        }
+    }));
 
     useEffect(() => {
         const container = containerRef.current;
@@ -339,7 +347,6 @@ const Lightfall = ({
         glow,
         density,
         twinkle,
-        zoom,
         backgroundGlow,
         opacity,
         mouseInteraction,
@@ -357,6 +364,6 @@ const Lightfall = ({
             }}
         />
     );
-};
+});
 
 export default Lightfall;
