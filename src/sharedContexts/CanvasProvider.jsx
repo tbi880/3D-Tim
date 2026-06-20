@@ -4,6 +4,7 @@ import { Canvas, extend } from "@react-three/fiber";
 import { webGLPreserveDrawingBuffer } from '../Settings';
 import * as THREE from 'three';
 import * as THREE_WEBGPU from "three/webgpu";
+import { createXRStore, XR } from '@react-three/xr'
 import { acceleratedRaycast, computeBoundsTree, disposeBoundsTree } from 'three-mesh-bvh';
 
 extend(THREE);
@@ -14,11 +15,14 @@ THREE.Mesh.prototype.raycast = acceleratedRaycast;
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 
+const xrStore = createXRStore();
+
 
 export const CanvasProvider = ({ children, frameLoopSetting = "always", enableWebGPU = true }) => {
     const { dpr, setDpr, antialias, setAntialias, disableUnnecessaryComponentAnimation, setDisableUnnecessaryComponentAnimation } = useContext(graphicSettingContext);
 
     const [frameloop, setFrameloop] = useState("never");
+    const [canUseVR, setCanUseVR] = useState(false);
     const rendererRef = useRef(null);
 
     /**
@@ -30,6 +34,37 @@ export const CanvasProvider = ({ children, frameLoopSetting = "always", enableWe
         enableWebGPU &&
         typeof navigator !== "undefined" &&
         !!navigator.gpu;
+    const shouldUseWebGPU = !canUseVR && canUseWebGPU;
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const checkVRSupport = async () => {
+            if (typeof navigator === "undefined" || !navigator.xr?.isSessionSupported) {
+                if (isMounted) {
+                    setCanUseVR(false);
+                }
+                return;
+            }
+
+            try {
+                const supported = await navigator.xr.isSessionSupported("immersive-vr");
+                if (isMounted) {
+                    setCanUseVR(supported);
+                }
+            } catch {
+                if (isMounted) {
+                    setCanUseVR(false);
+                }
+            }
+        };
+
+        checkVRSupport();
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
     /**
  * WebGPU Renderer（异步）
@@ -76,21 +111,35 @@ export const CanvasProvider = ({ children, frameLoopSetting = "always", enableWe
     }, [dpr, antialias]);
 
 
-    return (
+    return (<>
+        {canUseVR && (
+            <button
+                className="enter-vr-button"
+                onClick={() => xrStore.enterVR()}
+                disabled={!canUseVR}
+                style={{ visibility: canUseVR ? "visible" : "hidden" }}
+            >
+                Enter VR
+            </button>
+        )}
+
         <Canvas
             shadows="variance"
-            frameloop={canUseWebGPU ? frameloop : frameLoopSetting}
+            frameloop={shouldUseWebGPU ? frameloop : frameLoopSetting}
             dpr={dpr}
             performance={{ min: 0.25 }}
             mode="concurrent"
             fallback={<div>Sorry no WebGPU / WebGL supported!</div>}
             gl={
-                canUseWebGPU
+                shouldUseWebGPU
                     ? (canvas) => createWebGPURenderer(canvas)
                     : webGLProps
             }
         >
-            {children}
+            <XR store={xrStore}>
+                {children}
+            </XR>
         </Canvas>
+    </>
     );
 };
