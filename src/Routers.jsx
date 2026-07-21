@@ -10,6 +10,7 @@ import { useAuthStore } from './hooks/useAuthStore';
 const HomePage = lazy(() => import('./urls/HomePage'));
 const NotFoundPage = lazy(() => import('./urls/NotFoundPage'));
 const SceneJessie = lazy(() => import('./urls/SceneJessie'));
+const PageSpecial = lazy(() => import('./urls/PageSpecial'));
 const Bridge = lazy(() => import('./urls/Bridge'));
 const ShipHanger = lazy(() => import('./urls/ShipHanger'));
 const ShipEngineering = lazy(() => import('./urls/ShipEngineering'));
@@ -107,6 +108,7 @@ function Routers() {
                         <Route path="/ship_casino" element={<ProtectedRoute><ShipCasino isPortraitPhoneScreen={isPortraitPhoneScreen} /></ProtectedRoute>} />
                         <Route path="/ship_quarter" element={<ShipQuarter isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
                         <Route path="/jessie" element={<SceneJessie startPoint={0} />} />
+                        <Route path="/katherine" element={<PageSpecial isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
                         <Route path="*" element={<NotFoundPage />} />
                     </Routes>
                 </Suspense>
