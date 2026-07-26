@@ -24,12 +24,34 @@ import { getProject } from '@theatre/core';
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 import { useJumpToNextScene } from '../hooks/useJumpToNextScene';
 import SceneSpecial from '../pages/SceneSpecial';
+import { XR, createXRStore } from '@react-three/xr';
 
 
 
 function PageSpecial({ isPortraitPhoneScreen }) {
     const sceneSpecialProject = getProject('SceneSpecial');
     const sceneSpecialSheet = sceneSpecialProject.sheet('SceneSpecial');
+    const [xrStore] = useState(() => createXRStore());
+
+    const enterVrButtonStyle = {
+        position: 'fixed',
+        left: '50%',
+        top: '50%',
+        transform: 'translate(-50%, -50%)',
+        zIndex: 20,
+        padding: '14px 24px',
+        borderRadius: '999px',
+        border: '1px solid rgba(255, 255, 255, 0.28)',
+        background: 'linear-gradient(135deg, rgba(20, 28, 40, 0.92), rgba(9, 14, 24, 0.84))',
+        color: '#ffffff',
+        fontSize: '16px',
+        fontWeight: 600,
+        letterSpacing: '0.04em',
+        boxShadow: '0 14px 40px rgba(0, 0, 0, 0.35)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+        cursor: 'pointer',
+    };
 
     return (
         <>
@@ -49,9 +71,19 @@ function PageSpecial({ isPortraitPhoneScreen }) {
             </Helmet>
 
             <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
+                <button
+                    type="button"
+                    onClick={() => xrStore.enterVR()}
+                    style={enterVrButtonStyle}
+                >
+                    Enter VR
+                </button>
                 <CanvasProvider>
                     <SheetProvider sheet={sceneSpecialSheet}>
-                        <SceneSpecial sceneSpecialSheet={sceneSpecialSheet} sceneSpecialProject={sceneSpecialProject} isPortraitPhoneScreen={isPortraitPhoneScreen} /></SheetProvider>
+                        <XR store={xrStore}>
+                            <SceneSpecial sceneSpecialSheet={sceneSpecialSheet} sceneSpecialProject={sceneSpecialProject} isPortraitPhoneScreen={isPortraitPhoneScreen} />
+                        </XR>
+                    </SheetProvider>
                 </CanvasProvider>
             </div>
 
