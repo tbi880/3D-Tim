@@ -1,0 +1,3232 @@
+{
+  "sheetsById": {
+    "SceneSpecial": {
+      "staticOverrides": {
+        "byObject": {
+          "FirstPersonCamera": {
+            "position": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "rotation": {
+              "y": 0
+            }
+          },
+          "TextTitle_v2: VR_WELCOME_1": {
+            "position": {
+              "z": -15,
+              "x": -4,
+              "y": 1
+            }
+          },
+          "TextTitle_v2: vrScene1Text1": {
+            "position": {
+              "z": 25,
+              "x": 30,
+              "y": 15
+            },
+            "rotation": {
+              "y": -2.5
+            }
+          },
+          "TextTitle_v2: vrScene1Text3": {
+            "opacity": 0
+          },
+          "TextTitle_v2: vrScene1Text6": {
+            "opacity": 0
+          }
+        }
+      },
+      "sequence": {
+        "subUnitsPerUnit": 30,
+        "length": 31.79,
+        "type": "PositionalSequence",
+        "tracksByObject": {
+          "TextTitle_v2: VR_WELCOME_1": {
+            "trackData": {
+              "Rxq06Rx6H9": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: VR_WELCOME_1:[\"opacity\"]",
+                "keyframes": [
+                  {
+                    "id": "8Shzrahx2y",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "komqx-EATc",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "YUEX8X-237",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "u4AgLjR8TC": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: VR_WELCOME_1:[\"position\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "4eqAclNMhC",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": -4
+                  },
+                  {
+                    "id": "tL0CBS9_sp",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": -4
+                  },
+                  {
+                    "id": "2GercDhABm",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": -4
+                  }
+                ]
+              },
+              "PLbBF2v8IG": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: VR_WELCOME_1:[\"position\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "uxpWbUPTSR",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "JNR7jBJBx3",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "eJxlzgKLFr",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              },
+              "OKmdyFbw19": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: VR_WELCOME_1:[\"position\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "F_iA8uGnmD",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": -15
+                  },
+                  {
+                    "id": "EbKYOla3Em",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": -15
+                  },
+                  {
+                    "id": "_httGyfdS3",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": -15
+                  }
+                ]
+              },
+              "anIUeq1wXE": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: VR_WELCOME_1:[\"rotation\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "q-HJ6PNkzb",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "YI-ufJUTj3",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "urzSPZgvV8",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "qKLwKgNoBp": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: VR_WELCOME_1:[\"rotation\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "T1JdNYsh_W",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "RbmMMmIn5I",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "Lj_xqiZQKz",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "KIxNxMXlYf": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: VR_WELCOME_1:[\"rotation\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "3dydOGDT0U",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "XnsQwpCW9_",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "drzm7LCmTD",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "xTRGRfAlVH": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: VR_WELCOME_1:[\"scale\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "vl5WPVhN9B",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "V_YMpZ9ffl",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "wRLmJ-MavX",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              },
+              "k2_kyXDyLK": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: VR_WELCOME_1:[\"scale\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "cwIG29xpNG",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "DDTGjCC0Pj",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "E_jLmV5_hK",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              },
+              "WJmqZuiULy": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: VR_WELCOME_1:[\"scale\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "BrlmQXWI_X",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "MKGaU4iHcm",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "xqI5GKTKzr",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "trackIdByPropPath": {
+              "[\"opacity\"]": "Rxq06Rx6H9",
+              "[\"position\",\"x\"]": "u4AgLjR8TC",
+              "[\"position\",\"y\"]": "PLbBF2v8IG",
+              "[\"position\",\"z\"]": "OKmdyFbw19",
+              "[\"rotation\",\"x\"]": "anIUeq1wXE",
+              "[\"rotation\",\"y\"]": "qKLwKgNoBp",
+              "[\"rotation\",\"z\"]": "KIxNxMXlYf",
+              "[\"scale\",\"x\"]": "xTRGRfAlVH",
+              "[\"scale\",\"y\"]": "k2_kyXDyLK",
+              "[\"scale\",\"z\"]": "WJmqZuiULy"
+            }
+          },
+          "FirstPersonCamera": {
+            "trackData": {
+              "RPBf1YQcnB": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "FirstPersonCamera:[\"position\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "iha66vsQgd",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "6Jl5BaYk8X",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "PKl_JIAgKE",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "RhaBGPjHBT": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "FirstPersonCamera:[\"position\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "GYGH_sPZPc",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "DRxsotZ-OG",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "eoXms3x5Nz",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "SA5HABSEnN": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "FirstPersonCamera:[\"position\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "tDs8bxQHm4",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "QgYdOyeD5n",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "0DPSThuRK4",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "gsRgmBbdf0": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "FirstPersonCamera:[\"rotation\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "Jaol1UCGgJ",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "ayuCzkrOLz",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "OuQMgIjaz3",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "BjajAoxpDl": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "FirstPersonCamera:[\"rotation\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "a8t3G8Bf-X",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "RH3iYZakvs",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "0CjnVHVM6n",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": -2.5
+                  }
+                ]
+              },
+              "aS0vkMDtRs": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "FirstPersonCamera:[\"rotation\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "s3IPO62vvl",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "NCHup1cake",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "EV3r_JEwiW",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "F4a5w0PDyR": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "FirstPersonCamera:[\"scale\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "X_ZsonPNSh",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "ooZgkcZzio",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "zo7L-ITNYP",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              },
+              "vzlTsyt-fu": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "FirstPersonCamera:[\"scale\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "7M8pTXsD0F",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "2accRSQ5Vv",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "tUmxkzDzEi",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              },
+              "RcD_RhWnjS": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "FirstPersonCamera:[\"scale\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "7fB2d8ylvG",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "cLSq_z-O20",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "Kd6oL_f4pn",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              },
+              "pIZZkTwpoy": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "FirstPersonCamera:[\"near\"]",
+                "keyframes": [
+                  {
+                    "id": "xZpjzaeOtp",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0.01
+                  },
+                  {
+                    "id": "wAV1fBXg9u",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0.01
+                  },
+                  {
+                    "id": "ld4UOICn9-",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0.01
+                  }
+                ]
+              },
+              "lD7oZQYvXN": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "FirstPersonCamera:[\"far\"]",
+                "keyframes": [
+                  {
+                    "id": "LUMxzQ6Mdr",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 2000
+                  },
+                  {
+                    "id": "BbVVrwxPPo",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 2000
+                  },
+                  {
+                    "id": "0QC_JMDYzD",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 2000
+                  }
+                ]
+              },
+              "AsWFYXCSxW": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "FirstPersonCamera:[\"fov\"]",
+                "keyframes": [
+                  {
+                    "id": "F0LENyHc2S",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 75
+                  },
+                  {
+                    "id": "_eMPM--nJc",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 75
+                  },
+                  {
+                    "id": "7_BdKbnAHZ",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 75
+                  }
+                ]
+              },
+              "KabsWdnsY2": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "FirstPersonCamera:[\"zoom\"]",
+                "keyframes": [
+                  {
+                    "id": "TSJsHAtpXE",
+                    "position": 0,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "Yj0_GHkrVy",
+                    "position": 1,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "hnZdhV8UlE",
+                    "position": 2,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "trackIdByPropPath": {
+              "[\"position\",\"x\"]": "RPBf1YQcnB",
+              "[\"position\",\"y\"]": "RhaBGPjHBT",
+              "[\"position\",\"z\"]": "SA5HABSEnN",
+              "[\"rotation\",\"x\"]": "gsRgmBbdf0",
+              "[\"rotation\",\"y\"]": "BjajAoxpDl",
+              "[\"rotation\",\"z\"]": "aS0vkMDtRs",
+              "[\"scale\",\"x\"]": "F4a5w0PDyR",
+              "[\"scale\",\"y\"]": "vzlTsyt-fu",
+              "[\"scale\",\"z\"]": "RcD_RhWnjS",
+              "[\"near\"]": "pIZZkTwpoy",
+              "[\"far\"]": "lD7oZQYvXN",
+              "[\"fov\"]": "AsWFYXCSxW",
+              "[\"zoom\"]": "KabsWdnsY2"
+            }
+          },
+          "TextTitle_v2: vrScene1Text1": {
+            "trackData": {
+              "7-cd8xvsAj": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text1:[\"opacity\"]",
+                "keyframes": [
+                  {
+                    "id": "qb1PjPS1Ki",
+                    "position": 3,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "WHMBPp_MuA",
+                    "position": 4,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "FZrpcMgEco",
+                    "position": 6,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "R-f3AKbnWT",
+                    "position": 7,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "DIo7q1pgdD": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text1:[\"position\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "Ua9k1UQkkP",
+                    "position": 3,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 30
+                  },
+                  {
+                    "id": "ueC9SAhmeL",
+                    "position": 4,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 30
+                  },
+                  {
+                    "id": "OUqxgWCwov",
+                    "position": 6,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 30
+                  }
+                ]
+              },
+              "SmZCJLRtlm": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text1:[\"position\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "dJxNurk9VG",
+                    "position": 3,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 17
+                  }
+                ]
+              },
+              "ZiLJbMwKH5": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text1:[\"position\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "WHJwO-mm-f",
+                    "position": 3,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 25
+                  },
+                  {
+                    "id": "cyrDdlnIT1",
+                    "position": 4,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 25
+                  },
+                  {
+                    "id": "4BLcL4va3p",
+                    "position": 6,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 25
+                  }
+                ]
+              },
+              "O67Oja0itq": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text1:[\"rotation\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "Pu6aX-V0bi",
+                    "position": 3,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "C-QV4hs3Z5",
+                    "position": 4,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "2RCJuLRygK",
+                    "position": 6,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "NKylIF0_zB": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text1:[\"rotation\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "zQrGBj38WL",
+                    "position": 3,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": -2.5
+                  },
+                  {
+                    "id": "1AwgVNmcVo",
+                    "position": 4,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": -2.5
+                  },
+                  {
+                    "id": "oMul_ewbQK",
+                    "position": 6,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": -2.5
+                  }
+                ]
+              },
+              "kZfb_fFh0y": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text1:[\"rotation\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "ajPr3rm62R",
+                    "position": 3,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "1nEK2NP-hE",
+                    "position": 4,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "89J-m5aHkv",
+                    "position": 6,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "nhB4oj0xJi": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text1:[\"scale\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "9LpVjBk7jC",
+                    "position": 3,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "rnd9BvcxBe",
+                    "position": 4,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "SQ2ZXxHx4u",
+                    "position": 6,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              },
+              "HULUia-e_n": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text1:[\"scale\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "d-Hy_grfH9",
+                    "position": 3,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "crx4xcSgJz",
+                    "position": 4,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "Vbca3Lrr2Y",
+                    "position": 6,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              },
+              "6ZYP7k98AA": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text1:[\"scale\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "WPziyHDC_9",
+                    "position": 3,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "UApjwWv2lb",
+                    "position": 4,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "M8BvdrZNa7",
+                    "position": 6,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "trackIdByPropPath": {
+              "[\"opacity\"]": "7-cd8xvsAj",
+              "[\"position\",\"x\"]": "DIo7q1pgdD",
+              "[\"position\",\"y\"]": "SmZCJLRtlm",
+              "[\"position\",\"z\"]": "ZiLJbMwKH5",
+              "[\"rotation\",\"x\"]": "O67Oja0itq",
+              "[\"rotation\",\"y\"]": "NKylIF0_zB",
+              "[\"rotation\",\"z\"]": "kZfb_fFh0y",
+              "[\"scale\",\"x\"]": "nhB4oj0xJi",
+              "[\"scale\",\"y\"]": "HULUia-e_n",
+              "[\"scale\",\"z\"]": "6ZYP7k98AA"
+            }
+          },
+          "TextTitle_v2: vrScene1Text2": {
+            "trackData": {
+              "6d71jVHp4Y": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text2:[\"opacity\"]",
+                "keyframes": [
+                  {
+                    "id": "NbICNLXjrO",
+                    "position": 7,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "HT-0XPSbEK",
+                    "position": 8,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "dHUmsf9V2d",
+                    "position": 10,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "VTbEqEN617",
+                    "position": 11,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "TTXO_YoPjf": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text2:[\"position\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "rSxTzE1bfE",
+                    "position": 7,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 30
+                  },
+                  {
+                    "id": "ZJp9kP7D89",
+                    "position": 10,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 30
+                  }
+                ]
+              },
+              "F5mU8B1vLX": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text2:[\"position\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "HaCYKQBAEU",
+                    "position": 7,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 17
+                  }
+                ]
+              },
+              "948XtOss9n": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text2:[\"position\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "CZpUbIpJhS",
+                    "position": 7,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 25
+                  },
+                  {
+                    "id": "13rAOidZgg",
+                    "position": 10,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 25
+                  }
+                ]
+              },
+              "Z8_bAd7x7t": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text2:[\"rotation\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "BDUTL4Dqpp",
+                    "position": 7,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "ms5zkfxCLe",
+                    "position": 10,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "oV_tpvMCRX": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text2:[\"rotation\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "a2NivZfy7Q",
+                    "position": 7,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": -2.5
+                  },
+                  {
+                    "id": "S0SgnBnYkp",
+                    "position": 10,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": -2.5
+                  }
+                ]
+              },
+              "V14dwcwicY": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text2:[\"rotation\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "iMlJFMEhor",
+                    "position": 7,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "2LIhH5oPw0",
+                    "position": 10,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "Iii0d4eu3G": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text2:[\"scale\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "QsmOLVhMe2",
+                    "position": 7,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "LJ68_DEciA",
+                    "position": 10,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              },
+              "M0IK3xWpc8": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text2:[\"scale\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "XCErqdhfTE",
+                    "position": 7,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "qxYuCxkCwl",
+                    "position": 10,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              },
+              "tTARFmIWqO": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text2:[\"scale\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "zOugEOZlmm",
+                    "position": 7,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "EFRzLiTnls",
+                    "position": 10,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "trackIdByPropPath": {
+              "[\"opacity\"]": "6d71jVHp4Y",
+              "[\"position\",\"x\"]": "TTXO_YoPjf",
+              "[\"position\",\"y\"]": "F5mU8B1vLX",
+              "[\"position\",\"z\"]": "948XtOss9n",
+              "[\"rotation\",\"x\"]": "Z8_bAd7x7t",
+              "[\"rotation\",\"y\"]": "oV_tpvMCRX",
+              "[\"rotation\",\"z\"]": "V14dwcwicY",
+              "[\"scale\",\"x\"]": "Iii0d4eu3G",
+              "[\"scale\",\"y\"]": "M0IK3xWpc8",
+              "[\"scale\",\"z\"]": "tTARFmIWqO"
+            }
+          },
+          "TextTitle_v2: vrScene1Text3": {
+            "trackData": {
+              "sy14YBA0oq": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text3:[\"opacity\"]",
+                "keyframes": [
+                  {
+                    "id": "A2BZUFBLbm",
+                    "position": 11,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "XaXwRppS3M",
+                    "position": 12,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "2ZT0ZImW2C",
+                    "position": 14,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "ZL0ij-kiAi",
+                    "position": 15,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "IcTCvalXcI": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text3:[\"position\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "hByrf58d8G",
+                    "position": 11,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 30
+                  },
+                  {
+                    "id": "Tfsq8t5T50",
+                    "position": 14,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 30
+                  }
+                ]
+              },
+              "WvKl8PfNap": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text3:[\"position\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "EMx_aw3uSs",
+                    "position": 11,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 17
+                  },
+                  {
+                    "id": "jpnpAL-c5k",
+                    "position": 14,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 17
+                  }
+                ]
+              },
+              "O2yW46doqz": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text3:[\"position\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "mWuESLtZqW",
+                    "position": 11,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 25
+                  },
+                  {
+                    "id": "AnGAmJ_zCg",
+                    "position": 14,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 25
+                  }
+                ]
+              },
+              "0pmDlP5cAS": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text3:[\"rotation\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "imep6RMBFQ",
+                    "position": 11,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "HvLLjFmhQr",
+                    "position": 14,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "JzaILFyhrG": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text3:[\"rotation\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "KSgrVvGr6e",
+                    "position": 11,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": -2.5
+                  },
+                  {
+                    "id": "1RsHWTCCkx",
+                    "position": 14,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": -2.5
+                  }
+                ]
+              },
+              "_PqQ43MbVt": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text3:[\"rotation\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "iIdASAkHU1",
+                    "position": 11,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "DYo2ovWuqW",
+                    "position": 14,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "KYSuMFJe2C": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text3:[\"scale\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "I85ZAsAwUG",
+                    "position": 11,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "sFIjKHpmc8",
+                    "position": 14,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              },
+              "lRbE_LRxrt": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text3:[\"scale\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "x-S3Ow246B",
+                    "position": 11,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "seTlDijxQC",
+                    "position": 14,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              },
+              "4KUKxhh6i3": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text3:[\"scale\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "ROOQiEADhz",
+                    "position": 11,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "5DzgzqU_Ls",
+                    "position": 14,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "trackIdByPropPath": {
+              "[\"opacity\"]": "sy14YBA0oq",
+              "[\"position\",\"x\"]": "IcTCvalXcI",
+              "[\"position\",\"y\"]": "WvKl8PfNap",
+              "[\"position\",\"z\"]": "O2yW46doqz",
+              "[\"rotation\",\"x\"]": "0pmDlP5cAS",
+              "[\"rotation\",\"y\"]": "JzaILFyhrG",
+              "[\"rotation\",\"z\"]": "_PqQ43MbVt",
+              "[\"scale\",\"x\"]": "KYSuMFJe2C",
+              "[\"scale\",\"y\"]": "lRbE_LRxrt",
+              "[\"scale\",\"z\"]": "4KUKxhh6i3"
+            }
+          },
+          "TextTitle_v2: vrScene1Text4": {
+            "trackData": {
+              "tWsXbsaZkS": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text4:[\"opacity\"]",
+                "keyframes": [
+                  {
+                    "id": "Vap0LNCnLJ",
+                    "position": 15,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "SkdZj7vqS9",
+                    "position": 16,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "m_nl8ebQNz",
+                    "position": 18,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "vAm4cBppXf",
+                    "position": 19,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "tQJGOZQviL": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text4:[\"position\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "FHqYlcF9Mn",
+                    "position": 15,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 30
+                  },
+                  {
+                    "id": "Q3Ao25B1Ua",
+                    "position": 18,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 30
+                  }
+                ]
+              },
+              "bB50wPXAqz": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text4:[\"position\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "mtOKZ_wh9b",
+                    "position": 15,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 17
+                  },
+                  {
+                    "id": "v7Oy9dd6FM",
+                    "position": 18,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 17
+                  }
+                ]
+              },
+              "-aFEUSnqGW": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text4:[\"position\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "gxe98CdW4o",
+                    "position": 15,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 25
+                  },
+                  {
+                    "id": "KiI6WIBBH5",
+                    "position": 18,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 25
+                  }
+                ]
+              },
+              "QW5nQvl47f": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text4:[\"rotation\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "b055UYT7q0",
+                    "position": 15,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "ZwAT-CLvpJ",
+                    "position": 18,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "NoOmQhONe-": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text4:[\"rotation\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "JWbNVNfEwk",
+                    "position": 15,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": -2.5
+                  },
+                  {
+                    "id": "czX7e899zq",
+                    "position": 18,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": -2.5
+                  }
+                ]
+              },
+              "j6dOEzQeUG": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text4:[\"rotation\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "8CN_MgQ6YG",
+                    "position": 15,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "kLlRt_ijL4",
+                    "position": 18,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "Y7aKP1z_au": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text4:[\"scale\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "g6huUD0WgP",
+                    "position": 15,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "MDm-UYy-5x",
+                    "position": 18,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              },
+              "fPCepOFOAH": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text4:[\"scale\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "8cRrFIL2du",
+                    "position": 15,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "nFlSBqfDi7",
+                    "position": 18,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              },
+              "WQPTWxzAUu": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text4:[\"scale\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "1zCKU_hQPn",
+                    "position": 15,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "PXpE7aDSEP",
+                    "position": 18,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "trackIdByPropPath": {
+              "[\"opacity\"]": "tWsXbsaZkS",
+              "[\"position\",\"x\"]": "tQJGOZQviL",
+              "[\"position\",\"y\"]": "bB50wPXAqz",
+              "[\"position\",\"z\"]": "-aFEUSnqGW",
+              "[\"rotation\",\"x\"]": "QW5nQvl47f",
+              "[\"rotation\",\"y\"]": "NoOmQhONe-",
+              "[\"rotation\",\"z\"]": "j6dOEzQeUG",
+              "[\"scale\",\"x\"]": "Y7aKP1z_au",
+              "[\"scale\",\"y\"]": "fPCepOFOAH",
+              "[\"scale\",\"z\"]": "WQPTWxzAUu"
+            }
+          },
+          "TextTitle_v2: vrScene1Text5": {
+            "trackData": {
+              "YRRVQZN7gL": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text5:[\"opacity\"]",
+                "keyframes": [
+                  {
+                    "id": "PvIzseMM62",
+                    "position": 19,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "oV6ySgrC6G",
+                    "position": 20,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "tqMg5i5jnk",
+                    "position": 22,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "QGtVd8gy6w",
+                    "position": 23,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "vJJekVl12M": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text5:[\"position\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "LaGz3Cswbg",
+                    "position": 19,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 30
+                  },
+                  {
+                    "id": "PIfhsRQxqj",
+                    "position": 22,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 30
+                  }
+                ]
+              },
+              "3KLC83tEqp": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text5:[\"position\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "5oULs-DDKr",
+                    "position": 19,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 17
+                  },
+                  {
+                    "id": "WB4mdNV11U",
+                    "position": 22,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 17
+                  }
+                ]
+              },
+              "5qGXK3jbIK": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text5:[\"position\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "h26hqxWzCd",
+                    "position": 19,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 25
+                  },
+                  {
+                    "id": "4lCAZ6Sm2j",
+                    "position": 22,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 25
+                  }
+                ]
+              },
+              "V1LR4SsUqJ": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text5:[\"rotation\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "Ln1no9xQ0T",
+                    "position": 19,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "fQPOx3pPvu",
+                    "position": 22,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "slZBK4pV2V": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text5:[\"rotation\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "2eMts5rm6s",
+                    "position": 19,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": -2.5
+                  },
+                  {
+                    "id": "-S-G9v0rly",
+                    "position": 22,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": -2.5
+                  }
+                ]
+              },
+              "1S-cKMypSx": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text5:[\"rotation\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "E13Ge96jqb",
+                    "position": 19,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "IPNnhkzeVm",
+                    "position": 22,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "hamXP7RBky": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text5:[\"scale\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "HwRcPl0V1x",
+                    "position": 19,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "gG2OkrgUad",
+                    "position": 22,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              },
+              "asrnxrYece": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text5:[\"scale\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "M41XTs_Llr",
+                    "position": 19,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "rSvmrNGpwG",
+                    "position": 22,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              },
+              "ebAdYT953g": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text5:[\"scale\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "dsfP6sCpsw",
+                    "position": 19,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  },
+                  {
+                    "id": "4nM0t32zWK",
+                    "position": 22,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "trackIdByPropPath": {
+              "[\"opacity\"]": "YRRVQZN7gL",
+              "[\"position\",\"x\"]": "vJJekVl12M",
+              "[\"position\",\"y\"]": "3KLC83tEqp",
+              "[\"position\",\"z\"]": "5qGXK3jbIK",
+              "[\"rotation\",\"x\"]": "V1LR4SsUqJ",
+              "[\"rotation\",\"y\"]": "slZBK4pV2V",
+              "[\"rotation\",\"z\"]": "1S-cKMypSx",
+              "[\"scale\",\"x\"]": "hamXP7RBky",
+              "[\"scale\",\"y\"]": "asrnxrYece",
+              "[\"scale\",\"z\"]": "ebAdYT953g"
+            }
+          },
+          "TextTitle_v2: vrScene1Text6": {
+            "trackData": {
+              "kmCKMMJQDQ": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text6:[\"opacity\"]",
+                "keyframes": [
+                  {
+                    "id": "qg294auGRz",
+                    "position": 23,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  },
+                  {
+                    "id": "_zUateBtzn",
+                    "position": 24,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              },
+              "oBjqefGcoo": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text6:[\"position\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "Doq6iH2Gnl",
+                    "position": 23,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 30
+                  }
+                ]
+              },
+              "d3OtKgZWFL": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text6:[\"position\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "RzAspT6Scc",
+                    "position": 23,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 17
+                  }
+                ]
+              },
+              "uu7RvkQ5fH": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text6:[\"position\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "ckVzQQGZNh",
+                    "position": 23,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 25
+                  }
+                ]
+              },
+              "xbeCBvCMFf": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text6:[\"rotation\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "w5UNn_MN7p",
+                    "position": 23,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "d6huZjuuwT": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text6:[\"rotation\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "o23NmBTXpg",
+                    "position": 23,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": -2.5
+                  }
+                ]
+              },
+              "UeEB2IN3T3": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text6:[\"rotation\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "2f015P5Bko",
+                    "position": 23,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 0
+                  }
+                ]
+              },
+              "Zd5PdduE-s": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text6:[\"scale\",\"x\"]",
+                "keyframes": [
+                  {
+                    "id": "-slx8ZbrPK",
+                    "position": 23,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              },
+              "YfjvHlBp34": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text6:[\"scale\",\"y\"]",
+                "keyframes": [
+                  {
+                    "id": "7ZAF2pd3vy",
+                    "position": 23,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              },
+              "fMqq4RvXR3": {
+                "type": "BasicKeyframedTrack",
+                "__debugName": "TextTitle_v2: vrScene1Text6:[\"scale\",\"z\"]",
+                "keyframes": [
+                  {
+                    "id": "1vQOgcAT8L",
+                    "position": 23,
+                    "connectedRight": true,
+                    "handles": [
+                      0.5,
+                      1,
+                      0.5,
+                      0
+                    ],
+                    "type": "bezier",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "trackIdByPropPath": {
+              "[\"opacity\"]": "kmCKMMJQDQ",
+              "[\"position\",\"x\"]": "oBjqefGcoo",
+              "[\"position\",\"y\"]": "d3OtKgZWFL",
+              "[\"position\",\"z\"]": "uu7RvkQ5fH",
+              "[\"rotation\",\"x\"]": "xbeCBvCMFf",
+              "[\"rotation\",\"y\"]": "d6huZjuuwT",
+              "[\"rotation\",\"z\"]": "UeEB2IN3T3",
+              "[\"scale\",\"x\"]": "Zd5PdduE-s",
+              "[\"scale\",\"y\"]": "YfjvHlBp34",
+              "[\"scale\",\"z\"]": "fMqq4RvXR3"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitionVersion": "0.4.0",
+  "revisionHistory": [
+    "oiAF0My-xjI4IklG",
+    "Tqo3WCzygIvyjM3Y"
+  ]
+}

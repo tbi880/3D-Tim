@@ -3,6 +3,7 @@ import { useEffect, useState, useRef, useContext } from 'react';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import { Progress } from 'antd';
 import Lightfall from '../utils/Lightfall';
+import { stageOfENV } from '../Settings';
 
 function Loader({ isIntroNeeded = true, extraContent, onFinished, onFadeComplete }) {
 
@@ -93,7 +94,7 @@ function Loader({ isIntroNeeded = true, extraContent, onFinished, onFadeComplete
 
         const timer = setTimeout(() => {
             setSimulatedProgress(prev =>
-                Math.min(prev + 2, actualProgress)
+                Math.min((stageOfENV === "prod" ? prev + 5 : actualProgress), actualProgress)
             );
         }, 100);
 
