@@ -40,7 +40,7 @@
     "react-dom": "^18.3.1",
     "react-fontawesome": "^1.7.1",
     "react-helmet": "^6.1.0",
-    "react-router-dom": "^7.18.0",
+    "react-router-dom": "^7.18.2",
     "three": "^0.184.0",
     "three-mesh-bvh": "^0.9.1",
     "typed.js": "^2.1.0",
