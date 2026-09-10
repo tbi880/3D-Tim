@@ -87,11 +87,11 @@ const ShipStatus = forwardRef(({ isPortraitPhoneScreen, isHide, onClick }, refSh
                             type="dashboard"
                             steps={{ count: stepsCount, gap: stepsGap }}
                             percent={hullTemperaturePercent}
-                            trailColor="white"
+                            railColor="white"
                             strokeWidth={20}
                             strokeColor={"red"}
                             format={() => (
-                                <div >
+                                <div style={{ color: "white" }}>
                                     {hullTemperature}<br />°C
                                 </div>
                             )}
@@ -105,12 +105,12 @@ const ShipStatus = forwardRef(({ isPortraitPhoneScreen, isHide, onClick }, refSh
                             type="dashboard"
                             steps={{ count: stepsCount, gap: stepsGap }}
                             percent={coreEnergyPercent}
-                            trailColor="white"
+                            railColor="white"
                             strokeWidth={20}
                             strokeColor={"#108ee9"}
                             format={() => (
-                                <>
-                                    {coreEnergyPercent} % </>)}
+                                <span style={{ color: "white" }}>
+                                    {coreEnergyPercent} % </span>)}
                         />
                         <Typography.Title level={5} style={{ color: "white" }}>
                             Core Energy

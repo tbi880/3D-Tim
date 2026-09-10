@@ -29,6 +29,20 @@
     font-size: 16px;
 }
 
+.authorization-otp {
+    display: flex;
+    justify-content: center;
+    width: fit-content;
+    margin: 15px auto 15px;
+}
+
+.authorization-otp .ant-otp-input,
+.authorization-otp .ant-otp-input:focus,
+.authorization-otp .ant-otp-input:focus-within {
+    border: none;
+    box-shadow: none;
+}
+
 .message {
     height: 100px;
 }

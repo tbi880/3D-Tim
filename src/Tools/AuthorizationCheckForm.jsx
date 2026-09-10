@@ -6,6 +6,7 @@ import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationP
 import '../Tools/css/general.css';
 import { backendURL } from '../Settings';
 import axios from 'axios';
+import { Input } from 'antd';
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 import { useTurnstile } from '../hooks/useTurnstile';
 
@@ -26,7 +27,9 @@ function AuthorizationCheckForm({ scene5Sheet, isPortraitPhoneScreen }) {
     };
 
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (code = verificationCode) => {
+        if (isSubmitting) return;
+
         if (!turnstileToken) {
             messageApi(
                 'error',
@@ -34,7 +37,7 @@ function AuthorizationCheckForm({ scene5Sheet, isPortraitPhoneScreen }) {
             );
             return;
         }
-        if (!verificationCode) {
+        if (!code) {
             messageApi(
                 'error',
                 'Please fill in all required fields correctly.'
@@ -49,7 +52,7 @@ function AuthorizationCheckForm({ scene5Sheet, isPortraitPhoneScreen }) {
             const response = await axios.post(
                 backendURL + 'email_contacts/verify',
                 {
-                    verificationCode,
+                    verificationCode: code,
                     cf_turnstile_token: turnstileToken
                 },
                 {
@@ -115,6 +118,13 @@ function AuthorizationCheckForm({ scene5Sheet, isPortraitPhoneScreen }) {
         }
     };
 
+    const handleVerificationCodeChange = (code) => {
+        setVerificationCode(code);
+        if (code.length === 8 && !/\s/.test(code)) {
+            handleSubmit(code);
+        }
+    };
+
 
 
     const containerStyle = {
@@ -141,19 +151,18 @@ function AuthorizationCheckForm({ scene5Sheet, isPortraitPhoneScreen }) {
                     <h1 className="title">Verify Captain's Authorization</h1>
 
                     <label>
-                        Please check your mailbox and enter the verification code I sent to you a few seconds ago.
+                        Please check your mailbox and enter the verification code which I sent to you a few seconds ago.
                     </label>
                     <div className="divider"></div>
                     <label className="label">
                         Your verification code: <span className="required">*</span>
                     </label>
-                    <input
-                        type="text"
-                        className="input"
+                    <Input.OTP
+                        className="authorization-otp"
+                        length={8}
                         value={verificationCode}
-                        onChange={(e) => e.target.value.length <= 10 ? setVerificationCode(e.target.value) : null}
-                        required
-                        maxLength="10"
+                        onChange={handleVerificationCodeChange}
+                        disabled={isSubmitting}
                     />
                     <div className="captcha" ref={captchaRef}></div>
 
