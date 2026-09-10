@@ -25,7 +25,7 @@
     "@theatre/core": "^0.7.2",
     "@theatre/r3f": "^0.7.2",
     "@theatre/studio": "^0.7.2",
-    "antd": "^5.22.2",
+    "antd": "^6.6.3",
     "axios": "^1.18.0",
     "bootstrap": "^5.3.3",
     "caniuse-lite": "^1.0.30001751",
@@ -40,9 +40,9 @@
     "react-dom": "^18.3.1",
     "react-fontawesome": "^1.7.1",
     "react-helmet": "^6.1.0",
-    "react-router-dom": "^7.18.2",
-    "three": "^0.184.0",
-    "three-mesh-bvh": "^0.9.1",
+    "react-router-dom": "^7.18.3",
+    "three": "^0.182.0",
+    "three-mesh-bvh": "^0.9.15",
     "typed.js": "^2.1.0",
     "typeit": "^8.8.7",
     "uuid-by-string": "4.0.0",
@@ -53,7 +53,7 @@
     "@rollup/plugin-terser": "^1.0.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@types/three": "^0.184.1",
+    "@types/three": "^0.170.0",
     "@vitejs/plugin-react": "^5.2.0",
     "babel-plugin-react-compiler": "^1.0.0",
     "esbuild": "^0.28.1",
@@ -73,5 +73,10 @@
     "not dead",
     "not ie <= 11",
     "not op_mini all"
-  ]
+  ],
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "fsevents@2.3.3": true,
+    "typeit@8.8.7": true
+  }
 }
