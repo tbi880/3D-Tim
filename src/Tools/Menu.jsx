@@ -1,6 +1,7 @@
 import { forwardRef, useState, useRef, useEffect } from "react";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronRight, faChevronLeft, faLock, faVrCardboard, faFileDownload } from '@fortawesome/free-solid-svg-icons';
+import { Link } from "react-router-dom";
 import "./css/menu.css";
 import { getMenuLockMapFromLocalStorage, isCasinoUnlocked } from "../pages/Status";
 import { url } from "../Settings";
@@ -270,42 +271,42 @@ const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, r
                             <ul style={{ padding: 0, listStyleType: 'none' }}>
 
                                 <li style={listItemStyle} className="menu-item">
-                                    <a href="/" className="menu-link" target="_blank" rel="noopener noreferrer" onClick={(e) => handleClick(e, false)}>Scene1: Introduction</a>
+                                    <Link to="/" prefetch="intent" className="menu-link" target="_blank" rel="noopener noreferrer" onClick={(e) => handleClick(e, false)}>Scene1: Introduction</Link>
                                     <div style={dividerStyle} ></div>
                                 </li>
 
                                 <li style={listItemStyle} className="menu-item">
-                                    <a href="/bridge" className={`menu-link ${sceneMenuLockMap.sceneTwo ? 'locked' : ''}`} onClick={(e) => handleClick(e, sceneMenuLockMap.sceneTwo)} target="_blank" rel="noopener noreferrer">
+                                    <Link to="/bridge" prefetch="intent" className={`menu-link ${sceneMenuLockMap.sceneTwo ? 'locked' : ''}`} onClick={(e) => handleClick(e, sceneMenuLockMap.sceneTwo)} target="_blank" rel="noopener noreferrer">
                                         {!sceneMenuLockMap.sceneTwo ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
-                                        Scene2: Ship's bridge</a>
+                                        Scene2: Ship's bridge</Link>
                                     <div style={dividerStyle} ></div>
                                 </li>
 
                                 <li style={listItemStyle} className="menu-item">
-                                    <a href="/ship_hanger" className={`menu-link ${sceneMenuLockMap.sceneThree ? 'locked' : ''}`} onClick={(e) => handleClick(e, sceneMenuLockMap.sceneThree)} target="_blank" rel="noopener noreferrer">
+                                    <Link to="/ship_hanger" prefetch="intent" className={`menu-link ${sceneMenuLockMap.sceneThree ? 'locked' : ''}`} onClick={(e) => handleClick(e, sceneMenuLockMap.sceneThree)} target="_blank" rel="noopener noreferrer">
                                         {!sceneMenuLockMap.sceneThree ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
-                                        Scene3: Ship hanger</a>
+                                        Scene3: Ship hanger</Link>
                                     <div style={dividerStyle} ></div>
                                 </li>
 
                                 <li style={listItemStyle} className="menu-item">
-                                    <a href="/ship_engineering" className={`menu-link ${sceneMenuLockMap.sceneFour ? 'locked' : ''}`} onClick={(e) => handleClick(e, sceneMenuLockMap.sceneFour)} target="_blank" rel="noopener noreferrer">
+                                    <Link to="/ship_engineering" prefetch="intent" className={`menu-link ${sceneMenuLockMap.sceneFour ? 'locked' : ''}`} onClick={(e) => handleClick(e, sceneMenuLockMap.sceneFour)} target="_blank" rel="noopener noreferrer">
                                         {!sceneMenuLockMap.sceneFour ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
-                                        Scene4: Ship's Engineering</a>
+                                        Scene4: Ship's Engineering</Link>
                                     <div style={dividerStyle} ></div>
                                 </li>
 
                                 <li style={listItemStyle} className="menu-item">
-                                    <a href="/ship_captains_chamber" className={`menu-link ${sceneMenuLockMap.sceneFive ? 'locked' : ''}`} onClick={(e) => handleClick(e, sceneMenuLockMap.sceneFive)} target="_blank" rel="noopener noreferrer">
+                                    <Link to="/ship_captains_chamber" prefetch="intent" className={`menu-link ${sceneMenuLockMap.sceneFive ? 'locked' : ''}`} onClick={(e) => handleClick(e, sceneMenuLockMap.sceneFive)} target="_blank" rel="noopener noreferrer">
                                         {!sceneMenuLockMap.sceneFive ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
-                                        Scene5: Captain's Command Chamber</a>
+                                        Scene5: Captain's Command Chamber</Link>
                                     <div style={dividerStyle} ></div>
                                 </li>
 
                                 <li style={listItemStyle} className="menu-item">
-                                    <a href="/project_dawn" className={`menu-link ${sceneMenuLockMap.sceneSix ? 'locked' : ''}`} onClick={(e) => handleClick(e, sceneMenuLockMap.sceneSix)} target="_blank" rel="noopener noreferrer">
+                                    <Link to="/project_dawn" prefetch="intent" className={`menu-link ${sceneMenuLockMap.sceneSix ? 'locked' : ''}`} onClick={(e) => handleClick(e, sceneMenuLockMap.sceneSix)} target="_blank" rel="noopener noreferrer">
                                         {!sceneMenuLockMap.sceneSix ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
-                                        Scene6: Project Dawn</a>
+                                        Scene6: Project Dawn</Link>
                                     <div style={dividerStyle} ></div>
                                 </li>
 
@@ -337,14 +338,14 @@ const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, r
                             <ul style={{ padding: 0, listStyleType: 'none' }}>
 
                                 <li style={listItemStyle} className="menu-item">
-                                    <a href="/ship_quarter" className="menu-link" target="_blank" rel="noopener noreferrer" onClick={(e) => handleClick(e, false)}>Login - Your Quarter</a>
+                                    <Link to="/ship_quarter" prefetch="intent" className="menu-link" target="_blank" rel="noopener noreferrer" onClick={(e) => handleClick(e, false)}>Login - Your Quarter</Link>
                                     <div style={dividerStyle} ></div>
                                 </li>
 
                                 <li style={listItemStyle} className="menu-item">
-                                    <a href="/ship_casino" className={`menu-link ${!isCasinoUnlocked() ? 'locked' : ''}`} onClick={(e) => handleClick(e, false)} target="_blank" rel="noopener noreferrer">
+                                    <Link to="/ship_casino" prefetch="intent" className={`menu-link ${!isCasinoUnlocked() ? 'locked' : ''}`} onClick={(e) => handleClick(e, false)} target="_blank" rel="noopener noreferrer">
                                         {isCasinoUnlocked() ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
-                                        Game - Ship's Casino</a>
+                                        Game - Ship's Casino</Link>
                                     <div style={dividerStyle} ></div>
                                 </li>
 
