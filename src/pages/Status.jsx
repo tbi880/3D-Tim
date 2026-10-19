@@ -4,9 +4,9 @@ let nextSceneStartPoint = JSON.parse(sessionStorage.getItem('nextSceneStartPoint
 let engineeringHasBeenAccessed = JSON.parse(localStorage.getItem('engineeringHasBeenAccessed')) || false;
 let shipHangerHasBeenAccessed = JSON.parse(localStorage.getItem('shipHangerHasBeenAccessed')) || false;
 let rootAccess = JSON.parse(localStorage.getItem('rootAccess')) || false;
-let userDpr = JSON.parse(localStorage.getItem('userDpr')) ?? window.innerHeight > window.innerWidth ? 1 : 1.5;
-let userAntialias = JSON.parse(localStorage.getItem('userAntialias')) ?? window.innerHeight > window.innerWidth ? false : true;
-let userDisableUnnecessaryComponentAnimation = JSON.parse(localStorage.getItem('userDisableUnnecessaryComponentAnimation')) ?? window.innerHeight > window.innerWidth ? true : false;
+let userDpr = JSON.parse(localStorage.getItem('userDpr')) ?? (window.innerHeight > window.innerWidth ? 1 : 1.5);
+let userAntialias = JSON.parse(localStorage.getItem('userAntialias')) ?? (window.innerHeight > window.innerWidth ? false : true);
+let userDisableUnnecessaryComponentAnimation = JSON.parse(localStorage.getItem('userDisableUnnecessaryComponentAnimation')) ?? (window.innerHeight > window.innerWidth ? true : false);
 
 
 export const scene_uri_map = {
@@ -132,7 +132,8 @@ export function setUserAntialias(antialias) {
 }
 
 export function getUserAntialias(isPortraitPhoneScreen) {
-    return JSON.parse(localStorage.getItem('userAntialias')) ?? isPortraitPhoneScreen ? false : true;
+    // `??` binds tighter than `?:`, so without the parentheses a saved value was inverted
+    return JSON.parse(localStorage.getItem('userAntialias')) ?? (isPortraitPhoneScreen ? false : true);
 }
 
 export function setUserDisableUnnecessaryComponentAnimation(disable) {
@@ -140,7 +141,7 @@ export function setUserDisableUnnecessaryComponentAnimation(disable) {
 }
 
 export function getUserDisableUnnecessaryComponentAnimation(isPortraitPhoneScreen) {
-    return JSON.parse(localStorage.getItem('userDisableUnnecessaryComponentAnimation')) ?? isPortraitPhoneScreen ? true : false;
+    return JSON.parse(localStorage.getItem('userDisableUnnecessaryComponentAnimation')) ?? (isPortraitPhoneScreen ? true : false);
 }
 
 export function saveTourMapToLocalStorage(map) {

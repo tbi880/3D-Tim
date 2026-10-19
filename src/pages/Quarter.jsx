@@ -1,5 +1,6 @@
 import Galaxy from '../modelComponents/Galaxy';
 import { Suspense, useCallback, useEffect, useRef, useContext, useState } from 'react';
+import { useComposerMultisampling } from '../hooks/useComposerMultisampling';
 import PreloadAssets from '../modelComponents/PreloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { bucketURL, stageOfENV } from '../Settings';
@@ -15,6 +16,7 @@ import { createSuspenseGate, SuspenseGate } from '../utils/createSuspenseGate';
 
 
 function Quarter({ quarterSheet, quarterProject, onSequencePass, isPortraitPhoneScreen }) {
+    const composerMultisampling = useComposerMultisampling();
     const planetNumberRef = useRef(6);
     const [gate] = useState(() => createSuspenseGate());
     const { showHeaderSubTitle, setShowHeaderSubTitle } = useContext(headerSubTitleContext);
@@ -97,7 +99,7 @@ function Quarter({ quarterSheet, quarterProject, onSequencePass, isPortraitPhone
                     backgroundIntensity={0}
                 />}
 
-                <EffectComposer enableNormalPass>
+                <EffectComposer enableNormalPass multisampling={composerMultisampling}>
                     <>
                         <BrightnessContrast brightness={0} contrast={0.05} />
                         <Bloom intensity={0.4} luminanceThreshold={0.3} />

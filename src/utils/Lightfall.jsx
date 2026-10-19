@@ -166,11 +166,19 @@ void main() {
 }
 `;
 
+const DEFAULT_COLORS = ['#A6C8FF', '#5227FF', '#FF9FFC'];
+
+// This effect fills the whole screen, so its drawing buffer is screen-sized.
+// iPhones report devicePixelRatio 3; the soft glow looks the same at 2x and the
+// buffer is less than half the size.
+const MAX_LIGHTFALL_DPR = 2;
+const defaultDpr = () => Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, MAX_LIGHTFALL_DPR);
+
 const Lightfall = forwardRef(({
     className,
     dpr,
     paused = false,
-    colors = ['#A6C8FF', '#5227FF', '#FF9FFC'],
+    colors = DEFAULT_COLORS,
     backgroundColor = '#0A29FF',
     speed = 0.5,
     streakCount = 2,
@@ -189,13 +197,10 @@ const Lightfall = forwardRef(({
     mixBlendMode
 }, ref) => {
     const containerRef = useRef(null);
-    const rafRef = useRef(null);
     const programRef = useRef(null);
-    const meshRef = useRef(null);
-    const geometryRef = useRef(null);
-    const rendererRef = useRef(null);
-    const mouseTargetRef = useRef([0, 0]);
-    const lastTimeRef = useRef(0);
+    // Read by the render loop every frame. Kept in a ref so that changing these props
+    // never tears down and rebuilds the WebGL context.
+    const liveRef = useRef({ paused, mouseInteraction, mouseDampening });
 
     useImperativeHandle(ref, () => ({
         setZoom(value) {
@@ -206,15 +211,25 @@ const Lightfall = forwardRef(({
     }));
 
     useEffect(() => {
+        liveRef.current = { paused, mouseInteraction, mouseDampening };
+    }, [paused, mouseInteraction, mouseDampening]);
+
+    // One WebGL context per mounted Lightfall.
+    // Previously the context was rebuilt whenever any prop changed (the loader flips
+    // `mouseInteraction` when progress starts and again at 100%), and the old contexts
+    // were never freed because ogl's Renderer has no destroy(). Every loading screen
+    // therefore left three full-screen MSAA contexts alive (~115 MB each on an iPhone).
+    // On iOS that memory is charged to the web page, and WebKit kills the page.
+    useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
 
         const renderer = new Renderer({
-            dpr: dpr ?? (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1),
+            dpr: dpr ?? defaultDpr(),
             alpha: true,
-            antialias: true
+            antialias: false, // one full-screen triangle has no edges to smooth; MSAA only multiplies memory
+            depth: false,
         });
-        rendererRef.current = renderer;
         const gl = renderer.gl;
         const canvas = gl.canvas;
 
@@ -223,45 +238,42 @@ const Lightfall = forwardRef(({
         canvas.style.display = 'block';
         container.appendChild(canvas);
 
-        const { arr, count, avg } = prepColors(colors);
-
+        // Real values are written by the "sync props" effect below, which runs right after this one.
         const uniforms = {
             iResolution: { value: [gl.drawingBufferWidth, gl.drawingBufferHeight, 1] },
             iMouse: { value: [0, 0] },
             iTime: { value: 0 },
-            uColor0: { value: arr[0] },
-            uColor1: { value: arr[1] },
-            uColor2: { value: arr[2] },
-            uColor3: { value: arr[3] },
-            uColor4: { value: arr[4] },
-            uColor5: { value: arr[5] },
-            uColor6: { value: arr[6] },
-            uColor7: { value: arr[7] },
-            uColorCount: { value: count },
-            uBgColor: { value: hexToRGB(backgroundColor) },
-            uMouseColor: { value: avg },
-            uSpeed: { value: speed },
-            uStreakCount: { value: Math.max(1, Math.min(16, Math.round(streakCount))) },
-            uStreakWidth: { value: streakWidth },
-            uStreakLength: { value: streakLength },
-            uGlow: { value: glow },
-            uDensity: { value: density },
-            uTwinkle: { value: twinkle },
+            uColor0: { value: [0, 0, 0] },
+            uColor1: { value: [0, 0, 0] },
+            uColor2: { value: [0, 0, 0] },
+            uColor3: { value: [0, 0, 0] },
+            uColor4: { value: [0, 0, 0] },
+            uColor5: { value: [0, 0, 0] },
+            uColor6: { value: [0, 0, 0] },
+            uColor7: { value: [0, 0, 0] },
+            uColorCount: { value: 1 },
+            uBgColor: { value: [0, 0, 0] },
+            uMouseColor: { value: [0, 0, 0] },
+            uSpeed: { value: 0 },
+            uStreakCount: { value: 1 },
+            uStreakWidth: { value: 1 },
+            uStreakLength: { value: 1 },
+            uGlow: { value: 1 },
+            uDensity: { value: 1 },
+            uTwinkle: { value: 1 },
             uZoom: { value: zoom },
-            uBgGlow: { value: backgroundGlow },
-            uOpacity: { value: opacity },
-            uMouseEnabled: { value: mouseInteraction ? 1 : 0 },
-            uMouseStrength: { value: mouseStrength },
-            uMouseRadius: { value: mouseRadius }
+            uBgGlow: { value: 1 },
+            uOpacity: { value: 1 },
+            uMouseEnabled: { value: 0 },
+            uMouseStrength: { value: 0 },
+            uMouseRadius: { value: 1 }
         };
 
         const program = new Program(gl, { vertex, fragment, uniforms });
         programRef.current = program;
 
         const geometry = new Triangle(gl);
-        geometryRef.current = geometry;
         const mesh = new Mesh(gl, { geometry, program });
-        meshRef.current = mesh;
 
         const resize = () => {
             const rect = container.getBoundingClientRect();
@@ -273,71 +285,92 @@ const Lightfall = forwardRef(({
         const ro = new ResizeObserver(resize);
         ro.observe(container);
 
+        let mouseTarget = [0, 0];
         const onPointerMove = e => {
+            if (!liveRef.current.mouseInteraction) return;
             const rect = canvas.getBoundingClientRect();
             const scale = renderer.dpr || 1;
             const x = (e.clientX - rect.left) * scale;
             const y = (rect.height - (e.clientY - rect.top)) * scale;
-            mouseTargetRef.current = [x, y];
-            if (mouseDampening <= 0) {
+            mouseTarget = [x, y];
+            if (liveRef.current.mouseDampening <= 0) {
                 uniforms.iMouse.value = [x, y];
             }
         };
-        if (mouseInteraction) {
-            canvas.addEventListener('pointermove', onPointerMove);
-        }
+        canvas.addEventListener('pointermove', onPointerMove);
 
+        let rafId = 0;
+        let lastTime = 0;
         const loop = t => {
-            rafRef.current = requestAnimationFrame(loop);
+            rafId = requestAnimationFrame(loop);
             uniforms.iTime.value = t * 0.001;
-            if (mouseDampening > 0) {
-                if (!lastTimeRef.current) lastTimeRef.current = t;
-                const dt = (t - lastTimeRef.current) / 1000;
-                lastTimeRef.current = t;
-                const tau = Math.max(1e-4, mouseDampening);
+            const { paused: isPaused, mouseDampening: damping } = liveRef.current;
+            if (damping > 0) {
+                if (!lastTime) lastTime = t;
+                const dt = (t - lastTime) / 1000;
+                lastTime = t;
+                const tau = Math.max(1e-4, damping);
                 let factor = 1 - Math.exp(-dt / tau);
                 if (factor > 1) factor = 1;
-                const target = mouseTargetRef.current;
                 const cur = uniforms.iMouse.value;
-                cur[0] += (target[0] - cur[0]) * factor;
-                cur[1] += (target[1] - cur[1]) * factor;
+                cur[0] += (mouseTarget[0] - cur[0]) * factor;
+                cur[1] += (mouseTarget[1] - cur[1]) * factor;
             } else {
-                lastTimeRef.current = t;
+                lastTime = t;
             }
-            if (!paused && programRef.current && meshRef.current) {
+            if (!isPaused) {
                 try {
-                    renderer.render({ scene: meshRef.current });
+                    renderer.render({ scene: mesh });
                 } catch (e) {
                     console.error(e);
                 }
             }
         };
-        rafRef.current = requestAnimationFrame(loop);
+        rafId = requestAnimationFrame(loop);
 
         return () => {
-            if (rafRef.current) cancelAnimationFrame(rafRef.current);
-            if (mouseInteraction) canvas.removeEventListener('pointermove', onPointerMove);
+            cancelAnimationFrame(rafId);
+            canvas.removeEventListener('pointermove', onPointerMove);
             ro.disconnect();
             if (canvas.parentElement === container) {
                 container.removeChild(canvas);
             }
-            const callIfFn = (obj, key) => {
-                if (obj && typeof obj[key] === 'function') {
-                    obj[key].call(obj);
-                }
-            };
-            callIfFn(programRef.current, 'remove');
-            callIfFn(geometryRef.current, 'remove');
-            callIfFn(meshRef.current, 'remove');
-            callIfFn(rendererRef.current, 'destroy');
+            program.remove();
+            geometry.remove();
             programRef.current = null;
-            geometryRef.current = null;
-            meshRef.current = null;
-            rendererRef.current = null;
+            // ogl's Renderer has no destroy(). Shrink the drawing buffer and lose the
+            // context explicitly, otherwise it lives until the GC collects the canvas.
+            canvas.width = 1;
+            canvas.height = 1;
+            gl.getExtension('WEBGL_lose_context')?.loseContext();
         };
+        // Only the pixel ratio needs a new context; zoom is animated through setZoom().
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [dpr]);
+
+    // Sync props into the existing program instead of rebuilding the context.
+    useEffect(() => {
+        const u = programRef.current?.uniforms;
+        if (!u) return;
+        const { arr, count, avg } = prepColors(colors);
+        for (let i = 0; i < MAX_COLORS; i++) u['uColor' + i].value = arr[i];
+        u.uColorCount.value = count;
+        u.uMouseColor.value = avg;
+        u.uBgColor.value = hexToRGB(backgroundColor);
+        u.uSpeed.value = speed;
+        u.uStreakCount.value = Math.max(1, Math.min(16, Math.round(streakCount)));
+        u.uStreakWidth.value = streakWidth;
+        u.uStreakLength.value = streakLength;
+        u.uGlow.value = glow;
+        u.uDensity.value = density;
+        u.uTwinkle.value = twinkle;
+        u.uBgGlow.value = backgroundGlow;
+        u.uOpacity.value = opacity;
+        u.uMouseEnabled.value = mouseInteraction ? 1 : 0;
+        u.uMouseStrength.value = mouseStrength;
+        u.uMouseRadius.value = mouseRadius;
     }, [
         dpr,
-        paused,
         colors,
         backgroundColor,
         speed,
@@ -351,8 +384,7 @@ const Lightfall = forwardRef(({
         opacity,
         mouseInteraction,
         mouseStrength,
-        mouseRadius,
-        mouseDampening
+        mouseRadius
     ]);
 
     return (

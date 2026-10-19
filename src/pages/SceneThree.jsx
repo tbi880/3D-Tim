@@ -13,6 +13,7 @@ import ProgrammingFuture from '../modelComponents/ProgrammingFuture';
 import StreamMusic from '../modelComponents/StreamMusic';
 import Auckland from '../modelComponents/Auckland';
 import { Suspense, useState, useEffect, useContext } from 'react';
+import { useComposerMultisampling } from '../hooks/useComposerMultisampling';
 import PreloadAssets from '../modelComponents/PreloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { bucketURL, stageOfENV } from '../Settings';
@@ -34,6 +35,7 @@ const SCENE3_CLICKABLE_POINTS = [30, 31, 50, 50.5, 51, 51.5, 64];
 const SCENE3_JUMP_POINTS_MAP = [[51.5, 64]];
 
 function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
+    const composerMultisampling = useComposerMultisampling();
     const [showComponents, toggleComponentDisplay] = useComponentDisplayManager({
         loadingComponents: {
             nioseEffect: true,
@@ -286,7 +288,7 @@ function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSeq
                 />
 
 
-                {showComponents.noiseEffect && <EffectComposer>
+                {showComponents.noiseEffect && <EffectComposer multisampling={composerMultisampling}>
                     <Noise premultiply blendFunction={BlendFunction.ADD} />
                 </EffectComposer>}
             </Suspense>

@@ -1,4 +1,5 @@
 import { Suspense, useCallback, useEffect, useRef, useContext, useState } from 'react';
+import { useComposerMultisampling } from '../hooks/useComposerMultisampling';
 import PreloadAssets from '../modelComponents/PreloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { bucketURL, stageOfENV } from '../Settings';
@@ -21,6 +22,7 @@ import { createSuspenseGate, SuspenseGate } from '../utils/createSuspenseGate';
 
 
 function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitPhoneScreen, setShowPlaceBets, mainChoice, setMainChoice, mainBetValue, setMainBetValue, roomId, token, setStatusInRoom, setCountdownMs, setBetSides, isOpeningFirstCard, setIsOpeningFirstCard, setShowSwitchCard, setResultList, setWinningSides, gameHands, setGameHands, setBaccaratPointDisplayManager, setPlayersData }) {
+    const composerMultisampling = useComposerMultisampling();
     const { messageApi } = useContext(GlobalNotificationContext);
     const { showCasinoForm, setShowCasinoForm } = useContext(casinoFormContext);
     const mainBetChoiceRef = useRef(mainChoice);
@@ -432,7 +434,7 @@ function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitP
                     backgroundIntensity={0}
                 />
 
-                {!isPortraitPhoneScreen && <EffectComposer enableNormalPass>
+                {!isPortraitPhoneScreen && <EffectComposer enableNormalPass multisampling={composerMultisampling}>
                     <>
                         <BrightnessContrast brightness={0} contrast={0.05} />
                         <Bloom intensity={0.4} luminanceThreshold={0.3} />

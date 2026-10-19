@@ -10,6 +10,7 @@ import ViewPort from '../modelComponents/ViewPort';
 import StreamMusic from '../modelComponents/StreamMusic';
 import Robots from '../modelComponents/Robot';
 import { Suspense, useState, useEffect, useContext } from 'react';
+import { useComposerMultisampling } from '../hooks/useComposerMultisampling';
 import PreloadAssets from '../modelComponents/PreloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { bucketURL, stageOfENV } from '../Settings';
@@ -32,6 +33,7 @@ const SCENE2_JUMP_POINTS_MAP = [[33, 38], [68, 72], [86, 96]];
 
 
 function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequencePass, isPortraitPhoneScreen }) {
+    const composerMultisampling = useComposerMultisampling();
     const screenIntro = "You finally awaken, chief designer! Our ship is about to enter the black hole ahead of us. The ship is damaged quite severe due to the strong gravitational force. As AI, we cannot change the course of the ship because the first captain, Tim Bi, set it up millennia ago. Additionally, we have been blocked from answering the questions to unlock the captain's chamber. We need your help to find the answers to the root access questions so we can alter the ship's course or initiate an emergency stop. Please follow me to the bridge. Let's start by checking the structure of the ship first. This will probably help you to rewind your memory about the ship.";
     const musicUrl = bucketURL + 'music/bgm2.mp3';
     const audioElement = useAudioElement(musicUrl);
@@ -216,7 +218,7 @@ function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequ
                 />
 
                 <SingleLoadManager loadPoint={1} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('openEyes')} />
-                <EffectComposer enableNormalPass>
+                <EffectComposer enableNormalPass multisampling={composerMultisampling}>
                     {showComponents.openEyes && <>
                         <DepthOfField focusDistance={0.03} focalLength={0.1} bokehScale={5} />
                         <ChromaticAberration offset={[0.002, 0.002]} />

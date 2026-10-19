@@ -43,6 +43,7 @@
     "react-router-dom": "^7.18.3",
     "three": "^0.182.0",
     "three-mesh-bvh": "^0.9.15",
+    "three-stdlib": "^2.36.1",
     "typed.js": "^2.1.0",
     "typeit": "^8.8.7",
     "uuid-by-string": "4.0.0",

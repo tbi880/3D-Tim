@@ -2,6 +2,7 @@ import Galaxy from '../modelComponents/Galaxy';
 import ShipOutside from '../modelComponents/ShipOutside';
 import StreamMusic from '../modelComponents/StreamMusic';
 import { Suspense, useState, useCallback, useEffect, useRef, useContext, useMemo } from 'react';
+import { useComposerMultisampling } from '../hooks/useComposerMultisampling';
 import PreloadAssets from '../modelComponents/PreloadAssets';
 import { editable as e, PerspectiveCamera } from '@theatre/r3f'
 import { bucketURL, stageOfENV } from '../Settings';
@@ -43,6 +44,7 @@ const SIGNAL_SENT_KEY = "sceneState_scene5_signalSent";
 const SIMULATION_DONE_KEY = "sceneState_scene5_simulationDone";
 
 function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
+    const composerMultisampling = useComposerMultisampling();
     const musicUrl = bucketURL + 'music/bgm5.mp3';
     const [ambientIntensity, setAmbientIntensity] = useState(0);
     const [warningFrequency, setWarningFrequency] = useState(10000);
@@ -572,7 +574,7 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
 
                 </>}
 
-                <EffectComposer enableNormalPass>
+                <EffectComposer enableNormalPass multisampling={composerMultisampling}>
                     <>
                         <BrightnessContrast brightness={-0.05} contrast={0.05} />
                         <Bloom intensity={0.4} luminanceThreshold={0.3} />
