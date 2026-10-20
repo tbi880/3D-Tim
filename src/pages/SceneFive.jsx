@@ -33,7 +33,8 @@ import { useCameraSwitcher } from '../hooks/useCameraSwitcher';
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneChecker';
-import { Bloom, BrightnessContrast, EffectComposer, ToneMapping, Vignette } from '@react-three/postprocessing';
+import { Bloom, BrightnessContrast, ToneMapping, Vignette } from '@react-three/postprocessing';
+import ManagedEffectComposer from '../modelComponents/ManagedEffectComposer';
 import { useSequenceAutoSave, getResumePosition, getNextClickablePoint, getJumpPointResumePosition, clearResumePositionsIfNavigated } from '../hooks/useSequenceAutoSave';
 import { createSuspenseGate, SuspenseGate } from '../utils/createSuspenseGate';
 import * as THREE from 'three';
@@ -46,7 +47,7 @@ const SIMULATION_DONE_KEY = "sceneState_scene5_simulationDone";
 function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequencePass, isPortraitPhoneScreen }) {
     const composerMultisampling = useComposerMultisampling();
     const musicUrl = bucketURL + 'music/bgm5.mp3';
-    const [ambientIntensity, setAmbientIntensity] = useState(0);
+    const alarmLightRef = useRef(null);
     const [warningFrequency, setWarningFrequency] = useState(10000);
     const [outAmbientIntensity, setOutAmbientIntensity] = useState(0);
     const [backgroundColor, setBackgroundColor] = useState("black");
@@ -186,7 +187,9 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
                 const elapsed = performance.now() - startTime;
                 const progress = Math.min(elapsed / duration, 1);
                 const newValue = start + (end - start) * progress;
-                setAmbientIntensity(newValue);
+                // Set the light directly: going through React state re-rendered this whole
+                // scene on every animation frame of every pulse.
+                if (alarmLightRef.current) alarmLightRef.current.intensity = newValue;
 
                 if (progress < 1) {
                     rafRef.current = requestAnimationFrame(step);
@@ -358,7 +361,7 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
                 }} />
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={25} onSequencePass={() => { alarmLight(); }} />
-                {!isPortraitPhoneScreen && showComponents.insideAmbientLight && isFirstPersonCamera && <ambientLight color={"#ff0000"} intensity={ambientIntensity} visible={isFirstPersonCamera} />}
+                {!isPortraitPhoneScreen && showComponents.insideAmbientLight && isFirstPersonCamera && <ambientLight ref={alarmLightRef} color={"#ff0000"} intensity={0} visible={isFirstPersonCamera} />}
 
                 <SingleLoadManager sequence={scene5Sheet.sequence} loadPoint={19.25} onSequencePass={() => { toggleComponentDisplay("robot") }} />
                 {showComponents.robot && <Robot title="Robot" position={[562, 32.75, 0]} rotation={[0, 1.2, 0]} sequence={scene5Sheet.sequence} onSequencePass={() => { toggleComponentDisplay("robot") }} />}
@@ -574,14 +577,16 @@ function SceneFive({ scene5Sheet, scene5Project, startPoint, unloadPoint, onSequ
 
                 </>}
 
-                <EffectComposer enableNormalPass multisampling={composerMultisampling}>
+                {/* ManagedEffectComposer: this scene switches cameras, and each switch used to leak a composer's buffers.
+                    No enableNormalPass: none of these effects reads normals, and the normal pass re-renders the whole chamber every frame. */}
+                <ManagedEffectComposer multisampling={composerMultisampling}>
                     <>
                         <BrightnessContrast brightness={-0.05} contrast={0.05} />
                         <Bloom intensity={0.4} luminanceThreshold={0.3} />
                         <ToneMapping toneMapping={THREE.CineonToneMapping} exposure={0.8} />
                         <Vignette eskil={false} offset={0.1} darkness={0.3} />
                     </>
-                </EffectComposer>
+                </ManagedEffectComposer>
 
             </Suspense>
         </>

@@ -1,10 +1,10 @@
 
-import Status, { getNextSceneStartPoint, getTourMapFromLocalStorage, hasTourGuided } from '../pages/Status';
+import Status, { getNextSceneStartPoint } from '../pages/Status';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Helmet } from 'react-helmet';
 import { SheetProvider } from '@theatre/r3f';
 import scene5State from '../scene5.json';
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useContext, useRef, useState } from 'react';
 import ShipStatus from '../Tools/ShipStatus';
 import { EstHitTimeCountDownProvider } from '../sharedContexts/EstHitTimeCountDownProvider';
 import { CoreEnergyProvider } from '../sharedContexts/CoreEnergyProvider';
@@ -18,7 +18,6 @@ import SearchForEmergencyPlans from '../Tools/SearchForEmergencyPlans';
 import Header from '../Tools/Header';
 import { headerSubTitleContext } from '../sharedContexts/HeaderSubTitleProvider';
 import SceneFive from '../pages/SceneFive';
-import TourGuide from '../Tools/TourGuide';
 import { useLocation } from 'wouter';
 import DoublePlayTimeSpeedButton from '../Tools/DoublePlayTimeSpeedButton';
 import { getProject } from '@theatre/core';
@@ -40,31 +39,12 @@ function ShipTimsChamber({ isPortraitPhoneScreen }) {
     const { showSearchForEmergencyPlansLayer, setShowSearchForEmergencyPlansLayer } = useContext(searchForEmergencyPlansContext);
     const { showHeaderSubTitle, setShowHeaderSubTitle } = useContext(headerSubTitleContext);
 
-    const stepsConfig = useMemo(() => ([
-        {
-            ref: refShipStatus,
-            title: 'Hide the ship status',
-            description: 'Click on the overlay to hide the ship status and to see the full content behind it.',
-            placement: isPortraitPhoneScreen ? null : 'bottom',
-        },
-        {
-            ref: refShipStatus,
-            title: 'Display the ship status',
-            description: 'Click on the overlay to show the ship status again.',
-            placement: isPortraitPhoneScreen ? null : 'bottom',
-        },
-    ]), [refShipStatus]);
-
-    useEffect(() => {
-        const tourMap = getTourMapFromLocalStorage();
-        if (!(location in tourMap) || tourMap[location] || location != tourStartSceneURI) {
-            return;
-        }
-        setOpen(true);
-        hasTourGuided(location);
-    }, [location]);
-
     const { checkThenJumpToTheNextScene } = useJumpToNextScene();
+
+    // The distress-signal, authorization and emergency-plan forms cover the 3D view while the
+    // timeline is stopped. Pause rendering meanwhile, so the phone isn't rendering the 2M-vertex
+    // chamber behind a form while also running the CAPTCHA and the on-screen keyboard.
+    const isOverlayOpen = showSendDistressSignalForm || showAuthorizationCheckForm || showSearchForEmergencyPlansLayer;
 
     function onClickCallback() {
         setIsHide(!isHide);
@@ -111,7 +91,8 @@ function ShipTimsChamber({ isPortraitPhoneScreen }) {
                         {showHeaderSubTitle && <Header onAnimationEnd={() => { setShowHeaderSubTitle(false) }} defaultBaseDuration={7} defaultNotice={{ noticeContent: "If you’re watching this, it’s our last moment. ‘Project Dawn’ can probably save the ship, but it will consume all remaining resources. It's a tough decision to make but I trust you. Lead them out of the darkness before dawn arrives.", noticeLink: null }} />}
 
                         <div style={{ position: 'relative', zIndex: 1, height: '100vh' }}>
-                            <CanvasProvider>
+                            {/* iosMaxTextureSize 1024: Scene 5 is the heaviest scene; keep iPads at the iPhone texture cap here too. */}
+                            <CanvasProvider postprocessing iosMaxTextureSize={1024} frameLoopSetting={isOverlayOpen ? "never" : "always"}>
                                 {/* <Canvas gl={{ antialias: antialias, preserveDrawingBuffer: webGLPreserveDrawingBuffer }} dpr={dpr} performance={{ min: 0.5 }} mode="concurrent" fallback={<div>Sorry no WebGL supported!</div>}> */}
                                 <SheetProvider sheet={scene5Sheet}>
                                     <SceneFive scene5Sheet={scene5Sheet} scene5Project={scene5Project} startPoint={getNextSceneStartPoint()} unloadPoint={207} onSequencePass={() => checkThenJumpToTheNextScene()} isPortraitPhoneScreen={isPortraitPhoneScreen} /></SheetProvider>
@@ -119,7 +100,6 @@ function ShipTimsChamber({ isPortraitPhoneScreen }) {
                                 {/* </Canvas> */}
                             </CanvasProvider>
                         </div>
-                        <TourGuide stepsConfig={stepsConfig} open={open} onClose={() => { setOpen(false); setIsHide(false); }} onChange={() => { setIsHide(prev => !prev) }} />
                     </CoreEnergyProvider>
                 </HullTemperatureProvider>
             </EstHitTimeCountDownProvider >

@@ -11,7 +11,8 @@ import { headerSubTitleContext } from '../sharedContexts/HeaderSubTitleProvider'
 import Loader from './Loader';
 import { Perf } from 'r3f-perf';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
-import { Bloom, BrightnessContrast, EffectComposer, ToneMapping, Vignette } from '@react-three/postprocessing';
+import { Bloom, BrightnessContrast, ToneMapping, Vignette } from '@react-three/postprocessing';
+import ManagedEffectComposer from '../modelComponents/ManagedEffectComposer';
 import { createSuspenseGate, SuspenseGate } from '../utils/createSuspenseGate';
 
 
@@ -99,14 +100,14 @@ function Quarter({ quarterSheet, quarterProject, onSequencePass, isPortraitPhone
                     backgroundIntensity={0}
                 />}
 
-                <EffectComposer enableNormalPass multisampling={composerMultisampling}>
+                <ManagedEffectComposer enableNormalPass multisampling={composerMultisampling}>
                     <>
                         <BrightnessContrast brightness={0} contrast={0.05} />
                         <Bloom intensity={0.4} luminanceThreshold={0.3} />
                         <ToneMapping adaptive={true} />
                         <Vignette eskil={false} offset={0.1} darkness={0.3} />
                     </>
-                </EffectComposer>
+                </ManagedEffectComposer>
 
             </Suspense>
         </>

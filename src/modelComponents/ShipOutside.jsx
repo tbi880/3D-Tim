@@ -30,6 +30,23 @@ function ShipOutside({ onSequencePass, unloadPoint, sequence }) {
     }, [shipModel.scene, wireframe]);
 
 
+    // The ship leaves Scene 5 at 20 and returns at 130 (and its 3 textures are the largest in
+    // the scene). Free its GPU copies while it is gone; three.js re-uploads them from the
+    // cached model when it is shown again.
+    useEffect(() => () => {
+        shipModel.scene.traverse((child) => {
+            if (!child.isMesh) return;
+            child.geometry?.dispose();
+            const materials = Array.isArray(child.material) ? child.material : [child.material];
+            for (const material of materials) {
+                if (!material) continue;
+                for (const value of Object.values(material)) {
+                    if (value && value.isTexture) value.dispose();
+                }
+            }
+        });
+    }, [shipModel.scene]);
+
     useFrame(() => {
         if (unloadPoint) {
             if (sequence && sequence.position > unloadPoint) {

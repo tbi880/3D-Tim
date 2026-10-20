@@ -25,7 +25,8 @@ import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvi
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import { SheetSequencePlayControlContext } from '../sharedContexts/SheetSequencePlayControlProvider';
 import { useSequenceAutoSave, getResumePosition, getNextClickablePoint, getJumpPointResumePosition, clearResumePositionsIfNavigated } from '../hooks/useSequenceAutoSave';
-import { Bloom, BrightnessContrast, ChromaticAberration, DepthOfField, EffectComposer, Glitch, ToneMapping, Vignette } from "@react-three/postprocessing";
+import { Bloom, BrightnessContrast, ChromaticAberration, DepthOfField, Glitch, ToneMapping, Vignette } from "@react-three/postprocessing";
+import ManagedEffectComposer from '../modelComponents/ManagedEffectComposer';
 import { createSuspenseGate, SuspenseGate } from '../utils/createSuspenseGate';
 
 const SCENE2_CLICKABLE_POINTS = [1, 1.5, 2, 2.5, 22.5, 33, 68, 86];
@@ -218,7 +219,7 @@ function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequ
                 />
 
                 <SingleLoadManager loadPoint={1} sequence={scene2Sheet.sequence} onSequencePass={() => toggleComponentDisplay('openEyes')} />
-                <EffectComposer enableNormalPass multisampling={composerMultisampling}>
+                <ManagedEffectComposer enableNormalPass multisampling={composerMultisampling}>
                     {showComponents.openEyes && <>
                         <DepthOfField focusDistance={0.03} focalLength={0.1} bokehScale={5} />
                         <ChromaticAberration offset={[0.002, 0.002]} />
@@ -234,7 +235,7 @@ function SceneTwo({ scene2Sheet, scene2Project, startPoint, unloadPoints, onSequ
                     </>}
 
 
-                </EffectComposer>
+                </ManagedEffectComposer>
             </Suspense>
 
         </>

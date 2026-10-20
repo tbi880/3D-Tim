@@ -10,7 +10,8 @@ import Loader from './Loader';
 import { Perf } from 'r3f-perf';
 import { SheetProvider } from '@theatre/r3f';
 import { useComponentDisplayManager } from '../hooks/useComponentDisplayManager';
-import { Bloom, BrightnessContrast, EffectComposer, ToneMapping, Vignette } from '@react-three/postprocessing';
+import { Bloom, BrightnessContrast, ToneMapping, Vignette } from '@react-three/postprocessing';
+import ManagedEffectComposer from '../modelComponents/ManagedEffectComposer';
 import { casinoFormContext } from '../sharedContexts/CasinoFormProvider';
 import SingleLoadManager from '../modelComponents/SingleLoadManager';
 import Chips from '../modelComponents/Chips';
@@ -434,14 +435,14 @@ function Casino({ casinoSheet, card2Sheet, chipSheet, casinoProject, isPortraitP
                     backgroundIntensity={0}
                 />
 
-                {!isPortraitPhoneScreen && <EffectComposer enableNormalPass multisampling={composerMultisampling}>
+                {!isPortraitPhoneScreen && <ManagedEffectComposer enableNormalPass multisampling={composerMultisampling}>
                     <>
                         <BrightnessContrast brightness={0} contrast={0.05} />
                         <Bloom intensity={0.4} luminanceThreshold={0.3} />
                         <ToneMapping adaptive={true} />
                         <Vignette eskil={false} offset={0.1} darkness={0.3} />
                     </>
-                </EffectComposer>}
+                </ManagedEffectComposer>}
 
             </Suspense>
         </>

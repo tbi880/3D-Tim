@@ -27,7 +27,8 @@ import { useSequenceUnloadSceneChecker } from '../hooks/useSequenceUnloadSceneCh
 import { TaskBoardContentContext } from '../sharedContexts/TaskBoardContentProvider';
 import { GlobalNotificationContext } from '../sharedContexts/GlobalNotificationProvider';
 import { useSequenceAutoSave, getResumePosition, getNextClickablePoint, getJumpPointResumePosition, clearResumePositionsIfNavigated } from '../hooks/useSequenceAutoSave';
-import { EffectComposer, Noise } from "@react-three/postprocessing";
+import { Noise } from "@react-three/postprocessing";
+import ManagedEffectComposer from '../modelComponents/ManagedEffectComposer';
 import { BlendFunction } from "postprocessing";
 import { createSuspenseGate, SuspenseGate } from '../utils/createSuspenseGate';
 
@@ -288,9 +289,9 @@ function SceneThree({ scene3Sheet, scene3Project, startPoint, unloadPoint, onSeq
                 />
 
 
-                {showComponents.noiseEffect && <EffectComposer multisampling={composerMultisampling}>
+                {showComponents.noiseEffect && <ManagedEffectComposer multisampling={composerMultisampling}>
                     <Noise premultiply blendFunction={BlendFunction.ADD} />
-                </EffectComposer>}
+                </ManagedEffectComposer>}
             </Suspense>
         </>
     )
