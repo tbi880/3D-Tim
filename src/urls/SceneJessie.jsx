@@ -37,8 +37,8 @@ function SceneJessie({ startPoint }) {
         useGLTF.preload(bucketURL + "toJessie/medieval_wooden_chest-transformed.glb");
         useGLTF.preload(bucketURL + "toJessie/cup-transformed.glb");
         useGLTF.preload(bucketURL + "toJessie/the_steampunk-transformed.glb");
-        useGLTF.preload(bucketURL + "toJessie/Fanart Ayaka.glb");
-        useGLTF.preload(bucketURL + "toJessie/firework_sky.glb");
+        useGLTF.preload(bucketURL + "toJessie/Fanart Ayaka-transformed.glb");
+        useGLTF.preload(bucketURL + "toJessie/firework_sky-transformed.glb");
         useGLTF.preload(bucketURL + "toJessie/fireworks-transformed.glb");
 
     }, []);
@@ -182,9 +182,9 @@ function SceneJessie({ startPoint }) {
                         <SingleLoadManager sequence={sceneJessieSheet.sequence} loadPoint={18} onSequencePass={() => { toggleComponentDisplay("treasure_three") }} />
                         {showComponents.treasure_three && <AnyModel useTheatre={true} theatreKey="treasure3" modelURL="toJessie/the_steampunk-transformed.glb" sequence={sceneJessieSheet.sequence} unloadPoint={47} onSequencePass={() => { toggleComponentDisplay("treasure_three") }} stopPoints={[54]} position={[0, 0, 0]} rotation={[0, 0, 0]} scale={[10, 10, 10]} clickablePoint={19.5} animationNames={["Take 001"]} animationOnClick={true} animationPlayTimes={1} animationSpeeds={1} animationStartPoint={5} />}
                         <SingleLoadManager sequence={sceneJessieSheet.sequence} loadPoint={45} onSequencePass={() => { toggleComponentDisplay("sllh") }} />
-                        {showComponents.sllh && <AnyModel useTheatre={true} theatreKey="sllh" modelURL="toJessie/Fanart Ayaka.glb" sequence={sceneJessieSheet.sequence} unloadPoint={50} onSequencePass={() => { toggleComponentDisplay("sllh") }} position={[0, 0, 0]} rotation={[0, 0, 0]} scale={[0.001, 0.001, 0.001]} />}
+                        {showComponents.sllh && <AnyModel useTheatre={true} theatreKey="sllh" modelURL="toJessie/Fanart Ayaka-transformed.glb" sequence={sceneJessieSheet.sequence} unloadPoint={50} onSequencePass={() => { toggleComponentDisplay("sllh") }} position={[0, 0, 0]} rotation={[0, 0, 0]} scale={[0.001, 0.001, 0.001]} />}
                         <SingleLoadManager sequence={sceneJessieSheet.sequence} loadPoint={49} onSequencePass={() => { toggleComponentDisplay("firework_bg") }} />
-                        {showComponents.firework_bg && <AnyModel useTheatre={true} theatreKey="firework_bg" modelURL="toJessie/firework_sky.glb" position={[0, 0, 0]} rotation={[0, 0, 0]} scale={[1, 1, 1]} />}
+                        {showComponents.firework_bg && <AnyModel useTheatre={true} theatreKey="firework_bg" modelURL="toJessie/firework_sky-transformed.glb" position={[0, 0, 0]} rotation={[0, 0, 0]} scale={[1, 1, 1]} />}
                         <SingleLoadManager sequence={sceneJessieSheet.sequence} loadPoint={50} onSequencePass={() => toggleComponentDisplay("fireworks")} />
                         {showComponents.fireworks && <Fireworks />}
                         <SingleLoadManager sequence={sceneJessieSheet.sequence} loadPoint={51} onSequencePass={() => { toggleComponentDisplay("textTitle_birthdayWithValue") }} />

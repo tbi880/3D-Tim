@@ -9,7 +9,7 @@ import { types } from '@theatre/core';
 
 
 function ProgrammingOffice({ position, rotation, sequence, unloadPoint, onSequencePass }) {
-    const officeModel = useGLTF(bucketURL + "office_setup.glb", true, true);
+    const officeModel = useGLTF(bucketURL + "office_setup-transformed.glb", true, true);
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const theatreKey = "office scene";
 
@@ -52,5 +52,5 @@ function ProgrammingOffice({ position, rotation, sequence, unloadPoint, onSequen
 
 }
 
-// useGLTF.preload(bucketURL + "office_setup.glb");
+// useGLTF.preload(bucketURL + "office_setup-transformed.glb");
 export default ProgrammingOffice;

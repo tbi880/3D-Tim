@@ -8,7 +8,7 @@ import { useFrame } from '@react-three/fiber';
 
 
 function ShipOutside({ onSequencePass, unloadPoint, sequence }) {
-    const shipModel = useGLTF(bucketURL + "oas.glb", true, true);
+    const shipModel = useGLTF(bucketURL + "oas-transformed.glb", true, true);
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const [wireframe, setWireframe] = useState(false);
 
@@ -75,5 +75,5 @@ function ShipOutside({ onSequencePass, unloadPoint, sequence }) {
     );
 }
 
-// useGLTF.preload(bucketURL + "oas.glb");
+// useGLTF.preload(bucketURL + "oas-transformed.glb");
 export default ShipOutside;

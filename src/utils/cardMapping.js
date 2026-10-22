@@ -39,7 +39,7 @@ const pointMap = {
 }
 
 export function cardStringToModelUrl(cardString) {
-    if (!cardString || cardString.length < 2) return 'casino/cards/spades_1.glb';
+    if (!cardString || cardString.length < 2) return 'casino/cards/spades_1-transformed.glb';
     const suitChar = cardString[0];
     const rankPart = cardString.substring(1);
 
@@ -49,7 +49,7 @@ export function cardStringToModelUrl(cardString) {
         console.error('Unknown cardString', cardString);
         return null;
     }
-    return `casino/cards/${suit}_${rankIndex}.glb`;
+    return `casino/cards/${suit}_${rankIndex}-transformed.glb`;
 }
 
 export function calculateBaccaratPoints(cards) {

@@ -12,7 +12,7 @@ const animationNames = ["Armature|off state"];
 
 
 function ViewPort({ screenTitle, position, rotation, sequence, stopPoint, unloadPoint, onSequencePass, isSetNextScene, nextScene, nextSceneStartPoint = 0 }) {
-    const ViewPortModel = useGLTF(bucketURL + "viewport.glb", true, true);
+    const ViewPortModel = useGLTF(bucketURL + "viewport-transformed.glb", true, true);
     const [opacity, setOpacity] = useState(1); // 初始透明度设置为1（不透明）
     const { animations, scene } = ViewPortModel;
     const { actions } = useAnimations(animations, scene);
@@ -109,5 +109,5 @@ function ViewPort({ screenTitle, position, rotation, sequence, stopPoint, unload
     );
 }
 
-// useGLTF.preload(bucketURL + "viewport.glb");
+// useGLTF.preload(bucketURL + "viewport-transformed.glb");
 export default ViewPort;

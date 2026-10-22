@@ -83,8 +83,8 @@ export default function Chips({ chipSheet, betValue }) {
     }, [betValue]);
 
     return <SheetProvider sheet={chipSheet}>
-        <AnyModel modelURL={'casino/chips.glb'} sequence={chipSheet.sequence} useTheatre={true} theatreKey={"chip"} position={[0, 0, 0]} rotation={[1.5, 0, 0]} scale={[3, 3, 3]} visible={true} isMultiple={true} />
-        <AnyModel modelURL={'casino/chips.glb'} sequence={chipSheet.sequence} useTheatre={true} theatreKey={"chip_bet"} position={[0, 0, 0]} rotation={[1.5, 0, 0]} scale={[3, 3, 3]} visible={true} isMultiple={true} modelNodeLoadMap={modelNodeLoadMap} />
-        <AnyModel modelURL={'casino/chips.glb'} sequence={chipSheet.sequence} useTheatre={true} theatreKey={"chip_payout"} position={[0, 0, 0]} rotation={[1.5, 0, 0]} scale={[3, 3, 3]} visible={true} isMultiple={true} modelNodeLoadMap={modelNodeLoadMap} />
+        <AnyModel modelURL={'casino/chips-transformed.glb'} sequence={chipSheet.sequence} useTheatre={true} theatreKey={"chip"} position={[0, 0, 0]} rotation={[1.5, 0, 0]} scale={[3, 3, 3]} visible={true} isMultiple={true} />
+        <AnyModel modelURL={'casino/chips-transformed.glb'} sequence={chipSheet.sequence} useTheatre={true} theatreKey={"chip_bet"} position={[0, 0, 0]} rotation={[1.5, 0, 0]} scale={[3, 3, 3]} visible={true} isMultiple={true} modelNodeLoadMap={modelNodeLoadMap} />
+        <AnyModel modelURL={'casino/chips-transformed.glb'} sequence={chipSheet.sequence} useTheatre={true} theatreKey={"chip_payout"} position={[0, 0, 0]} rotation={[1.5, 0, 0]} scale={[3, 3, 3]} visible={true} isMultiple={true} modelNodeLoadMap={modelNodeLoadMap} />
     </SheetProvider>;
 }
