@@ -9,7 +9,6 @@ import { useAuthStore } from './hooks/useAuthStore';
 // 使用 React.lazy 动态加载页面组件
 const HomePage = lazy(() => import('./urls/HomePage'));
 const NotFoundPage = lazy(() => import('./urls/NotFoundPage'));
-const SceneJessie = lazy(() => import('./urls/SceneJessie'));
 const Bridge = lazy(() => import('./urls/Bridge'));
 const ShipHanger = lazy(() => import('./urls/ShipHanger'));
 const ShipEngineering = lazy(() => import('./urls/ShipEngineering'));
@@ -106,7 +105,6 @@ function Routers() {
                         <Route path="/project_dawn" element={<ProjectDawn isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
                         <Route path="/ship_casino" element={<ProtectedRoute><ShipCasino isPortraitPhoneScreen={isPortraitPhoneScreen} /></ProtectedRoute>} />
                         <Route path="/ship_quarter" element={<ShipQuarter isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
-                        <Route path="/jessie" element={<SceneJessie startPoint={0} />} />
                         <Route path="*" element={<NotFoundPage />} />
                     </Routes>
                 </Suspense>
