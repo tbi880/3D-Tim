@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint src --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
+    "game:simulate": "node scripts/simulate-campaign.mjs",
     "start": "vite",
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject"
