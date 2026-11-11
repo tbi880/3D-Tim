@@ -1,0 +1,91 @@
+/**
+ * Central tuning values for "Echoes of Dawn".
+ *
+ * Everything a designer may want to tweak (speeds, energy, difficulty, storage keys)
+ * lives here or in the sibling config files, so gameplay code never hard-codes numbers.
+ * World units are roughly metres; time is in seconds; angles are in radians unless a
+ * property name ends in "Deg".
+ */
+
+export const GAME_ROUTE = '/echoes_of_dawn';
+
+export const FACTION = Object.freeze({
+    DAWN: 'dawn',
+    UMBRA: 'umbra',
+    NEUTRAL: 'neutral',
+});
+
+/** Player ship handling. */
+export const PLAYER = Object.freeze({
+    classId: 'kestrel',
+    pitchRate: 1.15,
+    yawRate: 1.0,
+    rollRate: 1.9,
+    /** How quickly the ship reaches the requested turn rate (1/s). */
+    turnResponse: 5,
+    /** Throttle change per second while W / S is held. */
+    throttleRate: 0.75,
+    acceleration: 85,
+    /** How quickly the velocity vector follows the nose (1/s). Lower = more drift. */
+    driftDamping: 2.6,
+    boostMultiplier: 2.1,
+    boostDuration: 5,
+    boostRecharge: 9,
+    energyMax: 100,
+    energyRegen: 16,
+    /** Seconds without firing before the beam capacitor recharges at full rate. */
+    energyRegenDelay: 0.6,
+    startThrottle: 0.5,
+    /** Checkpoints always hand the ship back with at least this hull fraction. */
+    checkpointMinHull: 0.75,
+});
+
+/** "Divert power" presets, switched with the 1 / 2 / 3 keys. */
+export const POWER_MODES = Object.freeze({
+    balanced: { id: 'balanced', damage: 1, shieldRegen: 1, damageTaken: 1, engine: 1 },
+    attack: { id: 'attack', damage: 1.35, shieldRegen: 0.55, damageTaken: 1.1, engine: 0.95 },
+    defense: { id: 'defense', damage: 0.75, shieldRegen: 1.9, damageTaken: 0.75, engine: 1.1 },
+});
+export const POWER_MODE_ORDER = ['balanced', 'attack', 'defense'];
+
+/** Difficulty only scales damage, so every story beat stays identical. */
+export const DIFFICULTY = Object.freeze({
+    cadet: { id: 'cadet', damageTaken: 0.55, allyDamageTaken: 0.6 },
+    captain: { id: 'captain', damageTaken: 1, allyDamageTaken: 1 },
+    admiral: { id: 'admiral', damageTaken: 1.45, allyDamageTaken: 1.3 },
+});
+export const DIFFICULTY_ORDER = ['cadet', 'captain', 'admiral'];
+export const DEFAULT_DIFFICULTY = 'captain';
+
+export const WORLD = Object.freeze({
+    /** Soft edge of every sector; past it the helm is nudged back towards the centre. */
+    arenaRadius: 5200,
+    /** Longest simulation step. Larger frame gaps (tab switch) are clamped to this. */
+    maxStep: 1 / 20,
+    /** Seconds a destroyed ship stays in the world so its wreck effects can play. */
+    wreckLinger: 0.1,
+    /** Minimum seconds between two "hit" effect events from continuous beams on one target. */
+    beamHitEffectInterval: 0.14,
+});
+
+export const TARGETING = Object.freeze({
+    /** Max distance at which the player can lock a target. */
+    lockRange: 6000,
+    /** Half-angle (deg) used by "target nearest to crosshair". */
+    crosshairConeDeg: 25,
+});
+
+export const STORAGE_KEYS = Object.freeze({
+    save: 'echoesOfDawn.save.v1',
+    settings: 'echoesOfDawn.settings.v1',
+});
+
+/** Music tracks reuse the site's existing soundtrack (served from the asset bucket). */
+export const MUSIC_TRACKS = Object.freeze({
+    calm: 'music/bgm2.mp3',
+    battle: 'music/bgm6.mp3',
+    finale: 'music/bgm5.mp3',
+});
+
+/** How often (seconds) the React HUD receives a fresh snapshot of the simulation. */
+export const HUD_REFRESH_INTERVAL = 0.1;
