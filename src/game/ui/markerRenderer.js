@@ -1,0 +1,308 @@
+import { Quaternion, Vector3 } from 'three';
+import { FACTION } from '../config/gameConfig.js';
+import { WEAPONS } from '../config/weapons.js';
+import { t } from '../i18n/index.js';
+
+/**
+ * Draws the in-world HUD on a 2D canvas laid over the 3D view: reticle, target brackets,
+ * off-screen arrows, the waypoint, and the radar. Canvas drawing avoids hundreds of DOM
+ * updates per second; panels that change slowly are ordinary React components.
+ */
+
+const COLORS = Object.freeze({
+    [FACTION.UMBRA]: '#ff4b6e',
+    [FACTION.DAWN]: '#59d0ff',
+    [FACTION.NEUTRAL]: '#d8dde6',
+    waypoint: '#ffd36b',
+    torpedo: '#b6ff3d',
+    reticle: 'rgba(160, 225, 255, 0.85)',
+    reticleDim: 'rgba(160, 225, 255, 0.22)',
+});
+const FONT = '600 11px Orbitron, sans-serif';
+const EDGE_MARGIN = 46;
+const RADAR_RANGE = 3600;
+/** Must match the stick radius in input/InputController.js. */
+const STICK_RADIUS = 0.36;
+
+const scratchView = new Vector3();
+const scratchNdc = new Vector3();
+const scratchLocal = new Vector3();
+const scratchInverse = new Quaternion();
+
+/**
+ * Projects a world position to screen pixels.
+ * @returns {{ x: number, y: number, inFront: boolean, onScreen: boolean, distance: number }}
+ */
+function project(position, camera, width, height, out) {
+    scratchView.copy(position).applyMatrix4(camera.matrixWorldInverse);
+    out.inFront = scratchView.z < 0;
+    out.distance = scratchView.length();
+    scratchNdc.copy(position).project(camera);
+    out.x = (scratchNdc.x * 0.5 + 0.5) * width;
+    out.y = (-scratchNdc.y * 0.5 + 0.5) * height;
+    out.onScreen = out.inFront && out.x > 0 && out.x < width && out.y > 0 && out.y < height;
+    // For points behind the camera the projection mirrors; keep the true screen-space direction.
+    out.dirX = scratchView.x;
+    out.dirY = -scratchView.y;
+    return out;
+}
+
+function drawBrackets(ctx, x, y, half, corner) {
+    ctx.beginPath();
+    for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+        ctx.moveTo(x + sx * half, y + sy * (half - corner));
+        ctx.lineTo(x + sx * half, y + sy * half);
+        ctx.lineTo(x + sx * (half - corner), y + sy * half);
+    }
+    ctx.stroke();
+}
+
+function drawDiamond(ctx, x, y, size) {
+    ctx.beginPath();
+    ctx.moveTo(x, y - size);
+    ctx.lineTo(x + size, y);
+    ctx.lineTo(x, y + size);
+    ctx.lineTo(x - size, y);
+    ctx.closePath();
+    ctx.stroke();
+}
+
+/** Arrow on the screen edge pointing towards something that is not in view. */
+function drawEdgeArrow(ctx, projected, width, height, color, label) {
+    const centreX = width / 2;
+    const centreY = height / 2;
+    const length = Math.hypot(projected.dirX, projected.dirY) || 1;
+    const dx = projected.dirX / length;
+    const dy = projected.dirY / length;
+    const scale = Math.min((centreX - EDGE_MARGIN) / Math.abs(dx || 1e-6), (centreY - EDGE_MARGIN) / Math.abs(dy || 1e-6));
+    const x = centreX + dx * scale;
+    const y = centreY + dy * scale;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.atan2(dy, dx));
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(14, 0);
+    ctx.lineTo(-8, -9);
+    ctx.lineTo(-3, 0);
+    ctx.lineTo(-8, 9);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    if (label) {
+        ctx.fillStyle = color;
+        ctx.textAlign = 'center';
+        ctx.fillText(label, x - dx * 30, y - dy * 30 + 4);
+    }
+}
+
+function shipName(ship) {
+    return ship.callsign ?? t(ship.nameKey);
+}
+
+function drawBar(ctx, x, y, width, fraction, color) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+    ctx.fillRect(x, y, width, 3);
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, width * Math.max(0, Math.min(1, fraction)), 3);
+}
+
+function drawReticle(ctx, session, camera, width, height, stick) {
+    const centreX = width / 2;
+    const centreY = height / 2;
+    const player = session.world.player;
+    const focalLength = height / 2 / Math.tan((camera.fov * Math.PI) / 360);
+
+    // The ring shows the beam arrays' tracking cone: anything hostile inside it can be hit.
+    const arcRadius = Math.tan((WEAPONS.playerBeam.arcDeg * Math.PI) / 180) * focalLength;
+    ctx.strokeStyle = player.beamFiring ? 'rgba(255, 182, 72, 0.5)' : COLORS.reticleDim;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 9]);
+    ctx.beginPath();
+    ctx.arc(centreX, centreY, arcRadius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.strokeStyle = COLORS.reticle;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        ctx.moveTo(centreX + dx * 7, centreY + dy * 7);
+        ctx.lineTo(centreX + dx * 16, centreY + dy * 16);
+    }
+    ctx.stroke();
+
+    // Steering indicator: where the virtual stick currently is.
+    const stickRadius = Math.min(width, height) * STICK_RADIUS;
+    const stickX = centreX + stick.yaw * stickRadius;
+    const stickY = centreY - stick.pitch * stickRadius;
+    if (Math.hypot(stick.yaw, stick.pitch) > 0.02) {
+        ctx.strokeStyle = COLORS.reticleDim;
+        ctx.beginPath();
+        ctx.moveTo(centreX, centreY);
+        ctx.lineTo(stickX, stickY);
+        ctx.stroke();
+        ctx.strokeStyle = COLORS.reticle;
+        ctx.beginPath();
+        ctx.arc(stickX, stickY, 5, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+}
+
+const projected = { x: 0, y: 0, inFront: false, onScreen: false, distance: 0, dirX: 0, dirY: 0 };
+
+function drawShipMarkers(ctx, session, camera, width, height) {
+    const { world } = session;
+    const player = world.player;
+    const focalLength = height / 2 / Math.tan((camera.fov * Math.PI) / 360);
+    const escortTag = session.director.scene.escortTag;
+
+    for (const ship of world.ships) {
+        if (ship === player || !ship.alive || !ship.targetable) continue;
+        const isLocked = player.target === ship;
+        const isEscort = escortTag && ship.tags.has(escortTag);
+        const color = COLORS[ship.faction];
+        project(ship.position, camera, width, height, projected);
+
+        if (!projected.onScreen) {
+            if (isLocked) drawEdgeArrow(ctx, projected, width, height, color, null);
+            else if (isEscort) drawEdgeArrow(ctx, projected, width, height, color, shipName(ship));
+            continue;
+        }
+
+        const apparentRadius = ((ship.radius + ship.halfLength * 0.5) / projected.distance) * focalLength;
+        const half = Math.max(isLocked ? 16 : 9, Math.min(apparentRadius * 1.15, 150));
+        const hostile = ship.faction === FACTION.UMBRA;
+        ctx.strokeStyle = color;
+        ctx.globalAlpha = isLocked ? 1 : hostile ? 0.75 : 0.4;
+        ctx.lineWidth = isLocked ? 2 : 1;
+        drawBrackets(ctx, projected.x, projected.y, half, Math.max(4, half * 0.35));
+
+        if (isLocked || isEscort) {
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = color;
+            ctx.textAlign = 'center';
+            ctx.fillText(shipName(ship).toUpperCase(), projected.x, projected.y - half - 8);
+            if (isLocked) {
+                const surfaceDistance = Math.max(0, ship.distanceToPoint(player.position));
+                ctx.fillText(`${Math.round(surfaceDistance)} m`, projected.x, projected.y + half + 24);
+                const barWidth = Math.max(40, half * 1.6);
+                if (ship.maxShield > 0) drawBar(ctx, projected.x - barWidth / 2, projected.y + half + 5, barWidth, ship.shieldFraction, '#59d0ff');
+                drawBar(ctx, projected.x - barWidth / 2, projected.y + half + 10, barWidth, ship.hullFraction, ship.invulnerable ? '#c04dff' : '#ff4b6e');
+            }
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    // Incoming torpedoes are worth seeing: they can be shot down.
+    ctx.strokeStyle = COLORS.torpedo;
+    ctx.lineWidth = 1.5;
+    for (const projectile of world.projectiles) {
+        if (projectile.kind !== 'torpedo' || projectile.faction !== FACTION.UMBRA) continue;
+        project(projectile.position, camera, width, height, projected);
+        if (projected.onScreen) drawDiamond(ctx, projected.x, projected.y, 6);
+    }
+}
+
+function drawWaypoint(ctx, session, camera, width, height) {
+    const waypoint = session.waypoint;
+    if (!waypoint) return;
+    project(waypoint.position, camera, width, height, projected);
+    const label = waypoint.labelKey ? t(waypoint.labelKey) : '';
+    if (!projected.onScreen) {
+        drawEdgeArrow(ctx, projected, width, height, COLORS.waypoint, label);
+        return;
+    }
+    ctx.strokeStyle = COLORS.waypoint;
+    ctx.fillStyle = COLORS.waypoint;
+    ctx.lineWidth = 2;
+    drawDiamond(ctx, projected.x, projected.y, 11);
+    ctx.textAlign = 'center';
+    ctx.fillText(label, projected.x, projected.y - 20);
+    ctx.fillText(`${Math.round(projected.distance)} m`, projected.x, projected.y + 28);
+}
+
+/**
+ * Draws the full-screen marker layer.
+ * @param {CanvasRenderingContext2D} ctx already scaled so 1 unit = 1 CSS pixel
+ * @param {{ yaw: number, pitch: number }} stick current steering deflection
+ */
+export function drawMarkers(ctx, session, camera, width, height, stick) {
+    ctx.clearRect(0, 0, width, height);
+    const player = session.world.player;
+    if (!player?.alive || session.world.controlsLocked) return;
+    ctx.font = FONT;
+    drawReticle(ctx, session, camera, width, height, stick);
+    drawShipMarkers(ctx, session, camera, width, height);
+    drawWaypoint(ctx, session, camera, width, height);
+}
+
+/**
+ * Top-down radar: the player is at the centre, straight ahead is up. A short stalk shows
+ * whether a contact is above or below the player's wings.
+ */
+export function drawRadar(ctx, session, size) {
+    ctx.clearRect(0, 0, size, size);
+    const { world } = session;
+    const player = world.player;
+    if (!player?.alive) return;
+    const centre = size / 2;
+    const radius = centre - 4;
+
+    ctx.fillStyle = 'rgba(6, 18, 30, 0.55)';
+    ctx.strokeStyle = 'rgba(120, 210, 255, 0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(centre, centre, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(120, 210, 255, 0.18)';
+    ctx.beginPath();
+    ctx.arc(centre, centre, radius / 2, 0, Math.PI * 2);
+    ctx.moveTo(centre, centre - radius);
+    ctx.lineTo(centre, centre + radius);
+    ctx.moveTo(centre - radius, centre);
+    ctx.lineTo(centre + radius, centre);
+    ctx.stroke();
+
+    scratchInverse.copy(player.quaternion).invert();
+    const plot = (position, color, dotSize, ringed) => {
+        scratchLocal.copy(position).sub(player.position).applyQuaternion(scratchInverse);
+        const flat = Math.hypot(scratchLocal.x, scratchLocal.z);
+        // Contacts beyond radar range are pinned to the rim so they are never lost.
+        const scale = (flat > RADAR_RANGE ? RADAR_RANGE / flat : 1) * (radius / RADAR_RANGE);
+        const x = centre + scratchLocal.x * scale;
+        const y = centre + scratchLocal.z * scale;
+        const stalk = Math.max(-14, Math.min(14, (-scratchLocal.y / RADAR_RANGE) * radius * 1.5));
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y + stalk);
+        ctx.stroke();
+        ctx.fillRect(x - dotSize / 2, y + stalk - dotSize / 2, dotSize, dotSize);
+        if (ringed) {
+            ctx.beginPath();
+            ctx.arc(x, y + stalk, dotSize + 2.5, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+    };
+
+    for (const ship of world.ships) {
+        if (ship === player || !ship.alive || !ship.targetable) continue;
+        plot(ship.position, COLORS[ship.faction], ship.cls.kind === 'capital' ? 6 : 3.5, player.target === ship);
+    }
+    for (const projectile of world.projectiles) {
+        if (projectile.kind === 'torpedo' && projectile.faction === FACTION.UMBRA) plot(projectile.position, COLORS.torpedo, 2, false);
+    }
+    if (session.waypoint) plot(session.waypoint.position, COLORS.waypoint, 4, true);
+
+    // The player's own ship.
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(centre, centre - 5);
+    ctx.lineTo(centre + 4, centre + 4);
+    ctx.lineTo(centre - 4, centre + 4);
+    ctx.closePath();
+    ctx.fill();
+}

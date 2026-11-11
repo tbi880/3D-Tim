@@ -348,6 +348,11 @@ const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, r
                                     <div style={dividerStyle} ></div>
                                 </li>
 
+                                <li style={listItemStyle} className="menu-item">
+                                    <a href="/echoes_of_dawn" className="menu-link" target="_blank" rel="noopener noreferrer" onClick={(e) => handleClick(e, false)}>Game - Echoes of Dawn (space combat)</a>
+                                    <div style={dividerStyle} ></div>
+                                </li>
+
 
                                 <br /><br />
 

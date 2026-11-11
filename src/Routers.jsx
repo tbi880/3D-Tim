@@ -17,6 +17,7 @@ const ProjectDawn = lazy(() => import('./urls/ProjectDawn'));
 
 const ShipCasino = lazy(() => import('./urls/ShipCasino'));
 const ShipQuarter = lazy(() => import('./urls/ShipQuarter'));
+const EchoesOfDawn = lazy(() => import('./urls/EchoesOfDawn'));
 
 function Routers() {
     const [isWeChatBrowser, setIsWeChatBrowser] = useState(false);
@@ -105,6 +106,7 @@ function Routers() {
                         <Route path="/project_dawn" element={<ProjectDawn isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
                         <Route path="/ship_casino" element={<ProtectedRoute><ShipCasino isPortraitPhoneScreen={isPortraitPhoneScreen} /></ProtectedRoute>} />
                         <Route path="/ship_quarter" element={<ShipQuarter isPortraitPhoneScreen={isPortraitPhoneScreen} />} />
+                        <Route path="/echoes_of_dawn" element={<EchoesOfDawn />} />
                         <Route path="*" element={<NotFoundPage />} />
                     </Routes>
                 </Suspense>

@@ -1,0 +1,325 @@
+/*
+ * Echoes of Dawn - HUD and menu styles.
+ * Every class is prefixed "eod-" so nothing leaks into the rest of the site.
+ */
+
+.eod-root {
+    --eod-cyan: #59d0ff;
+    --eod-amber: #ffb648;
+    --eod-red: #ff4b6e;
+    --eod-green: #7dffa8;
+    --eod-violet: #c04dff;
+    --eod-panel: rgba(6, 16, 28, 0.62);
+    --eod-border: rgba(110, 205, 255, 0.35);
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: #000;
+    color: #dff4ff;
+    font-family: 'Orbitron', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    cursor: crosshair;
+}
+
+.eod-canvas-container {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}
+
+/* Transparent layer that receives fire clicks; sits above the canvas, below the HUD. */
+.eod-input-surface {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    touch-action: none;
+}
+
+.eod-hud {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+}
+
+.eod-marker-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* ---- Panels ----------------------------------------------------------------------------- */
+
+.eod-panel {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 12px 14px;
+    background: var(--eod-panel);
+    border: 1px solid var(--eod-border);
+    backdrop-filter: blur(3px);
+}
+
+.eod-status { left: 22px; bottom: 22px; width: 250px; border-radius: 4px 18px 4px 4px; }
+.eod-weapons { right: 22px; bottom: 22px; width: 250px; border-radius: 18px 4px 4px 4px; }
+.eod-target { right: 22px; top: 22px; width: 230px; border-radius: 4px 4px 4px 18px; }
+.eod-objective { left: 22px; top: 22px; width: min(340px, 34vw); border-radius: 4px 4px 18px 4px; }
+
+.eod-meter {
+    display: grid;
+    grid-template-columns: 74px 1fr 38px;
+    align-items: center;
+    gap: 8px;
+}
+.eod-meter-label { color: rgba(190, 230, 255, 0.72); font-size: 10px; text-transform: uppercase; }
+.eod-meter-track { height: 8px; background: rgba(255, 255, 255, 0.09); overflow: hidden; transform: skewX(-18deg); }
+.eod-meter-fill { height: 100%; background: var(--eod-cyan); transition: width 0.12s linear; }
+.eod-meter-value { text-align: right; font-size: 10px; }
+.eod-meter--hull .eod-meter-fill { background: var(--eod-green); }
+.eod-meter--energy .eod-meter-fill { background: var(--eod-amber); }
+.eod-meter--boost .eod-meter-fill { background: #b9c7ff; }
+.eod-meter--hostile .eod-meter-fill { background: var(--eod-red); }
+.eod-meter--locked .eod-meter-fill { background: var(--eod-violet); }
+.eod-meter--warning .eod-meter-fill { background: var(--eod-red); }
+.eod-meter--warning .eod-meter-label { color: var(--eod-red); animation: eod-blink 0.7s steps(2) infinite; }
+
+.eod-power { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.eod-power-mode { font-size: 9px; color: rgba(190, 230, 255, 0.45); display: inline-flex; align-items: center; gap: 4px; }
+.eod-power-mode kbd { font: inherit; padding: 1px 4px; border: 1px solid currentColor; border-radius: 2px; }
+.eod-power-mode--active { color: var(--eod-amber); }
+
+.eod-torpedoes { display: flex; align-items: center; gap: 10px; }
+.eod-torpedo-tubes { display: flex; gap: 5px; }
+.eod-torpedo { width: 9px; height: 16px; border: 1px solid var(--eod-cyan); border-radius: 5px 5px 1px 1px; opacity: 0.35; }
+.eod-torpedo--loaded { background: var(--eod-cyan); opacity: 1; box-shadow: 0 0 6px var(--eod-cyan); }
+
+.eod-speed { display: flex; align-items: baseline; gap: 6px; }
+.eod-speed-value { font-size: 22px; font-weight: 700; min-width: 48px; text-align: right; }
+.eod-speed-unit { font-size: 10px; margin-right: auto; }
+
+.eod-target-name { font-size: 14px; font-weight: 700; }
+.eod-target--umbra .eod-target-name { color: var(--eod-red); }
+.eod-target--dawn .eod-target-name { color: var(--eod-cyan); }
+.eod-target-name--none { color: rgba(190, 230, 255, 0.4); font-weight: 400; }
+.eod-target-distance { font-size: 11px; text-align: right; }
+
+.eod-objective-text { margin: 0; font-size: 13px; line-height: 1.45; color: #fff; letter-spacing: 0.03em; }
+
+/* ---- Fleet / boss bars ------------------------------------------------------------------ */
+
+.eod-fleet-bars {
+    position: absolute;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(430px, 36vw);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.eod-fleet-bar { padding: 8px 12px; background: var(--eod-panel); border: 1px solid var(--eod-border); display: flex; flex-direction: column; gap: 5px; }
+.eod-fleet-bar--boss { border-color: rgba(255, 75, 110, 0.5); }
+.eod-fleet-name { font-size: 12px; font-weight: 700; text-align: center; text-transform: uppercase; }
+.eod-fleet-bar--boss .eod-fleet-name { color: var(--eod-red); }
+.eod-fleet-bar--escort .eod-fleet-name { color: var(--eod-cyan); }
+
+/* ---- Centre stack: comms + radar -------------------------------------------------------- */
+
+.eod-centre-stack {
+    position: absolute;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: min(620px, calc(100vw - 600px));
+    min-width: 300px;
+}
+.eod-radar { width: 132px; height: 132px; }
+
+.eod-comms {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 14px;
+    background: rgba(4, 12, 22, 0.8);
+    border: 1px solid var(--speaker-color);
+    border-left-width: 4px;
+    box-shadow: 0 0 22px rgba(0, 0, 0, 0.6);
+    animation: eod-rise 0.25s ease-out;
+}
+.eod-comms-portrait {
+    flex: 0 0 62px;
+    height: 62px;
+    border: 1px solid var(--speaker-color);
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    background: rgba(255, 255, 255, 0.04);
+}
+.eod-comms-portrait img { width: 100%; height: 100%; object-fit: cover; }
+.eod-comms-glyph { width: 46px; height: 46px; }
+.eod-comms-body { flex: 1; position: relative; min-width: 0; }
+.eod-comms-header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.eod-comms-name { color: var(--speaker-color); font-weight: 700; font-size: 13px; }
+.eod-comms-role { font-size: 9px; color: rgba(200, 225, 240, 0.55); text-transform: uppercase; }
+.eod-comms-tag { font-size: 9px; color: var(--eod-red); animation: eod-blink 1s steps(2) infinite; }
+.eod-comms-text {
+    margin: 5px 0 12px;
+    min-height: 2.9em;
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-size: 15px;
+    line-height: 1.45;
+    letter-spacing: 0.01em;
+    color: #f2f9ff;
+}
+.eod-comms-skip { position: absolute; right: 0; bottom: -3px; font-size: 9px; color: rgba(200, 225, 240, 0.4); }
+.eod-comms--glitch .eod-comms-text { font-family: 'Orbitron', sans-serif; color: var(--eod-red); letter-spacing: 0.3em; animation: eod-glitch 0.18s steps(2) infinite; }
+
+/* ---- Transient elements ----------------------------------------------------------------- */
+
+.eod-alerts { position: absolute; top: 27%; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.eod-alert { padding: 4px 14px; font-size: 12px; font-weight: 700; color: var(--eod-red); border: 1px solid var(--eod-red); background: rgba(40, 0, 10, 0.55); animation: eod-blink 0.8s steps(2) infinite; }
+
+.eod-hint {
+    position: absolute;
+    top: 96px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: min(640px, 60vw);
+    padding: 8px 16px;
+    font-size: 12px;
+    line-height: 1.5;
+    text-align: center;
+    color: #06131f;
+    background: rgba(255, 211, 107, 0.92);
+    border-radius: 2px;
+}
+
+.eod-title-card { position: absolute; top: 30%; left: 0; right: 0; text-align: center; animation: eod-title-card 4.5s ease-in-out forwards; }
+.eod-title-card h2 { margin: 0; font-size: clamp(22px, 3.4vw, 46px); font-weight: 800; letter-spacing: 0.2em; text-shadow: 0 0 24px rgba(89, 208, 255, 0.7); }
+.eod-title-card p { margin: 12px 0 0; font-size: clamp(11px, 1.2vw, 16px); color: rgba(210, 235, 255, 0.8); letter-spacing: 0.18em; }
+
+.eod-toast { position: absolute; top: 200px; right: 22px; display: flex; flex-direction: column; gap: 3px; padding: 8px 14px; border-left: 3px solid var(--eod-green); background: var(--eod-panel); animation: eod-rise 0.3s ease-out; }
+.eod-toast strong { color: var(--eod-green); font-size: 11px; }
+.eod-toast span { font-size: 10px; color: rgba(210, 235, 255, 0.75); }
+
+.eod-damage-flash { position: absolute; inset: 0; animation: eod-flash 0.32s ease-out forwards; }
+.eod-damage-flash--shield { box-shadow: inset 0 0 120px 30px rgba(89, 208, 255, 0.5); }
+.eod-damage-flash--hull { box-shadow: inset 0 0 140px 40px rgba(255, 50, 60, 0.6); }
+.eod-warp-flash { position: absolute; inset: 0; background: #e8f6ff; animation: eod-flash 1.4s ease-out forwards; }
+
+/* ---- Screens (title, pause, game over, ending) ------------------------------------------- */
+
+.eod-screen {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 26px;
+    padding: 24px;
+    overflow-y: auto;
+    cursor: default;
+    text-align: center;
+    background: radial-gradient(ellipse at center, rgba(3, 8, 16, 0.35), rgba(3, 8, 16, 0.86));
+}
+.eod-screen--overlay { background: rgba(3, 8, 16, 0.8); backdrop-filter: blur(4px); }
+.eod-screen--failure { background: rgba(26, 2, 8, 0.82); }
+
+.eod-title-kicker { margin: 0; font-size: 13px; letter-spacing: 0.5em; color: var(--eod-amber); text-transform: uppercase; }
+.eod-title { margin: 8px 0; font-size: clamp(30px, 6vw, 84px); font-weight: 900; letter-spacing: 0.1em; color: #fff; text-shadow: 0 0 40px rgba(89, 208, 255, 0.75), 0 0 4px #fff; }
+.eod-title-tagline { margin: 0; font-size: clamp(12px, 1.3vw, 16px); color: rgba(215, 238, 255, 0.8); letter-spacing: 0.08em; }
+.eod-screen-heading { margin: 0; font-size: clamp(26px, 4.5vw, 56px); font-weight: 800; letter-spacing: 0.2em; }
+.eod-screen--failure .eod-screen-heading { color: var(--eod-red); }
+.eod-screen-text { margin: 0; max-width: 560px; font-size: 15px; line-height: 1.6; color: rgba(225, 240, 255, 0.85); }
+.eod-screen-footnote { margin: 0; font-size: 11px; color: rgba(225, 240, 255, 0.5); letter-spacing: 0.2em; }
+
+.eod-menu { display: flex; flex-direction: column; align-items: stretch; gap: 10px; width: min(380px, 86vw); }
+.eod-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 18px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: #dff4ff;
+    background: rgba(8, 22, 38, 0.7);
+    border: 1px solid var(--eod-border);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+.eod-button:hover, .eod-button:focus-visible { background: rgba(30, 80, 120, 0.6); border-color: var(--eod-cyan); color: #fff; transform: translateY(-1px); outline: none; }
+.eod-button--primary { border-color: var(--eod-amber); color: var(--eod-amber); }
+.eod-button small { font-size: 10px; font-weight: 400; letter-spacing: 0.04em; text-transform: none; color: rgba(225, 240, 255, 0.7); }
+
+.eod-settings { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+.eod-setting { display: flex; justify-content: space-between; gap: 8px; padding: 7px 10px; font: inherit; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(215, 238, 255, 0.75); background: rgba(8, 22, 38, 0.55); border: 1px solid rgba(110, 205, 255, 0.2); cursor: pointer; }
+.eod-setting:hover { border-color: var(--eod-cyan); }
+.eod-setting strong { color: var(--eod-cyan); font-weight: 600; }
+.eod-setting-hint { grid-column: 1 / -1; margin: 2px 0 0; font-size: 10px; color: rgba(215, 238, 255, 0.5); letter-spacing: 0.03em; }
+
+.eod-controls { margin: 0; display: flex; flex-direction: column; gap: 4px; text-align: left; }
+.eod-controls-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 5px 8px; font-size: 11px; background: rgba(8, 22, 38, 0.5); }
+.eod-controls-row dt { color: var(--eod-amber); font-weight: 600; }
+.eod-controls-row dd { margin: 0; color: rgba(225, 240, 255, 0.85); letter-spacing: 0.02em; }
+
+.eod-stats { display: flex; gap: 34px; margin: 0; }
+.eod-stats dt { font-size: 10px; color: rgba(215, 238, 255, 0.6); text-transform: uppercase; }
+.eod-stats dd { margin: 4px 0 0; font-size: 26px; font-weight: 700; color: var(--eod-amber); }
+
+/* ---- Touch controls (shown only on touch devices) ---------------------------------------- */
+
+.eod-touch { position: absolute; inset: 0; z-index: 4; pointer-events: none; display: none; }
+@media (pointer: coarse) {
+    .eod-touch { display: block; }
+    .eod-status, .eod-weapons { transform: scale(0.72); bottom: auto; top: 150px; }
+    .eod-status { transform-origin: left top; }
+    .eod-weapons { transform-origin: right top; top: 190px; }
+    .eod-radar { width: 92px; height: 92px; }
+    .eod-centre-stack { width: min(520px, calc(100vw - 380px)); bottom: 8px; }
+    .eod-comms-skip { display: none; }
+}
+.eod-touch-stick { position: absolute; left: 34px; bottom: 30px; width: 140px; height: 140px; border-radius: 50%; border: 2px solid var(--eod-border); background: rgba(6, 16, 28, 0.35); pointer-events: auto; touch-action: none; display: grid; place-items: center; }
+.eod-touch-knob { width: 56px; height: 56px; border-radius: 50%; background: rgba(89, 208, 255, 0.45); border: 2px solid var(--eod-cyan); }
+.eod-touch-buttons { position: absolute; right: 26px; bottom: 26px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; pointer-events: auto; }
+.eod-touch-button { width: 72px; height: 72px; border-radius: 50%; font: inherit; font-size: 11px; font-weight: 700; color: #dff4ff; background: rgba(6, 16, 28, 0.5); border: 2px solid var(--eod-border); touch-action: none; }
+.eod-touch-button--fire { border-color: var(--eod-amber); color: var(--eod-amber); }
+.eod-touch-button--torpedo { border-color: var(--eod-cyan); color: var(--eod-cyan); }
+.eod-touch-pause, .eod-touch-skip { position: absolute; top: 12px; width: 44px; height: 36px; font: inherit; font-weight: 700; color: #dff4ff; background: rgba(6, 16, 28, 0.5); border: 1px solid var(--eod-border); pointer-events: auto; }
+.eod-touch-pause { left: 50%; margin-left: -50px; }
+.eod-touch-skip { left: 50%; margin-left: 6px; }
+
+/* ---- Narrow screens ----------------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+    .eod-status, .eod-weapons { width: 200px; }
+    .eod-target { width: 180px; }
+    .eod-centre-stack { width: min(560px, 92vw); min-width: 0; bottom: 150px; }
+    .eod-fleet-bars { top: 110px; width: 60vw; }
+    .eod-hint { top: auto; bottom: 46%; max-width: 86vw; }
+}
+
+/* ---- Animations --------------------------------------------------------------------------- */
+
+@keyframes eod-blink { 50% { opacity: 0.35; } }
+@keyframes eod-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes eod-flash { from { opacity: 1; } to { opacity: 0; } }
+@keyframes eod-glitch { 0% { transform: translateX(-1px); } 100% { transform: translateX(1px); } }
+@keyframes eod-title-card {
+    0% { opacity: 0; letter-spacing: 0.5em; }
+    15%, 80% { opacity: 1; letter-spacing: normal; }
+    100% { opacity: 0; }
+}
