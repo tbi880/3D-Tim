@@ -283,8 +283,10 @@
 /* ---- Touch controls (shown only on touch devices) ---------------------------------------- */
 
 .eod-touch { position: absolute; inset: 0; z-index: 4; pointer-events: none; display: none; }
+.eod-touch-hint { display: none; margin: 10px 0 0; font-size: 11px; color: var(--eod-amber); }
 @media (pointer: coarse) {
     .eod-touch { display: block; }
+    .eod-touch-hint { display: block; }
     .eod-status, .eod-weapons { transform: scale(0.72); bottom: auto; top: 150px; }
     .eod-status { transform-origin: left top; }
     .eod-weapons { transform-origin: right top; top: 190px; }

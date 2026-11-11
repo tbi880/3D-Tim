@@ -82,6 +82,7 @@ function TitleScreen({ session, onStart }) {
                 <p className="eod-title-kicker">{t('ui.subtitle')}</p>
                 <h1 className="eod-title">{t('ui.title')}</h1>
                 <p className="eod-title-tagline">{t('ui.tagline')}</p>
+                <p className="eod-touch-hint">{t('ui.touchHint')}</p>
             </div>
             {view === 'main' ? (
                 <div className="eod-menu">

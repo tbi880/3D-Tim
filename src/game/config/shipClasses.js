@@ -13,7 +13,8 @@ import { FACTION } from './gameConfig.js';
  *   'static'  - does nothing (scenery such as the log buoy)
  *
  * radius / halfLength describe the hit shape: a capsule along the ship's nose axis.
- * ai.prefers lists target kinds in order of preference ('player', 'capital', 'fighter').
+ * ai.prefers lists target kinds in order of preference
+ * ('player', 'bomber', 'fighter', 'capital').
  */
 export const SHIP_CLASSES = Object.freeze({
     // ---- Dawn fleet ---------------------------------------------------------------------
@@ -46,7 +47,7 @@ export const SHIP_CLASSES = Object.freeze({
         hull: 60, shield: 40, shieldRegen: 5, shieldDelay: 5,
         maxSpeed: 110, turnRate: 1.5, acceleration: 70,
         weapons: ['dartBolt'],
-        ai: { attackRange: 700, breakDistance: 110, prefers: ['fighter', 'capital'] },
+        ai: { attackRange: 700, breakDistance: 110, prefers: ['bomber', 'fighter', 'capital'] },
     },
     buoy: {
         nameKey: 'ship.buoy', faction: FACTION.NEUTRAL, behavior: 'static', kind: 'object',

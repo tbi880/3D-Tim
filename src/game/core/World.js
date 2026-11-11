@@ -24,19 +24,19 @@ function toVector3(value, out = new Vector3()) {
 function generateAsteroids(config) {
     if (!config) return [];
     const rng = createRng(config.seed);
+    const clearings = config.clearings ?? [];
     const asteroids = [];
     for (let i = 0; i < config.count; i++) {
-        asteroids.push({
-            position: new Vector3(
-                config.centre[0] + randomRange(rng, -1, 1) * config.spread[0],
-                config.centre[1] + randomRange(rng, -1, 1) * config.spread[1],
-                config.centre[2] + randomRange(rng, -1, 1) * config.spread[2],
-            ),
-            // Squaring biases the field towards small rocks with a few big ones.
-            radius: config.minRadius + (config.maxRadius - config.minRadius) * rng() ** 2,
-            spin: randomRange(rng, -0.25, 0.25),
-            seed: rng(),
-        });
+        const position = new Vector3(
+            config.centre[0] + randomRange(rng, -1, 1) * config.spread[0],
+            config.centre[1] + randomRange(rng, -1, 1) * config.spread[1],
+            config.centre[2] + randomRange(rng, -1, 1) * config.spread[2],
+        );
+        // Squaring biases the field towards small rocks with a few big ones.
+        const radius = config.minRadius + (config.maxRadius - config.minRadius) * rng() ** 2;
+        const seed = rng();
+        const blocked = clearings.some(([x, y, z, clearRadius]) => position.distanceTo(scratchVector.set(x, y, z)) < clearRadius + radius);
+        if (!blocked) asteroids.push({ position, radius, seed });
     }
     return asteroids;
 }

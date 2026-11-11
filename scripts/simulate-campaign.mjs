@@ -1,7 +1,7 @@
 /**
  * Headless play-through of "Echoes of Dawn".
  *
- *   npm run game:simulate            # whole campaign + reload of every checkpoint
+ *   npm run game:simulate            # whole campaign, every checkpoint reload, careless pilot
  *   npm run game:simulate -- --quiet # only print the summary
  *
  * The simulation core has no browser dependencies, so an autopilot can fly the entire
@@ -32,15 +32,20 @@ const scratchLocal = new Vector3();
 const scratchInverse = new Quaternion();
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
-/** Chooses what the autopilot should be shooting at. */
-function pickTarget(world) {
+/**
+ * Chooses what the autopilot should be shooting at. The "focused" pilot goes for objectives
+ * and torpedo bombers first; the "careless" one just attacks whatever is nearest, which
+ * checks that a player who ignores the hints can still finish the story.
+ */
+function pickTarget(world, focused) {
     const player = world.player;
     const hostiles = world.ships.filter((ship) => ship.alive && ship.targetable && ship.faction === FACTION.UMBRA);
     if (hostiles.length === 0) return null;
     const priority = (ship) => {
+        if (ship.invulnerable) return 50;
+        if (!focused) return 1;
         if (ship.cls.kind === 'module') return 0.5;
         if (ship.classId === 'lancer') return 0.6;
-        if (ship.invulnerable) return 50;
         return 1;
     };
     hostiles.sort((a, b) => a.position.distanceTo(player.position) * priority(a) - b.position.distanceTo(player.position) * priority(b));
@@ -48,14 +53,14 @@ function pickTarget(world) {
 }
 
 /** A simple but honest pilot: it uses the same controls a human has. */
-function autopilot(session) {
+function autopilot(session, focused = true) {
     const { world } = session;
     const player = world.player;
     const controls = { yaw: 0, pitch: 0, roll: 0, throttle: 1, boost: false, firePrimary: false, fireSecondary: false };
     if (!player?.alive) return controls;
 
     const mustHoldLock = session.director.scene.objectiveKey === 'objective.paintTarget';
-    let target = mustHoldLock ? world.findByTag('eclipse') : pickTarget(world);
+    let target = mustHoldLock ? world.findByTag('eclipse') : pickTarget(world, focused);
     if (target && player.target !== target) world.setPlayerTarget(target);
 
     let destination = target?.position ?? session.waypoint?.position ?? null;
@@ -98,12 +103,12 @@ function createSession() {
  * Flies until `stop(session)` is true, the story ends, or time runs out.
  * @returns {{ reason: string, retries: number, seconds: number }}
  */
-function fly(session, stop) {
+function fly(session, stop, focused = true) {
     let retries = 0;
     let seconds = 0;
     while (seconds < MAX_STORY_SECONDS) {
         session.comms.skip();
-        session.update(STEP, autopilot(session));
+        session.update(STEP, autopilot(session, focused));
         seconds += STEP;
         if (session.phase === PHASE.ENDING) return { reason: 'ending', retries, seconds };
         if (session.phase === PHASE.GAME_OVER) {
@@ -158,5 +163,13 @@ for (const [index, checkpointId] of expected.entries()) {
     if (!ok) fail(`after loading ${checkpointId} the story stopped with "${result.reason}"`);
     log(`  ✓ ${checkpointId} → ${isLast ? 'ending' : 'next checkpoint'} in ${(result.seconds / 60).toFixed(1)} min (${result.retries} losses)`);
 }
+
+// --- 3. A careless pilot must also be able to finish ---------------------------------------
+log('\nCareless pilot:');
+const { session: careless } = createSession();
+careless.newGame();
+const sloppy = fly(careless, null, false);
+if (sloppy.reason !== 'ending') fail(`the careless pilot stopped with "${sloppy.reason}" (objective ${careless.director.scene.objectiveKey})`);
+log(`  ✓ finished in ${(careless.stats.time / 60).toFixed(1)} min with ${sloppy.retries} losses`);
 
 console.log(`\nCampaign OK: ${(session.stats.time / 60).toFixed(1)} min of story, ${session.stats.kills} kills, ${full.retries} autopilot losses, ${expected.length} checkpoints.`);

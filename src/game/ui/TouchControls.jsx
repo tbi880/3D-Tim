@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { useT } from '../state/gameStore.js';
+import { PHASE } from '../state/GameSession.js';
+import { useGameStore, useT } from '../state/gameStore.js';
 
 const STICK_TRAVEL = 52;
 
@@ -10,6 +11,7 @@ const STICK_TRAVEL = 52;
  */
 export default function TouchControls({ input, session }) {
     const t = useT();
+    const phase = useGameStore((state) => state.phase);
     const [knob, setKnob] = useState({ x: 0, y: 0 });
     const origin = useRef(null);
 
@@ -44,6 +46,8 @@ export default function TouchControls({ input, session }) {
         onPointerUp: () => input.setHeld(name, false),
         onPointerCancel: () => input.setHeld(name, false),
     });
+
+    if (phase !== PHASE.PLAYING) return null;
 
     return (
         <div className="eod-touch">

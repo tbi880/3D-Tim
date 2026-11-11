@@ -136,10 +136,12 @@ function FleetBars() {
 
 function Alerts() {
     const hud = useGameStore((state) => state.hud);
+    const escort = useGameStore((state) => state.escort);
     const t = useT();
     if (!hud?.alive) return null;
     const alerts = [];
     if (hud.outOfBounds) alerts.push('hud.outOfBounds');
+    if (escort && escort.hull < 0.3) alerts.push('hud.escortCritical');
     if (hud.hull < 0.3) alerts.push('hud.hullCritical');
     else if (hud.shield <= 0.01) alerts.push('hud.shieldsDown');
     if (alerts.length === 0) return null;
@@ -251,7 +253,6 @@ export default function GameHud({ session, markerCanvasRef, radarCanvasRef }) {
                     </div>
                 </>
             )}
-            {phase === PHASE.ENDING && <div className="eod-centre-stack"><CommsPanel /></div>}
         </div>
     );
 }

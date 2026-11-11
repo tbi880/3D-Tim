@@ -27,6 +27,7 @@ const LEAD_SPEED = 520;
 function targetKindFor(ship, other) {
     const prefers = ship.cls.ai?.prefers ?? DEFAULT_PREFERENCES;
     if (other.isPlayer && prefers.includes('player')) return 'player';
+    if (other.cls.behavior === 'bomber' && prefers.includes('bomber')) return 'bomber';
     return other.cls.kind;
 }
 

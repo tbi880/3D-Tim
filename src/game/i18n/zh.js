@@ -86,6 +86,7 @@ export default {
     'hud.outOfBounds': '正在离开作战区域 —— 舵机自动修正中',
     'hud.shieldsDown': '护盾失效',
     'hud.hullCritical': '船体告急',
+    'hud.escortCritical': '破晓号船体告急',
     'hud.skip': 'ENTER ▸',
     'hud.recording': '录音',
     'hud.fire': '开火',
@@ -192,6 +193,8 @@ export default {
     'hold.tim.pointDefense': '近防系统上线——来得正好。那是一艘守望舰。我终于能还手了！',
     'hold.tim.coreFull': '核心充能百分之百！正在启动——',
     'hold.vega.signature': '探测到巨型曲速信号。指挥官……它比破晓号还大。其余敌舰正在后撤，给它让路。',
+    'fleet.tim.hullHalf': '我这边船体只剩一半了！指挥官，快把那些雷击艇清掉！',
+    'fleet.tim.hullCritical': '我们快散架了！红隼号——雷击艇和它们的鱼雷，马上！',
 
     // ---- 第三章 -------------------------------------------------------------------------
     'eclipse.umbra.yield': '曙光核心。交出。',

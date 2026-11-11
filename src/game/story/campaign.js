@@ -57,6 +57,14 @@ const trackCoreCharge = () => [
     ]),
 ];
 
+/** Tim calls for help as the Dawnbreaker's hull drops. Declared again after each checkpoint. */
+const escortWarnings = () => background('escortWarnings', [
+    waitUntil((ctx) => (shipByTag(ctx, TAG.DAWNBREAKER)?.hullFraction ?? 1) < 0.5),
+    say('tim', 'fleet.tim.hullHalf', { wait: false }),
+    waitUntil((ctx) => (shipByTag(ctx, TAG.DAWNBREAKER)?.hullFraction ?? 1) < 0.25),
+    say('tim', 'fleet.tim.hullCritical', { wait: false }),
+]);
+
 /** Keeps a trickle of fighters coming so the Eclipse battle never goes quiet. */
 const eclipseReinforcements = () => background('eclipseReinforcements', [
     repeatWhile(() => true, [
@@ -240,6 +248,7 @@ const holdTheLine = [
     music('battle'),
     escort(TAG.DAWNBREAKER),
     ...trackCoreCharge(),
+    escortWarnings(),
     say('tim', 'hold.tim.welcome'),
     say('tim', 'hold.tim.status'),
     objective('objective.protectDawnbreaker'),
@@ -261,6 +270,7 @@ const holdTheLine = [
     checkpoint('cinder-siege'),
     music('battle'),
     ...trackCoreCharge(),
+    escortWarnings(),
 
     // Wave 3: the Dawnbreaker's hangar comes back to life.
     say('tim', 'hold.tim.darts'),
@@ -306,6 +316,7 @@ const eclipse = [
     music('finale'),
     escort(TAG.DAWNBREAKER),
     run(spawnEclipse),
+    escortWarnings(),
     spawn('drone', { count: 4, group: 'eclipseWing', at: around(TAG.ECLIPSE, 500) }),
     spawn('raider', { count: 2, group: 'eclipseWing', at: around(TAG.ECLIPSE, 500) }),
     bossBar(TAG.ECLIPSE),
@@ -336,6 +347,7 @@ const eclipse = [
     music('finale'),
     objective('objective.generators', remainingIn('generators')),
     eclipseReinforcements(),
+    escortWarnings(),
     spawn('lancer', { count: 3, group: 'eclipseWing', targetTag: TAG.DAWNBREAKER, at: around(TAG.ECLIPSE, 600) }),
     say('tim', 'eclipse.tim.bombers', { wait: false }),
     waitForGroup('generators'),
@@ -353,6 +365,7 @@ const eclipse = [
     holdLock(TAG.ECLIPSE, 8, 'firingSolution'),
     hint(null),
     stopBackground('eclipseReinforcements'),
+    stopBackground('escortWarnings'),
     say('tim', 'eclipse.tim.firing', { wait: false }),
     wait(1.6),
     run(fireDawnCannon),

@@ -86,6 +86,7 @@ export default {
     'hud.outOfBounds': 'LEAVING THE COMBAT ZONE — HELM CORRECTING',
     'hud.shieldsDown': 'SHIELDS DOWN',
     'hud.hullCritical': 'HULL CRITICAL',
+    'hud.escortCritical': 'DAWNBREAKER HULL CRITICAL',
     'hud.skip': 'ENTER ▸',
     'hud.recording': 'RECORDING',
     'hud.fire': 'FIRE',
@@ -192,6 +193,8 @@ export default {
     'hold.tim.pointDefense': 'Point defense is up — and just in time. That is a warden. I can finally shoot back!',
     'hold.tim.coreFull': 'Core at one hundred percent! Spinning up the—',
     'hold.vega.signature': 'Massive warp signature. Commander… it is bigger than the Dawnbreaker. The others are pulling back to make room.',
+    'fleet.tim.hullHalf': 'Hull at fifty percent over here! Commander, I need those lancers gone!',
+    'fleet.tim.hullCritical': 'We are coming apart! Kestrel — the lancers and their torpedoes, now!',
 
     // ---- Chapter 3 ----------------------------------------------------------------------
     'eclipse.umbra.yield': 'DAWN CORE. YIELD.',

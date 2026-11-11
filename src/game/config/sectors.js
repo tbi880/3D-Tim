@@ -7,6 +7,9 @@
  *   direction - where in the sky (does not need to be normalised)
  *   size      - apparent diameter, in units at SKY_DISTANCE (see scene/SectorBackdrop.jsx)
  *   modelSize - the model's own diameter in its file, used to normalise the scale
+ *
+ * asteroids.clearings lists `[x, y, z, radius]` spheres that are kept free of rocks, so
+ * nothing the story places (the player, the buoy, the warden) starts inside one.
  */
 export const SECTORS = Object.freeze({
     collapse: {
@@ -25,7 +28,10 @@ export const SECTORS = Object.freeze({
                 rotation: [0.35, 0, 0.2], animation: 'Animation', animationSpeed: 0.3,
             },
         ],
-        asteroids: { count: 70, centre: [0, -40, -1500], spread: [1500, 420, 1500], minRadius: 8, maxRadius: 42, seed: 7 },
+        asteroids: {
+            count: 70, centre: [0, -40, -1500], spread: [1500, 420, 1500], minRadius: 8, maxRadius: 42, seed: 7,
+            clearings: [[0, -30, -1400, 260], [0, 0, 0, 300]],
+        },
     },
     veil: {
         id: 'veil',
@@ -43,7 +49,10 @@ export const SECTORS = Object.freeze({
                 rotation: [0.1, 0, 0.3],
             },
         ],
-        asteroids: { count: 120, centre: [0, 0, -1300], spread: [2300, 520, 2000], minRadius: 10, maxRadius: 70, seed: 21 },
+        asteroids: {
+            count: 120, centre: [0, 0, -1300], spread: [2300, 520, 2000], minRadius: 10, maxRadius: 70, seed: 21,
+            clearings: [[260, 90, -1500, 380], [0, 0, 600, 300]],
+        },
     },
     cinder: {
         id: 'cinder',

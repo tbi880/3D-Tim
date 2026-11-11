@@ -7,8 +7,6 @@
  * property name ends in "Deg".
  */
 
-export const GAME_ROUTE = '/echoes_of_dawn';
-
 export const FACTION = Object.freeze({
     DAWN: 'dawn',
     UMBRA: 'umbra',
@@ -62,8 +60,6 @@ export const WORLD = Object.freeze({
     arenaRadius: 5200,
     /** Longest simulation step. Larger frame gaps (tab switch) are clamped to this. */
     maxStep: 1 / 20,
-    /** Seconds a destroyed ship stays in the world so its wreck effects can play. */
-    wreckLinger: 0.1,
     /** Minimum seconds between two "hit" effect events from continuous beams on one target. */
     beamHitEffectInterval: 0.14,
 });

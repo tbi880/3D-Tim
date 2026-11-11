@@ -48,7 +48,7 @@ export const WEAPONS = Object.freeze({
         color: DAWN_TORPEDO, targets: 'capital',
     },
     pointDefenseBeam: {
-        type: 'beam', turret: true, range: 900, dps: 30, duty: [1.1, 1.6],
+        type: 'beam', turret: true, range: 950, dps: 40, duty: [1.6, 1.1],
         shieldMult: 1.2, hullMult: 1, color: DAWN_BEAM, width: 0.9, targets: 'smallFirst',
     },
 
@@ -62,8 +62,8 @@ export const WEAPONS = Object.freeze({
         range: 720, spreadDeg: 1.7, color: UMBRA_BOLT,
     },
     lancerTorpedo: {
-        type: 'torpedo', range: 1350, speed: 135, turnRate: 0.9, damage: 115, shieldMult: 0.6,
-        hullMult: 1.3, lifetime: 24, cooldown: 10, radius: 3.4, hp: 16, color: UMBRA_TORPEDO,
+        type: 'torpedo', range: 1350, speed: 135, turnRate: 0.9, damage: 95, shieldMult: 0.6,
+        hullMult: 1.3, lifetime: 24, cooldown: 12, radius: 3.4, hp: 16, color: UMBRA_TORPEDO,
         aimConeDeg: 30,
     },
     turretBolt: {
@@ -75,8 +75,8 @@ export const WEAPONS = Object.freeze({
         shieldMult: 1.2, hullMult: 0.8, color: UMBRA_BEAM, width: 1.4, targets: 'capitalFirst',
     },
     eclipseLance: {
-        type: 'lance', range: 6000, dps: 85, chargeTime: 4.5, fireTime: 3, cooldown: 13,
+        type: 'lance', range: 6000, dps: 65, chargeTime: 4.5, fireTime: 3, cooldown: 13,
         slewRate: 0.05, corridorRadius: 55, shieldMult: 1, hullMult: 1, color: UMBRA_BEAM,
-        width: 14, mount: [0, 0, -430],
+        width: 30, mount: [0, 0, -430],
     },
 });

@@ -40,7 +40,3 @@ export function translate(locale, key, params) {
 export function t(key, params) {
     return translate(activeLocale, key, params);
 }
-
-export function hasText(key) {
-    return key in en;
-}
