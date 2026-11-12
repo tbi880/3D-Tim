@@ -37,6 +37,8 @@ export const PLAYER = Object.freeze({
     startThrottle: 0.5,
     /** Checkpoints always hand the ship back with at least this hull fraction. */
     checkpointMinHull: 0.75,
+    /** ...and allied capital ships (the Dawnbreaker, the frigates) with at least this much. */
+    checkpointMinAllyHull: 0.5,
 });
 
 /** "Divert power" presets, switched with the 1 / 2 / 3 keys. */

@@ -298,6 +298,13 @@ export class GameSession {
                 if (weapon.def.capacity) weapon.ammo = weapon.def.capacity;
             }
         }
+        // The same breather for the big ships being protected: a checkpoint must never lock in
+        // a flagship that is one hit from destruction.
+        for (const ship of this.world.ships) {
+            if (ship.alive && !ship.isPlayer && ship.faction === FACTION.DAWN && ship.cls.kind === 'capital') {
+                ship.hull = Math.max(ship.hull, ship.maxHull * PLAYER.checkpointMinAllyHull);
+            }
+        }
         const saved = writeSave({
             checkpointId,
             world: this.world.serialize(),
