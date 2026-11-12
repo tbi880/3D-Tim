@@ -20,9 +20,11 @@ const scratchRandom = new Vector3();
 
 const DEFAULT_PREFERENCES = ['fighter', 'capital'];
 /** How far from a capital hull small craft start steering away (world units). */
-const AVOID_MARGIN = 90;
+const AVOID_MARGIN = 110;
+/** Ship kinds that small craft steer around. */
+const SOLID_KINDS = new Set(['capital', 'station', 'object']);
 /** Bolt speed assumed when leading a target (close enough for every fighter weapon). */
-const LEAD_SPEED = 520;
+const LEAD_SPEED = 640;
 
 function targetKindFor(ship, other) {
     const prefers = ship.cls.ai?.prefers ?? DEFAULT_PREFERENCES;
@@ -70,15 +72,16 @@ function refreshTarget(world, ship, dt) {
 /** Bends `desired` away from capital hulls and asteroids that are too close. */
 function avoidObstacles(world, ship, desired) {
     for (const other of world.ships) {
-        if (other === ship || !other.alive || other.cls.kind !== 'capital') continue;
-        const margin = AVOID_MARGIN + ship.radius;
+        if (other === ship || !other.alive || other.arriving || !SOLID_KINDS.has(other.cls.kind)) continue;
+        const margin = AVOID_MARGIN + ship.boundingRadius;
         const distance = other.distanceToPoint(ship.position);
         if (distance > margin) continue;
-        other.closestAxisPoint(ship.position, scratchAxisPoint);
+        other.closestPoint(ship.position, scratchAxisPoint);
         scratchAway.copy(ship.position).sub(scratchAxisPoint).normalize();
         desired.addScaledVector(scratchAway, (1 - Math.max(0, distance) / margin) * 3);
     }
     for (const obstacle of world.obstacles) {
+        if (!obstacle.alive) continue;
         const margin = obstacle.radius + 50;
         const distanceSq = obstacle.position.distanceToSquared(ship.position);
         if (distanceSq > margin * margin) continue;
@@ -126,11 +129,11 @@ function updateFighter(world, ship, dt) {
     }
     const config = ship.cls.ai;
     scratchToTarget.copy(target.position).sub(ship.position);
-    const distance = scratchToTarget.length() - target.radius;
+    const distance = target.distanceToPoint(ship.position);
     ai.stateTimer -= dt;
 
     if (ai.state === 'break') {
-        if (ai.stateTimer <= 0 || distance > 2400) ai.state = 'attack';
+        if (ai.stateTimer <= 0 || distance > 3200) ai.state = 'attack';
         steer(world, ship, scratchDesired.copy(ai.breakDirection), 1, dt);
         return;
     }
@@ -216,7 +219,7 @@ function updateFleeing(world, ship, dt) {
 
 export function updateAI(world, ship, dt) {
     const behavior = ship.cls.behavior;
-    if (behavior === 'module' || behavior === 'static') return;
+    if (behavior === 'module' || behavior === 'static' || ship.arriving) return;
     if (ship.ai.mode === 'flee') {
         updateFleeing(world, ship, dt);
         return;

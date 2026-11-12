@@ -40,8 +40,10 @@ export const GAME_EVENTS = Object.freeze({
     HIT: 'hit',
     /** { ship, weapon, kind: 'bolt' | 'torpedo' } */
     WEAPON_FIRED: 'weaponFired',
-    /** { position, size } */
+    /** { position, size, quaternion? } - a ship dropped out of / jumped into warp here */
     WARP_FLASH: 'warpFlash',
+    /** { position, radius } - an asteroid was blown apart */
+    OBSTACLE_DESTROYED: 'obstacleDestroyed',
     /** { ship, weapon } - a lance started charging */
     LANCE_CHARGING: 'lanceCharging',
     /** { ship, weapon } */
@@ -50,6 +52,8 @@ export const GAME_EVENTS = Object.freeze({
     PLAYER_COLLISION: 'playerCollision',
     /** { target } - the player's lock changed (target may be null) */
     TARGET_CHANGED: 'targetChanged',
+    /** { sectorId } - the world moved to another sector; positions from the old one mean nothing now */
+    SECTOR_CHANGED: 'sectorChanged',
     /** {} - the player tried to fire with an empty capacitor / no torpedoes */
     WEAPON_EMPTY: 'weaponEmpty',
 });

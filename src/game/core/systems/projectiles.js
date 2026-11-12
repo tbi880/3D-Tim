@@ -1,6 +1,7 @@
 import { Vector3 } from 'three';
-import { GAME_EVENTS } from '../EventBus.js';
+import { FACTION } from '../../config/gameConfig.js';
 import { applyDamage, areHostile, destroyProjectile } from './damage.js';
+import { damageObstacle } from './obstacles.js';
 
 const scratchDesired = new Vector3();
 const scratchDirection = new Vector3();
@@ -33,7 +34,9 @@ function hitShip(world, projectile, ship) {
 function findHit(world, projectile) {
     scratchMidpoint.copy(projectile.position).add(projectile.previousPosition).multiplyScalar(0.5);
     for (const ship of world.ships) {
-        if (!ship.alive || !areHostile(projectile, ship)) continue;
+        if (!ship.alive || ship.arriving) continue;
+        // Shots hit enemies, and are also stopped by neutral scenery (wrecks, buoys).
+        if (!areHostile(projectile, ship) && ship.faction !== FACTION.NEUTRAL) continue;
         const reach = projectile.radius;
         if (ship.distanceToPoint(projectile.position) <= reach || ship.distanceToPoint(scratchMidpoint) <= reach) {
             return ship;
@@ -42,12 +45,13 @@ function findHit(world, projectile) {
     return null;
 }
 
-function hitsObstacle(world, projectile) {
+function findObstacleHit(world, projectile) {
     for (const obstacle of world.obstacles) {
+        if (!obstacle.alive) continue;
         const reach = obstacle.radius + projectile.radius;
-        if (obstacle.position.distanceToSquared(projectile.position) <= reach * reach) return true;
+        if (obstacle.position.distanceToSquared(projectile.position) <= reach * reach) return obstacle;
     }
-    return false;
+    return null;
 }
 
 export function updateProjectiles(world, dt) {
@@ -65,8 +69,11 @@ export function updateProjectiles(world, dt) {
         const ship = findHit(world, projectile);
         if (ship) {
             hitShip(world, projectile, ship);
-        } else if (hitsObstacle(world, projectile)) {
-            world.events.emit(GAME_EVENTS.HIT, { target: null, position: projectile.position, shield: false, amount: 0 });
+            continue;
+        }
+        const obstacle = findObstacleHit(world, projectile);
+        if (obstacle) {
+            damageObstacle(world, obstacle, projectile.def.damage * projectile.damageScale, projectile.position);
             destroyProjectile(world, projectile, projectile.kind === 'torpedo');
         }
     }

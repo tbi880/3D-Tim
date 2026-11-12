@@ -1,11 +1,58 @@
 import { Vector3, Quaternion } from 'three';
 import { PLAYER } from '../config/gameConfig.js';
-import { clamp, forwardOf } from './math.js';
+import { clamp } from './math.js';
 
 let nextShipId = 1;
 
-const scratchAxisPoint = new Vector3();
-const scratchForward = new Vector3();
+const scratchLocal = new Vector3();
+const scratchCandidate = new Vector3();
+const AXES = ['x', 'y', 'z'];
+
+/** Builds the list of hit boxes ({ centre, half } in the ship's own axes) from a class definition. */
+function createBoxes(cls) {
+    if (cls.hitBoxes) {
+        return cls.hitBoxes.map(([cx, cy, cz, hx, hy, hz]) => ({ centre: new Vector3(cx, cy, cz), half: new Vector3(hx, hy, hz) }));
+    }
+    if (cls.halfExtents) return [{ centre: new Vector3(), half: new Vector3().fromArray(cls.halfExtents) }];
+    return null;
+}
+
+function overallHalfExtents(boxes) {
+    const half = new Vector3();
+    for (const box of boxes) {
+        for (const axis of AXES) half[axis] = Math.max(half[axis], Math.abs(box.centre[axis]) + box.half[axis]);
+    }
+    return half;
+}
+
+function clampToBox(point, box, out) {
+    for (const axis of AXES) {
+        out[axis] = clamp(point[axis], box.centre[axis] - box.half[axis], box.centre[axis] + box.half[axis]);
+    }
+    return out;
+}
+
+/** Slab test: distance along a ray (in the ship's axes) to a box, or Infinity. */
+function raycastBox(origin, direction, box) {
+    let near = -Infinity;
+    let far = Infinity;
+    for (const axis of AXES) {
+        const start = origin[axis] - box.centre[axis];
+        const step = direction[axis];
+        if (Math.abs(step) < 1e-9) {
+            if (Math.abs(start) > box.half[axis]) return Infinity;
+            continue;
+        }
+        const t1 = (-box.half[axis] - start) / step;
+        const t2 = (box.half[axis] - start) / step;
+        near = Math.max(near, Math.min(t1, t2));
+        far = Math.min(far, Math.max(t1, t2));
+        if (near > far) return Infinity;
+    }
+    return far < 0 ? Infinity : Math.max(near, 0);
+}
+const scratchInverse = new Quaternion();
+const scratchDirection = new Vector3();
 
 /**
  * One ship (or ship-like object) in the simulation. It is a plain data holder: behaviour
@@ -38,8 +85,17 @@ export class Ship {
         this.speed = 0;
         this.throttle = this.isPlayer ? PLAYER.startThrottle : 1;
 
+        /**
+         * Hit shape. Small craft are spheres of `radius`. Larger ships are one or more boxes
+         * that turn with the ship: `halfExtents` [x, y, z] is a single box around the centre,
+         * `hitBoxes` [[cx, cy, cz, hx, hy, hz], ...] is several (hull, blades, towers...).
+         */
         this.radius = cls.radius;
-        this.halfLength = cls.halfLength ?? 0;
+        this.boxes = createBoxes(cls);
+        /** Half size of the whole ship (x = half width, y = half height, z = half length), or null for spheres. */
+        this.halfExtents = this.boxes ? overallHalfExtents(this.boxes) : null;
+        /** Radius of the sphere that encloses the whole hit shape (markers, effects, spacing). */
+        this.boundingRadius = this.halfExtents ? this.halfExtents.length() : cls.radius;
 
         this.maxHull = cls.hull;
         this.hull = cls.hull * clamp(options.hullFraction ?? 1, 0.01, 1);
@@ -77,6 +133,9 @@ export class Ship {
         this.mountOffset = null;
 
         this.spawnTime = 0;
+        /** Seconds left of the warp-in animation (see `arriving`), and its total length. */
+        this.warpTimer = 0;
+        this.warpDuration = 1;
         this.lastDamagedAt = -Infinity;
         /** World time of the last hit absorbed by shields (drives the shield shimmer). */
         this.lastShieldHitAt = -Infinity;
@@ -107,25 +166,79 @@ export class Ship {
         return this.maxShield > 0 ? this.shield / this.maxShield : 0;
     }
 
-    /** Closest point to `point` on the ship's nose-to-tail axis segment. */
-    closestAxisPoint(point, out) {
-        if (this.halfLength <= 0) return out.copy(this.position);
-        forwardOf(this.quaternion, scratchForward);
-        const along = clamp(out.copy(point).sub(this.position).dot(scratchForward), -this.halfLength, this.halfLength);
-        return out.copy(this.position).addScaledVector(scratchForward, along);
+    /** Half the ship's length along its nose axis (0 for spherical small craft). */
+    get halfLength() {
+        return this.halfExtents ? this.halfExtents.z : 0;
     }
 
-    /** Signed distance from `point` to the hull capsule (negative when inside). */
+    /** True while the ship is still dropping out of warp: it cannot act or be hit yet. */
+    get arriving() {
+        return this.warpTimer > 0;
+    }
+
+    /** Writes `point` in the ship's own axes into `out`. */
+    worldToLocal(point, out) {
+        return out.copy(point).sub(this.position).applyQuaternion(scratchInverse.copy(this.quaternion).invert());
+    }
+
+    /**
+     * The point of the hull closest to `point`. For a point inside the hull this is the
+     * point itself, so the result is always "somewhere on or in the ship".
+     */
+    closestPoint(point, out) {
+        if (!this.boxes) {
+            out.copy(point).sub(this.position);
+            const distance = out.length();
+            if (distance > this.radius) out.multiplyScalar(this.radius / distance);
+            return out.add(this.position);
+        }
+        this.worldToLocal(point, scratchLocal);
+        let bestDistanceSq = Infinity;
+        for (const box of this.boxes) {
+            clampToBox(scratchLocal, box, scratchCandidate);
+            const distanceSq = scratchCandidate.distanceToSquared(scratchLocal);
+            if (distanceSq < bestDistanceSq) {
+                bestDistanceSq = distanceSq;
+                out.copy(scratchCandidate);
+            }
+        }
+        return out.applyQuaternion(this.quaternion).add(this.position);
+    }
+
+    /** Signed distance from `point` to the hull surface (negative when inside). */
     distanceToPoint(point) {
-        return this.closestAxisPoint(point, scratchAxisPoint).distanceTo(point) - this.radius;
+        if (!this.boxes) return this.position.distanceTo(point) - this.radius;
+        this.worldToLocal(point, scratchLocal);
+        let best = Infinity;
+        for (const box of this.boxes) {
+            const dx = Math.abs(scratchLocal.x - box.centre.x) - box.half.x;
+            const dy = Math.abs(scratchLocal.y - box.centre.y) - box.half.y;
+            const dz = Math.abs(scratchLocal.z - box.centre.z) - box.half.z;
+            const outside = Math.hypot(Math.max(dx, 0), Math.max(dy, 0), Math.max(dz, 0));
+            best = Math.min(best, outside + Math.min(Math.max(dx, dy, dz), 0));
+        }
+        return best;
     }
 
-    /** Approximate point on the hull surface facing `from` (used as a beam impact point). */
-    surfacePointTowards(from, out) {
-        this.closestAxisPoint(from, scratchAxisPoint);
-        out.copy(from).sub(scratchAxisPoint);
-        const distance = out.length();
-        if (distance < 1e-4) return out.copy(scratchAxisPoint);
-        return out.multiplyScalar(Math.min(this.radius, distance) / distance).add(scratchAxisPoint);
+    /**
+     * Distance along a ray (unit `direction`) to where it first meets the hull,
+     * or Infinity if it misses. A ray that starts inside the hull returns 0.
+     */
+    raycast(origin, direction) {
+        if (!this.boxes) {
+            scratchLocal.copy(this.position).sub(origin);
+            const along = scratchLocal.dot(direction);
+            const offAxisSq = scratchLocal.lengthSq() - along * along;
+            const radiusSq = this.radius * this.radius;
+            if (offAxisSq > radiusSq) return Infinity;
+            const entry = along - Math.sqrt(radiusSq - offAxisSq);
+            if (entry >= 0) return entry;
+            return along + Math.sqrt(radiusSq - offAxisSq) >= 0 ? 0 : Infinity;
+        }
+        this.worldToLocal(origin, scratchLocal);
+        scratchDirection.copy(direction).applyQuaternion(scratchInverse);
+        let best = Infinity;
+        for (const box of this.boxes) best = Math.min(best, raycastBox(scratchLocal, scratchDirection, box));
+        return best;
     }
 }

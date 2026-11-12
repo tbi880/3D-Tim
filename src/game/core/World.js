@@ -4,10 +4,11 @@ import { SECTORS } from '../config/sectors.js';
 import { SHIP_CLASSES } from '../config/shipClasses.js';
 import { EventBus, GAME_EVENTS } from './EventBus.js';
 import { Ship } from './Ship.js';
-import { createRng, lookRotation, randomRange } from './math.js';
+import { createRng, lookRotation } from './math.js';
 import { updateAI } from './systems/aiPilot.js';
 import { resolvePlayerCollisions } from './systems/collisions.js';
 import { regenerateShield } from './systems/damage.js';
+import { generateAsteroids, updateObstacles } from './systems/obstacles.js';
 import { IDLE_CONTROLS, updatePlayerFlight } from './systems/playerFlight.js';
 import { updateProjectiles } from './systems/projectiles.js';
 import { findNearestHostile, findTargetNearCrosshair, getLockCandidates, isValidTarget } from './systems/targeting.js';
@@ -18,27 +19,6 @@ const scratchVector = new Vector3();
 function toVector3(value, out = new Vector3()) {
     if (!value) return out.set(0, 0, 0);
     return Array.isArray(value) ? out.fromArray(value) : out.copy(value);
-}
-
-/** Scatters asteroid spheres through a box, deterministically from the sector's seed. */
-function generateAsteroids(config) {
-    if (!config) return [];
-    const rng = createRng(config.seed);
-    const clearings = config.clearings ?? [];
-    const asteroids = [];
-    for (let i = 0; i < config.count; i++) {
-        const position = new Vector3(
-            config.centre[0] + randomRange(rng, -1, 1) * config.spread[0],
-            config.centre[1] + randomRange(rng, -1, 1) * config.spread[1],
-            config.centre[2] + randomRange(rng, -1, 1) * config.spread[2],
-        );
-        // Squaring biases the field towards small rocks with a few big ones.
-        const radius = config.minRadius + (config.maxRadius - config.minRadius) * rng() ** 2;
-        const seed = rng();
-        const blocked = clearings.some(([x, y, z, clearRadius]) => position.distanceTo(scratchVector.set(x, y, z)) < clearRadius + radius);
-        if (!blocked) asteroids.push({ position, radius, seed });
-    }
-    return asteroids;
 }
 
 /**
@@ -72,6 +52,10 @@ export class World {
         /** True while the story has the helm (warp jumps, cut-scenes). */
         this.controlsLocked = false;
         this.outOfBounds = false;
+        /** Length (seconds) of the most recent simulation step; story timers use it. */
+        this.lastStep = 0;
+        /** Assist: the player's beams fire by themselves when something hostile is in the ring. */
+        this.autoFire = false;
         /** 0..1 strength of the warp effect; driven by the story's warp beat. */
         this.warpFactor = 0;
     }
@@ -105,6 +89,7 @@ export class World {
         if (!sector) throw new Error(`Unknown sector "${sectorId}"`);
         this.sectorId = sectorId;
         this.obstacles = generateAsteroids(sector.asteroids);
+        this.events.emit(GAME_EVENTS.SECTOR_CHANGED, { sectorId });
         return sector;
     }
 
@@ -144,12 +129,22 @@ export class World {
             this.followParent(ship);
         }
         if (ship.cls.behavior === 'fighter' || ship.cls.behavior === 'bomber') ship.speed = cls.maxSpeed * 0.6;
+        if (options.warpIn) this.beginWarpIn(ship);
 
         this.ships.push(ship);
         if (ship.isPlayer) this.player = ship;
         this.events.emit(GAME_EVENTS.SHIP_SPAWNED, { ship });
-        if (options.warpIn) this.events.emit(GAME_EVENTS.WARP_FLASH, { position: ship.position.clone(), size: ship.radius + ship.halfLength });
         return ship;
+    }
+
+    /**
+     * Starts the warp-in sequence: for a moment the ship is a streak of light decelerating
+     * towards its spot (drawn by scene/ShipsLayer.jsx); it cannot act or be hit until it lands.
+     * Bigger ships take a little longer, and a random offset keeps a squadron from landing in unison.
+     */
+    beginWarpIn(ship) {
+        ship.warpDuration = WORLD.warpInSeconds * (1 + Math.min(1, ship.boundingRadius / 800)) * (0.8 + this.rng() * 0.5);
+        ship.warpTimer = ship.warpDuration;
     }
 
     /** Removes a ship without destroying it (it warped out or the scene changed). */
@@ -158,7 +153,7 @@ export class World {
         if (index === -1) return;
         ship.alive = false;
         this.ships.splice(index, 1);
-        if (flash) this.events.emit(GAME_EVENTS.WARP_FLASH, { position: ship.position.clone(), size: ship.radius + ship.halfLength });
+        if (flash) this.events.emit(GAME_EVENTS.WARP_FLASH, { position: ship.position.clone(), size: ship.boundingRadius, quaternion: ship.quaternion.clone() });
         this.events.emit(GAME_EVENTS.SHIP_REMOVED, { ship });
     }
 
@@ -228,9 +223,12 @@ export class World {
         this.beams.push(beam);
     }
 
-    /** Starts a story-driven beam between two ships that lasts `duration` seconds. */
-    addScriptedBeam({ from, to, color, width, duration }) {
-        this.scriptedBeams.push({ from, to, color, width, remaining: duration });
+    /**
+     * Starts a story-driven beam between two ships. It lasts `duration` seconds (Infinity =
+     * until one of the ships is gone). `kind` picks the drawing style (see scene/BeamsLayer.jsx).
+     */
+    addScriptedBeam({ from, to, color, width, duration = Infinity, kind = 'cannon' }) {
+        this.scriptedBeams.push({ from, to, color, width, kind, remaining: duration });
     }
 
     // ---- Simulation step ----------------------------------------------------------------
@@ -243,6 +241,7 @@ export class World {
     update(dt, controls) {
         const step = Math.min(dt, WORLD.maxStep);
         this.time += step;
+        this.lastStep = step;
         if (controls) this.playerControls = controls;
         this.beams.length = 0;
 
@@ -255,14 +254,16 @@ export class World {
         }
         for (const ship of this.ships) {
             if (!ship.alive) continue;
+            if (ship.warpTimer > 0) this.advanceWarpIn(ship, step);
             if (ship.parent) this.followParent(ship);
-            else ship.position.addScaledVector(ship.velocity, step);
+            else if (!ship.arriving) ship.position.addScaledVector(ship.velocity, step);
         }
         for (const ship of this.ships) {
             updateShipWeapons(this, ship, step);
             regenerateShield(ship, step);
         }
         updateProjectiles(this, step);
+        updateObstacles(this, step);
         this.updateScriptedBeams(step);
         resolvePlayerCollisions(this);
         this.removeDeparted(step);
@@ -270,14 +271,22 @@ export class World {
         this.keepPlayerTargetValid();
     }
 
+    advanceWarpIn(ship, dt) {
+        ship.warpTimer -= dt;
+        if (ship.warpTimer > 0) return;
+        ship.warpTimer = 0;
+        this.events.emit(GAME_EVENTS.WARP_FLASH, { position: ship.position.clone(), size: ship.boundingRadius, quaternion: ship.quaternion.clone() });
+    }
+
     updateScriptedBeams(dt) {
         for (const beam of this.scriptedBeams) {
             beam.remaining -= dt;
             if (beam.from.alive && beam.to.alive) {
-                this.addBeam(beam.from.position, beam.to.position, beam.color, beam.width, 'cannon');
+                this.addBeam(beam.from.position, beam.to.position, beam.color, beam.width, beam.kind);
             }
         }
-        this.scriptedBeams = this.scriptedBeams.filter((beam) => beam.remaining > 0);
+        // A beam also ends when either ship it joins is gone.
+        this.scriptedBeams = this.scriptedBeams.filter((beam) => beam.remaining > 0 && beam.from.alive && beam.to.alive);
     }
 
     /** Ships that were told to leave disappear when their timer runs out. */
@@ -325,6 +334,7 @@ export class World {
                 maxShield: ship.maxShield,
                 minHullFraction: ship.maxHull > 0 ? ship.minHull / ship.maxHull : 0,
                 invulnerable: ship.invulnerable,
+                targetable: ship.targetable,
                 weaponsOnline: ship.weaponsOnline,
                 aiMode: ship.ai.mode,
                 parentTag: ship.parent ? [...ship.parent.tags][0] ?? null : null,

@@ -34,8 +34,8 @@ export function destroyShip(world, ship, killer = null) {
     ship.shield = 0;
     world.events.emit(GAME_EVENTS.EXPLOSION, {
         position: ship.position.clone(),
-        size: Math.max(ship.radius, ship.halfLength * 0.7) * 1.6,
-        capital: ship.cls.kind === 'capital',
+        size: ship.boundingRadius * 1.3,
+        capital: ship.cls.kind === 'capital' || ship.cls.kind === 'station',
     });
     world.events.emit(GAME_EVENTS.SHIP_DESTROYED, { ship, killer });
     // Anything bolted onto the ship goes down with it.
@@ -54,7 +54,7 @@ export function destroyShip(world, ship, killer = null) {
  * @param {boolean} [options.continuous] true for per-frame beam damage (rate-limits effects)
  */
 export function applyDamage(world, target, amount, options = {}) {
-    if (!target.alive || amount <= 0) return;
+    if (!target.alive || target.arriving || amount <= 0) return;
     const { source = null, point = null, shieldMult = 1, hullMult = 1, continuous = false } = options;
 
     if (target.isProjectile) {
@@ -65,7 +65,8 @@ export function applyDamage(world, target, amount, options = {}) {
 
     const position = point ?? target.position;
     if (target.invulnerable) {
-        target.lastShieldHitAt = world.time;
+        // Shielded ships shimmer; indestructible scenery (stations, wrecks) just sparks.
+        if (target.targetable) target.lastShieldHitAt = world.time;
         emitHit(world, target, position, true, 0, continuous);
         return;
     }

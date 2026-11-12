@@ -1,5 +1,6 @@
 import { DEFAULT_DIFFICULTY, DIFFICULTY, STORAGE_KEYS } from '../config/gameConfig.js';
 import { LOCALES, detectLocale } from '../i18n/index.js';
+import { isTouchDevice } from '../input/device.js';
 
 /**
  * Persistence for checkpoints and player settings (browser localStorage).
@@ -53,14 +54,26 @@ export function clearSave() {
     }
 }
 
+export const CAMERA_MODES = Object.freeze(['cockpit', 'chase']);
+
 export function defaultSettings() {
-    return { locale: detectLocale(), difficulty: DEFAULT_DIFFICULTY, muted: false, invertY: false };
+    return {
+        locale: detectLocale(),
+        difficulty: DEFAULT_DIFFICULTY,
+        muted: false,
+        invertY: false,
+        /** 'cockpit' (first person) or 'chase' (third person). */
+        cameraMode: 'cockpit',
+        /** Beams fire by themselves at hostiles in the ring. On by default where there is no trigger finger to spare. */
+        autoFire: isTouchDevice(),
+    };
 }
 
 export function loadSettings() {
     const settings = { ...defaultSettings(), ...(readJson(STORAGE_KEYS.settings) ?? {}) };
     if (!LOCALES.includes(settings.locale)) settings.locale = 'en';
     if (!DIFFICULTY[settings.difficulty]) settings.difficulty = DEFAULT_DIFFICULTY;
+    if (!CAMERA_MODES.includes(settings.cameraMode)) settings.cameraMode = 'cockpit';
     return settings;
 }
 

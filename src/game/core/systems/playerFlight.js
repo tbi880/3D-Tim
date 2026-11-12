@@ -12,7 +12,7 @@ const scratchInverse = new Quaternion();
 
 /** Control state with nothing pressed (used while the helm is locked by the story). */
 export const IDLE_CONTROLS = Object.freeze({
-    yaw: 0, pitch: 0, roll: 0, throttle: 0, boost: false, firePrimary: false, fireSecondary: false,
+    yaw: 0, pitch: 0, roll: 0, throttle: 0, throttleTarget: null, boost: false, firePrimary: false, fireSecondary: false,
 });
 
 /**
@@ -42,7 +42,8 @@ const turnCommand = { yaw: 0, pitch: 0 };
 /**
  * Arcade flight model for the player's ship.
  * `controls.yaw` / `pitch` / `roll` are -1..1 stick deflections (yaw + = nose right,
- * pitch + = nose up, roll + = roll right); `controls.throttle` is -1..1 (S / W).
+ * pitch + = nose up, roll + = roll right); `controls.throttle` is -1..1 (S / W) and
+ * `controls.throttleTarget`, when not null, is an absolute 0..1 throttle setting.
  */
 export function updatePlayerFlight(world, ship, controls, dt) {
     const mode = POWER_MODES[ship.powerMode];
@@ -62,7 +63,12 @@ export function updatePlayerFlight(world, ship, controls, dt) {
     ship.quaternion.multiply(scratchDelta.setFromEuler(scratchEuler)).normalize();
 
     // --- Throttle and boost --------------------------------------------------------------
-    ship.throttle = clamp(ship.throttle + controls.throttle * PLAYER.throttleRate * dt, 0, 1);
+    if (controls.throttleTarget != null) {
+        // A touch slider sets the throttle outright; ease towards it so it never jerks.
+        ship.throttle = approach(ship.throttle, clamp(controls.throttleTarget, 0, 1), PLAYER.throttleRate * 2 * dt);
+    } else {
+        ship.throttle = clamp(ship.throttle + controls.throttle * PLAYER.throttleRate * dt, 0, 1);
+    }
 
     const wantsBoost = controls.boost && ship.boost > 0;
     // After running dry the boost must recharge a little before it can be re-engaged.

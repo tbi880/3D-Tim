@@ -8,19 +8,19 @@ const scratchToTarget = new Vector3();
 const scratchRayPoint = new Vector3();
 
 export function isValidTarget(target) {
-    return Boolean(target && target.alive && target.targetable !== false);
+    return Boolean(target && target.alive && target.targetable !== false && !target.arriving);
 }
 
 /**
  * The point on a target that a gunner looking along `forward` from `origin` would aim at.
- * For small targets this is their centre; for long capital ships it is the nearest point
- * of the hull axis to the line of sight, so "aiming at the stern" works.
+ * For small targets this is their centre; for capital ships it is the point of the hull
+ * nearest to the line of sight, so "aiming at the stern" works.
  */
 export function aimPointOn(target, origin, forward, out) {
-    if (target.isProjectile || !target.halfLength) return out.copy(target.position);
+    if (target.isProjectile || !target.halfExtents) return out.copy(target.position);
     const along = Math.max(0, scratchToTarget.copy(target.position).sub(origin).dot(forward));
     scratchRayPoint.copy(origin).addScaledVector(forward, along);
-    return target.closestAxisPoint(scratchRayPoint, out);
+    return target.closestPoint(scratchRayPoint, out);
 }
 
 /**
@@ -32,7 +32,8 @@ export function angleOffAxis(target, origin, forward, aimPoint) {
     const distance = scratchToTarget.length();
     if (distance < 1e-3) return 0;
     const angle = Math.acos(Math.min(1, Math.max(-1, scratchToTarget.dot(forward) / distance)));
-    const angularRadius = Math.atan2(target.radius, distance);
+    // Box hulls already return an aim point on the hull itself, so they need no extra allowance.
+    const angularRadius = target.halfExtents ? 0 : Math.atan2(target.radius, distance);
     return Math.max(0, angle - angularRadius);
 }
 

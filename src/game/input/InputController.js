@@ -38,6 +38,8 @@ const ACTION_KEYS = Object.freeze({
     Enter: 'skip',
     NumpadEnter: 'skip',
     KeyM: 'toggleMute',
+    KeyV: 'toggleView',
+    KeyC: 'toggleView',
 });
 
 export class InputController {
@@ -55,7 +57,9 @@ export class InputController {
         /** Virtual stick from the on-screen touch joystick. */
         this.touchStick = { x: 0, y: 0 };
         this.pointerButtons = { primary: false, secondary: false };
-        this.controls = { yaw: 0, pitch: 0, roll: 0, throttle: 0, boost: false, firePrimary: false, fireSecondary: false };
+        /** Absolute throttle (0..1) from the touch slider, or null when the keyboard is in charge. */
+        this.throttleTarget = null;
+        this.controls = { yaw: 0, pitch: 0, roll: 0, throttle: 0, throttleTarget: null, boost: false, firePrimary: false, fireSecondary: false };
         this.surface = null;
         this.listeners = [];
     }
@@ -145,6 +149,10 @@ export class InputController {
         this.touchStick.y = y;
     }
 
+    setThrottleTarget(value) {
+        this.throttleTarget = value;
+    }
+
     setHeld(name, isHeld) {
         if (isHeld) this.held.add(name);
         else this.held.delete(name);
@@ -163,6 +171,9 @@ export class InputController {
         controls.pitch = clampUnit((this.pointerStick.y + this.touchStick.y) * invert + axis('pitchDown', 'pitchUp'));
         controls.roll = axis('rollLeft', 'rollRight');
         controls.throttle = axis('throttleDown', 'throttleUp');
+        // Touching W / S hands the throttle back to the keyboard.
+        if (controls.throttle !== 0) this.throttleTarget = null;
+        controls.throttleTarget = this.throttleTarget;
         controls.boost = held.has('boost');
         controls.firePrimary = this.pointerButtons.primary || held.has('firePrimary');
         controls.fireSecondary = this.pointerButtons.secondary || held.has('fireSecondary');

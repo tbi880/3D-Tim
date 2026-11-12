@@ -5,6 +5,7 @@ import { GAME_EVENTS } from '../EventBus.js';
 import { Projectile } from '../Projectile.js';
 import { degToRad, forwardOf, randomInCone, randomRange } from '../math.js';
 import { applyDamage, areHostile } from './damage.js';
+import { damageObstacle, raycastObstacles } from './obstacles.js';
 import { aimPointOn, angleOffAxis, isValidTarget } from './targeting.js';
 
 const scratchForward = new Vector3();
@@ -58,21 +59,27 @@ function distanceToSurface(target, point) {
     return target.isProjectile ? target.position.distanceTo(point) - target.radius : target.distanceToPoint(point);
 }
 
+/** Approximate gap between a ship's hull and a target (its hull or a projectile). */
+function hullSeparation(ship, target) {
+    return ship.distanceToPoint(target.position) - (target.isProjectile ? target.radius : target.boundingRadius);
+}
+
 function impactPoint(target, origin, out) {
-    return target.isProjectile ? out.copy(target.position) : target.surfacePointTowards(origin, out);
+    return target.isProjectile ? out.copy(target.position) : target.closestPoint(origin, out);
 }
 
 // ---------------------------------------------------------------------------------------
 // Target selection for turrets
 // ---------------------------------------------------------------------------------------
 
-function nearestInRange(candidates, ship, origin, range, filter) {
+/** Nearest valid hostile within `range` of the firing ship's hull (not of its centre: big ships are long). */
+function nearestInRange(candidates, ship, range, filter) {
     let best = null;
     let bestDistance = range;
     for (const candidate of candidates) {
         if (!isValidTarget(candidate) || !areHostile(ship, candidate)) continue;
         if (candidate.invulnerable || (filter && !filter(candidate))) continue;
-        const distance = distanceToSurface(candidate, origin);
+        const distance = hullSeparation(ship, candidate);
         if (distance < bestDistance) {
             bestDistance = distance;
             best = candidate;
@@ -87,27 +94,25 @@ const isTorpedo = (target) => target.kind === 'torpedo';
 
 /** Picks a turret target according to the weapon's `targets` preference. */
 function selectTurretTarget(world, ship, def) {
-    const origin = ship.position;
     switch (def.targets) {
         case 'capital':
-            return nearestInRange(world.ships, ship, origin, def.range, isCapital);
+            return nearestInRange(world.ships, ship, def.range, isCapital);
         case 'capitalFirst':
-            return nearestInRange(world.ships, ship, origin, def.range, isCapital)
-                ?? nearestInRange(world.ships, ship, origin, def.range);
+            return nearestInRange(world.ships, ship, def.range, isCapital)
+                ?? nearestInRange(world.ships, ship, def.range);
         case 'smallFirst':
-            return nearestInRange(world.projectiles, ship, origin, def.range, isTorpedo)
-                ?? nearestInRange(world.ships, ship, origin, def.range, isSmall)
-                ?? nearestInRange(world.ships, ship, origin, def.range);
+            return nearestInRange(world.projectiles, ship, def.range, isTorpedo)
+                ?? nearestInRange(world.ships, ship, def.range, isSmall)
+                ?? nearestInRange(world.ships, ship, def.range);
         default:
-            return nearestInRange(world.ships, ship, origin, def.range);
+            return nearestInRange(world.ships, ship, def.range);
     }
 }
 
 function refreshTurretTarget(world, ship, weapon, dt) {
     weapon.retargetTimer -= dt;
     const target = weapon.target;
-    const stillGood = isValidTarget(target) && !target.invulnerable
-        && distanceToSurface(target, ship.position) < weapon.def.range;
+    const stillGood = isValidTarget(target) && !target.invulnerable && hullSeparation(ship, target) < weapon.def.range;
     if (stillGood && weapon.retargetTimer > 0) return;
     weapon.target = selectTurretTarget(world, ship, weapon.def);
     weapon.retargetTimer = TURRET_RETARGET_INTERVAL;
@@ -191,7 +196,13 @@ function updatePlayerBeam(world, ship, weapon, dt, triggerHeld) {
     const def = weapon.def;
     if (weapon.depleted && ship.energy >= BEAM_RESTART_ENERGY) weapon.depleted = false;
 
-    const firing = triggerHeld && !weapon.depleted && ship.energy > 0;
+    forwardOf(ship.quaternion, scratchForward);
+    const origin = ship.position;
+    const target = pickPlayerBeamTarget(world, ship, def, origin, scratchForward);
+    // Auto-fire assist (touch devices): the beams open up by themselves on anything hostile in the ring.
+    const wantsFire = triggerHeld || (world.autoFire && !world.controlsLocked && Boolean(target));
+
+    const firing = wantsFire && !weapon.depleted && ship.energy > 0;
     if (triggerHeld && weapon.depleted && !weapon.firing) {
         world.events.emit(GAME_EVENTS.WEAPON_EMPTY, {});
     }
@@ -208,18 +219,26 @@ function updatePlayerBeam(world, ship, weapon, dt, triggerHeld) {
     ship.energyRegenDelay = PLAYER.energyRegenDelay;
     if (ship.energy <= 0) weapon.depleted = true;
 
-    forwardOf(ship.quaternion, scratchForward);
-    const origin = ship.position;
-    const target = pickPlayerBeamTarget(world, ship, def, origin, scratchForward);
+    const damage = def.dps * POWER_MODES[ship.powerMode].damage * dt;
     if (target) {
         aimPointOn(target, origin, scratchForward, scratchAim);
-        if (target.isProjectile || !target.halfLength) impactPoint(target, origin, scratchImpact);
-        else scratchImpact.copy(origin).sub(scratchAim).setLength(target.radius).add(scratchAim);
-        applyDamage(world, target, def.dps * POWER_MODES[ship.powerMode].damage * dt, {
+        if (target.isProjectile) {
+            scratchImpact.copy(target.position);
+        } else {
+            // Where the line of fire actually enters the hull.
+            scratchDirection.copy(scratchAim).sub(origin).normalize();
+            const entry = target.raycast(origin, scratchDirection);
+            if (Number.isFinite(entry)) scratchImpact.copy(origin).addScaledVector(scratchDirection, entry);
+            else target.closestPoint(origin, scratchImpact);
+        }
+        applyDamage(world, target, damage, {
             source: ship, point: scratchImpact, shieldMult: def.shieldMult, hullMult: def.hullMult, continuous: true,
         });
     } else {
-        scratchImpact.copy(origin).addScaledVector(scratchForward, def.range);
+        // Nothing hostile in the ring: the beams fire dead ahead and carve up any asteroid in the way.
+        const rock = raycastObstacles(world, origin, scratchForward, def.range);
+        scratchImpact.copy(origin).addScaledVector(scratchForward, rock ? rock.distance : def.range);
+        if (rock) damageObstacle(world, rock.obstacle, damage, scratchImpact, true);
     }
     for (const mount of def.mounts) {
         scratchOrigin.fromArray(mount).applyQuaternion(ship.quaternion).add(origin);
@@ -286,7 +305,7 @@ function updateAiBeam(world, ship, weapon, dt) {
     if (!weapon.firing) return;
 
     impactPoint(target, ship.position, scratchImpact);
-    ship.surfacePointTowards(scratchImpact, scratchOrigin);
+    ship.closestPoint(scratchImpact, scratchOrigin);
     applyDamage(world, target, def.dps * dt, {
         source: ship, point: scratchImpact, shieldMult: def.shieldMult, hullMult: def.hullMult, continuous: true,
     });
@@ -306,7 +325,7 @@ function updateAiBolt(world, ship, weapon, dt) {
 
     leadPoint(ship.position, target, def.speed, scratchLead);
     if (def.turret) {
-        ship.surfacePointTowards(scratchLead, scratchOrigin);
+        ship.closestPoint(scratchLead, scratchOrigin);
     } else {
         forwardOf(ship.quaternion, scratchForward);
         scratchOrigin.copy(ship.position).addScaledVector(scratchForward, ship.radius);
@@ -326,12 +345,12 @@ function updateAiTorpedo(world, ship, weapon, dt) {
         target = ship.ai.wantsFire ? ship.target : null;
     }
     if (!isValidTarget(target) || weapon.cooldown > 0) return;
-    if (distanceToSurface(target, ship.position) > def.range) return;
+    if (hullSeparation(ship, target) > def.range) return;
 
     forwardOf(ship.quaternion, scratchForward);
     scratchDirection.copy(target.position).sub(ship.position).normalize();
     if (!def.turret && scratchDirection.angleTo(scratchForward) > degToRad(def.aimConeDeg ?? 30)) return;
-    scratchOrigin.copy(ship.position).addScaledVector(scratchDirection, ship.radius + 4);
+    ship.closestPoint(scratchLead.copy(ship.position).addScaledVector(scratchDirection, ship.boundingRadius + 10), scratchOrigin);
     spawnTorpedo(world, ship, weapon, scratchOrigin, def.turret ? scratchDirection : scratchForward, target);
     weapon.cooldown = def.cooldown * randomRange(world.rng, 0.85, 1.2);
     ship.ai.firedThisFrame = true;
@@ -356,6 +375,7 @@ function applyLanceDamage(world, ship, weapon, origin, dt) {
     const def = weapon.def;
     for (const other of world.ships) {
         if (!other.alive || !areHostile(ship, other)) continue;
+        if (other.arriving) continue;
         // Sample the hull axis at three points so long ships are hit along their length.
         let hit = false;
         forwardOf(other.quaternion, scratchForward);
@@ -363,8 +383,8 @@ function applyLanceDamage(world, ship, weapon, origin, dt) {
             scratchSample.copy(other.position).addScaledVector(scratchForward, step * other.halfLength * 0.6);
             const along = scratchSample.sub(origin).dot(weapon.lanceDirection);
             if (along < 0 || along > def.range) continue;
-            const offAxis = Math.sqrt(Math.max(0, scratchSample.lengthSq() - along * along));
-            hit = offAxis < def.corridorRadius + other.radius;
+            scratchSample.copy(origin).addScaledVector(weapon.lanceDirection, along);
+            hit = other.distanceToPoint(scratchSample) < def.corridorRadius;
         }
         if (hit) {
             applyDamage(world, other, def.dps * dt, {
@@ -419,7 +439,7 @@ function updateLance(world, ship, weapon, dt) {
 }
 
 export function updateShipWeapons(world, ship, dt) {
-    if (!ship.alive || ship.weapons.length === 0) return;
+    if (!ship.alive || ship.arriving || ship.weapons.length === 0) return;
     if (ship.isPlayer) {
         updatePlayerWeapons(world, ship, dt);
         return;

@@ -7,7 +7,7 @@ import { CAMPAIGN, STARTING_SECTOR } from '../story/campaign.js';
 import { resolvePlacement } from '../story/placement.js';
 import { StoryDirector } from '../story/StoryDirector.js';
 import { CommsQueue, estimateReadingTime } from './CommsQueue.js';
-import { clearSave, loadSave, saveSettings, writeSave } from './saveGame.js';
+import { CAMERA_MODES, clearSave, loadSave, saveSettings, writeSave } from './saveGame.js';
 
 export const PHASE = Object.freeze({
     TITLE: 'title',
@@ -70,7 +70,7 @@ export class GameSession {
     /**
      * @param {object} params
      * @param {{ set: (partial: object) => void }} params.ui sink for HUD / menu state
-     * @param {object} params.settings { locale, difficulty, muted, invertY }
+     * @param {object} params.settings see defaultSettings() in saveGame.js
      */
     constructor({ ui, settings }) {
         this.ui = ui;
@@ -78,6 +78,7 @@ export class GameSession {
         setLocale(this.settings.locale);
         this.events = new EventBus();
         this.world = new World({ difficultyId: settings.difficulty });
+        this.world.autoFire = Boolean(settings.autoFire);
         this.comms = new CommsQueue({
             getDuration: (line) => estimateReadingTime(t(line.textKey)),
             onChange: (line) => {
@@ -216,6 +217,7 @@ export class GameSession {
         Object.assign(this.settings, partial);
         if (partial.difficulty) this.world.setDifficulty(partial.difficulty);
         if (partial.locale) setLocale(partial.locale);
+        if ('autoFire' in partial) this.world.autoFire = Boolean(partial.autoFire);
         saveSettings(this.settings);
         this.ui.set({ settings: { ...this.settings } });
         this.events.emit(SESSION_EVENTS.SETTINGS, { settings: this.settings });
@@ -229,6 +231,11 @@ export class GameSession {
         }
         if (action === 'toggleMute') {
             this.updateSettings({ muted: !this.settings.muted });
+            return;
+        }
+        if (action === 'toggleView') {
+            const next = (CAMERA_MODES.indexOf(this.settings.cameraMode) + 1) % CAMERA_MODES.length;
+            this.updateSettings({ cameraMode: CAMERA_MODES[next] });
             return;
         }
         if (this.phase !== PHASE.PLAYING) return;
@@ -245,6 +252,13 @@ export class GameSession {
                     player.powerMode = mode;
                     this.playCue('power');
                 }
+                break;
+            }
+            // One button that steps through the modes, for touch screens.
+            case 'power:cycle': {
+                const modes = Object.keys(POWER_MODES);
+                const next = modes[(modes.indexOf(player?.powerMode) + 1) % modes.length];
+                this.handleAction(`power:${next}`);
                 break;
             }
             default: break;
@@ -353,7 +367,8 @@ export class GameSession {
         if (!this.failureReason) {
             const escortTag = this.director.scene.escortTag;
             if (!this.world.player?.alive) this.failureReason = 'player';
-            else if (escortTag && !this.world.findByTag(escortTag)) this.failureReason = 'escort';
+            // The reason names the ship that was lost, so the game-over screen can say which.
+            else if (escortTag && !this.world.findByTag(escortTag)) this.failureReason = `escort.${escortTag}`;
             if (!this.failureReason) return;
             this.failureTimer = FAILURE_DELAY;
             this.world.controlsLocked = true;

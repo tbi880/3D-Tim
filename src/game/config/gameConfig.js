@@ -23,10 +23,10 @@ export const PLAYER = Object.freeze({
     turnResponse: 5,
     /** Throttle change per second while W / S is held. */
     throttleRate: 0.75,
-    acceleration: 85,
+    acceleration: 110,
     /** How quickly the velocity vector follows the nose (1/s). Lower = more drift. */
     driftDamping: 2.6,
-    boostMultiplier: 2.1,
+    boostMultiplier: 2.2,
     boostDuration: 5,
     boostRecharge: 9,
     energyMax: 100,
@@ -49,7 +49,7 @@ export const POWER_MODE_ORDER = ['balanced', 'attack', 'defense'];
 /** Difficulty only scales damage, so every story beat stays identical. */
 export const DIFFICULTY = Object.freeze({
     cadet: { id: 'cadet', damageTaken: 0.55, allyDamageTaken: 0.6 },
-    captain: { id: 'captain', damageTaken: 1, allyDamageTaken: 1 },
+    captain: { id: 'captain', damageTaken: 1, allyDamageTaken: 0.8 },
     admiral: { id: 'admiral', damageTaken: 1.45, allyDamageTaken: 1.3 },
 });
 export const DIFFICULTY_ORDER = ['cadet', 'captain', 'admiral'];
@@ -57,7 +57,9 @@ export const DEFAULT_DIFFICULTY = 'captain';
 
 export const WORLD = Object.freeze({
     /** Soft edge of every sector; past it the helm is nudged back towards the centre. */
-    arenaRadius: 5200,
+    arenaRadius: 12000,
+    /** Base length (seconds) of a ship's warp-in; scaled up for large ships. */
+    warpInSeconds: 1.1,
     /** Longest simulation step. Larger frame gaps (tab switch) are clamped to this. */
     maxStep: 1 / 20,
     /** Minimum seconds between two "hit" effect events from continuous beams on one target. */
@@ -66,7 +68,7 @@ export const WORLD = Object.freeze({
 
 export const TARGETING = Object.freeze({
     /** Max distance at which the player can lock a target. */
-    lockRange: 6000,
+    lockRange: 14000,
     /** Half-angle (deg) used by "target nearest to crosshair". */
     crosshairConeDeg: 25,
 });
