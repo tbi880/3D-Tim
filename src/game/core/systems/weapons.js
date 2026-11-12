@@ -1,5 +1,5 @@
 import { Vector3 } from 'three';
-import { PLAYER, POWER_MODES } from '../../config/gameConfig.js';
+import { FACTION, PLAYER, POWER_MODES } from '../../config/gameConfig.js';
 import { WEAPONS } from '../../config/weapons.js';
 import { GAME_EVENTS } from '../EventBus.js';
 import { Projectile } from '../Projectile.js';
@@ -306,7 +306,8 @@ function updateAiBeam(world, ship, weapon, dt) {
 
     impactPoint(target, ship.position, scratchImpact);
     ship.closestPoint(scratchImpact, scratchOrigin);
-    applyDamage(world, target, def.dps * dt, {
+    const beamScale = ship.faction === FACTION.UMBRA ? world.difficulty.enemyBeamDamage : 1;
+    applyDamage(world, target, def.dps * beamScale * dt, {
         source: ship, point: scratchImpact, shieldMult: def.shieldMult, hullMult: def.hullMult, continuous: true,
     });
     world.addBeam(scratchOrigin, scratchImpact, def.color, def.width, 'beam');
@@ -445,8 +446,11 @@ export function updateShipWeapons(world, ship, dt) {
         return;
     }
     if (!ship.weaponsOnline) return;
+    const umbra = ship.faction === FACTION.UMBRA;
+    // Difficulty: Umbra guns cycle faster or slower; their beams hit harder or softer.
+    const reloadStep = dt * (umbra ? world.difficulty.enemyFireRate : 1);
     for (const weapon of ship.weapons) {
-        weapon.cooldown = Math.max(0, weapon.cooldown - dt);
+        weapon.cooldown = Math.max(0, weapon.cooldown - reloadStep);
         switch (weapon.def.type) {
             case 'beam': updateAiBeam(world, ship, weapon, dt); break;
             case 'bolt': updateAiBolt(world, ship, weapon, dt); break;

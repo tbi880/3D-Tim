@@ -36,6 +36,7 @@ export function destroyShip(world, ship, killer = null) {
         position: ship.position.clone(),
         size: ship.boundingRadius * 1.3,
         capital: ship.cls.kind === 'capital' || ship.cls.kind === 'station',
+        ship,
     });
     world.events.emit(GAME_EVENTS.SHIP_DESTROYED, { ship, killer });
     // Anything bolted onto the ship goes down with it.
@@ -76,6 +77,9 @@ export function applyDamage(world, target, amount, options = {}) {
         remaining *= world.difficulty.damageTaken * POWER_MODES[target.powerMode].damageTaken;
     } else if (target.faction === FACTION.DAWN) {
         remaining *= world.difficulty.allyDamageTaken;
+    } else if (target.faction === FACTION.UMBRA) {
+        remaining /= world.difficulty.enemyToughness;
+        if (source && !source.isPlayer && source.faction === FACTION.DAWN) remaining *= world.difficulty.allyDamage;
     }
 
     let shieldHit = false;
@@ -100,13 +104,13 @@ export function applyDamage(world, target, amount, options = {}) {
     if (target.hull <= 0) destroyShip(world, target, source);
 }
 
-export function regenerateShield(ship, dt) {
+export function regenerateShield(world, ship, dt) {
     if (!ship.alive || ship.maxShield <= 0) return;
     if (ship.shieldCooldown > 0) {
         ship.shieldCooldown -= dt;
         return;
     }
     if (ship.shield >= ship.maxShield) return;
-    const modeBonus = ship.isPlayer ? POWER_MODES[ship.powerMode].shieldRegen : 1;
+    const modeBonus = ship.isPlayer ? POWER_MODES[ship.powerMode].shieldRegen * world.difficulty.shieldRegen : 1;
     ship.shield = Math.min(ship.maxShield, ship.shield + ship.cls.shieldRegen * modeBonus * dt);
 }

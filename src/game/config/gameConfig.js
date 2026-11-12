@@ -26,9 +26,10 @@ export const PLAYER = Object.freeze({
     acceleration: 110,
     /** How quickly the velocity vector follows the nose (1/s). Lower = more drift. */
     driftDamping: 2.6,
-    boostMultiplier: 2.2,
-    boostDuration: 5,
-    boostRecharge: 9,
+    boostMultiplier: 2.4,
+    /** Seconds of afterburner in a full tank, and seconds to refill it from empty. */
+    boostDuration: 14,
+    boostRecharge: 10,
     energyMax: 100,
     energyRegen: 16,
     /** Seconds without firing before the beam capacitor recharges at full rate. */
@@ -46,11 +47,32 @@ export const POWER_MODES = Object.freeze({
 });
 export const POWER_MODE_ORDER = ['balanced', 'attack', 'defense'];
 
-/** Difficulty only scales damage, so every story beat stays identical. */
+/**
+ * Difficulty scales both fleets, never the story: every beat, wave and timer is identical.
+ * Everything is applied while the game runs (not when ships spawn), so the setting can be
+ * changed mid-mission and saved games stay valid.
+ *
+ *   damageTaken      - damage the player's ship takes
+ *   allyDamageTaken  - damage other Dawn ships take
+ *   enemyToughness   - how much punishment Umbra hulls and shields soak up (2 = twice as much)
+ *   enemyFireRate    - how often Umbra guns and torpedo tubes fire
+ *   enemyBeamDamage  - damage of Umbra continuous beams (they have no "rate" to scale)
+ *   allyDamage       - damage dealt by Dawn ships other than the player
+ *   shieldRegen      - recharge rate of the player's shields
+ */
 export const DIFFICULTY = Object.freeze({
-    cadet: { id: 'cadet', damageTaken: 0.55, allyDamageTaken: 0.6 },
-    captain: { id: 'captain', damageTaken: 1, allyDamageTaken: 0.8 },
-    admiral: { id: 'admiral', damageTaken: 1.45, allyDamageTaken: 1.3 },
+    cadet: {
+        id: 'cadet', damageTaken: 0.45, allyDamageTaken: 0.5,
+        enemyToughness: 0.7, enemyFireRate: 0.7, enemyBeamDamage: 0.7, allyDamage: 1.5, shieldRegen: 1.5,
+    },
+    captain: {
+        id: 'captain', damageTaken: 1, allyDamageTaken: 0.8,
+        enemyToughness: 1, enemyFireRate: 1, enemyBeamDamage: 1, allyDamage: 1, shieldRegen: 1,
+    },
+    admiral: {
+        id: 'admiral', damageTaken: 1.3, allyDamageTaken: 1.0,
+        enemyToughness: 1.4, enemyFireRate: 1.3, enemyBeamDamage: 1.2, allyDamage: 0.85, shieldRegen: 0.8,
+    },
 });
 export const DIFFICULTY_ORDER = ['cadet', 'captain', 'admiral'];
 export const DEFAULT_DIFFICULTY = 'captain';
@@ -64,6 +86,16 @@ export const WORLD = Object.freeze({
     maxStep: 1 / 20,
     /** Minimum seconds between two "hit" effect events from continuous beams on one target. */
     beamHitEffectInterval: 0.14,
+});
+
+/** Timing shared by the pieces of a big ship's death (explosions and the hull that stays visible). */
+export const EFFECTS = Object.freeze({
+    /** Seconds a destroyed capital ship's hull stays on screen, breaking up, before the main blast. */
+    breakupSeconds: 2.6,
+    /** The same for the very largest hulls (dreadnought, shipyard). */
+    hugeBreakupSeconds: 4.6,
+    /** Explosion size (metres) above which a hull counts as "very largest". */
+    hugeExplosionSize: 600,
 });
 
 export const TARGETING = Object.freeze({

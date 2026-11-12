@@ -23,6 +23,8 @@ globalThis.localStorage = {
 };
 
 const QUIET = process.argv.includes('--quiet');
+/** `--difficulty=cadet|captain|admiral` flies the campaign at another setting (default captain). */
+const DIFFICULTY_ID = process.argv.find((arg) => arg.startsWith('--difficulty='))?.split('=')[1] ?? 'captain';
 const STEP = 1 / 30;
 const MAX_STORY_SECONDS = 45 * 60;
 const MAX_RETRIES = 12;
@@ -94,7 +96,7 @@ function createSession() {
     const uiState = {};
     const session = new GameSession({
         ui: { set: (partial) => Object.assign(uiState, partial) },
-        settings: { locale: 'en', difficulty: 'captain', muted: true, invertY: false },
+        settings: { locale: 'en', difficulty: DIFFICULTY_ID, muted: true, invertY: false },
     });
     return { session, uiState };
 }

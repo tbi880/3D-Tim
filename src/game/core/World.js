@@ -260,7 +260,7 @@ export class World {
         }
         for (const ship of this.ships) {
             updateShipWeapons(this, ship, step);
-            regenerateShield(ship, step);
+            regenerateShield(this, ship, step);
         }
         updateProjectiles(this, step);
         updateObstacles(this, step);

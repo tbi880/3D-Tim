@@ -34,7 +34,7 @@ export const GAME_EVENTS = Object.freeze({
     SHIP_DESTROYED: 'shipDestroyed',
     /** { ship } - removed without an explosion (warped out / despawned) */
     SHIP_REMOVED: 'shipRemoved',
-    /** { position, size, color? } */
+    /** { position, size, color?, capital?, ship? } - `ship` is set when a ship (not a projectile) blew up */
     EXPLOSION: 'explosion',
     /** { target, position, shield: boolean, amount } */
     HIT: 'hit',
