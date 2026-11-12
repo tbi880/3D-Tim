@@ -36,6 +36,11 @@ export function translate(locale, key, params) {
     return template.replace(/\{(\w+)\}/g, (match, name) => (name in params ? String(params[name]) : match));
 }
 
+/** Whether a key exists at all (English is the reference dictionary). */
+export function hasTranslation(key) {
+    return key in en;
+}
+
 /** Translates with the active locale (for non-React code; components use `useT`). */
 export function t(key, params) {
     return translate(activeLocale, key, params);

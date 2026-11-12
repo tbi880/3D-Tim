@@ -65,7 +65,7 @@ function autopilot(session, focused = true) {
 
     let destination = target?.position ?? session.waypoint?.position ?? null;
     let keepDistance = 0;
-    if (target) keepDistance = target.cls.kind === 'fighter' ? 60 : target.radius + (mustHoldLock ? 900 : 260);
+    if (target) keepDistance = target.cls.kind === 'fighter' ? 60 : (mustHoldLock ? 2500 : 320);
     if (!destination) return { ...controls, throttle: -1 };
 
     scratchInverse.copy(player.quaternion).invert();

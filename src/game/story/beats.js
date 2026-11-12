@@ -181,7 +181,7 @@ export const checkpoint = (id) => ({
 });
 
 /** Player must keep `tag` locked and in their sights; fills `vars[varName]` from 0 to 1. */
-export const holdLock = (tag, seconds, varName, { maxAngle = 0.22, maxDistance = 4500 } = {}) => ({
+export const holdLock = (tag, seconds, varName, { maxAngle = 0.22, maxDistance = 8000 } = {}) => ({
     type: 'holdLock',
     begin(ctx) { ctx.vars[varName] = 0; },
     tick(ctx, dt) {
@@ -195,6 +195,24 @@ export const holdLock = (tag, seconds, varName, { maxAngle = 0.22, maxDistance =
             && angleOffAxis(target, player.position, scratchForward, scratchAim) < maxAngle
             && target.distanceToPoint(player.position) < maxDistance;
         vars[varName] = Math.min(1, Math.max(0, vars[varName] + (holding ? dt : -dt * 0.5) / seconds));
+        return vars[varName] >= 1;
+    },
+});
+
+/**
+ * Player must stay within `radius` metres of the ship tagged `tag` for `seconds`
+ * (scanning a beacon, docking...). Fills `vars[varName]` from 0 to 1; drifting away drains it.
+ */
+export const holdNear = (tag, radius, seconds, varName) => ({
+    type: 'holdNear',
+    begin(ctx) { ctx.vars[varName] = 0; },
+    tick(ctx, dt) {
+        const { world, vars } = ctx;
+        const target = world.findByTag(tag);
+        const player = world.player;
+        if (!target || !player?.alive) return true;
+        const near = target.distanceToPoint(player.position) < radius;
+        vars[varName] = Math.min(1, Math.max(0, vars[varName] + (near ? dt : -dt * 0.5) / seconds));
         return vars[varName] >= 1;
     },
 });
@@ -246,15 +264,18 @@ function jumpToSector(ctx, sectorId, bring) {
         if (ship === player) continue;
         const travels = bring.some((tag) => ship.tags.has(tag)) || (ship.parent && bring.some((tag) => ship.parent.tags.has(tag)));
         if (!travels) world.removeShip(ship);
+        // Ships that jump with the player drop out of warp around them a moment later.
+        else if (!ship.parent) world.beginWarpIn(ship);
     }
     world.projectiles = [];
+    world.scriptedBeams = [];
     const sector = world.setSector(sectorId);
     player.position.fromArray(sector.playerStart.position);
     lookRotation(scratchPoint.fromArray(sector.playerStart.facing).normalize(), player.quaternion);
     player.velocity.set(0, 0, 0);
     player.angularVelocity.set(0, 0, 0);
     world.setPlayerTarget(null);
-    world.events.emit(GAME_EVENTS.WARP_FLASH, { position: player.position.clone(), size: 60 });
+    world.events.emit(GAME_EVENTS.WARP_FLASH, { position: player.position.clone(), size: 60, quaternion: player.quaternion.clone() });
 }
 
 export const ending = () => ({
