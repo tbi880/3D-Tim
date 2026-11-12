@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { EFFECTS, FACTION } from '../config/gameConfig.js';
+import { FACTION } from '../config/gameConfig.js';
 import { GAME_EVENTS } from '../core/EventBus.js';
 import { forwardOf } from '../core/math.js';
+import { breakupPose, breakupSeconds } from './effects/breakup.js';
+import { ExhaustPlume } from './effects/ExhaustPlume.js';
+import { ShieldShell, shieldShells } from './effects/ShieldShell.js';
 import { useGameStore } from '../state/gameStore.js';
 import ShipModel, { getModelInfo } from './models/ShipModel.jsx';
 
-const SHIELD_FLASH_SECONDS = 0.55;
-/** How fast (rad/s) a dying capital ship's hull rolls while it breaks up. */
-const DYING_ROLL = 0.05;
 /** How far behind its destination a ship starts its warp-in streak, and how much it is stretched. */
 const WARP_IN_DISTANCE = 9000;
 const WARP_STRETCH = 45;
@@ -32,7 +32,61 @@ function getPlumeGeometry() {
     return plumeGeometry;
 }
 
-/** Glowing exhaust behind each engine; its length follows the ship's thrust (0..~1.6). */
+/** How far a ship's shield stands off its hull, as a multiple of the hull's half-size. */
+const SHIELD_STANDOFF = 1.45;
+
+/** Half-size of a ship's shield shell along its own x, y, z. */
+function shieldExtent(ship) {
+    if (ship.halfExtents) return ship.halfExtents.clone().multiplyScalar(SHIELD_STANDOFF).toArray();
+    const size = ship.radius * 1.3;
+    return [size, size, size];
+}
+
+/**
+ * The shield around a ship: nothing to see until it is hit, then a patch of honeycomb
+ * flares where the hit landed (effects/ShieldShell.js). ShipsLayer feeds it the hits.
+ */
+function Shield({ ship, world }) {
+    const meshRef = useRef(null);
+    const scale = useMemo(() => shieldExtent(ship), [ship]);
+    const shell = useMemo(() => new ShieldShell(FACTION_COLORS[ship.faction].shield, scale), [ship, scale]);
+
+    useEffect(() => {
+        shieldShells.set(ship, shell);
+        return () => {
+            shieldShells.delete(ship);
+            shell.dispose();
+        };
+    }, [ship, shell]);
+
+    useFrame(() => {
+        if (meshRef.current) meshRef.current.visible = shell.update(world.time);
+    });
+
+    return (
+        <mesh ref={meshRef} scale={scale} material={shell.material} visible={false}>
+            <sphereGeometry args={[1, 40, 28]} />
+        </mesh>
+    );
+}
+
+/** Shader-drawn exhaust for every engine of a ship, as one mesh (effects/ExhaustPlume.js). */
+function Exhaust({ engines, faction, ship, session }) {
+    const plume = useMemo(() => new ExhaustPlume(engines, FACTION_COLORS[faction].engine), [engines, faction]);
+    useEffect(() => () => plume.dispose(), [plume]);
+
+    useFrame(() => {
+        const thrust = ship.cls.maxSpeed > 0 ? Math.min(1, ship.velocity.length() / ship.cls.maxSpeed) : 0.2;
+        plume.update(0.12 + thrust * 0.88, session.world.time, session.effectsDelta);
+    });
+
+    return <primitive object={plume.mesh} />;
+}
+
+/**
+ * The player's own exhaust: simple glowing cones whose length follows the thrust (0..~1.6).
+ * Kept as it is until the player's ship models are replaced.
+ */
 function EnginePlumes({ engines, faction, getThrust }) {
     const groupRef = useRef(null);
     const geometry = getPlumeGeometry();
@@ -94,48 +148,27 @@ function applyWarpTransform(group, streak, ship) {
     streak.material.opacity = Math.min(1, amount * 3);
 }
 
-/** One ship: follows its simulation entity, with engine glow, shield shimmer and warp streak. */
-function ShipView({ ship, world }) {
+/** One ship: follows its simulation entity, with engine exhaust, shield and warp streak. */
+function ShipView({ ship, session }) {
+    const world = session.world;
     const groupRef = useRef(null);
-    const shieldRef = useRef(null);
     const streakRef = useRef(null);
     const info = getModelInfo(ship.cls.model);
-    const shieldScale = useMemo(() => {
-        if (ship.halfExtents) return ship.halfExtents.clone().multiplyScalar(1.45).toArray();
-        const size = ship.radius * 1.3;
-        return [size, size, size];
-    }, [ship]);
 
     useFrame(() => {
         const group = groupRef.current;
         if (!group) return;
         group.quaternion.copy(ship.quaternion);
         applyWarpTransform(group, streakRef.current, ship);
-
-        const flash = Math.max(0, 1 - (world.time - ship.lastShieldHitAt) / SHIELD_FLASH_SECONDS);
-        const shield = shieldRef.current;
-        shield.visible = flash > 0.01;
-        shield.material.opacity = flash * 0.35;
     });
 
-    const getThrust = () => (ship.cls.maxSpeed > 0 ? ship.speed / ship.cls.maxSpeed : 0.25);
     const streakWidth = ship.boundingRadius * 0.12;
 
     return (
         <group ref={groupRef}>
             <ShipModel modelId={ship.cls.model} faction={ship.faction} />
-            {info?.engines?.length > 0 && <EnginePlumes engines={info.engines} faction={ship.faction} getThrust={getThrust} />}
-            <mesh ref={shieldRef} scale={shieldScale} visible={false}>
-                <sphereGeometry args={[1, 20, 14]} />
-                <meshBasicMaterial
-                    color={FACTION_COLORS[ship.faction].shield}
-                    transparent
-                    opacity={0}
-                    blending={THREE.AdditiveBlending}
-                    depthWrite={false}
-                    toneMapped={false}
-                />
-            </mesh>
+            {info?.engines?.length > 0 && <Exhaust engines={info.engines} faction={ship.faction} ship={ship} session={session} />}
+            {ship.maxShield > 0 && <Shield ship={ship} world={world} />}
             {/* Bright core of the warp streak; the stretched hull supplies the rest. */}
             <mesh ref={streakRef} scale={[streakWidth, streakWidth, ship.boundingRadius * 1.2]} visible={false}>
                 <sphereGeometry args={[1, 8, 6]} />
@@ -148,11 +181,12 @@ function ShipView({ ship, world }) {
 /** The player's own ship, drawn only in the third-person (chase) view. */
 function PlayerShipView({ session }) {
     const groupRef = useRef(null);
-    const info = getModelInfo(session.world.player?.cls.model ?? 'kestrel');
+    // Replaced on every new game or reload, which is also when a different ship may have been chosen.
+    const player = useGameStore((state) => state.playerShip);
+    const info = getModelInfo(player?.cls.model ?? 'kestrel');
 
     useFrame(() => {
         const group = groupRef.current;
-        const player = session.world.player;
         if (!group || !player) return;
         group.visible = player.alive && session.settings.cameraMode === 'chase';
         group.position.copy(player.position);
@@ -160,27 +194,28 @@ function PlayerShipView({ session }) {
     });
 
     const getThrust = () => {
-        const player = session.world.player;
         if (!player?.alive) return 0;
         return player.boosting ? 1.6 : 0.15 + (player.speed / player.cls.maxSpeed) * 0.85;
     };
 
     return (
         <group ref={groupRef} visible={false}>
-            <ShipModel modelId="kestrel" faction={FACTION.DAWN} />
+            <ShipModel modelId={player?.cls.model ?? 'kestrel'} faction={FACTION.DAWN} />
             {info?.engines?.length > 0 && <EnginePlumes engines={info.engines} faction={FACTION.DAWN} getThrust={getThrust} />}
+            {player && <Shield key={player.id} ship={player} world={session.world} />}
         </group>
     );
 }
 
 /**
  * The hull of a capital ship that has just been destroyed. The simulation has already
- * removed it; the picture lingers, drifting and slowly rolling, while ExplosionsLayer walks
- * blasts along it, and disappears in the main explosion (see EFFECTS in gameConfig).
+ * removed it; the picture lingers - powerless, drifting, starting to tumble - while
+ * ExplosionsLayer sets it on fire, and disappears in the main explosion (effects/breakup.js).
  */
-function DyingHull({ ship, session, seconds, onGone }) {
+function DyingHull({ ship, session, onGone }) {
     const groupRef = useRef(null);
     const elapsed = useRef(0);
+    const seconds = breakupSeconds(ship);
 
     useFrame(() => {
         const group = groupRef.current;
@@ -192,9 +227,7 @@ function DyingHull({ ship, session, seconds, onGone }) {
             onGone(ship);
             return;
         }
-        group.position.addScaledVector(ship.velocity, dt);
-        group.rotateZ(DYING_ROLL * dt);
-        group.rotateX(DYING_ROLL * 0.4 * dt);
+        breakupPose(ship, elapsed.current, group.position, group.quaternion);
     });
 
     return (
@@ -215,25 +248,26 @@ export default function ShipsLayer({ session }) {
             events.on(GAME_EVENTS.SHIP_DESTROYED, ({ ship }) => {
                 const kind = ship.cls.kind;
                 if (!ship.cls.model || (kind !== 'capital' && kind !== 'station')) return;
-                const huge = ship.boundingRadius * 1.3 > EFFECTS.hugeExplosionSize;
-                setDying((list) => [...list, { ship, seconds: huge ? EFFECTS.hugeBreakupSeconds : EFFECTS.breakupSeconds }]);
+                setDying((list) => [...list, ship]);
+            }),
+            // Shields light up where they are struck.
+            events.on(GAME_EVENTS.HIT, ({ target, position, shield }) => {
+                if (shield && target) shieldShells.get(target)?.addHit(target, position, session.world.time);
             }),
             events.on(GAME_EVENTS.SECTOR_CHANGED, () => setDying([])),
         ];
         return () => unsubscribe.forEach((off) => off());
     }, [session]);
 
-    const removeDying = (ship) => setDying((list) => list.filter((entry) => entry.ship !== ship));
+    const removeDying = (ship) => setDying((list) => list.filter((entry) => entry !== ship));
 
     return (
         <>
             <PlayerShipView session={session} />
             {roster
                 .filter((ship) => ship.cls.model)
-                .map((ship) => <ShipView key={ship.id} ship={ship} world={session.world} />)}
-            {dying.map(({ ship, seconds }) => (
-                <DyingHull key={ship.id} ship={ship} session={session} seconds={seconds} onGone={removeDying} />
-            ))}
+                .map((ship) => <ShipView key={ship.id} ship={ship} session={session} />)}
+            {dying.map((ship) => <DyingHull key={ship.id} ship={ship} session={session} onGone={removeDying} />)}
         </>
     );
 }

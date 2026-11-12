@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { EFFECTS, FACTION } from '../config/gameConfig.js';
 import { GAME_EVENTS } from '../core/EventBus.js';
+import { breakupPose, breakupSeconds } from './effects/breakup.js';
 import { DebrisSystem } from './effects/DebrisSystem.js';
 import { FireballSystem } from './effects/FireballSystem.js';
 import { ParticleSystem, randomDirection } from './effects/ParticleSystem.js';
+import { HULL_WRECKAGE, ROCK_WRECKAGE, SHIP_WRECKAGE } from './effects/wreckageShapes.js';
+import { ModelErrorBoundary, useHullTextures } from './models/ShipModel.jsx';
 
 /**
  * Explosions, impact sparks and warp flashes, all fed by simulation events.
@@ -25,7 +28,7 @@ import { ParticleSystem, randomDirection } from './effects/ParticleSystem.js';
 
 const MAX_SPARKS = 2400;
 const MAX_PUFFS = 240;
-const MAX_CHUNKS = 340;
+const MAX_CHUNKS = 420;
 const MAX_FLASHES = 12;
 const MAX_RINGS = 10;
 const MAX_LIGHTS = 2;
@@ -50,12 +53,14 @@ const SHIELD_SPARK = new THREE.Color('#7fd8ff');
 const HULL_SPARK = new THREE.Color('#ffb061');
 const WARP_COLOR = new THREE.Color('#a8d8ff');
 const ROCK_SPARKS = [new THREE.Color('#b08a5a'), new THREE.Color('#ffd9a0')];
-const ROCK_COLOR = '#6e645b';
-const DEBRIS_COLORS = Object.freeze({
-    [FACTION.DAWN]: '#8f98a4',
-    [FACTION.UMBRA]: '#3c3542',
-    [FACTION.NEUTRAL]: '#6b6c72',
+const ROCK_COLORS = ['#6e645b', '#5a524b', '#7d7268'];
+/** The paints of each fleet (hull, secondary panels), so wreckage matches the ship it came from. */
+const WRECKAGE_COLORS = Object.freeze({
+    [FACTION.DAWN]: ['#a3acb8', '#a3acb8', '#5d6c7e'],
+    [FACTION.UMBRA]: ['#4a4654', '#4a4654', '#5a2535'],
+    [FACTION.NEUTRAL]: ['#6b6c72', '#55565c'],
 });
+const wreckageColors = (ship) => WRECKAGE_COLORS[ship.faction] ?? WRECKAGE_COLORS[FACTION.NEUTRAL];
 const WHITE = new THREE.Color(1, 1, 1);
 
 const FLASH_VERTEX_SHADER = /* glsl */ `
@@ -113,21 +118,22 @@ class FlashBurst {
 const scratchVector = new THREE.Vector3();
 const scratchVelocity = new THREE.Vector3();
 const scratchColor = new THREE.Color();
+const scratchHullPosition = new THREE.Vector3();
+const scratchHullQuaternion = new THREE.Quaternion();
 const ZERO = new THREE.Vector3();
 
-/** A random point inside a ship's hull (its hit boxes), in world space. */
+/** A random point inside a ship's hull (its hit boxes), in the ship's own axes. */
 function randomHullPoint(ship, out) {
-    if (!ship.boxes) return randomDirection(out).multiplyScalar(ship.radius * 0.6 * Math.random()).add(ship.position);
+    if (!ship.boxes) return randomDirection(out).multiplyScalar(ship.radius * 0.6 * Math.random());
     const box = ship.boxes[Math.floor(Math.random() * ship.boxes.length)];
-    out.set((Math.random() * 2 - 1) * box.half.x, (Math.random() * 2 - 1) * box.half.y, (Math.random() * 2 - 1) * box.half.z)
+    return out.set((Math.random() * 2 - 1) * box.half.x, (Math.random() * 2 - 1) * box.half.y, (Math.random() * 2 - 1) * box.half.z)
         .multiplyScalar(0.85).add(box.centre);
-    return out.applyQuaternion(ship.quaternion).add(ship.position);
 }
 
-export default function ExplosionsLayer({ session }) {
+function Effects({ session, textures }) {
     const sparks = useMemo(() => new ParticleSystem(MAX_SPARKS), []);
     const fire = useMemo(() => new FireballSystem(MAX_PUFFS), []);
-    const debris = useMemo(() => new DebrisSystem(MAX_CHUNKS), []);
+    const debris = useMemo(() => new DebrisSystem(MAX_CHUNKS, textures), [textures]);
     const bursts = useMemo(() => FLASH_INDICES.map(() => new FlashBurst()), []);
 
     const flashRefs = useRef([]);
@@ -139,6 +145,9 @@ export default function ExplosionsLayer({ session }) {
     const lightRefs = useRef([]);
     const lights = useRef(LIGHT_INDICES.map(() => ({ life: 0, maxLife: 1, peak: 0 })));
     const lightCursor = useRef(0);
+    /** Capital ships in the middle of breaking up, and the function (made in the effect below) that advances one. */
+    const breakups = useRef([]);
+    const advanceBreakUpRef = useRef(null);
     /** Things that happen a moment later: { delay, run() }. */
     const pending = useRef([]);
     const lastSparkAt = useRef(0);
@@ -214,42 +223,78 @@ export default function ExplosionsLayer({ session }) {
             if (chunks) debris.emit(position, { ...chunks, drift });
         };
 
-        /** The slow death of a capital ship: blasts along the hull, then the main explosion. */
+        /**
+         * The slow death of a capital ship. For a few seconds the powerless hull drifts and
+         * starts to tumble (see effects/breakup.js) while it burns: fires that stay with the
+         * hull, blasts that walk along it, showers of sparks. Then the main explosion replaces
+         * it with wreckage.
+         */
         const breakUp = (ship, size) => {
             const huge = size > EFFECTS.hugeExplosionSize;
-            const seconds = huge ? EFFECTS.hugeBreakupSeconds : EFFECTS.breakupSeconds;
-            const color = DEBRIS_COLORS[ship.faction] ?? DEBRIS_COLORS[FACTION.NEUTRAL];
-            const drift = ship.velocity.clone();
-            const blasts = huge ? 16 : 8;
-            for (let i = 0; i < blasts; i++) {
-                pending.current.push({
-                    delay: (i / blasts) * seconds * 0.95 + Math.random() * 0.12,
-                    run: () => {
-                        const chunkSize = Math.min(34, size * 0.03);
-                        blast(randomHullPoint(ship, new THREE.Vector3()), size * (0.1 + Math.random() * 0.14), {
-                            drift, lit: i % 3 === 0,
-                            chunks: { count: 5, size: chunkSize, speed: size * 0.2, life: 9, color, heat: 1, spread: size * 0.04 },
-                        });
-                    },
+            const seconds = breakupSeconds(ship);
+            const fires = Array.from({ length: huge ? 9 : 6 }, () => ({
+                local: randomHullPoint(ship, new THREE.Vector3()), size: size * (0.035 + Math.random() * 0.035), startsAt: Math.random() * seconds * 0.6,
+            }));
+            const blastCount = huge ? 18 : 10;
+            // Sparse at first, then faster and bigger as the hull gives way.
+            const blasts = Array.from({ length: blastCount }, (_, index) => ({
+                at: (index / blastCount) ** 0.8 * seconds * 0.96 + Math.random() * 0.15,
+                local: randomHullPoint(ship, new THREE.Vector3()), size: size * (0.09 + Math.random() * 0.13) * (0.7 + 0.6 * index / blastCount),
+            }));
+            breakups.current.push({ ship, size, huge, seconds, elapsed: 0, fires, blasts, nextFlame: 0, colors: wreckageColors(ship) });
+        };
+
+        /** Runs one dying hull for a frame; returns false once it has exploded. */
+        const advanceBreakUp = (state, dt) => {
+            const { ship, size, huge, colors } = state;
+            state.elapsed += dt;
+            breakupPose(ship, state.elapsed, scratchHullPosition, scratchHullQuaternion);
+            const toWorld = (local, out) => out.copy(local).applyQuaternion(scratchHullQuaternion).add(scratchHullPosition);
+            const drift = ship.velocity;
+
+            if (state.elapsed < state.seconds) {
+                // Fires: a steady stream of small flames from each burning point.
+                state.nextFlame -= dt;
+                if (state.nextFlame <= 0) {
+                    state.nextFlame = 0.09;
+                    for (const flame of state.fires) {
+                        if (state.elapsed < flame.startsAt) continue;
+                        toWorld(flame.local, scratchVector);
+                        randomDirection(scratchVelocity).multiplyScalar(flame.size * 0.5).add(drift);
+                        fire.spawn(scratchVector, scratchVelocity, { radius: flame.size, growth: 2.6, life: 1.5 + Math.random() * 0.8, heat: 0.95 });
+                        if (Math.random() < 0.3) {
+                            sparks.emit(scratchVector, { count: 8, speed: flame.size * 5, life: 0.9, size: THREE.MathUtils.clamp(flame.size * 0.12, 0.8, 9), colors: SPARK_COLORS });
+                        }
+                    }
+                }
+                // Blasts walking along the hull, each throwing off a little wreckage.
+                while (state.blasts.length > 0 && state.blasts[0].at <= state.elapsed) {
+                    const next = state.blasts.shift();
+                    blast(toWorld(next.local, new THREE.Vector3()), next.size, {
+                        drift, lit: state.blasts.length % 3 === 0,
+                        chunks: { count: 6, size: Math.min(30, size * 0.028), speed: size * 0.16, life: 10, shapes: SHIP_WRECKAGE, colors, heat: 1, spread: next.size * 0.3 },
+                    });
+                }
+                return true;
+            }
+
+            // The end: one great blast, and the hull is replaced by what is left of it.
+            const centre = scratchHullPosition.clone();
+            blast(centre, size * 0.6, { drift });
+            startRing(centre, size * 3.2, huge ? 3.6 : 2, FIRE);
+            // Plates and hull sections from all along the ship: big, slow, long-lived...
+            for (let i = 0; i < (huge ? 12 : 7); i++) {
+                debris.emit(toWorld(randomHullPoint(ship, scratchVector), scratchVector), {
+                    count: huge ? 7 : 6, size: Math.min(170, size * 0.085), speed: size * 0.05, life: 22, shapes: HULL_WRECKAGE, colors, heat: 0.6,
+                    spread: size * 0.06, drift,
                 });
             }
-            pending.current.push({
-                delay: seconds,
-                run: () => {
-                    const centre = ship.position.clone();
-                    blast(centre, size * 0.55, { drift });
-                    startRing(centre, size * 3.2, huge ? 3.4 : 1.8, FIRE);
-                    // The hull itself comes apart: big plates from all along it, small pieces from the middle.
-                    for (let i = 0; i < (huge ? 10 : 5); i++) {
-                        debris.emit(randomHullPoint(ship, scratchVector), {
-                            count: huge ? 9 : 7, size: Math.min(150, size * 0.075), speed: size * 0.12, life: 15, color, heat: 0.7,
-                            spread: size * 0.08, drift,
-                        });
-                    }
-                    debris.emit(centre, { count: 40, size: Math.min(26, size * 0.02), speed: size * 0.45, life: 10, color, heat: 1, spread: size * 0.2, drift });
-                },
-            });
+            // ...and a cloud of small fragments blown far out from the middle.
+            debris.emit(centre, { count: 70, size: Math.min(22, size * 0.018), speed: size * 0.4, life: 12, shapes: SHIP_WRECKAGE, colors, heat: 1, spread: size * 0.25, drift });
+            return false;
         };
+
+        advanceBreakUpRef.current = advanceBreakUp;
 
         const unsubscribe = [
             world.events.on(GAME_EVENTS.EXPLOSION, ({ position, size, capital, color, ship }) => {
@@ -259,8 +304,8 @@ export default function ExplosionsLayer({ session }) {
                 }
                 const tint = color ? new THREE.Color(color).lerp(WHITE, 0.35) : WHITE;
                 const chunks = ship
-                    ? { count: Math.round(Math.min(26, 9 + size * 0.25)), size: size * 0.07, speed: size * 1.5, life: 8, heat: 1, spread: size * 0.2,
-                        color: DEBRIS_COLORS[ship.faction] ?? DEBRIS_COLORS[FACTION.NEUTRAL] }
+                    ? { count: Math.round(Math.min(30, 12 + size * 0.3)), size: size * 0.11, speed: size * 1.1, life: 11, heat: 1, spread: size * 0.2,
+                        shapes: SHIP_WRECKAGE, colors: wreckageColors(ship) }
                     : null;
                 const drift = ship ? ship.velocity.clone().multiplyScalar(0.5) : ZERO;
                 blast(position, size, { tint, chunks, drift });
@@ -287,23 +332,28 @@ export default function ExplosionsLayer({ session }) {
                 for (const ring of rings.current) ring.life = 0;
                 for (const light of lights.current) light.life = 0;
                 pending.current = [];
+                breakups.current = [];
                 sparks.clear();
                 fire.clear();
                 debris.clear();
             }),
             world.events.on(GAME_EVENTS.OBSTACLE_DESTROYED, ({ position, radius }) => {
-                // Rock does not burn: a puff of dust, grit and tumbling fragments.
-                startFlash(position, radius * 2.2, 0.25, ROCK_SPARKS[1]);
-                for (let i = 0; i < 5; i++) {
+                // Rock does not burn, but it goes with a bang: a hard flash, a brief hot core,
+                // a rolling cloud of dust, grit and a spray of tumbling fragments.
+                startFlash(position, radius * 4.5, 0.32, ROCK_SPARKS[1]);
+                startLight(position, radius * 0.8, ROCK_SPARKS[1]);
+                fire.spawn(position, ZERO, { radius: radius * 0.7, growth: 1.9, life: 0.7, heat: 0.85 });
+                for (let i = 0; i < 9; i++) {
                     randomDirection(scratchVector);
-                    scratchVelocity.copy(scratchVector).multiplyScalar(radius * 0.5);
-                    fire.spawn(scratchVector.multiplyScalar(radius * 0.4).add(position), scratchVelocity, {
-                        radius: radius * 0.5, growth: 2.6, life: 2.2 + Math.random(), heat: 0.12,
+                    scratchVelocity.copy(scratchVector).multiplyScalar(radius * (0.5 + Math.random() * 0.7));
+                    fire.spawn(scratchVector.multiplyScalar(radius * 0.5).add(position), scratchVelocity, {
+                        radius: radius * (0.5 + Math.random() * 0.4), growth: 2.8, life: 2.6 + Math.random() * 1.4, heat: 0.14,
                     });
                 }
-                sparks.emit(position, { count: Math.round(14 + radius), speed: radius * 2.4, life: 1.1, size: Math.max(0.8, radius * 0.07), colors: ROCK_SPARKS });
+                sparks.emit(position, { count: Math.round(Math.min(120, 30 + radius * 2)), speed: radius * 3.2, life: 1.4, size: Math.max(0.9, radius * 0.08), colors: ROCK_SPARKS });
                 debris.emit(position, {
-                    count: Math.round(Math.min(18, 6 + radius * 0.25)), size: radius * 0.16, speed: radius * 0.9, life: 9, color: ROCK_COLOR, spread: radius * 0.5,
+                    count: Math.round(Math.min(34, 12 + radius * 0.5)), size: radius * 0.2, speed: radius * 0.9, life: 11, shapes: ROCK_WRECKAGE, colors: ROCK_COLORS,
+                    spread: radius * 0.6,
                 });
             }),
         ];
@@ -331,6 +381,8 @@ export default function ExplosionsLayer({ session }) {
             });
             for (const item of due) item.run();
         }
+
+        if (breakups.current.length > 0) breakups.current = breakups.current.filter((state) => advanceBreakUpRef.current(state, dt));
 
         sparks.update(dt);
         fire.update(dt);
@@ -375,7 +427,7 @@ export default function ExplosionsLayer({ session }) {
         <>
             <points geometry={sparks.geometry} material={sparks.material} frustumCulled={false} />
             <mesh geometry={fire.geometry} material={fire.material} frustumCulled={false} renderOrder={2} />
-            <primitive object={debris.mesh} />
+            {debris.meshes.map((mesh) => <primitive key={mesh.uuid} object={mesh} />)}
             {FLASH_INDICES.map((index) => (
                 <mesh key={index} ref={(mesh) => { flashRefs.current[index] = mesh; }} material={bursts[index].material} visible={false} renderOrder={3}>
                     <planeGeometry args={[1, 1]} />
@@ -392,5 +444,20 @@ export default function ExplosionsLayer({ session }) {
                 <pointLight key={index} ref={(light) => { lightRefs.current[index] = light; }} intensity={0} decay={2} distance={1} />
             ))}
         </>
+    );
+}
+
+function TexturedEffects({ session }) {
+    return <Effects session={session} textures={useHullTextures()} />;
+}
+
+/** All explosion effects; without the plating textures the wreckage is simply plain metal. */
+export default function ExplosionsLayer({ session }) {
+    return (
+        <ModelErrorBoundary fallback={<Effects session={session} textures={null} />}>
+            <Suspense fallback={null}>
+                <TexturedEffects session={session} />
+            </Suspense>
+        </ModelErrorBoundary>
     );
 }

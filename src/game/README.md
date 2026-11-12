@@ -92,10 +92,17 @@ and react to `world.events` (explosions, hits...).
   position, 400 km out and shrunk by the same ratio, which looks identical to the real
   thing but keeps the numbers inside what a GPU can represent.
 * **Explosions** (`ExplosionsLayer.jsx`, `scene/effects/`) are built from pooled, instanced
-  parts: fire-and-smoke puffs (`FireballSystem`), sparks (`ParticleSystem`), tumbling
-  wreckage (`DebrisSystem`), flashes, shock rings and two point lights that are always
-  mounted. A destroyed capital ship's hull stays on screen for a few seconds while blasts
-  walk along it (`EFFECTS` in `config/gameConfig.js` holds the shared timing).
+  parts: fire-and-smoke puffs (`FireballSystem`), sparks (`ParticleSystem`), wreckage
+  (`DebrisSystem`, shapes in `wreckageShapes.js`: torn plating, hull sections, frame and
+  machinery, textured and painted like the ship they came from; small pieces fly far,
+  large ones barely drift), flashes, shock rings and two point lights that are always
+  mounted. A destroyed capital ship does not vanish: for `EFFECTS.breakupSeconds` its
+  powerless hull drifts, burns and starts to tumble (`effects/breakup.js` gives both the
+  hull and the fires their pose), then the main explosion replaces it with wreckage.
+* **Shields** (`effects/ShieldShell.js`) are invisible until hit, then glow around the
+  point of impact only. **Exhaust** for every ship but the player's is a shader-drawn
+  plume, one mesh per ship (`effects/ExhaustPlume.js`); a model with an empty `engines`
+  list (the Dawnbreaker) has none.
 * Ships arriving by warp are invulnerable and untargetable until they land
   (`ship.arriving`); `ShipsLayer` draws the streak, `ExplosionsLayer` the flash and ring.
 
@@ -107,6 +114,15 @@ and react to `world.events` (explosions, hits...).
 it a model: either write a builder in `tools/game-models/build_models.py`, register it in
 `MODELS` and run `npm run game:models`, or use an existing file (next point).
 
+**Add or rebalance a player ship** – the hangar lists `PLAYER_SHIPS` (`config/playerShips.js`);
+each is an ordinary class in `config/shipClasses.js` with two extra fields: `handling`
+(multipliers for turn rate, acceleration, afterburner duration and afterburner speed) and
+`weaponDamage`. Names and descriptions are `ship.<id>` and `playerShip.<id>.*` in the i18n
+files. The Swift, Shrike and Bulwark borrow the Kestrel's model for now: to give one its own,
+add it to `MODEL_OVERRIDES` (next point) and remove its line from `MODEL_ALIASES` in
+`scene/models/ShipModel.jsx`. The player's exhaust is the simple `EnginePlumes` in
+`ShipsLayer.jsx` and reads the `engines` of whichever model is shown.
+
 **Swap in a downloaded model** (Sketchfab etc.) – put the GLB in `public/assets/game/` and
 add an entry to `MODEL_OVERRIDES` in `scene/models/ShipModel.jsx` with its `file`, the
 `scale` that turns its units into metres, the `rotation` that points its nose to −Z, and
@@ -116,10 +132,15 @@ its `engines`. Nothing else changes; the hit boxes stay in `shipClasses.js`.
 real radius and real distance; the comment at the top of the file gives the formula for how
 big that looks.
 
+**Gun batteries** – a module class whose weapon has a `lockTime` (see `eclipseCannon`) must
+track its target that long before firing and loses the lock outside its `range`. While one
+is on the player the HUD shows a warning (`world.playerCannonLock`). The Eclipse's are
+mounted in `spawnEclipse` (`story/campaign.js`) and die to a single torpedo.
+
 **Tune difficulty** – `DIFFICULTY` in `config/gameConfig.js`. Each level scales damage taken
 by the player and by allies, Umbra toughness, fire rate and beam damage, allied damage and
 the player's shield recharge. `npm run game:simulate -- --difficulty=admiral` flies the
-campaign at a given level.
+campaign at a given level; add `--ship=swift` (or `shrike`, `bulwark`) to fly another ship.
 
 **Change the story** – edit `story/campaign.js`. It reads top to bottom:
 

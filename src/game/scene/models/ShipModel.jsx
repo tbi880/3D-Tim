@@ -31,7 +31,8 @@ const MODEL_OVERRIDES = Object.freeze({
         scale: 1287,
         rotation: [0, Math.PI, 0],
         size: [510, 190, 1400],
-        engines: [[-95, 10, 690, 34], [95, 10, 690, 34], [0, -25, 695, 40]],
+        // No exhaust plumes: the model has its own engine glow.
+        engines: [],
     },
 });
 
@@ -41,9 +42,17 @@ const FALLBACK_COLORS = Object.freeze({
     [FACTION.NEUTRAL]: '#8c8f96',
 });
 
+/**
+ * Ships that borrow another ship's model. The extra player ships fly the Kestrel's hull
+ * until their own models are added: give one an entry in MODEL_OVERRIDES and delete its
+ * line here.
+ */
+const MODEL_ALIASES = Object.freeze({ swift: 'kestrel', shrike: 'kestrel', bulwark: 'kestrel' });
+
 /** @returns {{ file: string, size: number[], engines: number[][], scale?: number, rotation?: number[] } | null} */
 export function getModelInfo(modelId) {
-    return MODEL_OVERRIDES[modelId] ?? manifest[modelId] ?? null;
+    const id = MODEL_ALIASES[modelId] ?? modelId;
+    return MODEL_OVERRIDES[id] ?? manifest[id] ?? null;
 }
 
 /** Every model file the game can show, for preloading behind the loading screen. */
@@ -82,16 +91,20 @@ const ROCK_TEXTURE_URLS = Object.fromEntries(Object.entries(ROCK_TEXTURE_FILES).
 /** One material set per set of loaded textures (in practice: one for the whole game). */
 const materialSets = new WeakMap();
 
-/** The shared ship materials (suspends until the plating textures are loaded). */
-export function useShipMaterials() {
+/** The ships' plating textures, set up for tiling (suspends until they are loaded). */
+export function useHullTextures() {
     const textures = useTexture(HULL_TEXTURE_URLS);
     const anisotropy = useThree((state) => Math.min(8, state.gl.capabilities.getMaxAnisotropy()));
+    return useMemo(() => configureSurfaceTextures(textures, anisotropy), [textures, anisotropy]);
+}
+
+/** The shared ship materials. */
+export function useShipMaterials() {
+    const textures = useHullTextures();
     return useMemo(() => {
-        if (!materialSets.has(textures)) {
-            materialSets.set(textures, createShipMaterials(configureSurfaceTextures(textures, anisotropy)));
-        }
+        if (!materialSets.has(textures)) materialSets.set(textures, createShipMaterials(textures));
         return materialSets.get(textures);
-    }, [textures, anisotropy]);
+    }, [textures]);
 }
 
 /** The asteroid surface textures, set up for tiling. */

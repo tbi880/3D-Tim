@@ -17,9 +17,15 @@ function valueNoise(x, y, z) {
     );
 }
 
+/** Planes that cut flat faces into the rock: unit normal, then distance from the centre. */
+const FRACTURE_PLANES = [
+    [0.82, 0.31, 0.48, 0.74], [-0.56, 0.71, -0.43, 0.7], [0.12, -0.93, 0.35, 0.66], [-0.71, -0.28, 0.65, 0.78],
+    [0.33, 0.52, -0.79, 0.72], [-0.2, 0.15, 0.97, 0.86], [0.64, -0.55, -0.53, 0.8],
+];
+
 /**
- * One asteroid of radius ~1: a sphere pushed in and out by a few octaves of noise, with
- * smooth normals and UVs for the rock textures. Every asteroid in the game is an instance
+ * One asteroid of radius ~1: a sphere pushed in and out by a few octaves of noise and cut
+ * by a few flat fracture faces, with smooth normals and UVs for the rock textures. Every asteroid in the game is an instance
  * of this one shape, scaled unevenly and rotated so no two look alike.
  */
 export function createAsteroidGeometry() {
@@ -28,12 +34,16 @@ export function createAsteroidGeometry() {
     const point = new THREE.Vector3();
     for (let i = 0; i < positions.count; i++) {
         point.fromBufferAttribute(positions, i).normalize();
-        // Broad lumps, then knobs, then grit - and a couple of flattened sides.
-        let radius = 0.72
-            + 0.42 * valueNoise(point.x * 1.3 + 4, point.y * 1.3 + 9, point.z * 1.3 + 2)
-            + 0.2 * valueNoise(point.x * 3.1, point.y * 3.1 + 5, point.z * 3.1)
-            + 0.07 * valueNoise(point.x * 8.3 + 1, point.y * 8.3, point.z * 8.3 + 7);
-        radius = Math.min(radius, 1.02 + 0.1 * point.x, 1.05 - 0.14 * point.y);
+        // Broad lumps, then knobs, then grit...
+        let radius = 0.6
+            + 0.62 * valueNoise(point.x * 1.1 + 4, point.y * 1.1 + 9, point.z * 1.1 + 2)
+            + 0.3 * valueNoise(point.x * 2.9, point.y * 2.9 + 5, point.z * 2.9)
+            + 0.09 * valueNoise(point.x * 8.3 + 1, point.y * 8.3, point.z * 8.3 + 7);
+        // ...then a handful of flat faces sheared off it, as if by old collisions.
+        for (const [nx, ny, nz, depth] of FRACTURE_PLANES) {
+            const facing = point.x * nx + point.y * ny + point.z * nz;
+            if (facing > 0.05) radius = Math.min(radius, depth / facing);
+        }
         positions.setXYZ(i, point.x * radius, point.y * radius, point.z * radius);
     }
     geometry.computeVertexNormals();
