@@ -6,11 +6,18 @@ import { SoundEngine } from '../game/audio/SoundEngine.js';
 import { InputController } from '../game/input/InputController.js';
 import GameScene from '../game/scene/GameScene.jsx';
 import { GameSession } from '../game/state/GameSession.js';
-import { gameStoreSink, useGameStore } from '../game/state/gameStore.js';
+import { gameStoreSink, useGameStore, useT } from '../game/state/gameStore.js';
 import GameHud from '../game/ui/GameHud.jsx';
 import Menus from '../game/ui/Menus.jsx';
 import TouchControls from '../game/ui/TouchControls.jsx';
 import '../game/ui/hud.css';
+
+/**
+ * The battle spans a cockpit half a metre from the camera to planets hundreds of kilometres
+ * away. A logarithmic depth buffer keeps depth precise over that whole range, which is what
+ * stops distant hulls and planet cloud layers from flickering through each other.
+ */
+const GL_OPTIONS = { logarithmicDepthBuffer: true };
 
 /**
  * Builds everything one visit to the game needs. The three objects are plain classes with
@@ -27,7 +34,18 @@ function createGame() {
     return { session, input, sound };
 }
 
-/** "Echoes of Dawn" - a first-person space combat story set after Project Dawn. */
+/** Covers the game on a phone held upright (CSS shows it only in portrait on touch devices). */
+function RotateHint() {
+    const t = useT();
+    return (
+        <div className="eod-rotate-hint">
+            <span>⟳</span>
+            {t('ui.rotateDevice')}
+        </div>
+    );
+}
+
+/** "Echoes of Dawn" - a story-driven space combat game set after Project Dawn. */
 function EchoesOfDawn() {
     const [game, setGame] = useState(null);
     const inputSurfaceRef = useRef(null);
@@ -78,7 +96,7 @@ function EchoesOfDawn() {
                 {game && (
                     <>
                         <div className="eod-canvas-container">
-                            <CanvasProvider>
+                            <CanvasProvider glOptions={GL_OPTIONS}>
                                 <GameScene game={game} markerCanvasRef={markerCanvasRef} radarCanvasRef={radarCanvasRef} />
                             </CanvasProvider>
                         </div>
@@ -86,6 +104,7 @@ function EchoesOfDawn() {
                         <GameHud session={game.session} markerCanvasRef={markerCanvasRef} radarCanvasRef={radarCanvasRef} />
                         <TouchControls input={game.input} session={game.session} />
                         <Menus session={game.session} onStart={() => game.sound.unlock()} />
+                        <RotateHint />
                     </>
                 )}
             </div>

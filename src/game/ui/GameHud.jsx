@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react';
 import { GAME_EVENTS } from '../core/EventBus.js';
+import { hasTranslation } from '../i18n/index.js';
+import { isTouchDevice } from '../input/device.js';
 import { PHASE, SESSION_EVENTS } from '../state/GameSession.js';
 import { useGameStore, useT } from '../state/gameStore.js';
 import CommsPanel from './CommsPanel.jsx';
+
+/** Decided once: a device does not grow a mouse halfway through a mission. */
+const IS_TOUCH = isTouchDevice();
 
 /**
  * The in-flight HUD. Each panel subscribes to one slice of the game store (refreshed about
@@ -168,7 +173,9 @@ function HintBar() {
     const hint = useGameStore((state) => state.hint);
     const t = useT();
     if (!hint) return null;
-    return <div className="eod-hint">{t(hint)}</div>;
+    // Hints that name keys have a `.touch` twin describing the on-screen controls instead.
+    const touchHint = `${hint}.touch`;
+    return <div className="eod-hint">{t(IS_TOUCH && hasTranslation(touchHint) ? touchHint : hint)}</div>;
 }
 
 function Toast() {

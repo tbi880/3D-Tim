@@ -6,7 +6,7 @@ import { useGameStore, useT } from '../state/gameStore.js';
 
 /** Title screen, pause menu, game-over and ending screens. */
 
-const CONTROL_ROWS = ['steer', 'throttle', 'roll', 'boost', 'beam', 'torpedo', 'target', 'power', 'skip', 'pause'];
+const CONTROL_ROWS = ['steer', 'throttle', 'roll', 'boost', 'beam', 'torpedo', 'target', 'power', 'view', 'skip', 'pause'];
 
 function formatDuration(seconds) {
     const minutes = Math.floor(seconds / 60);
@@ -50,6 +50,12 @@ function SettingsRows({ session }) {
             </button>
             <button type="button" className="eod-setting" onClick={() => session.updateSettings({ invertY: !settings.invertY })}>
                 <span>{t('ui.invertY')}</span><strong>{settings.invertY ? t('ui.on') : t('ui.off')}</strong>
+            </button>
+            <button type="button" className="eod-setting" onClick={() => session.handleAction('toggleView')}>
+                <span>{t('ui.view')}</span><strong>{t(`ui.view.${settings.cameraMode}`)}</strong>
+            </button>
+            <button type="button" className="eod-setting" onClick={() => session.updateSettings({ autoFire: !settings.autoFire })}>
+                <span>{t('ui.autoFire')}</span><strong>{settings.autoFire ? t('ui.on') : t('ui.off')}</strong>
             </button>
             <p className="eod-setting-hint">{t(`ui.difficultyHint.${settings.difficulty}`)}</p>
         </div>

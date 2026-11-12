@@ -2,18 +2,27 @@ import { useRef, useState } from 'react';
 import { PHASE } from '../state/GameSession.js';
 import { useGameStore, useT } from '../state/gameStore.js';
 
-const STICK_TRAVEL = 52;
+const STICK_TRAVEL = 56;
 
 /**
- * On-screen controls for phones and tablets: a steering stick on the left, action buttons
- * on the right. Throttle stays where the game sets it (W / S are keyboard-only), which
- * keeps the touch layout to what two thumbs can manage.
+ * On-screen controls for phones and tablets (shown only where the pointer is a finger):
+ *
+ *   left thumb  - steering stick, with a throttle slider beside it
+ *   right thumb - FIRE (hold), TORPEDO, BURN (hold), LOCK (next target)
+ *   top         - pause, skip comms, switch view, cycle power mode
+ *
+ * With the "auto-fire" setting on (the default on touch devices) the beams fire by
+ * themselves whenever a hostile is inside the ring, so flying only needs one thumb.
  */
 export default function TouchControls({ input, session }) {
     const t = useT();
     const phase = useGameStore((state) => state.phase);
+    const autoFire = useGameStore((state) => state.settings.autoFire);
     const [knob, setKnob] = useState({ x: 0, y: 0 });
+    const [throttle, setThrottle] = useState(0.5);
     const origin = useRef(null);
+
+    if (phase !== PHASE.PLAYING) return null;
 
     const moveStick = (event) => {
         if (!origin.current) return;
@@ -37,6 +46,16 @@ export default function TouchControls({ input, session }) {
         input.setTouchStick(0, 0);
     };
 
+    /** The slider's height maps straight onto 0..100% throttle. */
+    const dragThrottle = (event) => {
+        if (event.type === 'pointerdown') event.currentTarget.setPointerCapture(event.pointerId);
+        else if (event.buttons === 0 && event.pointerType !== 'touch') return;
+        const rect = event.currentTarget.getBoundingClientRect();
+        const value = Math.max(0, Math.min(1, 1 - (event.clientY - rect.top) / rect.height));
+        setThrottle(value);
+        input.setThrottleTarget(value);
+    };
+
     /** Pointer handlers for a button that maps to a held control. */
     const hold = (name) => ({
         onPointerDown: (event) => {
@@ -46,22 +65,31 @@ export default function TouchControls({ input, session }) {
         onPointerUp: () => input.setHeld(name, false),
         onPointerCancel: () => input.setHeld(name, false),
     });
-
-    if (phase !== PHASE.PLAYING) return null;
+    const tap = (action) => ({ onPointerDown: () => session.handleAction(action) });
 
     return (
         <div className="eod-touch">
+            <div className="eod-touch-throttle" onPointerDown={dragThrottle} onPointerMove={dragThrottle}>
+                <div className="eod-touch-throttle-fill" style={{ height: `${throttle * 100}%` }} />
+                <span>{t('hud.throttle')}</span>
+            </div>
             <div className="eod-touch-stick" onPointerDown={startStick} onPointerMove={moveStick} onPointerUp={endStick} onPointerCancel={endStick}>
                 <div className="eod-touch-knob" style={{ transform: `translate(${knob.x}px, ${knob.y}px)` }} />
             </div>
             <div className="eod-touch-buttons">
-                <button type="button" className="eod-touch-button" onPointerDown={() => session.handleAction('cycleTarget')}>{t('hud.lock')}</button>
+                <button type="button" className="eod-touch-button" {...tap('cycleTarget')}>{t('hud.lock')}</button>
                 <button type="button" className="eod-touch-button" {...hold('boost')}>{t('hud.boost')}</button>
                 <button type="button" className="eod-touch-button eod-touch-button--torpedo" {...hold('fireSecondary')}>{t('hud.torp')}</button>
-                <button type="button" className="eod-touch-button eod-touch-button--fire" {...hold('firePrimary')}>{t('hud.fire')}</button>
+                <button type="button" className={`eod-touch-button eod-touch-button--fire ${autoFire ? 'eod-touch-button--auto' : ''}`} {...hold('firePrimary')}>
+                    {t('hud.fire')}{autoFire && <small>AUTO</small>}
+                </button>
             </div>
-            <button type="button" className="eod-touch-pause" onPointerDown={() => session.handleAction('pause')}>II</button>
-            <button type="button" className="eod-touch-skip" onPointerDown={() => session.handleAction('skip')}>▸▸</button>
+            <div className="eod-touch-top">
+                <button type="button" {...tap('pause')}>II</button>
+                <button type="button" {...tap('skip')}>▸▸</button>
+                <button type="button" {...tap('toggleView')}>{t('hud.view')}</button>
+                <button type="button" {...tap('power:cycle')}>{t('hud.power')}</button>
+            </div>
         </div>
     );
 }

@@ -13,6 +13,7 @@ const BEAM_STYLES = Object.freeze({
     lanceCharge: { glow: 0.9, core: 0, flare: 0 },
     lance: { glow: 2.4, core: 3, flare: 0 },
     cannon: { glow: 2.6, core: 3.4, flare: 4 },
+    tractor: { glow: 1.1, core: 0, flare: 1.2 },
 });
 
 const dummy = new THREE.Object3D();

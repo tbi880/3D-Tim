@@ -2,16 +2,20 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Environment } from '@react-three/drei';
 import * as THREE from 'three';
-import AnyModel from '../../modelComponents/AnyModel';
 import { bucketURL } from '../../Settings';
 import { SECTORS } from '../config/sectors.js';
 import { createRng } from '../core/math.js';
 import { useGameStore } from '../state/gameStore.js';
+import GltfModel from './models/GltfModel.jsx';
 
-/** Radius of the sky dome that backdrop objects sit on. It follows the camera, so nothing on it can be reached. */
-const SKY_DISTANCE = 20000;
-const STAR_DISTANCE = 52000;
-const NEBULA_RADIUS = 60000;
+/**
+ * Radius of the sky dome that backdrop objects sit on. It follows the camera, so nothing on
+ * it can be reached, and it is far enough out that even a planet filling half the sky stays
+ * well beyond the edge of the battle.
+ */
+const SKY_DISTANCE = 400_000;
+const STAR_DISTANCE = 800_000;
+const NEBULA_RADIUS = 1_400_000;
 const STAR_COUNT = 2800;
 const DEFAULT_SECTOR = 'collapse';
 
@@ -20,6 +24,11 @@ const NEBULA_VERTEX_SHADER = /* glsl */ `
     void main() {
         vDirection = normalize(position);
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        // The dome sits so close to the far plane that 32-bit rounding can push a vertex
+        // just past it, and the far plane then clips whole triangles out of the sky (black,
+        // straight-edged holes in the nebula). It is a pure background that ignores depth,
+        // so park it in the middle of the depth range where nothing can clip it.
+        gl_Position.z = 0.0;
     }
 `;
 
@@ -87,8 +96,8 @@ function StarField() {
     }, []);
 
     return (
-        <points geometry={geometry} frustumCulled={false}>
-            <pointsMaterial size={1.5} sizeAttenuation={false} vertexColors depthWrite={false} toneMapped={false} />
+        <points geometry={geometry} frustumCulled={false} renderOrder={-9}>
+            <pointsMaterial size={1.5} sizeAttenuation={false} vertexColors depthWrite={false} depthTest={false} toneMapped={false} />
         </points>
     );
 }
@@ -104,7 +113,9 @@ function NebulaDome({ sky }) {
             intensity: { value: sky.intensity },
         },
         side: THREE.BackSide,
+        // Drawn first (renderOrder below) as a pure background: it neither tests nor writes depth.
         depthWrite: false,
+        depthTest: false,
     }), []); // eslint-disable-line react-hooks/exhaustive-deps -- created once, then eased towards `sky` below
 
     const target = useMemo(() => ({ a: new THREE.Color(sky.nebulaA), b: new THREE.Color(sky.nebulaB), intensity: sky.intensity }), [sky]);
@@ -130,15 +141,15 @@ function BackdropObject({ config }) {
         () => new THREE.Vector3().fromArray(config.direction).normalize().multiplyScalar(SKY_DISTANCE).toArray(),
         [config],
     );
-    const animationNames = useMemo(() => (config.animation ? [config.animation] : []), [config]);
+    // Apparent (angular) size -> real diameter at the dome's distance -> scale of the model file.
+    const diameter = 2 * SKY_DISTANCE * Math.tan(THREE.MathUtils.degToRad(config.angularSize) / 2);
     return (
-        <group position={position} rotation={config.rotation ?? [0, 0, 0]}>
-            <AnyModel
-                modelURL={config.model}
-                scale={config.size / config.modelSize}
-                animationNames={animationNames}
-                animationAutoStart={Boolean(config.animation)}
-                animationSpeeds={config.animationSpeed ?? 1}
+        <group position={position} rotation={config.rotation ?? [0, 0, 0]} scale={diameter / config.modelSize}>
+            <GltfModel
+                url={config.model}
+                animation={config.animation ?? null}
+                animationSpeed={config.animationSpeed ?? 1}
+                brightness={config.brightness ?? 1}
             />
         </group>
     );
@@ -164,7 +175,7 @@ export default function SectorBackdrop() {
             <directionalLight position={sector.light.sunDirection} color={sector.light.sunColor} intensity={sector.light.sunIntensity} />
             <hemisphereLight args={['#a9c4ff', '#2a2038', 0.6]} />
             {/* Same low-resolution studio reflections the site's Project Dawn scene lights this ship with. */}
-            <Environment files={bucketURL + 'pic/studio.hdr'} resolution={4} background={false} environmentIntensity={0.9} />
+            <Environment files={bucketURL + 'pic/studio.hdr'} resolution={4} background={false} environmentIntensity={0.6} />
             <group ref={skyRef}>
                 <StarField />
                 <NebulaDome sky={sector.sky} />

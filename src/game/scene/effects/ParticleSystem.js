@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 
 const PARTICLE_VERTEX_SHADER = /* glsl */ `
+    #include <common>
+    #include <logdepthbuf_pars_vertex>
     attribute float size;
     attribute float alpha;
     attribute vec3 tint;
@@ -13,13 +15,16 @@ const PARTICLE_VERTEX_SHADER = /* glsl */ `
         vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
         gl_PointSize = min(256.0, size * pixelScale / max(1.0, -viewPosition.z));
         gl_Position = projectionMatrix * viewPosition;
+        #include <logdepthbuf_vertex>
     }
 `;
 
 const PARTICLE_FRAGMENT_SHADER = /* glsl */ `
+    #include <logdepthbuf_pars_fragment>
     varying vec3 vTint;
     varying float vAlpha;
     void main() {
+        #include <logdepthbuf_fragment>
         float falloff = smoothstep(0.5, 0.0, length(gl_PointCoord - 0.5));
         gl_FragColor = vec4(vTint * falloff * vAlpha, 1.0);
     }
@@ -37,7 +42,8 @@ export function randomDirection(out) {
 
 /**
  * A fixed-size ring buffer of additive point-sprite particles (debris, sparks, fire).
- * Emitting never allocates: new particles overwrite the oldest ones.
+ * The shaders include three.js's logdepthbuf chunks because the game renders with a
+ * logarithmic depth buffer. Emitting never allocates: new particles overwrite the oldest ones.
  */
 export class ParticleSystem {
     constructor(capacity) {
@@ -90,6 +96,13 @@ export class ParticleSystem {
             this.maxLife[i] = life * (0.5 + Math.random() * 0.7);
             this.life[i] = this.maxLife[i];
         }
+    }
+
+    /** Removes every particle at once (the scene jumped somewhere else). */
+    clear() {
+        this.life.fill(0);
+        this.attributes.alpha.array.fill(0);
+        this.attributes.alpha.needsUpdate = true;
     }
 
     update(dt) {

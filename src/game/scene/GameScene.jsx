@@ -11,7 +11,8 @@ import PlayerCamera from './PlayerCamera.jsx';
 import PostEffects from './PostEffects.jsx';
 import ProjectilesLayer from './ProjectilesLayer.jsx';
 import SectorBackdrop from './SectorBackdrop.jsx';
-import ShipsLayer, { ShipModelPreloader } from './ShipsLayer.jsx';
+import ShipsLayer from './ShipsLayer.jsx';
+import { ShipModelPreloader } from './models/ShipModel.jsx';
 import SpaceDust from './SpaceDust.jsx';
 
 const markAssetsReady = () => useGameStore.setState({ assetsReady: true });
@@ -53,7 +54,7 @@ export default function GameScene({ game, markerCanvasRef, radarCanvasRef }) {
             <ExplosionsLayer session={session} />
             <SpaceDust session={session} />
             <HudCanvasBridge game={game} markerCanvasRef={markerCanvasRef} radarCanvasRef={radarCanvasRef} />
-            <PostEffects />
+            <PostEffects session={session} />
         </Suspense>
     );
 }

@@ -28,7 +28,7 @@ installGLTFMemoryGuard();
  *    one more behind.
  * WebGPU needs R3F v9 (async `gl` support) plus a renderer created with `await renderer.init()`.
  */
-export const CanvasProvider = ({ children, frameLoopSetting = "always" }) => {
+export const CanvasProvider = ({ children, frameLoopSetting = "always", glOptions = null }) => {
     const { dpr, antialias } = useContext(graphicSettingContext);
 
     // On iOS the drawing buffer counts towards the page's memory budget.
@@ -39,6 +39,8 @@ export const CanvasProvider = ({ children, frameLoopSetting = "always" }) => {
         powerPreference: effectiveDpr > 1 ? "high-performance" : "low-power",
         preserveDrawingBuffer: webGLPreserveDrawingBuffer,
         stencil: false,
+        // Extra WebGLRenderer options for one scene (e.g. { logarithmicDepthBuffer: true }).
+        ...glOptions,
     };
 
     // Leaving the scene: R3F destroys this canvas's WebGL context; also drop the models'

@@ -287,30 +287,53 @@
 @media (pointer: coarse) {
     .eod-touch { display: block; }
     .eod-touch-hint { display: block; }
-    .eod-status, .eod-weapons { transform: scale(0.72); bottom: auto; top: 150px; }
+    /* The lower corners belong to the thumbs: move the gauges up under the top panels and shrink them. */
+    .eod-status, .eod-weapons { transform: scale(0.66); bottom: auto; top: 96px; }
     .eod-status { transform-origin: left top; }
-    .eod-weapons { transform-origin: right top; top: 190px; }
-    .eod-radar { width: 92px; height: 92px; }
-    .eod-centre-stack { width: min(520px, calc(100vw - 380px)); bottom: 8px; }
-    .eod-comms-skip { display: none; }
+    .eod-weapons { transform-origin: right top; }
+    .eod-objective, .eod-target { transform: scale(0.8); top: 8px; }
+    .eod-objective { transform-origin: left top; left: 8px; }
+    .eod-target { transform-origin: right top; right: 8px; }
+    .eod-fleet-bars { top: 52px; transform: translateX(-50%) scale(0.8); transform-origin: center top; }
+    .eod-radar { width: 84px; height: 84px; }
+    .eod-centre-stack { width: min(400px, calc(100vw - 500px)); min-width: 200px; bottom: 6px; gap: 6px; }
+    .eod-comms-text { font-size: 12px; min-height: 2.4em; margin-bottom: 4px; }
+    .eod-comms-portrait { flex-basis: 44px; height: 44px; }
+    .eod-comms-skip, .eod-power kbd { display: none; }
+    .eod-hint { top: 52px; font-size: 10px; padding: 5px 10px; max-width: 46vw; }
 }
-.eod-touch-stick { position: absolute; left: 34px; bottom: 30px; width: 140px; height: 140px; border-radius: 50%; border: 2px solid var(--eod-border); background: rgba(6, 16, 28, 0.35); pointer-events: auto; touch-action: none; display: grid; place-items: center; }
-.eod-touch-knob { width: 56px; height: 56px; border-radius: 50%; background: rgba(89, 208, 255, 0.45); border: 2px solid var(--eod-cyan); }
-.eod-touch-buttons { position: absolute; right: 26px; bottom: 26px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; pointer-events: auto; }
-.eod-touch-button { width: 72px; height: 72px; border-radius: 50%; font: inherit; font-size: 11px; font-weight: 700; color: #dff4ff; background: rgba(6, 16, 28, 0.5); border: 2px solid var(--eod-border); touch-action: none; }
+.eod-touch-stick { position: absolute; left: 86px; bottom: 26px; width: 150px; height: 150px; border-radius: 50%; border: 2px solid var(--eod-border); background: rgba(6, 16, 28, 0.35); pointer-events: auto; touch-action: none; display: grid; place-items: center; }
+.eod-touch-knob { width: 58px; height: 58px; border-radius: 50%; background: rgba(89, 208, 255, 0.45); border: 2px solid var(--eod-cyan); }
+.eod-touch-throttle { position: absolute; left: 22px; bottom: 30px; width: 40px; height: 142px; border: 2px solid var(--eod-border); border-radius: 6px; background: rgba(6, 16, 28, 0.35); pointer-events: auto; touch-action: none; overflow: hidden; display: flex; align-items: flex-end; justify-content: center; }
+.eod-touch-throttle-fill { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(185, 199, 255, 0.4); }
+.eod-touch-throttle span { position: relative; font-size: 8px; padding-bottom: 4px; }
+.eod-touch-buttons { position: absolute; right: 22px; bottom: 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; pointer-events: auto; }
+.eod-touch-button { width: 74px; height: 74px; border-radius: 50%; font: inherit; font-size: 11px; font-weight: 700; color: #dff4ff; background: rgba(6, 16, 28, 0.5); border: 2px solid var(--eod-border); touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.eod-touch-button small { font-size: 8px; font-weight: 400; opacity: 0.8; }
 .eod-touch-button--fire { border-color: var(--eod-amber); color: var(--eod-amber); }
+.eod-touch-button--auto { background: rgba(255, 182, 72, 0.18); }
 .eod-touch-button--torpedo { border-color: var(--eod-cyan); color: var(--eod-cyan); }
-.eod-touch-pause, .eod-touch-skip { position: absolute; top: 12px; width: 44px; height: 36px; font: inherit; font-weight: 700; color: #dff4ff; background: rgba(6, 16, 28, 0.5); border: 1px solid var(--eod-border); pointer-events: auto; }
-.eod-touch-pause { left: 50%; margin-left: -50px; }
-.eod-touch-skip { left: 50%; margin-left: 6px; }
+.eod-touch-top { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; pointer-events: auto; }
+.eod-touch-top button { min-width: 46px; height: 36px; padding: 0 10px; font: inherit; font-size: 11px; font-weight: 700; color: #dff4ff; background: rgba(6, 16, 28, 0.55); border: 1px solid var(--eod-border); }
+
+/* Phones held upright: the HUD needs the long side. */
+.eod-rotate-hint { display: none; }
+@media (pointer: coarse) and (orientation: portrait) {
+    .eod-rotate-hint { position: absolute; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 30px; text-align: center; background: rgba(3, 8, 16, 0.94); font-size: 15px; line-height: 1.6; }
+    .eod-rotate-hint span { font-size: 48px; }
+}
 
 /* ---- Narrow screens ----------------------------------------------------------------------- */
 
 @media (max-width: 900px) {
     .eod-status, .eod-weapons { width: 200px; }
     .eod-target { width: 180px; }
-    .eod-centre-stack { width: min(560px, 92vw); min-width: 0; bottom: 150px; }
     .eod-fleet-bars { top: 110px; width: 60vw; }
+}
+/* A narrow desktop window: lift the comms above the corner gauges. (Phones keep the bottom
+   centre free between the thumbs, so they are excluded.) */
+@media (max-width: 900px) and (pointer: fine) {
+    .eod-centre-stack { width: min(560px, 92vw); min-width: 0; bottom: 150px; }
     .eod-hint { top: auto; bottom: 46%; max-width: 86vw; }
 }
 

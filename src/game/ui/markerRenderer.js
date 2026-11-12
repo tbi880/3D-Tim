@@ -20,7 +20,7 @@ const COLORS = Object.freeze({
 });
 const FONT = '600 11px Orbitron, sans-serif';
 const EDGE_MARGIN = 46;
-const RADAR_RANGE = 3600;
+const RADAR_RANGE = 6500;
 /** Must match the stick radius in input/InputController.js. */
 const STICK_RADIUS = 0.36;
 
@@ -107,10 +107,19 @@ function drawBar(ctx, x, y, width, fraction, color) {
     ctx.fillRect(x, y, width * Math.max(0, Math.min(1, fraction)), 3);
 }
 
+const projected = { x: 0, y: 0, inFront: false, onScreen: false, distance: 0, dirX: 0, dirY: 0 };
+
+/** How far ahead of the ship the reticle is anchored, in metres. */
+const AIM_DISTANCE = 1500;
+
 function drawReticle(ctx, session, camera, width, height, stick) {
-    const centreX = width / 2;
-    const centreY = height / 2;
     const player = session.world.player;
+    // The reticle marks where the nose points. In the cockpit that is the middle of the
+    // screen; in the chase view it drifts as the camera lags behind the ship.
+    scratchLocal.set(0, 0, -AIM_DISTANCE).applyQuaternion(player.quaternion).add(player.position);
+    project(scratchLocal, camera, width, height, projected);
+    const centreX = projected.inFront ? projected.x : width / 2;
+    const centreY = projected.inFront ? projected.y : height / 2;
     const focalLength = height / 2 / Math.tan((camera.fov * Math.PI) / 360);
 
     // The ring shows the beam arrays' tracking cone: anything hostile inside it can be hit.
@@ -132,14 +141,14 @@ function drawReticle(ctx, session, camera, width, height, stick) {
     }
     ctx.stroke();
 
-    // Steering indicator: where the virtual stick currently is.
+    // Steering indicator: where the virtual stick currently is (always around the screen centre).
     const stickRadius = Math.min(width, height) * STICK_RADIUS;
-    const stickX = centreX + stick.yaw * stickRadius;
-    const stickY = centreY - stick.pitch * stickRadius;
+    const stickX = width / 2 + stick.yaw * stickRadius;
+    const stickY = height / 2 - stick.pitch * stickRadius;
     if (Math.hypot(stick.yaw, stick.pitch) > 0.02) {
         ctx.strokeStyle = COLORS.reticleDim;
         ctx.beginPath();
-        ctx.moveTo(centreX, centreY);
+        ctx.moveTo(width / 2, height / 2);
         ctx.lineTo(stickX, stickY);
         ctx.stroke();
         ctx.strokeStyle = COLORS.reticle;
@@ -149,7 +158,6 @@ function drawReticle(ctx, session, camera, width, height, stick) {
     }
 }
 
-const projected = { x: 0, y: 0, inFront: false, onScreen: false, distance: 0, dirX: 0, dirY: 0 };
 
 function drawShipMarkers(ctx, session, camera, width, height) {
     const { world } = session;
@@ -158,7 +166,7 @@ function drawShipMarkers(ctx, session, camera, width, height) {
     const escortTag = session.director.scene.escortTag;
 
     for (const ship of world.ships) {
-        if (ship === player || !ship.alive || !ship.targetable) continue;
+        if (ship === player || !ship.alive || !ship.targetable || ship.arriving) continue;
         const isLocked = player.target === ship;
         const isEscort = escortTag && ship.tags.has(escortTag);
         const color = COLORS[ship.faction];
@@ -170,7 +178,7 @@ function drawShipMarkers(ctx, session, camera, width, height) {
             continue;
         }
 
-        const apparentRadius = ((ship.radius + ship.halfLength * 0.5) / projected.distance) * focalLength;
+        const apparentRadius = (ship.boundingRadius * 0.7 / projected.distance) * focalLength;
         const half = Math.max(isLocked ? 16 : 9, Math.min(apparentRadius * 1.15, 150));
         const hostile = ship.faction === FACTION.UMBRA;
         ctx.strokeStyle = color;
@@ -289,7 +297,7 @@ export function drawRadar(ctx, session, size) {
     };
 
     for (const ship of world.ships) {
-        if (ship === player || !ship.alive || !ship.targetable) continue;
+        if (ship === player || !ship.alive || !ship.targetable || ship.arriving) continue;
         plot(ship.position, COLORS[ship.faction], ship.cls.kind === 'capital' ? 6 : 3.5, player.target === ship);
     }
     for (const projectile of world.projectiles) {
