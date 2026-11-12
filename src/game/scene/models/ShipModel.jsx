@@ -1,7 +1,11 @@
-import { Component, Suspense } from 'react';
+import { Component, Suspense, useMemo } from 'react';
+import { useTexture } from '@react-three/drei';
+import { useThree } from '@react-three/fiber';
+import { bucketURL } from '../../../Settings';
 import { FACTION } from '../../config/gameConfig.js';
 import GltfModel, { useModelPreload } from './GltfModel.jsx';
 import manifest from './modelManifest.json';
+import { HULL_TEXTURE_FILES, ROCK_TEXTURE_FILES, configureSurfaceTextures, createShipMaterials } from './shipMaterials.js';
 
 /**
  * Maps a ship class's `model` id to what is drawn.
@@ -73,6 +77,35 @@ export class ModelErrorBoundary extends Component {
     }
 }
 
+const HULL_TEXTURE_URLS = Object.fromEntries(Object.entries(HULL_TEXTURE_FILES).map(([name, file]) => [name, bucketURL + file]));
+const ROCK_TEXTURE_URLS = Object.fromEntries(Object.entries(ROCK_TEXTURE_FILES).map(([name, file]) => [name, bucketURL + file]));
+/** One material set per set of loaded textures (in practice: one for the whole game). */
+const materialSets = new WeakMap();
+
+/** The shared ship materials (suspends until the plating textures are loaded). */
+export function useShipMaterials() {
+    const textures = useTexture(HULL_TEXTURE_URLS);
+    const anisotropy = useThree((state) => Math.min(8, state.gl.capabilities.getMaxAnisotropy()));
+    return useMemo(() => {
+        if (!materialSets.has(textures)) {
+            materialSets.set(textures, createShipMaterials(configureSurfaceTextures(textures, anisotropy)));
+        }
+        return materialSets.get(textures);
+    }, [textures, anisotropy]);
+}
+
+/** The asteroid surface textures, set up for tiling. */
+export function useRockTextures() {
+    const textures = useTexture(ROCK_TEXTURE_URLS);
+    const anisotropy = useThree((state) => Math.min(8, state.gl.capabilities.getMaxAnisotropy()));
+    return useMemo(() => configureSurfaceTextures(textures, anisotropy), [textures, anisotropy]);
+}
+
+function TexturedShip({ info }) {
+    const materials = useShipMaterials();
+    return <GltfModel url={info.file} scale={info.scale ?? 1} rotation={info.rotation ?? [0, 0, 0]} materials={materials} />;
+}
+
 /** The visual model of a ship, nose towards -Z, sized in metres. */
 export default function ShipModel({ modelId, faction }) {
     const info = getModelInfo(modelId);
@@ -81,7 +114,7 @@ export default function ShipModel({ modelId, faction }) {
     return (
         <ModelErrorBoundary fallback={placeholder}>
             <Suspense fallback={null}>
-                <GltfModel url={info.file} scale={info.scale ?? 1} rotation={info.rotation ?? [0, 0, 0]} />
+                <TexturedShip info={info} />
             </Suspense>
         </ModelErrorBoundary>
     );
@@ -91,6 +124,9 @@ function PreloadOne({ file }) {
     useModelPreload(file);
     return null;
 }
+
+useTexture.preload(Object.values(HULL_TEXTURE_URLS));
+useTexture.preload(Object.values(ROCK_TEXTURE_URLS));
 
 /**
  * Downloads every ship model while the loading screen is still up, so nothing pops in

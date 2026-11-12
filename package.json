@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "game:simulate": "node scripts/simulate-campaign.mjs",
     "game:models": "python3 tools/game-models/build_models.py",
+    "game:textures": "python3 tools/game-models/make_textures.py",
     "start": "vite",
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject"

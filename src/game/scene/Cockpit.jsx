@@ -1,7 +1,7 @@
 import { Suspense, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import GltfModel from './models/GltfModel.jsx';
-import { ModelErrorBoundary, getModelInfo } from './models/ShipModel.jsx';
+import { ModelErrorBoundary, getModelInfo, useShipMaterials } from './models/ShipModel.jsx';
 
 /**
  * The Kestrel's cockpit interior (public/assets/game/cockpit.glb), attached to the camera.
@@ -10,6 +10,11 @@ import { ModelErrorBoundary, getModelInfo } from './models/ShipModel.jsx';
  * view widens (afterburner, warp) the cockpit is scaled sideways and upwards by the same
  * ratio, so it stays put on screen instead of shrinking into view as a floating frame.
  */
+function CockpitModel() {
+    const materials = useShipMaterials();
+    return <GltfModel url={getModelInfo('cockpit').file} materials={materials} />;
+}
+
 export default function Cockpit({ baseFov }) {
     const groupRef = useRef(null);
     const baseTangent = Math.tan((baseFov * Math.PI) / 360);
@@ -25,11 +30,11 @@ export default function Cockpit({ baseFov }) {
         <group ref={groupRef}>
             <ModelErrorBoundary fallback={null}>
                 <Suspense fallback={null}>
-                    <GltfModel url={getModelInfo('cockpit').file} />
+                    <CockpitModel />
                 </Suspense>
             </ModelErrorBoundary>
             {/* Soft instrument glow so the interior never goes pitch black. */}
-            <pointLight position={[0, -0.3, -0.6]} intensity={1.4} distance={4} decay={1.2} color="#8fc4ff" />
+            <pointLight position={[0, -0.3, -0.6]} intensity={0.5} distance={4} decay={1.2} color="#8fc4ff" />
         </group>
     );
 }

@@ -3,9 +3,20 @@ shipforge - a small hard-surface modelling kit on top of Blender's bmesh.
 
 The game's ships are described in build_models.py as a handful of hull "lofts" (cross
 sections along a spine) plus boxes, engines and turrets. This module turns those
-descriptions into detailed meshes: every hull quad becomes an armour plate with a groove
-around it, some plates get raised or recessed machinery, a few become lit windows, and
-ambient occlusion is baked into vertex colours so the detail reads without textures.
+descriptions into game-ready meshes:
+
+  * hulls are skinned as smooth curves through their sections and shaded smooth, with
+    face-weighted normals and chamfered box edges, so nothing reads as a faceted polygon;
+  * fine surface detail (plating, seams, vents, rivets, windows) comes from the shared
+    tiling textures made by make_textures.py - every face gets box-projected UVs measured
+    in metres - while larger detail (machinery, pipes, masts) is scattered real geometry;
+  * faces that can never be seen (the buried halves of intersecting parts) are deleted;
+  * ambient occlusion and the faction's colours are baked into vertex colours.
+
+The result is ONE mesh with at most two materials: "hull" (lit, textured, tinted by the
+vertex colours) and "glow" (engines, light strips: unlit and bright). The game replaces
+both with its own shared materials (scene/models/shipMaterials.js), so a whole fleet
+renders with two shader programs and a couple of draw calls per ship.
 
 Coordinates used by ship descriptions ("game space"): +X starboard, +Y up, nose towards -Z.
 That is exactly what the exported GLB contains, so the game needs no per-model rotation.
@@ -17,10 +28,13 @@ import random
 
 import bpy  # must be imported before bmesh / mathutils when using the pip module
 import bmesh  # noqa: I001
+import numpy as np
 from mathutils import Matrix, Vector
+from mathutils.bvhtree import BVHTree
 
-# Material slots shared by every model.
+# Surface kinds a face can have. HULL..GROOVE are lit hull paint; GLOW and WINDOW emit light.
 HULL, PANEL, ACCENT, GLOW, DARK, WINDOW, GROOVE = range(7)
+EMISSIVE_SLOTS = (GLOW, WINDOW)
 
 # Ready-made `matrix` arguments for ShipBuilder.loft: run the spine upwards / sideways instead of aft.
 SPINE_UP = Matrix.Rotation(-math.pi / 2, 4, "X")
@@ -29,42 +43,41 @@ SPINE_STARBOARD = Matrix.Rotation(math.pi / 2, 4, "Y")
 # Game space -> Blender space (Blender is Z-up; its glTF exporter converts back).
 GAME_TO_BLENDER = Matrix(((1, 0, 0, 0), (0, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
 
-
-def make_material(name, color, metallic, roughness, emission=None, strength=0.0):
-    material = bpy.data.materials.new(name)
-    material.use_nodes = True
-    shader = material.node_tree.nodes["Principled BSDF"]
-    shader.inputs["Base Color"].default_value = (*color, 1.0)
-    shader.inputs["Metallic"].default_value = metallic
-    shader.inputs["Roughness"].default_value = roughness
-    if emission:
-        shader.inputs["Emission Color"].default_value = (*emission, 1.0)
-        shader.inputs["Emission Strength"].default_value = strength
-    return material
+# Edges sharper than this stay hard; anything gentler (hull curvature, chamfers) is smoothed.
+SHARP_ANGLE = math.radians(58)
 
 
 def hex_color(value):
-    """'#rrggbb' -> linear RGB tuple (glTF stores base colours in linear space)."""
+    """'#rrggbb' -> linear RGB tuple (glTF stores colours in linear space)."""
     value = value.lstrip("#")
     srgb = [int(value[i:i + 2], 16) / 255 for i in (0, 2, 4)]
     return tuple(c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in srgb)
 
 
-def palette(hull, panel, accent, glow, window, glow_strength=6.0, hull_metallic=0.4, hull_roughness=0.56):
-    """The materials of one faction, in slot order.
-
-    Pale hulls need a rougher, less metallic finish than dark ones: a large flat plate of
-    bright metal mirrors the sun into a featureless white glare.
+def palette(hull, panel, accent, glow, window, glow_strength=1.0, hull_metallic=0.75, hull_roughness=1.0):
     """
-    return [
-        make_material("hull", hex_color(hull), hull_metallic, hull_roughness),
-        make_material("panel", hex_color(panel), 0.6, 0.5),
-        make_material("accent", hex_color(accent), 0.3, 0.45),
-        make_material("glow", (0.0, 0.0, 0.0), 0.0, 0.5, hex_color(glow), glow_strength),
-        make_material("dark", hex_color("#0b0c10"), 0.4, 0.7),
-        make_material("window", (0.0, 0.0, 0.0), 0.0, 0.5, hex_color(window), glow_strength * 0.6),
-        make_material("groove", tuple(c * 0.22 for c in hex_color(hull)), 0.5, 0.7),
-    ]
+    One faction's colours. `glow_strength` dims the lamps (1 = full brightness, 0 = unpowered).
+    The hull colours tint the shared plating texture; `hull_metallic`
+    and `hull_roughness` scale that texture's metalness / roughness channels (pale hulls want
+    a duller finish than dark ones, or the sun turns them into white glare).
+    """
+    hull_rgb = hex_color(hull)
+    lit = glow_strength > 0
+    return {
+        "tints": {
+            HULL: hull_rgb,
+            PANEL: hex_color(panel),
+            ACCENT: hex_color(accent),
+            DARK: hex_color("#101216"),
+            GROOVE: tuple(c * 0.3 for c in hull_rgb),
+            # Unpowered ships (wrecks) keep their lamps as dark glass.
+            GLOW: tuple(c * glow_strength for c in hex_color(glow)) if lit else hex_color("#0c0d10"),
+            WINDOW: tuple(c * 0.8 * glow_strength for c in hex_color(window)) if lit else hex_color("#0c0d10"),
+        },
+        "lit": lit,
+        "metallic": hull_metallic,
+        "roughness": hull_roughness,
+    }
 
 
 def superellipse(angle, half_width, half_height, power):
@@ -77,6 +90,37 @@ def superellipse(angle, half_width, half_height, power):
     )
 
 
+def monotone_curve(knots, values):
+    """
+    Smooth interpolation through (knot, value) pairs that never overshoots (Fritsch-Carlson),
+    so a hull that narrows towards the nose cannot bulge or turn inside out between sections.
+    Returns a function of the knot coordinate.
+    """
+    count = len(knots)
+    spans = [knots[i + 1] - knots[i] for i in range(count - 1)]
+    slopes = [(values[i + 1] - values[i]) / spans[i] for i in range(count - 1)]
+    tangents = [slopes[0]] + [
+        0.0 if slopes[i - 1] * slopes[i] <= 0 else (slopes[i - 1] + slopes[i]) / 2 for i in range(1, count - 1)
+    ] + [slopes[-1]]
+    for i in range(count - 1):
+        if slopes[i] == 0:
+            tangents[i] = tangents[i + 1] = 0.0
+            continue
+        a, b = tangents[i] / slopes[i], tangents[i + 1] / slopes[i]
+        length = a * a + b * b
+        if length > 9:
+            factor = 3 / math.sqrt(length)
+            tangents[i], tangents[i + 1] = factor * a * slopes[i], factor * b * slopes[i]
+
+    def evaluate(span_index, t):
+        h = spans[span_index]
+        t2, t3 = t * t, t * t * t
+        return ((2 * t3 - 3 * t2 + 1) * values[span_index] + (t3 - 2 * t2 + t) * h * tangents[span_index]
+                + (-2 * t3 + 3 * t2) * values[span_index + 1] + (t3 - t2) * h * tangents[span_index + 1])
+
+    return evaluate
+
+
 class ShipBuilder:
     """Accumulates geometry for one model. All positions are in game space."""
 
@@ -84,6 +128,8 @@ class ShipBuilder:
         self.name = name
         self.rng = random.Random(seed)
         self.bm = bmesh.new()
+        self.uv_layer = self.bm.loops.layers.uv.new("UVMap")
+        self.window_layer = self.bm.faces.layers.int.new("window")
         self.engines = []  # [x, y, z, radius] of every engine exhaust, for in-game plumes
         self.markers = {}  # named points (mount positions) reported in the manifest
 
@@ -94,72 +140,105 @@ class ShipBuilder:
         Skins a hull through cross sections.
 
         Each section is a dict: z (along the spine), w / h (half width / height), and
-        optionally x / y (centre offset), p (boxiness, default 2.6) and roll (radians).
-        `steps` inserts interpolated rings between sections, which sets the plate size.
+        optionally x / y (centre offset), p (boxiness, default 2.6), roll (radians) and
+        mat (paint for the stretch from this section to the next, overriding `mat`).
+        The skin is a smooth curve through the sections, not straight lines between them.
+        `segments` and `steps` set how finely it is tessellated around and along the spine
+        (both are doubled internally; think of them as "how detailed", not exact counts).
         With `mirror`, a second copy is built on the other side of the centre line.
         `matrix` re-orients the whole loft (see SPINE_UP / SPINE_STARBOARD), e.g. for towers.
         Returns the side faces (candidates for detailing).
         """
+        around = max(12, segments * 2)
+        keys = ("z", "w", "h", "x", "y", "p", "roll")
+        defaults = {"x": 0.0, "y": 0.0, "p": 2.6, "roll": 0.0}
+        columns = {key: [section.get(key, defaults.get(key, 0.0)) for section in sections] for key in keys}
         rings = []
-        for index in range(len(sections) - 1):
-            a, b = sections[index], sections[index + 1]
-            for step in range(steps):
-                rings.append(self._blend_section(a, b, step / steps))
-        rings.append(dict(sections[-1]))
+        if len(sections) == 2:
+            # A straight part needs no rings in between.
+            rings = [{key: columns[key][i] for key in keys} for i in (0, 1)]
+            ring_mats = [sections[0].get("mat", mat)]
+        else:
+            # Knots: distance along the spine (kept strictly increasing for stacked sections).
+            knots = [0.0]
+            for i in range(1, len(sections)):
+                knots.append(knots[-1] + max(abs(columns["z"][i] - columns["z"][i - 1]), 1e-4))
+            curves = {key: monotone_curve(knots, columns[key]) for key in keys}
+            per_span = max(4, min(10, steps * 2))
+            ring_mats = []
+            for span in range(len(sections) - 1):
+                for step in range(per_span):
+                    rings.append({key: curves[key](span, step / per_span) for key in keys})
+                    ring_mats.append(sections[span].get("mat", mat))
+            rings.append({key: columns[key][-1] for key in keys})
 
         faces = []
         for side in ((1, -1) if mirror else (1,)):
             loops = []
             for section in rings:
                 loop = []
-                for i in range(segments):
+                for i in range(around):
                     # Half-step offset puts flat faces (not edges) on top, bottom and sides.
-                    angle = (i + 0.5) / segments * math.tau
-                    px, py = superellipse(angle, section["w"], section["h"], section.get("p", 2.6))
-                    roll = section.get("roll", 0.0)
+                    angle = (i + 0.5) / around * math.tau
+                    px, py = superellipse(angle, max(section["w"], 1e-3), max(section["h"], 1e-3), section["p"])
+                    roll = section["roll"]
                     if roll:
                         px, py = px * math.cos(roll) - py * math.sin(roll), px * math.sin(roll) + py * math.cos(roll)
-                    point = Vector((px + section.get("x", 0.0), py + section.get("y", 0.0), section["z"]))
+                    point = Vector((px + section["x"], py + section["y"], section["z"]))
                     if matrix is not None:
                         point = matrix @ point
                     point.x *= side
                     loop.append(self.bm.verts.new(point))
                 loops.append(loop)
             flip = side < 0
-            for a, b in zip(loops, loops[1:]):
-                for i in range(segments):
-                    j = (i + 1) % segments
+            for (a, b), ring_mat in zip(zip(loops, loops[1:]), ring_mats):
+                for i in range(around):
+                    j = (i + 1) % around
                     quad = (a[i], a[j], b[j], b[i]) if not flip else (a[j], a[i], b[i], b[j])
-                    faces.append(self._face(quad, mat))
+                    faces.append(self._face(quad, ring_mat))
             cap = mat if cap_mat is None else cap_mat
             self._face(loops[0] if flip else loops[0][::-1], cap)
             self._face(loops[-1][::-1] if flip else loops[-1], cap)
         return faces
 
-    @staticmethod
-    def _blend_section(a, b, t):
-        keys = set(a) | set(b)
-        defaults = {"x": 0.0, "y": 0.0, "p": 2.6, "roll": 0.0}
-        return {k: a.get(k, defaults.get(k, 0.0)) * (1 - t) + b.get(k, defaults.get(k, 0.0)) * t for k in keys}
-
-    def box(self, centre, size, mat=HULL, rot=(0.0, 0.0, 0.0), mirror=False):
-        """Axis-aligned (optionally rotated, XYZ euler) box. Returns its faces."""
+    def box(self, centre, size, mat=HULL, rot=(0.0, 0.0, 0.0), mirror=False, bevel=None):
+        """
+        Axis-aligned (optionally rotated, XYZ euler) box with chamfered edges. `bevel` is the
+        chamfer width (default: a small fraction of the box; 0 for none). Returns its faces.
+        """
         faces = []
+        if bevel is None:
+            bevel = min(size) * 0.09
         for side in ((1, -1) if mirror else (1,)):
-            created = bmesh.ops.create_cube(self.bm, size=1.0)
-            verts = created["verts"]
-            bmesh.ops.scale(self.bm, verts=verts, vec=size)
             rotation = Matrix.Rotation(rot[2] * side, 4, "Z") @ Matrix.Rotation(rot[1] * side, 4, "Y") @ Matrix.Rotation(rot[0], 4, "X")
-            bmesh.ops.transform(self.bm, verts=verts, matrix=Matrix.Translation((centre[0] * side, centre[1], centre[2])) @ rotation)
-            new_faces = list({f for v in verts for f in v.link_faces})
-            for face in new_faces:
-                face.material_index = mat
-            faces.extend(new_faces)
+            transform = Matrix.Translation((centre[0] * side, centre[1], centre[2])) @ rotation
+            faces.extend(self._cuboid(transform, size, mat, bevel))
         return faces
 
-    def tube(self, start, end, radius_start, radius_end, segments=10, mat=HULL, cap_mats=(None, None), mirror=False):
-        """Cylinder / cone between two points. Returns its side faces."""
+    def _cuboid(self, transform, size, mat, bevel):
+        first_new = len(self.bm.faces)
+        created = bmesh.ops.create_cube(self.bm, size=1.0)
+        verts = created["verts"]
+        bmesh.ops.scale(self.bm, verts=verts, vec=size)
+        bmesh.ops.transform(self.bm, verts=verts, matrix=transform)
+        if bevel > 0:
+            edges = list({edge for vert in verts for edge in vert.link_edges})
+            bmesh.ops.bevel(self.bm, geom=edges, offset=bevel, offset_type="OFFSET", segments=1, profile=0.5, affect="EDGES")
+        self.bm.faces.ensure_lookup_table()
+        faces = self.bm.faces[first_new:]
+        for face in faces:
+            face.material_index = mat
+        return list(faces)
+
+    def tube(self, start, end, radius_start, radius_end, segments=10, mat=HULL, cap_mats=(None, None), mirror=False,
+             capped=True, inward=False):
+        """
+        Cylinder / cone between two points. `capped=False` leaves the ends open and
+        `inward=True` makes the wall face its own axis - together they build the inside of
+        a hollow part such as an engine bell. Returns its side faces.
+        """
         faces = []
+        segments = segments if segments <= 6 else max(16, segments * 2)
         for side in ((1, -1) if mirror else (1,)):
             p0 = Vector((start[0] * side, start[1], start[2]))
             p1 = Vector((end[0] * side, end[1], end[2]))
@@ -173,14 +252,16 @@ class ShipBuilder:
                               for a in (i / segments * math.tau for i in range(segments))])
             for i in range(segments):
                 j = (i + 1) % segments
-                faces.append(self._face((rings[0][i], rings[0][j], rings[1][j], rings[1][i]), mat))
-            self._face(rings[0][::-1], mat if cap_mats[0] is None else cap_mats[0])
-            self._face(rings[1], mat if cap_mats[1] is None else cap_mats[1])
+                quad = (rings[0][i], rings[0][j], rings[1][j], rings[1][i])
+                faces.append(self._face(quad[::-1] if inward else quad, mat))
+            if capped:
+                self._face(rings[0][::-1], mat if cap_mats[0] is None else cap_mats[0])
+                self._face(rings[1], mat if cap_mats[1] is None else cap_mats[1])
         return faces
 
     def ball(self, centre, radius, mat=GLOW, subdivisions=2):
-        """A faceted sphere (emitters, reactor cores, domes). Returns its faces."""
-        created = bmesh.ops.create_icosphere(self.bm, subdivisions=subdivisions, radius=radius)
+        """A sphere (emitters, reactor cores, domes). Returns its faces."""
+        created = bmesh.ops.create_icosphere(self.bm, subdivisions=subdivisions + 1, radius=radius)
         bmesh.ops.translate(self.bm, verts=created["verts"], vec=centre)
         faces = list({f for v in created["verts"] for f in v.link_faces})
         for face in faces:
@@ -189,7 +270,8 @@ class ShipBuilder:
 
     def ring(self, centre, radius, thickness, mat=HULL, segments=32, axis="z"):
         """A torus around `axis` ('x', 'y' or 'z'). Returns its faces."""
-        tube_segments = 8
+        tube_segments = 10
+        segments = max(48, segments)
         rings = []
         for i in range(segments):
             a = i / segments * math.tau
@@ -207,9 +289,15 @@ class ShipBuilder:
         faces = []
         for i in range(segments):
             a, b = rings[i], rings[(i + 1) % segments]
+            core = sum((vert.co for vert in a + b), Vector()) / (2 * tube_segments)
             for j in range(tube_segments):
                 k = (j + 1) % tube_segments
-                faces.append(self._face((a[j], a[k], b[k], b[j]), mat))
+                face = self._face((a[j], a[k], b[k], b[j]), mat)
+                face.normal_update()
+                # Whatever the axis, the skin must face away from the middle of the tube.
+                if face.normal.dot(face.calc_center_median() - core) < 0:
+                    face.normal_flip()
+                faces.append(face)
         return faces
 
     def _face(self, verts, mat):
@@ -220,23 +308,32 @@ class ShipBuilder:
     # ---- Parts ------------------------------------------------------------------------
 
     def engine(self, position, radius, length=None, mirror=False):
-        """A nozzle pointing aft (+Z) with a glowing core. Records the exhaust position."""
+        """A bell nozzle pointing aft (+Z) with a glowing throat. Records the exhaust position."""
         length = length or radius * 1.6
         for side in ((1, -1) if mirror else (1,)):
             x, y, z = position[0] * side, position[1], position[2]
-            self.tube((x, y, z - length), (x, y, z), radius * 0.8, radius, 12, DARK, (DARK, DARK))
-            self.tube((x, y, z - length * 0.2), (x, y, z + radius * 0.08), radius * 0.72, radius * 0.72, 12, GLOW, (GLOW, GLOW))
+            throat = z - length * 0.5
+            # Housing, then a hollow bell: outer skin, inner wall and a lip joining them.
+            self.tube((x, y, z - length), (x, y, throat), radius * 0.6, radius * 0.74, 12, PANEL)
+            self.tube((x, y, throat), (x, y, z), radius * 0.76, radius, 12, DARK, capped=False)
+            self.tube((x, y, throat), (x, y, z), radius * 0.66, radius * 0.9, 12, DARK, capped=False, inward=True)
+            self.ring((x, y, z), radius * 0.95, radius * 0.055, PANEL, 24, axis="z")
+            self.ring((x, y, throat), radius * 0.76, radius * 0.06, HULL, 24, axis="z")
+            # The throat glows.
+            self.tube((x, y, throat - radius * 0.05), (x, y, throat + radius * 0.04), radius * 0.68, radius * 0.68, 12, GLOW, (GLOW, GLOW))
             self.engines.append([round(x, 3), round(y, 3), round(z, 3), round(radius, 3)])
 
     def turret(self, position, size, up=1, mirror=False):
         """A squat turret with twin barrels; `up` is +1 for dorsal, -1 for ventral."""
         for side in ((1, -1) if mirror else (1,)):
             x, y, z = position[0] * side, position[1], position[2]
-            self.tube((x, y, z), (x, y + up * size * 0.5, z), size, size * 0.8, 8, PANEL)
-            self.box((x, y + up * size * 0.75, z - size * 0.2), (size * 1.3, size * 0.55, size * 1.5), HULL)
-            for offset in (-0.3, 0.3):
-                self.tube((x + offset * size, y + up * size * 0.75, z - size * 0.8),
-                          (x + offset * size, y + up * size * 0.75, z - size * 2.4), size * 0.13, size * 0.1, 6, DARK)
+            self.tube((x, y, z), (x, y + up * size * 0.45, z), size * 1.05, size * 0.9, 10, PANEL)
+            self.box((x, y + up * size * 0.78, z - size * 0.15), (size * 1.35, size * 0.6, size * 1.7), HULL, bevel=size * 0.14)
+            self.box((x, y + up * size * 0.78, z + size * 0.8), (size * 0.8, size * 0.42, size * 0.5), PANEL, bevel=size * 0.06)
+            for offset in (-0.32, 0.32):
+                bx, by = x + offset * size, y + up * size * 0.78
+                self.tube((bx, by, z - size * 0.9), (bx, by, z - size * 1.5), size * 0.17, size * 0.17, 8, PANEL)
+                self.tube((bx, by, z - size * 1.5), (bx, by, z - size * 2.6), size * 0.11, size * 0.1, 8, DARK)
 
     def mark(self, name, position):
         """Names a point on the model (e.g. where a module is mounted); it is written to the manifest."""
@@ -250,44 +347,83 @@ class ShipBuilder:
 
     def detail(self, faces, plate_height, panels=0.25, machinery=0.14, windows=0.05, recess=0.08, min_size=None):
         """
-        Turns plain hull quads into armour.
+        Dresses plain hull faces.
 
-        Every face becomes a raised plate with a groove around it. Then, at random:
-        `panels` are recoloured, `machinery` gets a raised block, `recess` a dark pit, and
-        `windows` a lit slit. `plate_height` sets the relief (use about 1% of ship length).
+        The plating itself comes from the texture; this decides what varies across the hull:
+        `panels` is the share repainted in the secondary colour and `recess` the share of
+        dark service panels (both in coherent blocks, not face by face), `windows` the share
+        that shows the texture's lit window rows, and `machinery` how densely real geometry
+        (blocks, pipes, masts) is scattered. `plate_height` is the size reference for that
+        geometry - about 1% of the ship's length.
         """
         rng = self.rng
         faces = [f for f in faces if f.is_valid and (min_size is None or math.sqrt(f.calc_area()) >= min_size)]
         if not faces:
             return
-        sizes = {f: math.sqrt(f.calc_area()) for f in faces}
-        plates = []
-        # Inset one face at a time so the groove width can follow the face size.
-        for face in faces:
-            thickness = min(sizes[face] * 0.045, plate_height * 0.8)
-            result = bmesh.ops.inset_individual(self.bm, faces=[face], thickness=thickness, depth=plate_height * rng.uniform(0.4, 1.0))
-            for rim in result["faces"]:
-                rim.material_index = GROOVE
-            plates.append(face)
+        block = plate_height * 22
+        offsets = [rng.uniform(0, 1000) for _ in range(3)]
 
-        for face in plates:
-            roll = rng.random()
-            size = math.sqrt(face.calc_area())
-            if roll < machinery:
-                result = bmesh.ops.inset_individual(self.bm, faces=[face], thickness=size * rng.uniform(0.12, 0.3), depth=plate_height * rng.uniform(1.0, 2.6))
-                for rim in result["faces"]:
-                    rim.material_index = PANEL
-                face.material_index = PANEL if rng.random() < 0.6 else HULL
-            elif roll < machinery + recess:
-                result = bmesh.ops.inset_individual(self.bm, faces=[face], thickness=size * rng.uniform(0.15, 0.3), depth=-plate_height * rng.uniform(1.0, 2.0))
-                for rim in result["faces"]:
-                    rim.material_index = DARK
+        def block_roll(centre, stretch, salt):
+            # Blocks are long along the hull (z) so colour breaks follow the ship's lines.
+            key = (math.floor((abs(centre.x) + offsets[0]) / block), math.floor((centre.y + offsets[1]) / block),
+                   math.floor((centre.z + offsets[2]) / (block * stretch)), salt)
+            return random.Random(hash(key)).random()
+
+        for face in faces:
+            centre = face.calc_center_median()
+            roll = block_roll(centre, 2.5, 1)
+            if roll < recess * 0.5:
                 face.material_index = DARK
-            elif roll < machinery + recess + windows:
-                bmesh.ops.inset_individual(self.bm, faces=[face], thickness=size * 0.36, depth=-plate_height * 0.3)
-                face.material_index = WINDOW
-            elif roll < machinery + recess + windows + panels:
-                face.material_index = PANEL if face.material_index == HULL else face.material_index
+            elif roll < recess * 0.5 + panels * 0.7 and face.material_index == HULL:
+                face.material_index = PANEL
+            # Window decks: long horizontal bands.
+            if windows > 0 and block_roll(centre, 6.0, 2) < min(0.9, windows * 3.5) and face.material_index != DARK:
+                face[self.window_layer] = 1
+
+        area = sum(f.calc_area() for f in faces)
+        count = int(min(900, area / (plate_height * 9) ** 2 * machinery * 0.5))
+        self.greebles(faces, count, plate_height * 5)
+
+    def greebles(self, faces, count, size):
+        """
+        Scatters `count` pieces of machinery over the given faces, sitting on the surface and
+        lined up with the hull: blocks, low housings, pipe runs and the odd mast.
+        """
+        rng = self.rng
+        faces = [f for f in faces if f.is_valid and len(f.verts) == 4]
+        if not faces or count <= 0:
+            return
+        weights = [f.calc_area() for f in faces]
+        for face in rng.choices(faces, weights=weights, k=count):
+            normal = face.normal.copy()
+            corners = [v.co.copy() for v in face.verts]
+            # A random point on the quad, and the direction of its longer side as "along".
+            s, t = rng.random(), rng.random()
+            point = (corners[0] * (1 - s) + corners[1] * s) * (1 - t) + (corners[3] * (1 - s) + corners[2] * s) * t
+            along = corners[1] - corners[0] if (corners[1] - corners[0]).length > (corners[3] - corners[0]).length else corners[3] - corners[0]
+            along = (along - normal * along.dot(normal)).normalized()
+            across = normal.cross(along)
+            basis = Matrix((
+                (across.x, normal.x, along.x, 0), (across.y, normal.y, along.y, 0), (across.z, normal.z, along.z, 0), (0, 0, 0, 1),
+            ))
+            kind = rng.random()
+            scale = size * rng.uniform(0.5, 1.6)
+            mat = rng.choice((HULL, PANEL, PANEL, DARK))
+            if kind < 0.5:
+                # Block housing (half sunk so its base is hidden).
+                dims = (scale * rng.uniform(0.5, 1.4), scale * rng.uniform(0.25, 0.7), scale * rng.uniform(0.7, 2.4))
+                self._cuboid(Matrix.Translation(point + normal * dims[1] * 0.3) @ basis, dims, mat, min(dims) * 0.16)
+            elif kind < 0.75:
+                # Pipe run along the hull.
+                half = along * scale * rng.uniform(1.2, 3.2)
+                lift = normal * scale * 0.14
+                self.tube(tuple(point - half + lift), tuple(point + half + lift), scale * 0.13, scale * 0.13, 8, mat)
+            elif kind < 0.93:
+                # Low round housing.
+                self.tube(tuple(point - normal * scale * 0.1), tuple(point + normal * scale * 0.3), scale * 0.5, scale * 0.38, 8, mat)
+            else:
+                # Short mast.
+                self.tube(tuple(point), tuple(point + normal * scale * rng.uniform(1.0, 2.2)), scale * 0.07, scale * 0.03, 6, DARK)
 
     def paint(self, faces, mat, predicate=None):
         """Recolours faces (optionally only those whose centre passes `predicate(x, y, z)`)."""
@@ -326,46 +462,150 @@ class ShipBuilder:
         low, high = self.bounds()
         return [round(high.x - low.x, 2), round(high.y - low.y, 2), round(high.z - low.z, 2)]
 
-    def to_object(self, materials, bake_ao=True):
-        """Finishes the mesh: flat shading, faction materials, baked ambient occlusion."""
+    def remove_hidden_faces(self, directions=40):
+        """
+        Deletes faces no outside observer can ever see - mostly the halves of parts that are
+        buried inside other parts. A face survives if a ray from its centre or from near any
+        of its corners escapes the model in at least one direction. Returns how many went.
+        """
+        self.bm.normal_update()
+        tree = BVHTree.FromBMesh(self.bm, epsilon=0.0)
+        low, high = self.bounds()
+        reach = (high - low).length * 2
+        lift = reach * 2e-5
+        golden = math.pi * (3 - math.sqrt(5))
+        sphere = []
+        for i in range(directions * 2):
+            y = 1 - 2 * (i + 0.5) / (directions * 2)
+            radius = math.sqrt(1 - y * y)
+            sphere.append(Vector((math.cos(golden * i) * radius, y, math.sin(golden * i) * radius)))
+
+        hidden = []
+        for face in self.bm.faces:
+            normal = face.normal
+            centre = face.calc_center_median()
+            rays = [d for d in sphere if d.dot(normal) > 0.08]
+            samples = [centre] + [centre.lerp(vert.co, 0.85) for vert in face.verts]
+            if not any(tree.ray_cast(sample + normal * lift, direction, reach)[0] is None for sample in samples for direction in rays):
+                hidden.append(face)
+        bmesh.ops.delete(self.bm, geom=hidden, context="FACES")
+        return len(hidden)
+
+    def _project_uvs(self, tile):
+        """Box-projects every face onto the texture, `tile` metres per repeat."""
+        uv_layer = self.uv_layer
+        for face in self.bm.faces:
+            n = face.normal
+            ax, ay, az = abs(n.x), abs(n.y), abs(n.z)
+            for loop in face.loops:
+                p = loop.vert.co
+                if ay >= ax and ay >= az:
+                    loop[uv_layer].uv = (p.x / tile, p.z / tile)
+                elif ax >= az:
+                    loop[uv_layer].uv = (p.z / tile, p.y / tile)
+                else:
+                    loop[uv_layer].uv = (p.x / tile, p.y / tile)
+
+    def to_object(self, colours, tile=10.0, bake_ao=True):
+        """
+        Finishes the mesh: hidden faces out, UVs, smooth shading with face-weighted normals,
+        then ambient occlusion and the faction colours baked into vertex colours.
+        """
         bmesh.ops.remove_doubles(self.bm, verts=self.bm.verts, dist=1e-5)
-        bmesh.ops.recalc_face_normals(self.bm, faces=self.bm.faces)
+        removed = self.remove_hidden_faces()
+        loose = [v for v in self.bm.verts if not v.link_faces]
+        bmesh.ops.delete(self.bm, geom=loose, context="VERTS")
+        self.bm.normal_update()
+        self._project_uvs(tile)
+
+        # Remember each face's paint, then collapse the slots to the two real materials.
+        slot_layer = self.bm.faces.layers.int.new("slot")
+        for face in self.bm.faces:
+            face[slot_layer] = face.material_index
+            face.material_index = 1 if face.material_index in EMISSIVE_SLOTS and colours["lit"] else 0
+            face.smooth = True
+
         bmesh.ops.transform(self.bm, verts=self.bm.verts, matrix=GAME_TO_BLENDER)
         mesh = bpy.data.meshes.new(self.name)
         self.bm.to_mesh(mesh)
         self.bm.free()
-        for material in materials:
-            mesh.materials.append(material)
+
+        hull = bpy.data.materials.new("hull")
+        hull.use_nodes = True
+        shader = hull.node_tree.nodes["Principled BSDF"]
+        shader.inputs["Metallic"].default_value = colours["metallic"]
+        shader.inputs["Roughness"].default_value = colours["roughness"]
+        glow = bpy.data.materials.new("glow")
+        glow.use_nodes = True
+        mesh.materials.append(hull)
+        mesh.materials.append(glow)
+
         obj = bpy.data.objects.new(self.name, mesh)
         bpy.context.scene.collection.objects.link(obj)
-        if bake_ao:
-            bake_ambient_occlusion(obj)
-        return obj
+        mesh.set_sharp_from_angle(angle=SHARP_ANGLE)
+        weighted = obj.modifiers.new("WeightedNormal", "WEIGHTED_NORMAL")
+        weighted.keep_sharp = True
+        weighted.weight = 60
+
+        occlusion = bake_ambient_occlusion(obj) if bake_ao else None
+        write_vertex_colours(mesh, colours["tints"], occlusion)
+        return obj, removed
 
 
 def bake_ambient_occlusion(obj, samples=24):
-    """Bakes AO into the mesh's vertex colours; the game multiplies them into the hull colour."""
+    """Bakes ambient occlusion per face corner and returns it as a float array (one value per loop)."""
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
     scene.cycles.device = "CPU"
     scene.cycles.samples = samples
     mesh = obj.data
-    attribute = mesh.color_attributes.new("Col", "BYTE_COLOR", "CORNER")
+    attribute = mesh.color_attributes.new("AO", "FLOAT_COLOR", "CORNER")
     mesh.color_attributes.active_color = attribute
-    mesh.color_attributes.render_color_index = 0
     for other in bpy.context.scene.objects:
         other.select_set(False)
     obj.select_set(True)
     bpy.context.view_layer.objects.active = obj
     scene.render.bake.target = "VERTEX_COLORS"
     bpy.ops.object.bake(type="AO")
-    # Lift the shadows a little: pure-black crevices look like holes under game lighting.
-    for item in attribute.data:
-        r, g, b, a = item.color
-        item.color = (0.35 + 0.65 * r, 0.35 + 0.65 * g, 0.35 + 0.65 * b, a)
+    data = np.empty(len(mesh.loops) * 4, dtype=np.float32)
+    mesh.color_attributes["AO"].data.foreach_get("color", data)
+    occlusion = data.reshape(-1, 4)[:, 0].copy()
+    mesh.color_attributes.remove(mesh.color_attributes["AO"])
+    return occlusion
+
+
+def write_vertex_colours(mesh, tints, occlusion):
+    """
+    Writes the colour attribute the game reads: RGB = paint colour x ambient occlusion
+    (emissive faces keep their full colour), A = 1 where the face has no windows and 0
+    where the window lights of the texture should show.
+    """
+    polygon_count = len(mesh.polygons)
+    slots = np.empty(polygon_count, dtype=np.int32)
+    windows = np.empty(polygon_count, dtype=np.int32)
+    totals = np.empty(polygon_count, dtype=np.int32)
+    mesh.attributes["slot"].data.foreach_get("value", slots)
+    mesh.attributes["window"].data.foreach_get("value", windows)
+    mesh.polygons.foreach_get("loop_total", totals)
+
+    table = np.array([tints[slot] for slot in range(7)], dtype=np.float32)
+    rgb = np.repeat(table[slots], totals, axis=0)
+    emissive = np.repeat(np.isin(slots, EMISSIVE_SLOTS), totals)
+    if occlusion is not None:
+        # Lift the shadows a little: pure-black crevices look like holes under game lighting.
+        shade = np.where(emissive, 1.0, 0.3 + 0.7 * occlusion)
+        rgb = rgb * shade[:, None]
+    alpha = 1.0 - np.repeat(windows, totals).astype(np.float32)
+    colour = mesh.color_attributes.new("Col", "FLOAT_COLOR", "CORNER")
+    colour.data.foreach_set("color", np.column_stack((rgb, alpha)).astype(np.float32).ravel())
+    mesh.color_attributes.active_color = colour
+    mesh.color_attributes.render_color_index = mesh.color_attributes.find("Col")
+    mesh.attributes.remove(mesh.attributes["slot"])
+    mesh.attributes.remove(mesh.attributes["window"])
 
 
 def export_glb(obj, path):
+    """Writes the object as an uncompressed GLB (build_models.py compresses it afterwards)."""
     for other in bpy.context.scene.objects:
         other.select_set(False)
     obj.select_set(True)
@@ -379,11 +619,7 @@ def export_glb(obj, path):
         export_all_vertex_colors=False,
         export_active_vertex_color_when_no_material=True,
         export_normals=True,
-        export_draco_mesh_compression_enable=True,
-        export_draco_mesh_compression_level=6,
-        export_draco_position_quantization=14,
-        export_draco_normal_quantization=10,
-        export_draco_color_quantization=8,
+        export_texcoords=True,
     )
 
 

@@ -6,7 +6,9 @@ src/game/scene/models/modelManifest.json (sizes and engine positions).
     python3 tools/game-models/build_models.py drone eclipse
 
 Needs Blender's Python: either `pip install bpy`, or `blender -b -P tools/game-models/build_models.py`.
-Each model is a function below; `length` in MODELS is its nose-to-tail size in metres.
+Each model is a function below. A MODELS entry is (builder, palette, length, seed, tile):
+`length` is the nose-to-tail size in metres, `tile` how many metres one repeat of the shared
+plating texture covers (smaller = finer plates; about a fifth of the length suits most ships).
 """
 import json
 import os
@@ -32,7 +34,7 @@ def dawn_palette():
     """Dawn fleet: pale ceramic and slate, lit in cyan."""
     return sf.palette(
         hull="#a3acb8", panel="#5d6c7e", accent="#2f6fd6", glow="#45cfff", window="#fff2c4",
-        hull_metallic=0.3, hull_roughness=0.62,
+        hull_metallic=0.4, hull_roughness=1.25,
     )
 
 
@@ -42,12 +44,12 @@ def neutral_palette():
 
 def wreck_palette():
     """Scorched hull plating with no power: nothing glows."""
-    return sf.palette(hull="#4a4d52", panel="#2c2e33", accent="#3a3020", glow="#000000", window="#000000", glow_strength=0.0)
+    return sf.palette(hull="#4a4d52", panel="#2c2e33", accent="#3a3020", glow="#000000", window="#000000", glow_strength=0.0, hull_metallic=0.5, hull_roughness=1.3)
 
 
 def cockpit_palette():
     """Dim interior so the instruments and the view outside stand out."""
-    return sf.palette(hull="#2b323d", panel="#1b2029", accent="#2f6fd6", glow="#45cfff", window="#ffb648", glow_strength=2.2)
+    return sf.palette(hull="#2b323d", panel="#1b2029", accent="#2f6fd6", glow="#45cfff", window="#ffb648", glow_strength=0.12, hull_metallic=0.15, hull_roughness=1.7)
 
 
 def strut(b, x_start, x_end, z, y_start, y_end, chord, thickness, mat=HULL, steps=2, mirror=True):
@@ -148,7 +150,7 @@ def build_kestrel(b):
     wings = b.loft([
         dict(z=-1.0, x=2.0, w=0.4, h=0.28, y=0.0),
         dict(z=3.5, x=6.0, w=2.3, h=0.22, y=-0.25, p=3.0),
-        dict(z=7.0, x=9.5, w=1.2, h=0.14, y=-0.6, p=3.0),
+        dict(z=7.0, x=9.5, w=1.2, h=0.14, y=-0.6, p=3.0, mat=ACCENT),
         dict(z=8.4, x=10.4, w=0.4, h=0.1, y=-0.7, p=3.0),
     ], segments=6, steps=2, mirror=True)
     nacelles = b.loft([
@@ -158,8 +160,12 @@ def build_kestrel(b):
     ], segments=8, steps=2, mat=PANEL, mirror=True)
     b.loft([dict(z=5.0, x=3.4, y=1.0, w=0.12, h=0.2), dict(z=10.5, x=3.9, y=2.6, w=0.1, h=1.2)], segments=4, mirror=True)
     b.detail(fuselage + wings + nacelles, plate_height=0.06, machinery=0.08, windows=0.0, recess=0.06, panels=0.3)
-    b.paint(wings, ACCENT, lambda x, y, z: abs(x) > 8.2 and y > -0.75)
     b.light_strip((3.4, 1.05, 4.2), (3.4, 1.05, 8.5), 0.07, mirror=True)
+    # Canards carry the beam emitters out to either side of the nose.
+    b.loft([
+        dict(z=1.3, x=5.0, y=-0.62, w=0.95, h=0.09, p=3.0),
+        dict(z=3.9, x=5.9, y=-0.74, w=0.5, h=0.06, p=3.0),
+    ], segments=6, mat=PANEL, mirror=True, matrix=SPINE_STARBOARD)
     # Beam emitters under the nose (match `mounts` of playerBeam in config/weapons.js).
     b.tube((3.4, -0.75, -4.5), (3.4, -0.75, -7.2), 0.22, 0.16, 6, DARK, (GLOW, DARK), mirror=True)
     b.engine((3.4, 0.1, 10.8), 0.85, mirror=True)
@@ -505,23 +511,23 @@ def build_cockpit(b):
 
 # id -> (builder, palette factory, nose-to-tail length in metres, random seed)
 MODELS = {
-    "drone": (build_drone, umbra_palette, 13, 11),
-    "raider": (build_raider, umbra_palette, 22, 12),
-    "lancer": (build_lancer, umbra_palette, 30, 13),
-    "kestrel": (build_kestrel, dawn_palette, 24, 21),
-    "dart": (build_dart, dawn_palette, 16, 22),
-    "harrier": (build_harrier, dawn_palette, 280, 23),
-    "corvette": (build_corvette, umbra_palette, 130, 14),
-    "warden": (build_warden, umbra_palette, 520, 15),
-    "eclipse": (build_eclipse, umbra_palette, 3400, 16),
-    "forge": (build_forge, umbra_palette, 3000, 17),
-    "shieldGenerator": (build_shield_generator, umbra_palette, 150, 18),
-    "tractorEmitter": (build_tractor_emitter, umbra_palette, 110, 19),
-    "reactor": (build_reactor, umbra_palette, 170, 20),
-    "stationTurret": (build_station_turret, umbra_palette, 90, 24),
-    "buoy": (build_buoy, neutral_palette, 12, 25),
-    "wreck": (build_wreck, wreck_palette, 190, 26),
-    "cockpit": (build_cockpit, cockpit_palette, None, 27),
+    "drone": (build_drone, umbra_palette, 13, 11, 8),
+    "raider": (build_raider, umbra_palette, 22, 12, 9),
+    "lancer": (build_lancer, umbra_palette, 30, 13, 10),
+    "kestrel": (build_kestrel, dawn_palette, 24, 21, 9),
+    "dart": (build_dart, dawn_palette, 16, 22, 8),
+    "harrier": (build_harrier, dawn_palette, 280, 23, 36),
+    "corvette": (build_corvette, umbra_palette, 130, 14, 22),
+    "warden": (build_warden, umbra_palette, 520, 15, 60),
+    "eclipse": (build_eclipse, umbra_palette, 3400, 16, 220),
+    "forge": (build_forge, umbra_palette, 3000, 17, 220),
+    "shieldGenerator": (build_shield_generator, umbra_palette, 150, 18, 30),
+    "tractorEmitter": (build_tractor_emitter, umbra_palette, 110, 19, 24),
+    "reactor": (build_reactor, umbra_palette, 170, 20, 30),
+    "stationTurret": (build_station_turret, umbra_palette, 90, 24, 20),
+    "buoy": (build_buoy, neutral_palette, 12, 25, 6),
+    "wreck": (build_wreck, wreck_palette, 190, 26, 30),
+    "cockpit": (build_cockpit, cockpit_palette, None, 27, 2.6),
 }
 
 # Models whose origin is meaningful and must not be moved to the bounding-box centre.
@@ -531,20 +537,23 @@ KEEP_ORIGIN = {"forge", "cockpit"}
 def compress(path):
     """
     Draco-compresses a GLB in place with gltf-transform (about 10x smaller). The site's
-    loader already decodes Draco. Skipped quietly when Node / npx is not available.
+    loader already decodes Draco. Texture coordinates keep 16 bits because they run over
+    many repeats of the tiling textures. Skipped quietly when Node / npx is not available.
     """
     npx = shutil.which("npx")
     if not npx:
         return
     try:
-        subprocess.run([npx, "--yes", "@gltf-transform/cli@4", "draco", path, path, "--quantize-position", "14"],
-                       check=True, capture_output=True, timeout=300, cwd=os.environ.get("GLTF_TRANSFORM_CWD") or None)
+        subprocess.run(
+            [npx, "--yes", "@gltf-transform/cli@4", "draco", path, path,
+             "--quantize-position", "14", "--quantize-texcoord", "16", "--quantize-normal", "10", "--quantize-color", "8"],
+            check=True, capture_output=True, timeout=300, cwd=os.environ.get("GLTF_TRANSFORM_CWD") or None)
     except (subprocess.SubprocessError, OSError) as error:
         print(f"  (not compressed: {error})")
 
 
 def build(model_id):
-    builder_fn, palette_fn, length, seed = MODELS[model_id]
+    builder_fn, palette_fn, length, seed, tile = MODELS[model_id]
     sf.reset_scene()
     builder = sf.ShipBuilder(model_id, seed)
     builder_fn(builder)
@@ -552,12 +561,13 @@ def build(model_id):
     entry = {"file": f"game/{model_id}.glb", "size": size, "engines": builder.engines}
     if builder.markers:
         entry["markers"] = builder.markers
-    obj = builder.to_object(palette_fn())
+    obj, hidden = builder.to_object(palette_fn(), tile)
     path = os.path.join(OUTPUT_DIR, f"{model_id}.glb")
     sf.export_glb(obj, path)
     compress(path)
     triangles = sum(len(p.vertices) - 2 for p in obj.data.polygons)
-    print(f"  {model_id}: {size} m, {triangles} triangles, {os.path.getsize(path) // 1024} KB")
+    entry["triangles"] = triangles
+    print(f"  {model_id}: {size} m, {triangles} triangles ({hidden} hidden faces removed), {os.path.getsize(path) // 1024} KB")
     return entry
 
 

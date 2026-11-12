@@ -1,17 +1,20 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { createAsteroidGeometry } from './models/asteroidGeometry.js';
+import { ModelErrorBoundary, useRockTextures } from './models/ShipModel.jsx';
 
 const MAX_ASTEROIDS = 400;
 const dummy = new THREE.Object3D();
+/** Strength of the rock normal map. */
+const ROCK_RELIEF = new THREE.Vector2(1.6, 1.6);
 
 /**
  * Draws the sector's asteroids (`world.obstacles`) with a single instanced mesh.
  * The list changes as rocks are blown apart, so the instances are rewritten every frame;
  * that also lets every rock tumble slowly.
  */
-export default function AsteroidField({ session }) {
+function Rocks({ session, textures }) {
     const meshRef = useRef(null);
     const geometry = useMemo(() => createAsteroidGeometry(), []);
 
@@ -37,7 +40,29 @@ export default function AsteroidField({ session }) {
 
     return (
         <instancedMesh ref={meshRef} args={[geometry, undefined, MAX_ASTEROIDS]} frustumCulled={false}>
-            <meshStandardMaterial color="#4b443e" roughness={0.95} metalness={0.05} flatShading />
+            <meshStandardMaterial
+                color="#8d8177"
+                map={textures?.albedo ?? null}
+                normalMap={textures?.normal ?? null}
+                normalScale={ROCK_RELIEF}
+                roughness={0.94}
+                metalness={0.04}
+            />
         </instancedMesh>
+    );
+}
+
+function TexturedRocks({ session }) {
+    return <Rocks session={session} textures={useRockTextures()} />;
+}
+
+/** The asteroid field; if the rock textures cannot be loaded the rocks are simply drawn plain. */
+export default function AsteroidField({ session }) {
+    return (
+        <ModelErrorBoundary fallback={<Rocks session={session} textures={null} />}>
+            <Suspense fallback={null}>
+                <TexturedRocks session={session} />
+            </Suspense>
+        </ModelErrorBoundary>
     );
 }
