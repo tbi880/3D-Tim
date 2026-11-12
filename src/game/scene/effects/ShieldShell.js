@@ -20,7 +20,7 @@ const VERTEX_SHADER = /* glsl */ `
     void main() {
         vDirection = normalize( position );
         vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
-        vRim = 1.0 - abs( dot( normalize( normalMatrix * normal ), normalize( -mvPosition.xyz ) ) );
+        vRim = 1.0 - abs( dot( normalize( normalMatrix * normal ), normalize( vec3( 0.0, 0.0, 1e-5 ) - mvPosition.xyz ) ) );
         gl_Position = projectionMatrix * mvPosition;
         #include <logdepthbuf_vertex>
     }
@@ -52,15 +52,20 @@ const FRAGMENT_SHADER = /* glsl */ `
             float age = ( time - hits[ i ].w ) / ${HIT_SECONDS.toFixed(2)};
             if ( age < 0.0 || age > 1.0 ) continue;
             float angle = acos( clamp( dot( direction, hits[ i ].xyz ), -1.0, 1.0 ) );
-            float fade = pow( 1.0 - age, 1.6 );
+            float fade = pow( max( 0.0, 1.0 - age ), 1.6 );
             glow += exp( -angle * angle / 0.11 ) * fade;
-            ripple += exp( -pow( ( angle - age * 1.1 ) / 0.05, 2.0 ) ) * fade * 0.7;
+            // Squared by multiplying: pow() of a negative number (everywhere inside the ring)
+            // is undefined and gives NaN on many GPUs, which the bloom pass spreads into a black frame.
+            float fromRing = ( angle - age * 1.1 ) / 0.05;
+            ripple += exp( -fromRing * fromRing ) * fade * 0.7;
         }
         if ( glow + ripple < 0.004 ) discard;
         vec2 grid = vec2( atan( direction.z, direction.x ), asin( clamp( direction.y, -1.0, 1.0 ) ) ) * 9.0;
         float cells = 1.0 - smoothstep( 0.0, 0.07, hexEdge( grid ) );
         float strength = glow * ( 0.35 + 1.5 * cells + 0.5 * vRim ) + ripple * ( 0.6 + cells );
         gl_FragColor = vec4( tint * strength * 1.6, 1.0 );
+        // Last line of defence: never hand an invalid colour to the bloom pass.
+        if ( any( isnan( gl_FragColor ) ) ) gl_FragColor = vec4( 0.0 );
     }
 `;
 

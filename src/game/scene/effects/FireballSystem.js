@@ -72,20 +72,22 @@ const FRAGMENT_SHADER = /* glsl */ `
         float billow = fbm( vCorner * 2.1 + vSeed * 37.0 + vec2( 0.0, -vAge * 0.8 ) );
         float detail = fbm( vCorner * 4.6 - vSeed * 11.0 + vAge * 0.7 );
         // A ball whose edge is eaten away by the noise.
-        float body = smoothstep( 1.0, 0.2, r + ( billow - 0.5 ) * 0.95 );
+        float body = 1.0 - smoothstep( 0.2, 1.0, r + ( billow - 0.5 ) * 0.95 );
         float heat = body * clamp( 1.25 - vAge * 1.45 + ( detail - 0.5 ) * 0.9, 0.0, 1.0 ) * ( 1.0 - r * 0.3 ) * vHeat;
 
         vec3 fire = mix( vec3( 1.0, 0.14, 0.02 ), vec3( 1.0, 0.52, 0.1 ), smoothstep( 0.08, 0.45, heat ) );
         fire = mix( fire, vec3( 1.0, 0.93, 0.74 ), smoothstep( 0.45, 0.95, heat ) ) * vTint;
         vec3 emission = fire * heat * heat * 6.0;
 
-        float smoke = body * smoothstep( 0.1, 0.45, vAge ) * pow( 1.0 - vAge, 1.2 ) * 0.85 * ( 0.55 + 0.45 * detail );
+        float smoke = body * smoothstep( 0.1, 0.45, vAge ) * pow( max( 0.0, 1.0 - vAge ), 1.2 ) * 0.85 * ( 0.55 + 0.45 * detail );
         // Lit from one side so the smoke has form instead of being a flat grey disc.
         float lit = 0.55 + 0.45 * dot( normalize( vec2( -0.6, 0.8 ) ), vCorner ) * ( 0.6 + 0.4 * billow );
         vec3 smokeColour = vec3( 0.16, 0.145, 0.135 ) * lit + fire * heat * 0.35;
         float fade = 1.0 - smoothstep( 0.82, 1.0, vAge );
         // Premultiplied: the fire is added to what is behind it, the smoke hides it.
         gl_FragColor = vec4( ( emission + smokeColour * smoke ) * fade, smoke * fade );
+        // Last line of defence: never hand an invalid colour to the bloom pass.
+        if ( any( isnan( gl_FragColor ) ) ) gl_FragColor = vec4( 0.0 );
     }
 `;
 

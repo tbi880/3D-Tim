@@ -25,7 +25,7 @@ const PARTICLE_FRAGMENT_SHADER = /* glsl */ `
     varying float vAlpha;
     void main() {
         #include <logdepthbuf_fragment>
-        float falloff = smoothstep(0.5, 0.0, length(gl_PointCoord - 0.5));
+        float falloff = 1.0 - smoothstep(0.0, 0.5, length(gl_PointCoord - 0.5));
         gl_FragColor = vec4(vTint * falloff * vAlpha, 1.0);
     }
 `;

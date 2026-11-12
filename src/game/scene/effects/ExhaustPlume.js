@@ -37,7 +37,8 @@ const VERTEX_SHADER = /* glsl */ `
         vec3 local = plumeOrigin + vec3( plumeShape.xy * width, along * reach );
         vec4 mvPosition = modelViewMatrix * vec4( local, 1.0 );
         vec3 outward = mix( vec3( plumeShape.xy, 0.12 ), vec3( 0.0, 0.0, 1.0 ), onDisc );
-        vFacing = abs( dot( normalize( normalMatrix * outward ), normalize( -mvPosition.xyz ) ) );
+        // (The tiny offset keeps normalize() defined if the camera sits exactly on a vertex.)
+        vFacing = abs( dot( normalize( normalMatrix * outward ), normalize( vec3( 0.0, 0.0, 1e-5 ) - mvPosition.xyz ) ) );
         vAxial = along;
         vDisc = onDisc * length( plumeShape.xy );
         vPhase = plumeOrigin.x * 0.37 + plumeOrigin.y * 0.11;
@@ -57,15 +58,22 @@ const FRAGMENT_SHADER = /* glsl */ `
     varying float vDisc;
     void main() {
         #include <logdepthbuf_fragment>
-        float depth = pow( vFacing, 2.2 );                  // how much gas this ray passes through
-        float fall = pow( 1.0 - vAxial, 1.5 );
-        float diamonds = pow( max( 0.0, sin( vAxial * 27.0 - time * 9.0 + vPhase ) ), 6.0 ) * exp( -vAxial * 4.0 ) * ( 0.35 + thrust );
-        float flicker = 0.86 + 0.14 * sin( time * 47.0 + vPhase * 9.0 + vAxial * 31.0 );
-        vec3 colour = mix( vec3( 1.0 ), tint, smoothstep( 0.0, 0.5, vAxial + ( 1.0 - depth ) * 0.55 ) );
+        // Interpolated values can land a hair outside 0..1 (most often right at the plume's
+        // tip). pow() of a negative number is undefined and on many GPUs yields NaN, and a
+        // single NaN pixel is smeared over the whole screen by the bloom pass - a black frame.
+        // So every base is clamped before it is raised to a power.
+        float axial = clamp( vAxial, 0.0, 1.0 );
+        float depth = pow( clamp( vFacing, 0.0, 1.0 ), 2.2 );   // how much gas this ray passes through
+        float fall = pow( 1.0 - axial, 1.5 );
+        float diamonds = pow( max( 0.0, sin( axial * 27.0 - time * 9.0 + vPhase ) ), 6.0 ) * exp( -axial * 4.0 ) * ( 0.35 + thrust );
+        float flicker = 0.86 + 0.14 * sin( time * 47.0 + vPhase * 9.0 + axial * 31.0 );
+        vec3 colour = mix( vec3( 1.0 ), tint, smoothstep( 0.0, 0.5, axial + ( 1.0 - depth ) * 0.55 ) );
         float strength = ( depth * fall * ( 1.5 + thrust * 2.4 ) + diamonds * 1.6 ) * flicker;
         // Seen from behind, the nozzle itself is a bright disc.
-        strength *= 1.0 - vDisc * vDisc;
+        strength *= max( 0.0, 1.0 - vDisc * vDisc );
         gl_FragColor = vec4( colour * strength, 1.0 );
+        // Last line of defence: never hand an invalid colour to the bloom pass.
+        if ( any( isnan( gl_FragColor ) ) ) gl_FragColor = vec4( 0.0 );
     }
 `;
 

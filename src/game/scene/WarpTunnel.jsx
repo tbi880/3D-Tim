@@ -33,10 +33,10 @@ const FRAGMENT_SHADER = /* glsl */ `
         float lane = floor(vUv.x * lanes);
         float seed = hash(lane);
         float travel = fract(vUv.y * (1.2 + seed * 2.5) - time * (1.6 + seed * 3.5) + seed * 9.0);
-        float streak = smoothstep(0.0, 0.06, travel) * smoothstep(0.6, 0.08, travel);
-        float laneShape = smoothstep(0.5, 0.15, abs(fract(vUv.x * lanes) - 0.5));
+        float streak = smoothstep(0.0, 0.06, travel) * (1.0 - smoothstep(0.08, 0.6, travel));
+        float laneShape = 1.0 - smoothstep(0.15, 0.5, abs(fract(vUv.x * lanes) - 0.5));
         float lit = step(0.45, seed);
-        float ends = smoothstep(0.0, 0.2, vUv.y) * smoothstep(1.0, 0.75, vUv.y);
+        float ends = smoothstep(0.0, 0.2, vUv.y) * (1.0 - smoothstep(0.75, 1.0, vUv.y));
         float glow = streak * laneShape * lit * ends * strength;
         vec3 color = mix(vec3(0.2, 0.5, 1.0), vec3(0.92, 0.98, 1.0), seed * streak);
         // A faint blue wash fills the gaps so the tunnel reads as a wall, not as lines.

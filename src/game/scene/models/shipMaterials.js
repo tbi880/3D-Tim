@@ -107,7 +107,9 @@ function createGlowMaterial() {
             varying vec3 vViewPosition;
             void main() {
                 #include <logdepthbuf_fragment>
-                float facing = abs( dot( normalize( vViewNormal ), normalize( vViewPosition ) ) );
+                // Clamped, with a nudge on the normal: pow() of a negative or normalize() of a
+                // zero vector would give NaN, which the bloom pass turns into a black frame.
+                float facing = clamp( abs( dot( normalize( vViewNormal + vec3( 0.0, 0.0, 1e-5 ) ), normalize( vViewPosition + vec3( 0.0, 0.0, 1e-5 ) ) ) ), 0.0, 1.0 );
                 float core = 0.3 + 0.7 * pow( facing, 1.6 );
                 // The very centre burns towards white.
                 vec3 colour = mix( vGlow, vec3( 1.0 ), pow( facing, 6.0 ) * 0.35 ) * core * brightness;
