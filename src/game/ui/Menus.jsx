@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { DIFFICULTY_ORDER } from '../config/gameConfig.js';
+import { PLAYER_SHIPS, RATING_MAX, RATING_ORDER } from '../config/playerShips.js';
 import { LOCALES, LOCALE_LABELS } from '../i18n/index.js';
 import { PHASE } from '../state/GameSession.js';
 import { useGameStore, useT } from '../state/gameStore.js';
@@ -62,6 +63,50 @@ function SettingsRows({ session }) {
     );
 }
 
+/** One row of a ship card: a label and a bar of 1-5 pips. */
+function Rating({ label, value }) {
+    return (
+        <div className="eod-rating">
+            <span>{label}</span>
+            <div className="eod-rating-pips">
+                {Array.from({ length: RATING_MAX }, (_, index) => (
+                    <i key={index} className={index < value ? 'eod-rating-pip eod-rating-pip--on' : 'eod-rating-pip'} />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+/** The hangar: pick the ship to fly before a new game starts. */
+function Hangar({ session, onLaunch, onBack }) {
+    const selected = useGameStore((state) => state.settings.playerShip);
+    const t = useT();
+    return (
+        <div className="eod-hangar">
+            <h2 className="eod-hangar-title">{t('ui.hangar.title')}</h2>
+            <div className="eod-hangar-ships">
+                {PLAYER_SHIPS.map(({ classId, ratings }) => (
+                    <button
+                        key={classId}
+                        type="button"
+                        className={`eod-ship-card ${classId === selected ? 'eod-ship-card--selected' : ''}`}
+                        onClick={() => session.updateSettings({ playerShip: classId })}
+                    >
+                        <strong>{t(`ship.${classId}`)}</strong>
+                        <em>{t(`playerShip.${classId}.role`)}</em>
+                        <p>{t(`playerShip.${classId}.text`)}</p>
+                        {RATING_ORDER.map((rating) => <Rating key={rating} label={t(`ui.rating.${rating}`)} value={ratings[rating]} />)}
+                    </button>
+                ))}
+            </div>
+            <div className="eod-hangar-actions">
+                <button type="button" className="eod-button" onClick={onBack}>{t('ui.back')}</button>
+                <button type="button" className="eod-button eod-button--primary" onClick={onLaunch}>{t('ui.hangar.launch')}</button>
+            </div>
+        </div>
+    );
+}
+
 function TitleScreen({ session, onStart }) {
     const hasSave = useGameStore((state) => state.hasSave);
     const saveCheckpointId = useGameStore((state) => state.saveCheckpointId);
@@ -74,6 +119,9 @@ function TitleScreen({ session, onStart }) {
             setConfirmingNewGame(true);
             return;
         }
+        setView('hangar');
+    };
+    const launch = () => {
         onStart();
         session.newGame();
     };
@@ -90,7 +138,8 @@ function TitleScreen({ session, onStart }) {
                 <p className="eod-title-tagline">{t('ui.tagline')}</p>
                 <p className="eod-touch-hint">{t('ui.touchHint')}</p>
             </div>
-            {view === 'main' ? (
+            {view === 'hangar' && <Hangar session={session} onLaunch={launch} onBack={() => setView('main')} />}
+            {view === 'main' && (
                 <div className="eod-menu">
                     {hasSave && (
                         <button type="button" className="eod-button eod-button--primary" onClick={continueGame}>
@@ -105,7 +154,8 @@ function TitleScreen({ session, onStart }) {
                     <button type="button" className="eod-button" onClick={() => setView('controls')}>{t('ui.controls')}</button>
                     <SettingsRows session={session} />
                 </div>
-            ) : (
+            )}
+            {view === 'controls' && (
                 <div className="eod-menu">
                     <ControlsList />
                     <button type="button" className="eod-button" onClick={() => setView('main')}>{t('ui.back')}</button>

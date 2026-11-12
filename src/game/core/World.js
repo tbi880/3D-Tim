@@ -54,6 +54,10 @@ export class World {
         this.outOfBounds = false;
         /** Length (seconds) of the most recent simulation step; story timers use it. */
         this.lastStep = 0;
+        /** Whether a ship-mounted cannon is on the player this step: 0 no, 1 tracking, 2 locked. */
+        this.playerCannonLock = 0;
+        /** Ship class the player flies (chosen on the title screen, restored from saves). */
+        this.playerClassId = PLAYER.classId;
         /** Assist: the player's beams fire by themselves when something hostile is in the ring. */
         this.autoFire = false;
         /** 0..1 strength of the warp effect; driven by the story's warp beat. */
@@ -242,6 +246,7 @@ export class World {
         const step = Math.min(dt, WORLD.maxStep);
         this.time += step;
         this.lastStep = step;
+        this.playerCannonLock = 0;
         if (controls) this.playerControls = controls;
         this.beams.length = 0;
 
@@ -322,7 +327,7 @@ export class World {
         const persistentShips = this.ships.filter((ship) => ship.alive && ship.persistent && !ship.isPlayer);
         return {
             sectorId: this.sectorId,
-            player: this.player ? { hullFraction: this.player.hullFraction } : null,
+            player: this.player ? { hullFraction: this.player.hullFraction, classId: this.player.classId } : null,
             ships: persistentShips.map((ship) => ({
                 classId: ship.classId,
                 callsign: ship.callsign,
@@ -348,7 +353,9 @@ export class World {
         this.clear();
         const sector = this.setSector(snapshot.sectorId);
         const hullFraction = Math.max(PLAYER.checkpointMinHull, snapshot.player?.hullFraction ?? 1);
-        this.spawnShip(PLAYER.classId, { ...sector.playerStart, hullFraction });
+        // Saves from before ships were selectable have no class: they were all Kestrels.
+        this.playerClassId = SHIP_CLASSES[snapshot.player?.classId] ? snapshot.player.classId : PLAYER.classId;
+        this.spawnShip(this.playerClassId, { ...sector.playerStart, hullFraction });
 
         // Parents first, so mounted modules can find them.
         const ordered = [...snapshot.ships].sort((a, b) => Number(Boolean(a.parentTag)) - Number(Boolean(b.parentTag)));

@@ -146,6 +146,8 @@ function Alerts() {
     if (!hud?.alive) return null;
     const alerts = [];
     if (hud.outOfBounds) alerts.push('hud.outOfBounds');
+    if (hud.cannonLock === 2) alerts.push('hud.cannonLocked');
+    else if (hud.cannonLock === 1) alerts.push('hud.cannonTracking');
     if (escort && escort.hull < 0.3) alerts.push('hud.escortCritical');
     if (hud.hull < 0.3) alerts.push('hud.hullCritical');
     else if (hud.shield <= 0.01) alerts.push('hud.shieldsDown');

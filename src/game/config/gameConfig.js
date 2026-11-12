@@ -72,8 +72,8 @@ export const DIFFICULTY = Object.freeze({
         enemyToughness: 1, enemyFireRate: 1, enemyBeamDamage: 1, allyDamage: 1, shieldRegen: 1,
     },
     admiral: {
-        id: 'admiral', damageTaken: 1.3, allyDamageTaken: 1.0,
-        enemyToughness: 1.4, enemyFireRate: 1.3, enemyBeamDamage: 1.2, allyDamage: 0.85, shieldRegen: 0.8,
+        id: 'admiral', damageTaken: 1.55, allyDamageTaken: 1.1,
+        enemyToughness: 1.65, enemyFireRate: 1.5, enemyBeamDamage: 1.4, allyDamage: 0.75, shieldRegen: 0.65,
     },
 });
 export const DIFFICULTY_ORDER = ['cadet', 'captain', 'admiral'];
@@ -93,9 +93,11 @@ export const WORLD = Object.freeze({
 /** Timing shared by the pieces of a big ship's death (explosions and the hull that stays visible). */
 export const EFFECTS = Object.freeze({
     /** Seconds a destroyed capital ship's hull stays on screen, breaking up, before the main blast. */
-    breakupSeconds: 2.6,
+    breakupSeconds: 6,
     /** The same for the very largest hulls (dreadnought, shipyard). */
-    hugeBreakupSeconds: 4.6,
+    hugeBreakupSeconds: 10,
+    /** How far (radians) a dying hull has rolled by the time it finally explodes. */
+    breakupTumble: 0.85,
     /** Explosion size (metres) above which a hull counts as "very largest". */
     hugeExplosionSize: 600,
 });

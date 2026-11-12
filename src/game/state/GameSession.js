@@ -132,7 +132,7 @@ export class GameSession {
         this.resetPresentation();
         this.world.clear();
         this.world.setSector(STARTING_SECTOR);
-        this.world.spawnShip(PLAYER.classId, { position: [0, 0, 600], facing: [0, 0, -1] });
+        this.world.spawnShip(this.settings.playerShip, { position: [0, 0, 600], facing: [0, 0, -1] });
         this.world.controlsLocked = true;
         this.director.startFromBeginning();
         const save = loadSave();
@@ -148,7 +148,8 @@ export class GameSession {
         this.world.clear();
         this.world.setDifficulty(this.settings.difficulty);
         const sector = this.world.setSector(STARTING_SECTOR);
-        this.world.spawnShip(PLAYER.classId, sector.playerStart);
+        this.world.playerClassId = this.settings.playerShip;
+        this.world.spawnShip(this.world.playerClassId, sector.playerStart);
         this.director.startFromBeginning();
         this.ui.set({ hasSave: false, saveCheckpointId: null });
         this.setPhase(PHASE.PLAYING);
@@ -412,7 +413,7 @@ export class GameSession {
 
     /** Publishes a fresh, immutable list of the ships the 3D scene should draw. */
     publishRoster() {
-        this.ui.set({ roster: this.world.ships.filter((ship) => ship.alive && !ship.isPlayer) });
+        this.ui.set({ roster: this.world.ships.filter((ship) => ship.alive && !ship.isPlayer), playerShip: this.world.player ?? null });
     }
 
     publishSector() {
@@ -454,6 +455,7 @@ export class GameSession {
                 torpedoReload: torpedoes ? torpedoes.reloadTimer / torpedoes.def.reloadTime : 0,
                 powerMode: player.powerMode,
                 outOfBounds: world.outOfBounds,
+                cannonLock: world.playerCannonLock,
             },
             target: target ? { ...shipStatus(target), distance: Math.round(Math.max(0, target.distanceToPoint(player.position))) } : null,
             escort: escortShip ? shipStatus(escortShip) : null,

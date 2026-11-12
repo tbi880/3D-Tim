@@ -45,6 +45,9 @@ const turnCommand = { yaw: 0, pitch: 0 };
  * pitch + = nose up, roll + = roll right); `controls.throttle` is -1..1 (S / W) and
  * `controls.throttleTarget`, when not null, is an absolute 0..1 throttle setting.
  */
+/** Multipliers every player ship starts from; a ship class overrides the ones it changes. */
+const DEFAULT_HANDLING = Object.freeze({ turn: 1, acceleration: 1, boostDuration: 1, boostMultiplier: 1 });
+
 export function updatePlayerFlight(world, ship, controls, dt) {
     const mode = POWER_MODES[ship.powerMode];
 
@@ -53,11 +56,13 @@ export function updatePlayerFlight(world, ship, controls, dt) {
     turnCommand.pitch = controls.pitch;
     applyBoundaryAssist(world, ship, turnCommand);
 
+    // The chosen ship bends the baseline handling (see `handling` in config/shipClasses.js).
+    const handling = { ...DEFAULT_HANDLING, ...ship.cls.handling };
     const response = 1 - Math.exp(-PLAYER.turnResponse * dt);
     const angular = ship.angularVelocity;
-    angular.x += (turnCommand.pitch * PLAYER.pitchRate - angular.x) * response;
-    angular.y += (-turnCommand.yaw * PLAYER.yawRate - angular.y) * response;
-    angular.z += (-controls.roll * PLAYER.rollRate - angular.z) * response;
+    angular.x += (turnCommand.pitch * PLAYER.pitchRate * handling.turn - angular.x) * response;
+    angular.y += (-turnCommand.yaw * PLAYER.yawRate * handling.turn - angular.y) * response;
+    angular.z += (-controls.roll * PLAYER.rollRate * handling.turn - angular.z) * response;
 
     scratchEuler.set(angular.x * dt, angular.y * dt, angular.z * dt, 'YXZ');
     ship.quaternion.multiply(scratchDelta.setFromEuler(scratchEuler)).normalize();
@@ -76,13 +81,13 @@ export function updatePlayerFlight(world, ship, controls, dt) {
     if (ship.boost > 0.25) ship.boostLockout = false;
     ship.boosting = wantsBoost && !ship.boostLockout;
     ship.boost = clamp(
-        ship.boost + (ship.boosting ? -dt / PLAYER.boostDuration : dt / PLAYER.boostRecharge),
+        ship.boost + (ship.boosting ? -dt / (PLAYER.boostDuration * handling.boostDuration) : dt / PLAYER.boostRecharge),
         0, 1,
     );
 
     const cruiseSpeed = ship.cls.maxSpeed * mode.engine;
-    const targetSpeed = ship.boosting ? cruiseSpeed * PLAYER.boostMultiplier : cruiseSpeed * ship.throttle;
-    const acceleration = PLAYER.acceleration * (ship.boosting ? 2.5 : 1);
+    const targetSpeed = ship.boosting ? cruiseSpeed * PLAYER.boostMultiplier * handling.boostMultiplier : cruiseSpeed * ship.throttle;
+    const acceleration = PLAYER.acceleration * handling.acceleration * (ship.boosting ? 2.5 : 1);
     ship.speed = approach(ship.speed, targetSpeed, acceleration * dt);
 
     // --- Velocity follows the nose with a little drift -----------------------------------

@@ -36,6 +36,42 @@ export const SHIP_CLASSES = Object.freeze({
         maxSpeed: 150, turnRate: 1.2, acceleration: 110,
         weapons: ['playerBeam', 'playerTorpedo'],
     },
+    // The other ships a player can pick (config/playerShips.js). Two extra fields shape them:
+    //   handling     - multipliers on the baseline flight model: turn (all three axes),
+    //                  acceleration, boostDuration (how long the afterburner tank lasts)
+    //                  and boostMultiplier (afterburner top speed)
+    //   weaponDamage - multiplier on beam and torpedo damage
+    // They share the Kestrel's model until their own arrive (MODEL_ALIASES in scene/models/ShipModel.jsx).
+    swift: {
+        // Interceptor: out-turns anything, but takes a while to wind up and has a short burn.
+        nameKey: 'ship.swift', faction: FACTION.DAWN, behavior: 'player', kind: 'fighter',
+        model: 'swift', radius: 9,
+        hull: 100, shield: 95, shieldRegen: 14, shieldDelay: 3,
+        maxSpeed: 165, turnRate: 1.2, acceleration: 110,
+        handling: { turn: 1.4, acceleration: 0.7, boostDuration: 0.6, boostMultiplier: 0.92 },
+        weaponDamage: 0.95,
+        weapons: ['playerBeam', 'playerTorpedo'],
+    },
+    shrike: {
+        // Striker: overcharged weapons bolted to a hull with thin shields.
+        nameKey: 'ship.shrike', faction: FACTION.DAWN, behavior: 'player', kind: 'fighter',
+        model: 'shrike', radius: 9,
+        hull: 105, shield: 70, shieldRegen: 9, shieldDelay: 4.2,
+        maxSpeed: 150, turnRate: 1.2, acceleration: 110,
+        handling: { turn: 0.95 },
+        weaponDamage: 1.45,
+        weapons: ['playerBeam', 'playerTorpedo'],
+    },
+    bulwark: {
+        // Guardian: heavy armour and deep shields, slow in the turn and on the throttle.
+        nameKey: 'ship.bulwark', faction: FACTION.DAWN, behavior: 'player', kind: 'fighter',
+        model: 'bulwark', radius: 10,
+        hull: 200, shield: 190, shieldRegen: 17, shieldDelay: 3.2,
+        maxSpeed: 132, turnRate: 1.2, acceleration: 110,
+        handling: { turn: 0.78, acceleration: 0.85, boostDuration: 1.15, boostMultiplier: 0.95 },
+        weaponDamage: 0.88,
+        weapons: ['playerBeam', 'playerTorpedo'],
+    },
     dawnbreaker: {
         nameKey: 'ship.dawnbreaker', faction: FACTION.DAWN, behavior: 'capital', kind: 'capital',
         model: 'dawnbreaker', radius: 640, halfExtents: [215, 80, 640],
@@ -129,7 +165,8 @@ export const SHIP_CLASSES = Object.freeze({
         ],
         hull: 4000, shield: 0, shieldRegen: 0, shieldDelay: 0,
         maxSpeed: 0, turnRate: 0, acceleration: 0,
-        weapons: ['eclipseLance', 'turretBolt', 'turretBolt', 'cruiserBeam'],
+        // Its guns are separate, destructible cannon modules (see spawnEclipse in story/campaign.js).
+        weapons: ['eclipseLance', 'cruiserBeam'],
         ai: { mode: 'hold', prefers: ['capital'] },
     },
     shieldGenerator: {
@@ -161,6 +198,15 @@ export const SHIP_CLASSES = Object.freeze({
         hull: 520, shield: 0, shieldRegen: 0, shieldDelay: 0,
         maxSpeed: 0, turnRate: 0, acceleration: 0,
         weapons: [],
+    },
+    eclipseCannon: {
+        // A gun battery bolted to the Eclipse. Short-ranged for its size: stay outside its reach or kill it.
+        nameKey: 'ship.eclipseCannon', faction: FACTION.UMBRA, behavior: 'module', kind: 'module',
+        model: 'stationTurret', radius: 42,
+        // One torpedo's worth: they can be picked off from outside their own range.
+        hull: 220, shield: 0, shieldRegen: 0, shieldDelay: 0,
+        maxSpeed: 0, turnRate: 0, acceleration: 0,
+        weapons: ['eclipseCannon'],
     },
     stationTurret: {
         nameKey: 'ship.stationTurret', faction: FACTION.UMBRA, behavior: 'module', kind: 'module',

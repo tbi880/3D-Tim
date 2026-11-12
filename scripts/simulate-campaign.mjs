@@ -25,6 +25,8 @@ globalThis.localStorage = {
 const QUIET = process.argv.includes('--quiet');
 /** `--difficulty=cadet|captain|admiral` flies the campaign at another setting (default captain). */
 const DIFFICULTY_ID = process.argv.find((arg) => arg.startsWith('--difficulty='))?.split('=')[1] ?? 'captain';
+/** `--ship=kestrel|swift|shrike|bulwark` picks the player's ship (default kestrel). */
+const SHIP_ID = process.argv.find((arg) => arg.startsWith('--ship='))?.split('=')[1] ?? 'kestrel';
 const STEP = 1 / 30;
 const MAX_STORY_SECONDS = 45 * 60;
 const MAX_RETRIES = 12;
@@ -46,6 +48,8 @@ function pickTarget(world, focused) {
     const priority = (ship) => {
         if (ship.invulnerable) return 50;
         if (!focused) return 1;
+        // A sensible pilot silences the guns before working on anything they cover.
+        if (ship.classId === 'eclipseCannon') return 0.2;
         if (ship.cls.kind === 'module') return 0.5;
         if (ship.classId === 'lancer') return 0.6;
         return 1;
@@ -67,7 +71,9 @@ function autopilot(session, focused = true) {
 
     let destination = target?.position ?? session.waypoint?.position ?? null;
     let keepDistance = 0;
-    if (target) keepDistance = target.cls.kind === 'fighter' ? 60 : (mustHoldLock ? 2500 : 320);
+    // Gun batteries are torpedoed from outside their 2.6 km reach.
+    const sniping = target?.classId === 'eclipseCannon';
+    if (target) keepDistance = target.cls.kind === 'fighter' ? 60 : (mustHoldLock ? 2500 : (sniping ? 2750 : 320));
     if (!destination) return { ...controls, throttle: -1 };
 
     scratchInverse.copy(player.quaternion).invert();
@@ -81,13 +87,13 @@ function autopilot(session, focused = true) {
     const direction = tooClose && !mustHoldLock ? -1 : 1;
     controls.yaw = clamp(scratchLocal.x * 3 * direction + (scratchLocal.z > 0 ? direction : 0), -1, 1);
     controls.pitch = clamp(scratchLocal.y * 3 * direction, -1, 1);
-    controls.throttle = tooClose && mustHoldLock ? -1 : 1;
+    controls.throttle = tooClose && (mustHoldLock || sniping) ? -1 : 1;
     controls.boost = !target && distance > 900;
 
     if (target && scratchLocal.z < -0.9 && direction === 1) {
         controls.firePrimary = surfaceDistance < 950;
         const shieldsDown = target.shield <= 0 || target.maxShield === 0;
-        controls.fireSecondary = shieldsDown && target.cls.kind !== 'fighter' && surfaceDistance < 1400 && scratchLocal.z < -0.97;
+        controls.fireSecondary = shieldsDown && target.cls.kind !== 'fighter' && surfaceDistance < (sniping ? 3800 : 1400) && scratchLocal.z < -0.97;
     }
     return controls;
 }
@@ -96,7 +102,7 @@ function createSession() {
     const uiState = {};
     const session = new GameSession({
         ui: { set: (partial) => Object.assign(uiState, partial) },
-        settings: { locale: 'en', difficulty: DIFFICULTY_ID, muted: true, invertY: false },
+        settings: { locale: 'en', difficulty: DIFFICULTY_ID, playerShip: SHIP_ID, muted: true, invertY: false },
     });
     return { session, uiState };
 }

@@ -1,5 +1,6 @@
 import { DEFAULT_DIFFICULTY, DIFFICULTY, STORAGE_KEYS } from '../config/gameConfig.js';
 import { LOCALES, detectLocale } from '../i18n/index.js';
+import { DEFAULT_PLAYER_SHIP, isPlayerShip } from '../config/playerShips.js';
 import { isTouchDevice } from '../input/device.js';
 
 /**
@@ -60,6 +61,8 @@ export function defaultSettings() {
     return {
         locale: detectLocale(),
         difficulty: DEFAULT_DIFFICULTY,
+        /** Ship class picked in the hangar (config/playerShips.js). */
+        playerShip: DEFAULT_PLAYER_SHIP,
         muted: false,
         invertY: false,
         /** 'cockpit' (first person) or 'chase' (third person). */
@@ -73,6 +76,7 @@ export function loadSettings() {
     const settings = { ...defaultSettings(), ...(readJson(STORAGE_KEYS.settings) ?? {}) };
     if (!LOCALES.includes(settings.locale)) settings.locale = 'en';
     if (!DIFFICULTY[settings.difficulty]) settings.difficulty = DEFAULT_DIFFICULTY;
+    if (!isPlayerShip(settings.playerShip)) settings.playerShip = DEFAULT_PLAYER_SHIP;
     if (!CAMERA_MODES.includes(settings.cameraMode)) settings.cameraMode = 'cockpit';
     return settings;
 }

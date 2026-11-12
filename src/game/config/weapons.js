@@ -70,6 +70,11 @@ export const WEAPONS = Object.freeze({
         type: 'bolt', turret: true, speed: 600, damage: 5, cooldown: 0.3, burst: 3,
         burstPause: 2.6, range: 1700, spreadDeg: 2.6, radius: 1.6, color: UMBRA_BOLT,
     },
+    eclipseCannon: {
+        // Must track a target for `lockTime` seconds before firing; the HUD warns the player meanwhile.
+        type: 'bolt', turret: true, speed: 560, damage: 10, cooldown: 0.22, burst: 4,
+        burstPause: 3.2, range: 2600, spreadDeg: 1.1, radius: 3, color: UMBRA_BOLT, lockTime: 2,
+    },
     cruiserBeam: {
         type: 'beam', turret: true, range: 1500, dps: 9, duty: [1.5, 3.4],
         shieldMult: 1.2, hullMult: 0.8, color: UMBRA_BEAM, width: 3, targets: 'capitalFirst',

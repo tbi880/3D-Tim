@@ -1,20 +1,18 @@
 import { Vector3 } from 'three';
 import { WORLD } from '../../config/gameConfig.js';
 import { GAME_EVENTS } from '../EventBus.js';
-import { createRng, randomRange, randomUnitVector } from '../math.js';
+import { createRng, randomRange } from '../math.js';
 
 /**
  * Asteroids ("obstacles"): drifting rocks that block shots, hurt to fly into, and can be
- * blasted apart. Big rocks break into smaller ones; small ones turn to dust.
+ * blasted apart. A destroyed rock is gone: it bursts into dust and debris (drawn by the
+ * scene), it does not split into smaller rocks.
  */
 
 const scratchOffset = new Vector3();
-const scratchDirection = new Vector3();
 
 /** Hit points per unit of radius: a 10 m rock takes about a second of beam fire. */
 const HP_PER_RADIUS = 3.2;
-/** Rocks at least this big split into fragments instead of vanishing. */
-const SPLIT_MIN_RADIUS = 22;
 const FRAGMENT_DRAG = 0.6;
 let nextObstacleId = 1;
 
@@ -55,16 +53,6 @@ export function generateAsteroids(config) {
 function destroyObstacle(world, obstacle) {
     obstacle.alive = false;
     world.events.emit(GAME_EVENTS.OBSTACLE_DESTROYED, { position: obstacle.position.clone(), radius: obstacle.radius });
-    if (obstacle.radius < SPLIT_MIN_RADIUS) return;
-    // Break into two or three chunks that drift apart.
-    const pieces = obstacle.radius > 45 ? 3 : 2;
-    for (let i = 0; i < pieces; i++) {
-        randomUnitVector(world.rng, scratchDirection);
-        const radius = obstacle.radius * randomRange(world.rng, 0.38, 0.52);
-        const position = obstacle.position.clone().addScaledVector(scratchDirection, obstacle.radius * 0.5);
-        const velocity = scratchDirection.clone().multiplyScalar(randomRange(world.rng, 14, 30));
-        world.obstacles.push(createObstacle(position, radius, world.rng(), velocity));
-    }
 }
 
 /**

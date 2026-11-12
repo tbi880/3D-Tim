@@ -219,7 +219,7 @@ function updatePlayerBeam(world, ship, weapon, dt, triggerHeld) {
     ship.energyRegenDelay = PLAYER.energyRegenDelay;
     if (ship.energy <= 0) weapon.depleted = true;
 
-    const damage = def.dps * POWER_MODES[ship.powerMode].damage * dt;
+    const damage = def.dps * POWER_MODES[ship.powerMode].damage * (ship.cls.weaponDamage ?? 1) * dt;
     if (target) {
         aimPointOn(target, origin, scratchForward, scratchAim);
         if (target.isProjectile) {
@@ -272,7 +272,7 @@ function updatePlayerTorpedo(world, ship, weapon, dt, triggerPressed) {
             target = ship.target;
         }
     }
-    spawnTorpedo(world, ship, weapon, scratchOrigin, scratchForward, target, POWER_MODES[ship.powerMode].damage);
+    spawnTorpedo(world, ship, weapon, scratchOrigin, scratchForward, target, POWER_MODES[ship.powerMode].damage * (ship.cls.weaponDamage ?? 1));
     weapon.ammo -= 1;
     weapon.cooldown = def.cooldown;
 }
@@ -313,6 +313,19 @@ function updateAiBeam(world, ship, weapon, dt) {
     world.addBeam(scratchOrigin, scratchImpact, def.color, def.width, 'beam');
 }
 
+/**
+ * Heavy cannons must hold a target for `lockTime` seconds before they may fire, and lose
+ * the lock the moment it leaves their range. While one tracks the player, the world records
+ * it (1 = tracking, 2 = locked) so the HUD can warn the pilot. Returns true once locked.
+ */
+function trackTarget(world, weapon, target, dt) {
+    const sameTarget = Boolean(target) && weapon.lockTarget === target;
+    weapon.lock = sameTarget ? Math.min(1, (weapon.lock ?? 0) + dt / weapon.def.lockTime) : 0;
+    weapon.lockTarget = target ?? null;
+    if (target?.isPlayer) world.playerCannonLock = Math.max(world.playerCannonLock, weapon.lock >= 1 ? 2 : 1);
+    return weapon.lock >= 1;
+}
+
 function updateAiBolt(world, ship, weapon, dt) {
     const def = weapon.def;
     let target;
@@ -322,6 +335,7 @@ function updateAiBolt(world, ship, weapon, dt) {
     } else {
         target = ship.ai.wantsFire ? ship.target : null;
     }
+    if (def.lockTime && !trackTarget(world, weapon, target, dt)) return;
     if (!target || weapon.cooldown > 0) return;
 
     leadPoint(ship.position, target, def.speed, scratchLead);

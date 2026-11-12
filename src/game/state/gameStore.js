@@ -35,6 +35,8 @@ export const useGameStore = create(() => ({
     assetsReady: false,
     /** Ships to draw (everything alive except the player); replaced whenever ships come or go. */
     roster: [],
+    /** The ship the player is flying (a new object after every new game or reload). */
+    playerShip: null,
     sectorId: null,
 }));
 

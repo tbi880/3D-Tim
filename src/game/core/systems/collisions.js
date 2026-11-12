@@ -8,8 +8,10 @@ const scratchCentre = new Vector3();
 const scratchNormal = new Vector3();
 
 const COLLISION_DAMAGE_COOLDOWN = 0.6;
-/** Asteroids up to this radius shatter when rammed instead of stopping the ship. */
-const SHATTER_RADIUS = 13;
+/** Damage from ramming an asteroid at cruise speed: a base amount plus some per metre of rock, capped. */
+const ROCK_DAMAGE_BASE = 8;
+const ROCK_DAMAGE_PER_METRE = 1.3;
+const ROCK_DAMAGE_MAX = 95;
 /** Hull points lost per unit of closing speed (clamped), so a scrape stings but rarely kills. */
 const COLLISION_DAMAGE_PER_SPEED = 0.11;
 const SOLID_KINDS = new Set(['capital', 'station', 'module', 'object']);
@@ -53,13 +55,12 @@ export function resolvePlayerCollisions(world) {
         if (!obstacle.alive) continue;
         const reach = obstacle.radius + player.radius;
         if (obstacle.position.distanceToSquared(player.position) > reach * reach) continue;
-        if (obstacle.radius <= SHATTER_RADIUS) {
-            // Small rocks lose the argument: the ship ploughs through them at a price.
-            damageObstacle(world, obstacle, Infinity, obstacle.position);
-            applyDamage(world, player, obstacle.radius * 0.6, { point: obstacle.position });
-            world.events.emit(GAME_EVENTS.PLAYER_COLLISION, { speed: player.speed });
-        } else {
-            bounce(world, player, obstacle.position, obstacle.radius);
-        }
+        // The rock shatters on impact and the ship pays for it: more for a bigger rock, more at speed.
+        const speedFactor = 0.45 + 0.55 * Math.min(1.5, player.velocity.length() / Math.max(1, player.cls.maxSpeed));
+        damageObstacle(world, obstacle, Infinity, obstacle.position);
+        applyDamage(world, player, clamp(ROCK_DAMAGE_BASE + obstacle.radius * ROCK_DAMAGE_PER_METRE, 0, ROCK_DAMAGE_MAX) * speedFactor, {
+            point: obstacle.position,
+        });
+        world.events.emit(GAME_EVENTS.PLAYER_COLLISION, { speed: player.speed });
     }
 }

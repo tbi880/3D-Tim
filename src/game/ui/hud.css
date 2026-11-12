@@ -242,6 +242,34 @@
 .eod-screen-text { margin: 0; max-width: 560px; font-size: 15px; line-height: 1.6; color: rgba(225, 240, 255, 0.85); }
 .eod-screen-footnote { margin: 0; font-size: 11px; color: rgba(225, 240, 255, 0.5); letter-spacing: 0.2em; }
 
+/* Hangar: ship selection before a new game. */
+.eod-hangar { display: flex; flex-direction: column; align-items: center; gap: 14px; width: min(1080px, 94vw); }
+.eod-hangar-title { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: var(--eod-cyan); }
+.eod-hangar-ships { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; width: 100%; }
+.eod-ship-card {
+    display: flex; flex-direction: column; gap: 6px; padding: 14px 14px 12px; text-align: left; font: inherit; color: inherit; cursor: pointer;
+    background: rgba(6, 18, 32, 0.72); border: 1px solid rgba(120, 200, 255, 0.28); transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+.eod-ship-card:hover, .eod-ship-card:focus-visible { border-color: var(--eod-cyan); transform: translateY(-2px); outline: none; }
+.eod-ship-card--selected { border-color: var(--eod-amber); background: rgba(40, 28, 6, 0.72); }
+.eod-ship-card strong { font-size: 18px; letter-spacing: 0.14em; text-transform: uppercase; }
+.eod-ship-card--selected strong { color: var(--eod-amber); }
+.eod-ship-card em { font-style: normal; font-size: 11px; letter-spacing: 0.08em; color: var(--eod-cyan); }
+.eod-ship-card p { margin: 2px 0 6px; min-height: 5.6em; font-size: 12px; line-height: 1.45; color: rgba(225, 240, 255, 0.78); }
+.eod-rating { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(225, 240, 255, 0.7); }
+.eod-rating-pips { display: flex; gap: 3px; }
+.eod-rating-pip { width: 16px; height: 5px; background: rgba(120, 200, 255, 0.16); }
+.eod-rating-pip--on { background: var(--eod-cyan); }
+.eod-ship-card--selected .eod-rating-pip--on { background: var(--eod-amber); }
+.eod-hangar-actions { display: flex; gap: 10px; width: min(420px, 90vw); }
+.eod-hangar-actions .eod-button { flex: 1; }
+@media (max-width: 900px) {
+    .eod-hangar-ships { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .eod-ship-card { padding: 9px 10px; gap: 3px; }
+    .eod-ship-card strong { font-size: 14px; }
+    .eod-ship-card p { display: none; }
+}
+
 .eod-menu { display: flex; flex-direction: column; align-items: stretch; gap: 10px; width: min(380px, 86vw); }
 .eod-button {
     display: flex;

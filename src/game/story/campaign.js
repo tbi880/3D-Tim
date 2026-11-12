@@ -50,6 +50,8 @@ const TRACTOR_COLOR = '#c04dff';
 // Mount points on the big models, in metres (the `markers` in scene/models/modelManifest.json,
 // lifted a little so modules sit on the hull instead of in it).
 const ECLIPSE_GENERATOR_MOUNTS = [[-351, 320, -144], [351, 320, -144], [-409, 385, 1256], [409, 385, 1256]];
+/** Gun batteries: one on each blade, one on the bow, one under the keel. */
+const ECLIPSE_CANNON_MOUNTS = [[-795, 250, -700], [795, 250, -700], [0, 150, -820], [0, -585, 560]];
 const FORGE_SLIPWAY = [0, 670, 0];
 const FORGE_TRACTOR_MOUNTS = [[0, 1177, -765], [507, 670, 0], [-507, 670, 765]];
 const FORGE_REACTOR_MOUNTS = [[-823, 0, 1224], [823, 0, 1224]];
@@ -539,6 +541,10 @@ function spawnEclipse(ctx) {
     for (const mountOffset of ECLIPSE_GENERATOR_MOUNTS) {
         ctx.world.spawnShip('shieldGenerator', { parent: eclipse, mountOffset, group: 'generators', persistent: true });
     }
+    // Its guns can be shot off; anything they have not been told to ignore inside their range is fair game.
+    for (const mountOffset of ECLIPSE_CANNON_MOUNTS) {
+        ctx.world.spawnShip('eclipseCannon', { parent: eclipse, mountOffset, group: 'cannons', persistent: true });
+    }
     // The Dawnbreaker gets partial shields and some hull repairs for the final stand.
     if (dawnbreaker) {
         dawnbreaker.maxShield = 800;
@@ -592,7 +598,7 @@ const eclipse = [
 
     // The frigates freed at the Forge catch up.
     waitUntil((ctx) => ctx.world.countGroup('generators') < 4, { timeout: 30 }),
-    hint(null),
+    hint('hint.cannons'),
     spawn('harrier', {
         callsign: 'Harrier', tags: [TAG.FLEET, TAG.HARRIER], persistent: true, faceTag: TAG.ECLIPSE,
         at: { anchor: TAG.DAWNBREAKER, offset: [-1400, 300, -1200] },
@@ -608,6 +614,7 @@ const eclipse = [
     waitUntil((ctx) => ctx.world.countGroup('generators') <= 2),
     say('vega', 'eclipse.vega.twoDown', { wait: false }),
 
+    hint(null),
     checkpoint('eclipse-half'),
     music('finale'),
     objective('objective.generators', remainingIn('generators')),
