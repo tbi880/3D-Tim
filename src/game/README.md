@@ -51,15 +51,26 @@ and react to `world.events` (explosions, hits...).
 
 * Planets, the black hole and Captain Tim's ship reuse the site's existing GLB files
   (`ship-upgrade-transformed.glb` is the Dawnbreaker).
-* Every other ship, the station and the cockpit are GLB files in `public/assets/game/`
-  (1.5 MB in total, Draco-compressed). **For production these must be uploaded to the
-  asset bucket as `game/*.glb`**, next to the site's other models. A ship whose file is
-  missing is drawn as a plain block, so the game still runs.
-* The game GLBs are generated, not hand-made: `tools/game-models/build_models.py` builds
-  each one with Blender's Python API (hull lofts, plating, vertex-colour ambient occlusion)
-  and writes `scene/models/modelManifest.json` with each model's size, engine positions and
-  named mount points. Regenerate with `npm run game:models` (needs `pip install bpy`, or
-  run the script with `blender -b -P`). `shipforge.py` is the modelling kit they share.
+* Every other ship, the station and the cockpit are GLB files in `public/assets/game/`,
+  and they all share six tiling textures in `public/assets/game/textures/` (plating
+  albedo / normal / occlusion-roughness-metalness / window lights, rock albedo / normal).
+  About 1.8 MB in total. **For production the whole `game/` folder must be uploaded to the
+  asset bucket**, next to the site's other models. A ship whose files are missing is drawn
+  as a plain block, and asteroids fall back to plain rock, so the game still runs.
+* The game GLBs are generated, not hand-made (`tools/game-models`, needs `pip install bpy
+  numpy pillow`, or run with `blender -b -P`):
+  * `npm run game:models` runs `build_models.py`, which describes each ship as hull
+    sections plus parts; `shipforge.py` turns that into a mesh - smooth hulls with
+    face-weighted normals, chamfered edges, scattered machinery, box-projected UVs,
+    ambient occlusion and faction colours baked into vertex colours - and deletes every
+    face that can never be seen (the buried halves of intersecting parts, typically a
+    quarter of the mesh). It also writes `scene/models/modelManifest.json` (size, engine
+    positions, mount points, triangle count).
+  * `npm run game:textures` runs `make_textures.py`, which draws the shared textures.
+* A generated model is **one mesh with two materials**, named `hull` and `glow`. The game
+  replaces both with its own (`scene/models/shipMaterials.js`), so every ship of every
+  faction draws with the same two shader programs and the same textures: two draw calls
+  per ship. Vertex colour RGB is the paint, alpha marks where lit windows show.
 * Models are shown with `scene/models/GltfModel.jsx`, not the site's `AnyModel`: `AnyModel`
   marks every material transparent, which makes overlapping hulls flicker in a battle.
 * Music reuses `music/bgm2|5|6.mp3`; sound effects are synthesised.
@@ -72,6 +83,19 @@ and react to `world.events` (explosions, hits...).
   (see `effects/ParticleSystem.js`).
 * Ships are tested for hits against one or more boxes (`halfExtents` / `hitBoxes` in
   `config/shipClasses.js`), not a sphere, so you can fly between a dreadnought's hulls.
+* **Lighting**: one sun per sector, very little flat ambient light, and an environment map
+  rendered from the sector's own sky (nebula colours plus the sun) for reflections and
+  fill - see `SectorEnvironment` in `SectorBackdrop.jsx`. A studio HDRI would make the
+  fleet look like a product photo.
+* **Planets** have true sizes and distances (`radiusKm`, `distanceKm` in
+  `config/sectors.js`). Each frame they are drawn on the line from the camera to their real
+  position, 400 km out and shrunk by the same ratio, which looks identical to the real
+  thing but keeps the numbers inside what a GPU can represent.
+* **Explosions** (`ExplosionsLayer.jsx`, `scene/effects/`) are built from pooled, instanced
+  parts: fire-and-smoke puffs (`FireballSystem`), sparks (`ParticleSystem`), tumbling
+  wreckage (`DebrisSystem`), flashes, shock rings and two point lights that are always
+  mounted. A destroyed capital ship's hull stays on screen for a few seconds while blasts
+  walk along it (`EFFECTS` in `config/gameConfig.js` holds the shared timing).
 * Ships arriving by warp are invulnerable and untargetable until they land
   (`ship.arriving`); `ShipsLayer` draws the streak, `ExplosionsLayer` the flash and ring.
 
@@ -88,8 +112,14 @@ add an entry to `MODEL_OVERRIDES` in `scene/models/ShipModel.jsx` with its `file
 `scale` that turns its units into metres, the `rotation` that points its nose to −Z, and
 its `engines`. Nothing else changes; the hit boxes stay in `shipClasses.js`.
 
-**Add a sector** – add an entry to `config/sectors.js`. Planets are placed by where they
-appear in the sky and how big they look (`direction`, `angularSize` in degrees).
+**Add a sector** – add an entry to `config/sectors.js`. Planets are placed by direction,
+real radius and real distance; the comment at the top of the file gives the formula for how
+big that looks.
+
+**Tune difficulty** – `DIFFICULTY` in `config/gameConfig.js`. Each level scales damage taken
+by the player and by allies, Umbra toughness, fire rate and beam damage, allied damage and
+the player's shield recharge. `npm run game:simulate -- --difficulty=admiral` flies the
+campaign at a given level.
 
 **Change the story** – edit `story/campaign.js`. It reads top to bottom:
 

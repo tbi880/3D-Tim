@@ -1,12 +1,15 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { FACTION } from '../config/gameConfig.js';
+import { EFFECTS, FACTION } from '../config/gameConfig.js';
+import { GAME_EVENTS } from '../core/EventBus.js';
 import { forwardOf } from '../core/math.js';
 import { useGameStore } from '../state/gameStore.js';
 import ShipModel, { getModelInfo } from './models/ShipModel.jsx';
 
 const SHIELD_FLASH_SECONDS = 0.55;
+/** How fast (rad/s) a dying capital ship's hull rolls while it breaks up. */
+const DYING_ROLL = 0.05;
 /** How far behind its destination a ship starts its warp-in streak, and how much it is stretched. */
 const WARP_IN_DISTANCE = 9000;
 const WARP_STRETCH = 45;
@@ -170,15 +173,67 @@ function PlayerShipView({ session }) {
     );
 }
 
+/**
+ * The hull of a capital ship that has just been destroyed. The simulation has already
+ * removed it; the picture lingers, drifting and slowly rolling, while ExplosionsLayer walks
+ * blasts along it, and disappears in the main explosion (see EFFECTS in gameConfig).
+ */
+function DyingHull({ ship, session, seconds, onGone }) {
+    const groupRef = useRef(null);
+    const elapsed = useRef(0);
+
+    useFrame(() => {
+        const group = groupRef.current;
+        const dt = session.effectsDelta;
+        if (!group || dt <= 0) return;
+        elapsed.current += dt;
+        if (elapsed.current >= seconds) {
+            group.visible = false;
+            onGone(ship);
+            return;
+        }
+        group.position.addScaledVector(ship.velocity, dt);
+        group.rotateZ(DYING_ROLL * dt);
+        group.rotateX(DYING_ROLL * 0.4 * dt);
+    });
+
+    return (
+        <group ref={groupRef} position={ship.position} quaternion={ship.quaternion}>
+            <ShipModel modelId={ship.cls.model} faction={ship.faction} />
+        </group>
+    );
+}
+
 /** Renders every ship in the world; the player's own only when seen from outside. */
 export default function ShipsLayer({ session }) {
     const roster = useGameStore((state) => state.roster);
+    const [dying, setDying] = useState([]);
+
+    useEffect(() => {
+        const { events } = session.world;
+        const unsubscribe = [
+            events.on(GAME_EVENTS.SHIP_DESTROYED, ({ ship }) => {
+                const kind = ship.cls.kind;
+                if (!ship.cls.model || (kind !== 'capital' && kind !== 'station')) return;
+                const huge = ship.boundingRadius * 1.3 > EFFECTS.hugeExplosionSize;
+                setDying((list) => [...list, { ship, seconds: huge ? EFFECTS.hugeBreakupSeconds : EFFECTS.breakupSeconds }]);
+            }),
+            events.on(GAME_EVENTS.SECTOR_CHANGED, () => setDying([])),
+        ];
+        return () => unsubscribe.forEach((off) => off());
+    }, [session]);
+
+    const removeDying = (ship) => setDying((list) => list.filter((entry) => entry.ship !== ship));
+
     return (
         <>
             <PlayerShipView session={session} />
             {roster
                 .filter((ship) => ship.cls.model)
                 .map((ship) => <ShipView key={ship.id} ship={ship} world={session.world} />)}
+            {dying.map(({ ship, seconds }) => (
+                <DyingHull key={ship.id} ship={ship} session={session} seconds={seconds} onGone={removeDying} />
+            ))}
         </>
     );
 }

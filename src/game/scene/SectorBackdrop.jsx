@@ -2,16 +2,14 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Environment } from '@react-three/drei';
 import * as THREE from 'three';
-import { bucketURL } from '../../Settings';
 import { SECTORS } from '../config/sectors.js';
 import { createRng } from '../core/math.js';
 import { useGameStore } from '../state/gameStore.js';
 import GltfModel from './models/GltfModel.jsx';
 
 /**
- * Radius of the sky dome that backdrop objects sit on. It follows the camera, so nothing on
- * it can be reached, and it is far enough out that even a planet filling half the sky stays
- * well beyond the edge of the battle.
+ * How far from the camera distant bodies are drawn (see BackdropObject): far enough that
+ * even a planet filling half the sky stays well beyond the edge of the battle.
  */
 const SKY_DISTANCE = 400_000;
 const STAR_DISTANCE = 800_000;
@@ -135,16 +133,37 @@ function NebulaDome({ sky }) {
     );
 }
 
-/** One of the site's GLB models hung in the sky (planet, black hole...). */
+const KM = 1000;
+const scratchOffset = new THREE.Vector3();
+
+/**
+ * One of the site's GLB models as a distant body (planet, black hole...).
+ *
+ * The body has a true position and radius (tens of thousands of kilometres away, thousands
+ * across). Numbers that large cannot go to the GPU as they are, so the body is drawn the
+ * way a painter would: on the line from the eye to its real position, at a fixed 400 km,
+ * shrunk by the same ratio. What reaches the screen is identical to drawing it full size at
+ * full distance - same apparent size, same tiny shift as the ship crosses the sector -
+ * without the precision problems.
+ */
 function BackdropObject({ config }) {
-    const position = useMemo(
-        () => new THREE.Vector3().fromArray(config.direction).normalize().multiplyScalar(SKY_DISTANCE).toArray(),
+    const groupRef = useRef(null);
+    const truePosition = useMemo(
+        () => new THREE.Vector3().fromArray(config.direction).normalize().multiplyScalar(config.distanceKm * KM),
         [config],
     );
-    // Apparent (angular) size -> real diameter at the dome's distance -> scale of the model file.
-    const diameter = 2 * SKY_DISTANCE * Math.tan(THREE.MathUtils.degToRad(config.angularSize) / 2);
+
+    useFrame(({ camera }) => {
+        const group = groupRef.current;
+        const offset = scratchOffset.copy(truePosition).sub(camera.position);
+        const shrink = SKY_DISTANCE / offset.length();
+        // The parent group already sits on the camera, so this is a camera-relative position.
+        group.position.copy(offset).multiplyScalar(shrink);
+        group.scale.setScalar((2 * config.radiusKm * KM * shrink) / config.modelSize);
+    });
+
     return (
-        <group position={position} rotation={config.rotation ?? [0, 0, 0]} scale={diameter / config.modelSize}>
+        <group ref={groupRef} rotation={config.rotation ?? [0, 0, 0]}>
             <GltfModel
                 url={config.model}
                 animation={config.animation ?? null}
@@ -155,9 +174,62 @@ function BackdropObject({ config }) {
     );
 }
 
+const ENVIRONMENT_VERTEX_SHADER = /* glsl */ `
+    varying vec3 vDirection;
+    void main() {
+        vDirection = normalize( position );
+        gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+    }
+`;
+
+/** A soft two-colour sky: enough to tint reflections and shadows with the sector's nebula. */
+const ENVIRONMENT_FRAGMENT_SHADER = /* glsl */ `
+    uniform vec3 colorA;
+    uniform vec3 colorB;
+    uniform float gain;
+    varying vec3 vDirection;
+    void main() {
+        vec3 dir = normalize( vDirection );
+        float blend = smoothstep( -0.7, 0.8, dir.y + 0.35 * sin( dir.x * 2.3 + dir.z * 1.7 ) );
+        float clouds = 0.55 + 0.45 * sin( dir.x * 3.1 ) * sin( dir.y * 2.3 + 1.0 ) * sin( dir.z * 2.7 + 2.0 );
+        gl_FragColor = vec4( ( mix( colorA, colorB, blend ) * clouds + 0.012 ) * gain, 1.0 );
+    }
+`;
+
+/** How strongly the nebula colours light the ships, and how bright the sun's reflection is. */
+const SKY_FILL = 1.6;
+const SUN_GLINT = 26;
+
 /**
- * Everything that is "infinitely far away": stars, nebula, planets, plus the sector's
- * lighting. All sectors' models stay mounted (only the current one is visible) so a warp
+ * What the ships reflect. Space has no studio around it: metal should mirror a black sky,
+ * the sector's nebula and one hard sun, so each sector lights its fleet in its own colours.
+ * The tiny scene inside <Environment> is rendered once into a cube map when the sector changes.
+ */
+function SectorEnvironment({ sector }) {
+    const uniforms = useMemo(() => ({
+        colorA: { value: new THREE.Color(sector.sky.nebulaA) },
+        colorB: { value: new THREE.Color(sector.sky.nebulaB) },
+        gain: { value: sector.sky.intensity * SKY_FILL },
+    }), [sector]);
+    const sunPosition = useMemo(() => new THREE.Vector3().fromArray(sector.light.sunDirection).normalize().multiplyScalar(40), [sector]);
+    const sunColor = useMemo(() => new THREE.Color(sector.light.sunColor).multiplyScalar(SUN_GLINT), [sector]);
+    return (
+        <Environment resolution={64} frames={1} background={false} environmentIntensity={1}>
+            <mesh scale={80}>
+                <sphereGeometry args={[1, 24, 16]} />
+                <shaderMaterial vertexShader={ENVIRONMENT_VERTEX_SHADER} fragmentShader={ENVIRONMENT_FRAGMENT_SHADER} uniforms={uniforms} side={THREE.BackSide} />
+            </mesh>
+            <mesh position={sunPosition}>
+                <sphereGeometry args={[5, 16, 12]} />
+                <meshBasicMaterial color={sunColor} toneMapped={false} />
+            </mesh>
+        </Environment>
+    );
+}
+
+/**
+ * Everything beyond the battlefield: stars and nebula (infinitely far, so they simply follow
+ * the camera), distant bodies, plus the sector's lighting. All sectors' models stay mounted (only the current one is visible) so a warp
  * jump never has to wait for a download.
  */
 export default function SectorBackdrop() {
@@ -173,9 +245,7 @@ export default function SectorBackdrop() {
         <>
             <ambientLight intensity={sector.light.ambient} />
             <directionalLight position={sector.light.sunDirection} color={sector.light.sunColor} intensity={sector.light.sunIntensity} />
-            <hemisphereLight args={['#a9c4ff', '#2a2038', 0.6]} />
-            {/* Same low-resolution studio reflections the site's Project Dawn scene lights this ship with. */}
-            <Environment files={bucketURL + 'pic/studio.hdr'} resolution={4} background={false} environmentIntensity={0.6} />
+            <SectorEnvironment key={sector.id} sector={sector} />
             <group ref={skyRef}>
                 <StarField />
                 <NebulaDome sky={sector.sky} />
