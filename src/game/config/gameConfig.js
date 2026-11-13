@@ -76,6 +76,16 @@ export const DIFFICULTY = Object.freeze({
         enemyToughness: 1.65, enemyFireRate: 1.5, enemyBeamDamage: 1.4, allyDamage: 0.75, shieldRegen: 0.65,
     },
 });
+/**
+ * Dawn ships other than the player. They carry the story, draw fire and harass Umbra, but the
+ * kills are the player's: against Umbra *ships* they only chip (`damageVsShips`), while station
+ * parts the story needs destroyed (generators, reactors, emitters, gun batteries) take full damage.
+ * Multiplies with the difficulty's `allyDamage`.
+ */
+export const ALLIES = Object.freeze({
+    damageVsShips: 0.3,
+});
+
 export const DIFFICULTY_ORDER = ['cadet', 'captain', 'admiral'];
 export const DEFAULT_DIFFICULTY = 'captain';
 
@@ -112,6 +122,7 @@ export const TARGETING = Object.freeze({
 export const STORAGE_KEYS = Object.freeze({
     save: 'echoesOfDawn.save.v1',
     settings: 'echoesOfDawn.settings.v1',
+    bestScore: 'echoesOfDawn.bestScore.v1',
 });
 
 /** Music tracks reuse the site's existing soundtrack (served from the asset bucket). */
@@ -123,3 +134,16 @@ export const MUSIC_TRACKS = Object.freeze({
 
 /** How often (seconds) the React HUD receives a fresh snapshot of the simulation. */
 export const HUD_REFRESH_INTERVAL = 0.1;
+
+/**
+ * Ceilings for the big fleet battles (the Barrens chapters), so a melee of carriers, cruisers
+ * and two fleets stays inside what the renderer can draw smoothly: every ship is at least two
+ * draw calls plus its exhaust and shield, and every gun adds projectiles. Reinforcement waves
+ * wait until the sector is back under both limits (`underBattleBudget` in story/campaign.js).
+ */
+export const BATTLE = Object.freeze({
+    /** Ships of every faction in the sector, mounted modules included. */
+    maxShips: 48,
+    /** Umbra fighters, bombers and drones in the air at once. */
+    maxHostileFighters: 7,
+});

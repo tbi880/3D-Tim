@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createGuideLightMaterial } from './guideLightMaterial.js';
 
 /**
  * The materials every generated ship shares.
@@ -11,6 +12,9 @@ import * as THREE from 'three';
  *          colours carry the faction paint and baked ambient occlusion (RGB) and where
  *          lit windows should show (alpha: 1 = none, 0 = windows).
  *   glow - engines and light strips: unlit, and brighter than white so they bloom.
+ *
+ * Downloaded models keep their own materials, except for "guideLight" (Lantern Station's
+ * undock and dock beacons, guideLightMaterial.js).
  */
 
 /** Files under the asset bucket (made by tools/game-models/make_textures.py). */
@@ -121,11 +125,12 @@ function createGlowMaterial() {
 
 /**
  * Builds the material set for one set of loaded textures.
- * @returns {{ resolve(original: THREE.Material): THREE.Material, dispose(): void }}
+ * @returns {{ resolve(original: THREE.Material): THREE.Material, setLightTime(seconds: number): void, dispose(): void }}
  */
 export function createShipMaterials(textures) {
     const hullVariants = new Map();
     const glow = createGlowMaterial();
+    const guideLights = createGuideLightMaterial();
 
     /** Factions differ only in finish (how metallic / rough), so variants are keyed by that. */
     const hull = (metalness, roughness) => {
@@ -159,11 +164,17 @@ export function createShipMaterials(textures) {
         /** The game material to use in place of a model's own (by the generator's naming convention). */
         resolve(original) {
             if (original.name === 'glow') return glow;
+            if (original.name === 'guideLight') return guideLights;
             if (original.name === 'hull') return hull(original.metalness ?? 0.75, original.roughness ?? 1);
             return original;
         },
+        /** Advances the station guide lights' blinking (seconds); see guideLightMaterial.js. */
+        setLightTime(seconds) {
+            guideLights.uniforms.time.value = seconds;
+        },
         dispose() {
             glow.dispose();
+            guideLights.dispose();
             for (const material of hullVariants.values()) material.dispose();
         },
     };

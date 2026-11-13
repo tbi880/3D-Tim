@@ -34,6 +34,8 @@ export const WEAPONS = Object.freeze({
     },
 
     // ---- Dawn fleet (allies) ------------------------------------------------------------
+    // Allies carry the story, harass Umbra and soak up fire, but the kills are the player's:
+    // their damage to Umbra ships is cut (ALLIES.damageVsShips in gameConfig.js).
     dartBolt: {
         type: 'bolt', speed: 680, damage: 7, cooldown: 0.16, burst: 4, burstPause: 1.5,
         range: 900, spreadDeg: 1.4, color: DAWN_BEAM,
@@ -53,34 +55,40 @@ export const WEAPONS = Object.freeze({
     },
 
     // ---- Umbra --------------------------------------------------------------------------
+    // Tuned against the player ships' toughest hulls: fighters can kill an unwary pilot.
     droneBolt: {
-        type: 'bolt', speed: 620, damage: 3.5, cooldown: 0.22, burst: 3, burstPause: 1.9,
-        range: 720, spreadDeg: 2.2, color: UMBRA_BOLT,
+        type: 'bolt', speed: 620, damage: 4, cooldown: 0.22, burst: 3, burstPause: 1.75,
+        range: 860, spreadDeg: 1.6, color: UMBRA_BOLT,
     },
     raiderBolt: {
-        type: 'bolt', speed: 660, damage: 6, cooldown: 0.17, burst: 4, burstPause: 1.9,
-        range: 840, spreadDeg: 1.7, color: UMBRA_BOLT,
+        type: 'bolt', speed: 660, damage: 7, cooldown: 0.17, burst: 4, burstPause: 1.75,
+        range: 1000, spreadDeg: 1.2, color: UMBRA_BOLT,
     },
     lancerTorpedo: {
-        type: 'torpedo', range: 2400, speed: 190, turnRate: 0.9, damage: 95, shieldMult: 0.6,
-        hullMult: 1.3, lifetime: 30, cooldown: 15, radius: 4.5, hp: 16, color: UMBRA_TORPEDO,
+        type: 'torpedo', range: 2400, speed: 210, turnRate: 0.9, damage: 110, shieldMult: 0.6,
+        hullMult: 1.3, lifetime: 30, cooldown: 14, radius: 4.5, hp: 28, color: UMBRA_TORPEDO,
         aimConeDeg: 30,
     },
     turretBolt: {
-        type: 'bolt', turret: true, speed: 600, damage: 5, cooldown: 0.3, burst: 3,
-        burstPause: 2.6, range: 1700, spreadDeg: 2.6, radius: 1.6, color: UMBRA_BOLT,
+        type: 'bolt', turret: true, speed: 600, damage: 5, cooldown: 0.25, burst: 3,
+        burstPause: 2.6, range: 2000, spreadDeg: 2, radius: 1.6, color: UMBRA_BOLT,
     },
     eclipseCannon: {
         // Must track a target for `lockTime` seconds before firing; the HUD warns the player meanwhile.
-        type: 'bolt', turret: true, speed: 560, damage: 10, cooldown: 0.22, burst: 4,
-        burstPause: 3.2, range: 2600, spreadDeg: 1.1, radius: 3, color: UMBRA_BOLT, lockTime: 2,
+        type: 'bolt', turret: true, speed: 560, damage: 11.5, cooldown: 0.22, burst: 4,
+        burstPause: 3, range: 2600, spreadDeg: 1.1, radius: 3, color: UMBRA_BOLT, lockTime: 2,
     },
     cruiserBeam: {
-        type: 'beam', turret: true, range: 1500, dps: 9, duty: [1.5, 3.4],
+        type: 'beam', turret: true, range: 1500, dps: 10.5, duty: [1.5, 3.4],
         shieldMult: 1.2, hullMult: 0.8, color: UMBRA_BEAM, width: 3, targets: 'capitalFirst',
     },
+    carrierBeam: {
+        // The Penumbra carrier's own gun: a heavier cruiser beam that only engages ships of the line.
+        type: 'beam', turret: true, range: 2200, dps: 12, duty: [1.8, 3.2],
+        shieldMult: 1.2, hullMult: 0.8, color: UMBRA_BEAM, width: 5, targets: 'capital',
+    },
     eclipseLance: {
-        type: 'lance', range: 16000, dps: 65, chargeTime: 4.5, fireTime: 3, cooldown: 13,
+        type: 'lance', range: 16000, dps: 75, chargeTime: 4.5, fireTime: 3, cooldown: 13,
         slewRate: 0.05, corridorRadius: 120, shieldMult: 1, hullMult: 1, color: UMBRA_BEAM,
         // The emitter ball at the Eclipse's bow (the `lance` marker in modelManifest.json).
         width: 90, mount: [0, -148, -1300],

@@ -1,0 +1,3 @@
+build/
+# The 35 MB source model lives in the project library (spacestation_7_-_procedural.glb); copy it here as source/spacestation7.glb to rebuild.
+source/

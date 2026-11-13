@@ -5,7 +5,7 @@ cockpit or from a chase camera. Route: `/echoes_of_dawn` (page component:
 `src/urls/EchoesOfDawn.jsx`).
 
 You fly the escort ship **Kestrel**, the one ship that picked up the distress signal sent
-from Captain Tim's flagship. The story runs as one continuous campaign with ten save points:
+from Captain Tim's flagship. The story runs as one continuous campaign with fifteen save points:
 
 | Chapter | Sector | What happens |
 | --- | --- | --- |
@@ -15,11 +15,14 @@ from Captain Tim's flagship. The story runs as one continuous campaign with ten 
 | 3 · The Forge | The Forge (Umbra shipyard) | Cut the captured Osprey out of the slipway, blow the reactors, get clear |
 | 4 · Hold the Line | Cinder (lava planet) | Defend the Dawnbreaker while the Dawn core recharges |
 | 5 · Eclipse | Cinder | Tim's fleet arrives; break the dreadnought's shield and paint it for the Dawn cannon |
+| 6 · Lantern | Lantern Station (the Barrens) | Dock at a 4.7 km frontier station along its guide lights, undock under attack, break a cruiser screen and kill a Penumbra carrier head-on (no shield generators out here) |
+| 7 · The Muster | The Muster (the Barrens) | Fleet melee: three Penumbra carriers with cruiser and corvette waves against the Dawnbreaker, four frigates and the darts |
 | Epilogue · Home | Earth | The fleet jumps home |
 
 Ships come in tiers, and distances are metres: fighters are 13–30 m, the corvette 130 m,
-frigates 280 m, the warden 520 m, the Dawnbreaker 1.4 km, the Forge 3 km and the Eclipse
-3.4 km. Fights with the big ones happen along their hulls, not at a point.
+frigates 280 m, the warden 520 m, the Dawnbreaker 1.4 km, the Forge 3 km, the Eclipse and
+its older Penumbra-class sisters 3.4 km, and Lantern Station's ring 4.7 km. Fights with the
+big ones happen along their hulls, not at a point.
 
 ## Architecture
 
@@ -67,12 +70,28 @@ and react to `world.events` (explosions, hits...).
     quarter of the mesh). It also writes `scene/models/modelManifest.json` (size, engine
     positions, mount points, triangle count).
   * `npm run game:textures` runs `make_textures.py`, which draws the shared textures.
+  * `npm run game:optimize` (run by `game:models` too) writes a `*-transformed.glb` next to
+    every generated file - the same gltf-transform steps as `npx gltfjsx --transform`, plus
+    Draco - and the manifest points at those. Material names, UVs and vertex colours are
+    kept, because the game's own materials need them (`tools/game-models/optimize.mjs`;
+    run `npm install` in `tools/game-models` once).
+* The player ships (`public/assets/game/player/`) are models from the web. Their engine
+  flames were added in Blender (four looping clips, one per thrust level, played by
+  `GltfModel` from the ship's thrust), every triangle that cannot be seen from outside the
+  ship was removed, the flames became one skinned mesh (one draw call) and the files were
+  optimised as above: `tools/game-models/player-ships/README.md`.
 * A generated model is **one mesh with two materials**, named `hull` and `glow`. The game
   replaces both with its own (`scene/models/shipMaterials.js`), so every ship of every
   faction draws with the same two shader programs and the same textures: two draw calls
   per ship. Vertex colour RGB is the paint, alpha marks where lit windows show.
 * Models are shown with `scene/models/GltfModel.jsx`, not the site's `AnyModel`: `AnyModel`
   marks every material transparent, which makes overlapping hulls flicker in a battle.
+* **Lantern Station** (`public/assets/game/station/`) is a model from the web with its
+  asteroids and circling ships deleted, its hidden insides culled and undock / dock guide
+  lights added in Blender: `tools/game-models/station/README.md`. The lights are one mesh
+  whose blinking is computed in a shader from its vertex colours
+  (`scene/models/guideLightMaterial.js`): pulses run outwards along the departure lane and
+  inwards along the arrival lane.
 * Music reuses `music/bgm2|5|6.mp3`; sound effects are synthesised.
 
 ### Rendering notes
@@ -108,7 +127,7 @@ and react to `world.events` (explosions, hits...).
 
 ## Common changes
 
-**Tune the game** – edit `config/gameConfig.js`, `config/shipClasses.js`, `config/weapons.js`.
+**Tune the game** – edit `config/gameConfig.js`, `config/shipClasses.js`, `config/weapons.js`. Allied ships only chip at Umbra ships (`ALLIES.damageVsShips`, 30%) but hit station parts the story needs destroyed at full strength, so the kills are the player's.
 
 **Add a ship** – add an entry to `SHIP_CLASSES` and its name to both i18n files, then give
 it a model: either write a builder in `tools/game-models/build_models.py`, register it in
@@ -118,10 +137,10 @@ it a model: either write a builder in `tools/game-models/build_models.py`, regis
 each is an ordinary class in `config/shipClasses.js` with two extra fields: `handling`
 (multipliers for turn rate, acceleration, afterburner duration and afterburner speed) and
 `weaponDamage`. Names and descriptions are `ship.<id>` and `playerShip.<id>.*` in the i18n
-files. The Swift, Shrike and Bulwark borrow the Kestrel's model for now: to give one its own,
-add it to `MODEL_OVERRIDES` (next point) and remove its line from `MODEL_ALIASES` in
-`scene/models/ShipModel.jsx`. The player's exhaust is the simple `EnginePlumes` in
-`ShipsLayer.jsx` and reads the `engines` of whichever model is shown.
+files. `weaponRange` stretches beam reach and torpedo flight time. Each has its own model in `MODEL_OVERRIDES` (`scene/models/ShipModel.jsx`); those
+marked `exhaust` carry their own animated flames, a model that lists `engines` instead gets
+the simple `EnginePlumes` from `ShipsLayer.jsx`. Only the ship picked in the hangar is
+downloaded.
 
 **Swap in a downloaded model** (Sketchfab etc.) – put the GLB in `public/assets/game/` and
 add an entry to `MODEL_OVERRIDES` in `scene/models/ShipModel.jsx` with its `file`, the
@@ -137,10 +156,26 @@ track its target that long before firing and loses the lock outside its `range`.
 is on the player the HUD shows a warning (`world.playerCannonLock`). The Eclipse's are
 mounted in `spawnEclipse` (`story/campaign.js`) and die to a single torpedo.
 
+**Scoring** – `config/scoring.js`. `KILL_POINTS` is what each Umbra class is worth when the
+player destroys it (allies' kills score nothing); every scoring kill shows a "+points" line
+under the reticle for three seconds (`ScoreFeed` in `ui/GameHud.jsx`). At the end
+`computeFinalScore` adds a mission bonus and a bonus per second under par, takes 1,000 per
+ship lost and multiplies by difficulty; the ending screen shows the breakdown, a rank (S–C)
+and the best score per difficulty (kept in localStorage). The simulation prints the final
+score of its run, which is how the rank thresholds were set.
+
+**Big battles** – `BATTLE` in `config/gameConfig.js` caps the ships in a sector and the Umbra
+fighters in the air; the Barrens chapters only send reinforcements (carrier launches, cruiser
+waves) while both are under their limits (`underBattleBudget` in `story/campaign.js`), and
+each carrier battle has a fixed number of hangar flights (`ctx.vars.carrierFlights`).
+
+**Docking** – `glide({ to, facing, seconds, release })` in `story/beats.js` takes the helm and
+flies the player's ship along a straight line (Lantern's dock and undock sequences).
+
 **Tune difficulty** – `DIFFICULTY` in `config/gameConfig.js`. Each level scales damage taken
 by the player and by allies, Umbra toughness, fire rate and beam damage, allied damage and
 the player's shield recharge. `npm run game:simulate -- --difficulty=admiral` flies the
-campaign at a given level; add `--ship=swift` (or `shrike`, `bulwark`) to fly another ship.
+campaign at a given level; add `--ship=swift` (or `shrike`, `bulwark`, `peregrine`) to fly another ship.
 
 **Change the story** – edit `story/campaign.js`. It reads top to bottom:
 

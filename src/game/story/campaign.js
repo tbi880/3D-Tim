@@ -1,7 +1,9 @@
-import { FACTION } from '../config/gameConfig.js';
+import { Quaternion, Vector3 } from 'three';
+import { BATTLE, FACTION } from '../config/gameConfig.js';
+import { lookRotation } from '../core/math.js';
 import { destroyShip } from '../core/systems/damage.js';
 import {
-    background, bossBar, chapter, checkpoint, ending, escort, everyFrame, hint, holdLock, holdNear, music,
+    background, bossBar, chapter, checkpoint, ending, escort, everyFrame, glide, hint, holdLock, holdNear, music,
     objective, progress, repeatWhile, run, say, spawn, spawnShips, stopBackground, wait, waitForCalm,
     waitForGroup, waitUntil, warp, waypoint,
 } from './beats.js';
@@ -34,6 +36,8 @@ const TAG = Object.freeze({
     DAWNBREAKER: 'dawnbreaker',
     ECLIPSE: 'eclipse',
     FLEET: 'fleet',
+    LANTERN: 'lantern',
+    PENUMBRA: 'penumbra',
 });
 
 /** Seconds the Dawn core needs to recharge while the player holds the line. */
@@ -57,17 +61,57 @@ const FORGE_TRACTOR_MOUNTS = [[0, 1177, -765], [507, 670, 0], [-507, 670, 765]];
 const FORGE_REACTOR_MOUNTS = [[-823, 0, 1224], [823, 0, 1224]];
 const FORGE_TURRET_MOUNTS = [[0, 250, -1052], [0, -250, 0], [0, 430, 1435]];
 
+// Lantern Station (the `lanes` in tools/game-models/station/build/layout.json). The station sits
+// at the origin, unturned; both lanes leave the tower along -Z, through the gap in the ring.
+const ARRIVAL_MOUTH = [0, -120, 1643];
+/** Undocking: first to just inside the departure lane's frame of lights, then out along the lane. */
+const UNDOCK_START = [0, 300, 1480];
+const UNDOCK_CLEAR = [0, 300, 200];
+const ARRIVAL_MOUTH_POINT = Object.freeze(new Vector3(...ARRIVAL_MOUTH));
+/** Where the player's ship is held while docked, just inside the arrival lane's frame of lights. */
+const LANTERN_BERTH = [0, -120, 1480];
+/** Defence turrets on the ring and the tower. */
+const LANTERN_TURRET_MOUNTS = [[2379, 100, 305], [-2330, 140, -296], [1941, -20, -1501], [-1905, -20, -1466], [149, 690, 2165]];
+/** Beside the ring, near the gap, where the fleet waits while the Kestrel docks. */
+const LANTERN_ANCHORAGE = [-4600, 700, -900];
+/** The Penumbra carriers' gun batteries: one on each blade (two of the Eclipse's four mounts). */
+const PENUMBRA_CANNON_MOUNTS = ECLIPSE_CANNON_MOUNTS.slice(0, 2);
+/** Batteries per carrier at the Muster: three carriers with two each would make the sky a shooting gallery. */
+const MUSTER_CANNONS_PER_CARRIER = 1;
+/** Under the carrier's aft hull, where its fighters come out. */
+const PENUMBRA_HANGAR = [0, -650, 500];
+/** Seconds between two carrier launches (one carrier launches each time; see launchFromCarriers). */
+const CARRIER_LAUNCH_SECONDS = 22;
+/** Flights the carriers' hangars hold, for the whole battle: Lantern's lone carrier, the Muster's three. */
+const LANTERN_CARRIER_FLIGHTS = 6;
+const MUSTER_CARRIER_FLIGHTS = 12;
+/** Longest the carrier at Lantern waits for its vanguard to be broken before it comes in anyway. */
+const VANGUARD_SECONDS = 150;
+/** Cruiser-and-corvette waves the Umbra line sends into the Muster melee. */
+const MUSTER_LINE_WAVES = 4;
+
 const shipByTag = (ctx, tag) => ctx.world.findByTag(tag);
 const distanceToTag = (ctx, tag) => {
     const ship = shipByTag(ctx, tag);
     return ship && ctx.world.player ? ship.distanceToPoint(ctx.world.player.position) : Infinity;
 };
+/** `base` metres scaled down for player ships slower than the Kestrel, never under 900 m. */
+const responseRadius = (ctx, base) => Math.max(900, base * Math.min(1, (ctx.world.player?.cls.maxSpeed ?? 150) / 150));
 const hullOf = (ctx, tag) => shipByTag(ctx, tag)?.hullFraction ?? 1;
 const groupCleared = (group) => (ctx) => ctx.world.countGroup(group) === 0;
 const remainingIn = (group) => (ctx) => ({ remaining: ctx.world.countGroup(group) });
 const hostilesRemaining = (ctx) => ({ remaining: ctx.world.countFaction(FACTION.UMBRA) });
 const coreCharge = (ctx) => ctx.vars.coreCharge ?? 0;
 const smallHostiles = (ctx) => ctx.world.ships.filter((ship) => ship.alive && ship.faction === FACTION.UMBRA && ship.cls.kind === 'fighter').length;
+/**
+ * True while `extra` more ships fit in the sector without crossing the battle limits
+ * (BATTLE in config/gameConfig.js). Every reinforcement wave in the big battles waits on this.
+ */
+const underBattleBudget = (ctx, extra = 0) => {
+    let ships = 0;
+    for (const ship of ctx.world.ships) if (ship.alive) ships++;
+    return ships + extra <= BATTLE.maxShips && smallHostiles(ctx) + extra <= BATTLE.maxHostileFighters;
+};
 
 /** Around a tagged ship, `distance` metres from its centre, facing the player. */
 const around = (tag, distance) => ({ anchor: tag, bearing: 'around', distance });
@@ -247,8 +291,9 @@ const graveyard = [
     waypoint({ anchor: TAG.HARRIER }, 'waypoint.transponder'),
     objective('objective.reachHarrier'),
     say('vega', 'graveyard.vega.moving'),
-    // The hunters only close in once the player is near enough to do something about it.
-    waitUntil((ctx) => distanceToTag(ctx, TAG.HARRIER) < 3600),
+    // The hunters only close in once the player is near enough to do something about it:
+    // a slow hull (the Bulwark) has to be right alongside before they show themselves.
+    waitUntil((ctx) => distanceToTag(ctx, TAG.HARRIER) < responseRadius(ctx, 3600)),
     spawn('lancer', { count: 2, group: 'hunters', targetTag: TAG.HARRIER, at: around(TAG.HARRIER, 3200) }),
     spawn('drone', { count: 3, group: 'hunters', at: around(TAG.HARRIER, 1900) }),
     waypoint(null),
@@ -346,6 +391,16 @@ function frigatesJumpOut(ctx) {
     }
 }
 
+/** Umbra pilots abandon the doomed shipyard: their fighters and escorts run and jump out. */
+function umbraAbandonForge(ctx) {
+    for (const ship of ctx.world.ships) {
+        if (!ship.alive || ship.faction !== FACTION.UMBRA || !ship.ai) continue;
+        if (ship.cls.kind !== 'fighter' && ship.cls.kind !== 'capital') continue;
+        ship.ai.mode = 'flee';
+        ship.despawnTimer = 4 + ctx.world.rng() * 4;
+    }
+}
+
 function destroyForge(ctx) {
     const { world } = ctx;
     const forge = shipByTag(ctx, TAG.FORGE);
@@ -359,7 +414,7 @@ function destroyForge(ctx) {
 const forgeLaunches = () => background('forgeLaunches', [
     repeatWhile(() => true, [
         waitUntil((ctx) => smallHostiles(ctx) < 3),
-        wait(9),
+        wait(12),
         spawn('drone', { count: 3, group: 'forgeWing', at: { anchor: TAG.FORGE, offset: [0, -500, 1700] } }),
     ]),
 ]);
@@ -412,6 +467,7 @@ const theForge = [
     objective('objective.escapeBlast'),
     progress('hud.forgeFuse', (ctx) => ctx.vars.forgeFuse ?? 0),
     run(frigatesJumpOut),
+    run(umbraAbandonForge),
     say('rhea', 'forge.rhea.jumping', { wait: false }),
     waitUntil((ctx) => {
         ctx.vars.forgeFuse = Math.min(1, (ctx.vars.forgeFuse ?? 0) + ctx.world.lastStep / FORGE_FUSE_SECONDS);
@@ -521,7 +577,7 @@ const holdTheLine = [
 const eclipseReinforcements = () => background('eclipseReinforcements', [
     repeatWhile(() => true, [
         waitUntil((ctx) => smallHostiles(ctx) < 3),
-        wait(7),
+        wait(10),
         spawn('drone', { count: 3, group: 'eclipseWing', at: around(TAG.ECLIPSE, 2600) }),
         spawn('raider', { count: 1, group: 'eclipseWing', at: around(TAG.ECLIPSE, 2600) }),
     ]),
@@ -653,31 +709,378 @@ const eclipse = [
     say('tim', 'eclipse.tim.drink'),
 ];
 
-// ---- Epilogue: Home -----------------------------------------------------------------------
+// ---- Fleet helpers shared by the last chapters ---------------------------------------------
 
-function arrangeFleetAtEarth(ctx) {
+const scratchFleetOffset = new Vector3();
+const scratchFleetFacing = new Vector3();
+const scratchFleetHeading = new Quaternion();
+
+/**
+ * Parks the Dawnbreaker at `centre`, nose along `facing`, with every ship of the fleet in two
+ * columns either side of her. `hold` keeps the escorts in place (no enemies to chase).
+ */
+function parkFleet(ctx, centre, facing, { hold = true } = {}) {
     const { world } = ctx;
+    const heading = lookRotation(scratchFleetFacing.fromArray(facing).normalize(), scratchFleetHeading);
     const dawnbreaker = shipByTag(ctx, TAG.DAWNBREAKER);
     if (dawnbreaker) {
-        dawnbreaker.position.set(0, 0, 0);
-        dawnbreaker.quaternion.identity();
+        dawnbreaker.position.fromArray(centre);
+        dawnbreaker.quaternion.copy(heading);
+        dawnbreaker.velocity.set(0, 0, 0);
     }
     let slot = 0;
     for (const ship of world.ships) {
         if (!ship.tags.has(TAG.FLEET)) continue;
         const side = slot % 2 === 0 ? -1 : 1;
         const row = Math.floor(slot / 2);
-        ship.position.set(side * (700 + row * 260), 120 + row * 60, 300 + row * 320);
-        ship.quaternion.identity();
+        scratchFleetOffset.set(side * (700 + row * 260), 120 + row * 60, 300 + row * 320).applyQuaternion(heading);
+        ship.position.fromArray(centre).add(scratchFleetOffset);
+        ship.quaternion.copy(heading);
         ship.velocity.set(0, 0, 0);
         ship.speed = 0;
-        ship.ai.mode = 'hold';
+        if (hold) ship.ai.mode = 'hold';
         slot += 1;
     }
 }
 
-const home = [
+/** Lets the fleet's escorts off the leash: they pick their own fights again. */
+function releaseFleet(ctx) {
+    for (const ship of ctx.world.ships) {
+        if (ship.tags.has(TAG.FLEET) && ship.ai.mode === 'hold') ship.ai.mode = 'normal';
+    }
+}
+
+/**
+ * A Penumbra-class carrier with `cannons` gun batteries (up to two), facing `faceTag`. Persistent,
+ * so a checkpoint in the middle of a carrier battle keeps the carriers (and their damage).
+ */
+function spawnPenumbra(ctx, { tag, at, faceTag, group = 'carriers', cannons = PENUMBRA_CANNON_MOUNTS.length }) {
+    const [carrier] = spawnShips(ctx, 'penumbra', { at, faceTag, tags: [tag], group, persistent: true });
+    for (const mountOffset of PENUMBRA_CANNON_MOUNTS.slice(0, cannons)) {
+        ctx.world.spawnShip('eclipseCannon', { parent: carrier, mountOffset, group: 'carrierGuns', persistent: true });
+    }
+    return carrier;
+}
+
+const scratchHangar = new Vector3();
+
+/** A Dawn capital ship the carriers' bombers can go after (the flagship only while it can be hurt). */
+function bomberTarget(ctx) {
+    const targets = ctx.world.ships.filter((ship) => ship.alive && !ship.invulnerable && ship.faction === FACTION.DAWN && ship.cls.kind === 'capital');
+    if (targets.length === 0) return null;
+    const pick = targets[Math.floor(ctx.world.rng() * targets.length)];
+    return pick.tags.size > 0 ? [...pick.tags].find((tag) => tag !== TAG.FLEET) ?? null : null;
+}
+
+/**
+ * One of the living carriers in `group` (a different one each time, as it falls out) puts a
+ * flight out of its hangar: drones, or a pair of torpedo bombers when there is a Dawn capital
+ * ship for them to go after. However many carriers there are, the sky fills at the same rate.
+ */
+function launchFromCarriers(ctx, group) {
+    const carriers = ctx.world.getGroup(group);
+    if (carriers.length === 0 || !underBattleBudget(ctx, 3)) return;
+    const carrier = carriers[Math.floor(ctx.world.rng() * carriers.length)];
+    scratchHangar.fromArray(PENUMBRA_HANGAR).applyQuaternion(carrier.quaternion).add(carrier.position);
+    const targetTag = ctx.world.rng() < 0.35 ? bomberTarget(ctx) : null;
+    spawnShips(ctx, targetTag ? 'lancer' : 'drone', {
+        count: targetTag ? 2 : 3, group: 'carrierWing', targetTag, at: scratchHangar.toArray(), facing: [0, -1, 0], warpIn: false,
+    });
+}
+
+/**
+ * Carriers keep launching while any of them is alive and their hangars hold out: `ctx.vars.carrierFlights`
+ * flights in all for the battle (set when it starts; a story variable, so it survives checkpoints).
+ * Finite on purpose: a pilot who only ever shoots the nearest fighter still runs the hangars dry.
+ * Declared again after each checkpoint.
+ */
+const carrierLaunches = (group) => background(`carrierLaunches:${group}`, [
+    repeatWhile((ctx) => ctx.world.countGroup(group) > 0 && (ctx.vars.carrierFlights ?? 0) > 0, [
+        wait(CARRIER_LAUNCH_SECONDS),
+        waitUntil((ctx) => underBattleBudget(ctx, 3)),
+        run((ctx) => {
+            launchFromCarriers(ctx, group);
+            ctx.vars.carrierFlights -= 1;
+        }),
+    ]),
+]);
+
+// ---- Chapter 6: Lantern --------------------------------------------------------------------
+
+/** Lantern Station with its guns, and the fleet waiting behind the tower. */
+function dressLantern(ctx) {
+    const { world } = ctx;
+    const station = world.spawnShip('lanternStation', { position: [0, 0, 0], facing: [0, 0, -1], tags: [TAG.LANTERN], persistent: true });
+    for (const mountOffset of LANTERN_TURRET_MOUNTS) {
+        world.spawnShip('stationTurret', {
+            parent: station, mountOffset, faction: FACTION.DAWN, group: 'lanternGuns', persistent: true,
+            invulnerable: true, targetable: false,
+        });
+    }
+    parkFleet(ctx, LANTERN_ANCHORAGE, [0, 0, -1]);
+    // Under the station's guns the flagship is safe; it rejoins the fight at the Muster.
+    const dawnbreaker = shipByTag(ctx, TAG.DAWNBREAKER);
+    if (dawnbreaker) dawnbreaker.invulnerable = true;
+}
+
+/**
+ * Lantern's yards patch up the fleet before the strike on the Muster: every escort back to full
+ * hull, and the Harrier and Osprey rebuilt if they were lost (the story needs them at the end).
+ */
+function refitFleet(ctx) {
+    const { world } = ctx;
+    for (const ship of world.ships) {
+        if (ship.alive && ship.tags.has(TAG.FLEET)) ship.hull = ship.maxHull;
+    }
+    [[TAG.HARRIER, 'Harrier', [-900, 500, -1500]], [TAG.OSPREY, 'Osprey', [900, 500, -1700]]].forEach(([tag, callsign, offset]) => {
+        if (shipByTag(ctx, tag)) return;
+        spawnShips(ctx, 'harrier', {
+            callsign, tags: [TAG.FLEET, tag], persistent: true, faceTag: TAG.DAWNBREAKER, warpIn: false,
+            at: { anchor: TAG.LANTERN, offset },
+        });
+    });
+}
+
+/** The warden leading Lantern's attackers, while it is still in the fight. */
+const vanguardCruiser = (ctx) => ctx.world.getGroup('vanguard').find((ship) => ship.classId === 'warden' && ship.ai.mode !== 'flee') ?? null;
+
+/** The ship sits in the arrival berth: helm locked, fully repaired by the station's crews. */
+function berthPlayer(ctx) {
+    const player = ctx.world.player;
+    if (!player) return;
+    ctx.world.controlsLocked = true;
+    player.position.fromArray(LANTERN_BERTH);
+    lookRotation(scratchFleetFacing.set(0, 0, 1), player.quaternion);
+    player.velocity.set(0, 0, 0);
+    player.speed = 0;
+    player.hull = player.maxHull;
+    player.shield = player.maxShield;
+    for (const weapon of player.weapons) {
+        if (weapon.def.capacity) weapon.ammo = weapon.def.capacity;
+    }
+}
+
+const lantern = [
+    // An older save made here, when it was the epilogue's, now carries on into the Barrens.
     checkpoint('eclipse-down'),
+    chapter('lantern'),
+    music('calm'),
+    escort(null),
+    say('vega', 'lantern.vega.mayday'),
+    say('okoro', 'lantern.okoro.mayday'),
+    say('tim', 'lantern.tim.barrens'),
+    objective('objective.formUp'),
+    waypoint({ anchor: TAG.DAWNBREAKER, offset: [0, 420, 0] }, 'waypoint.formUp'),
+    waitUntil((ctx) => distanceToTag(ctx, TAG.DAWNBREAKER) < 450),
+    waypoint(null),
+    objective(null),
+    say('tim', 'lantern.tim.jump'),
+    warp('lantern', { bring: [TAG.DAWNBREAKER, TAG.FLEET], arrive: dressLantern }),
+    wait(2),
+
+    // Dock: the amber lights run towards the station.
+    say('okoro', 'lantern.okoro.approach'),
+    objective('objective.dock'),
+    hint('hint.arrivalLane'),
+    waypoint({ anchor: TAG.LANTERN, offset: ARRIVAL_MOUTH }, 'waypoint.dock'),
+    say('vega', 'lantern.vega.station', { wait: false }),
+    waitUntil((ctx) => ctx.world.player.position.distanceTo(ARRIVAL_MOUTH_POINT) < 450),
+    hint(null),
+    waypoint(null),
+    objective(null),
+    say('okoro', 'lantern.okoro.clamps', { wait: false }),
+    glide({ to: LANTERN_BERTH, facing: [0, 0, 1], seconds: 6, release: false }),
+    run(berthPlayer),
+    say('okoro', 'lantern.okoro.barrens'),
+    say('tim', 'lantern.tim.oldPattern'),
+    say('okoro', 'lantern.okoro.penumbra'),
+
+    checkpoint('lantern-docked'),
+    run(berthPlayer),
+    music('battle'),
+    run((ctx) => ctx.stage.playCue('alarm')),
+    say('okoro', 'lantern.okoro.contacts'),
+    spawn('warden', { group: 'vanguard', faceTag: TAG.LANTERN, at: { anchor: TAG.LANTERN, offset: [0, 300, -8200] } }),
+    spawn('corvette', { count: 2, group: 'vanguard', spacing: 500, faceTag: TAG.LANTERN, at: { anchor: TAG.LANTERN, offset: [-1800, -200, -7200] } }),
+    spawn('drone', { count: 4, group: 'vanguard', at: { anchor: TAG.LANTERN, offset: [600, 200, -6200] } }),
+    spawn('raider', { count: 2, group: 'vanguard', at: { anchor: TAG.LANTERN, offset: [-600, 400, -6400] } }),
+
+    // Undock: the white lights run away from the station.
+    say('okoro', 'lantern.okoro.undock', { wait: false }),
+    hint('hint.departureLane'),
+    glide({ to: { anchor: TAG.LANTERN, offset: UNDOCK_START }, facing: [0, 0, -1], seconds: 7, release: false }),
+    glide({ to: { anchor: TAG.LANTERN, offset: UNDOCK_CLEAR }, facing: [0, 0, -1], seconds: 9, throttle: 0.8 }),
+    run(releaseFleet),
+    hint(null),
+    objective('objective.vanguard', remainingIn('vanguard')),
+    say('tim', 'lantern.tim.vanguard', { wait: false }),
+    // The carrier arrives once its screen is thinning out and the cruiser leading it is gone, or
+    // after a while regardless, when a cruiser still standing falls back to it.
+    waitUntil((ctx) => ctx.world.countGroup('vanguard') <= 2 && !vanguardCruiser(ctx), { timeout: VANGUARD_SECONDS }),
+    run((ctx) => {
+        const cruiser = vanguardCruiser(ctx);
+        if (cruiser) {
+            cruiser.ai.mode = 'flee';
+            cruiser.despawnTimer = 6;
+        }
+    }),
+
+    run((ctx) => {
+        ctx.stage.playCue('alarm');
+        spawnPenumbra(ctx, { tag: TAG.PENUMBRA, at: { anchor: TAG.LANTERN, offset: [2600, 900, -9800] }, faceTag: TAG.LANTERN });
+    }),
+    bossBar(TAG.PENUMBRA),
+    say('umbra', 'lantern.umbra.claim'),
+    say('okoro', 'lantern.okoro.carrier'),
+    say('tim', 'lantern.tim.noGenerators'),
+    objective('objective.carrier'),
+    hint('hint.carrier'),
+    run((ctx) => { ctx.vars.carrierFlights = LANTERN_CARRIER_FLIGHTS; }),
+    carrierLaunches('carriers'),
+    // (Only while the Kestrel is flying: a save point must never catch it mid-explosion.)
+    waitUntil((ctx) => (hullOf(ctx, TAG.PENUMBRA) < 0.55 || !shipByTag(ctx, TAG.PENUMBRA)) && ctx.world.player?.alive),
+    hint(null),
+
+    checkpoint('lantern-carrier'),
+    music('battle'),
+    bossBar(TAG.PENUMBRA),
+    objective('objective.carrier'),
+    carrierLaunches('carriers'),
+    run(releaseFleet),
+    spawn('corvette', { group: 'vanguard', faceTag: TAG.LANTERN, at: around(TAG.PENUMBRA, 2800) }),
+    spawn('lancer', { count: 2, group: 'vanguard', targetTag: TAG.HARRIER, at: around(TAG.PENUMBRA, 2200) }),
+    say('rhea', 'lantern.rhea.bleeding', { wait: false }),
+    waitForGroup('carriers'),
+    stopBackground('carrierLaunches:carriers'),
+    bossBar(null),
+    run(umbraRetreats),
+    objective(null),
+    say('vega', 'lantern.vega.carrierDown'),
+    music('calm'),
+    wait(5),
+    say('okoro', 'lantern.okoro.thanks'),
+    say('okoro', 'lantern.okoro.muster'),
+    say('tim', 'lantern.tim.strike'),
+    run(refitFleet),
+    // The station's own frigates join the fleet for the strike.
+    spawn('harrier', {
+        callsign: 'Kite', tags: [TAG.FLEET, 'kite'], persistent: true, faceTag: TAG.DAWNBREAKER,
+        at: { anchor: TAG.LANTERN, offset: [-500, 300, -1200] },
+    }),
+    spawn('harrier', {
+        callsign: 'Tern', tags: [TAG.FLEET, 'tern'], persistent: true, faceTag: TAG.DAWNBREAKER,
+        at: { anchor: TAG.LANTERN, offset: [500, 300, -1400] },
+    }),
+    say('okoro', 'lantern.okoro.militia'),
+
+    checkpoint('lantern-saved'),
+    objective('objective.formUp'),
+    waypoint({ anchor: TAG.DAWNBREAKER, offset: [0, 420, 0] }, 'waypoint.formUp'),
+    waitUntil((ctx) => distanceToTag(ctx, TAG.DAWNBREAKER) < 450),
+    waypoint(null),
+    objective(null),
+    say('tim', 'muster.tim.jump'),
+    warp('muster', { bring: [TAG.DAWNBREAKER, TAG.FLEET], arrive: dressMuster }),
+];
+
+// ---- Chapter 7: The Muster -------------------------------------------------------------------
+
+/** Where the three carriers wait, in a loose line across the fleet's path. */
+const MUSTER_CARRIERS = [
+    { tag: 'penumbraA', offset: [-3600, 400, -1600] },
+    { tag: 'penumbraB', offset: [3800, -300, -2400] },
+    { tag: 'penumbraC', offset: [300, 900, -5200] },
+];
+
+function dressMuster(ctx) {
+    parkFleet(ctx, [500, -150, 6600], [0, 0, -1], { hold: false });
+    const dawnbreaker = shipByTag(ctx, TAG.DAWNBREAKER);
+    if (dawnbreaker) {
+        // Out of the station's cover: from here on she can be hurt again.
+        dawnbreaker.invulnerable = false;
+        dawnbreaker.weaponsOnline = true;
+    }
+    for (const { tag, offset } of MUSTER_CARRIERS) {
+        spawnPenumbra(ctx, { tag, at: offset, faceTag: TAG.DAWNBREAKER, cannons: MUSTER_CANNONS_PER_CARRIER });
+    }
+}
+
+/**
+ * The Umbra line sends cruisers and corvettes into the melee, one wave at a time, as long as a
+ * carrier is left to send them, the battle budget allows and waves remain
+ * (`ctx.vars.musterWaves`, set when the battle starts). Declared again after each checkpoint.
+ */
+const musterLine = () => background('musterLine', [
+    repeatWhile((ctx) => ctx.world.countGroup('carriers') > 0 && (ctx.vars.musterWaves ?? 0) > 0, [
+        waitUntil((ctx) => ctx.world.countGroup('musterLine') === 0),
+        wait(18),
+        waitUntil((ctx) => underBattleBudget(ctx, 4)),
+        run((ctx) => {
+            const [carrier] = ctx.world.getGroup('carriers');
+            if (!carrier) return;
+            ctx.vars.musterWaves -= 1;
+            const at = { anchor: [...carrier.tags][0], bearing: 'around', distance: 2600 };
+            spawnShips(ctx, 'warden', { group: 'musterLine', at, faceTag: TAG.DAWNBREAKER });
+            spawnShips(ctx, 'corvette', { group: 'musterLine', at, faceTag: TAG.DAWNBREAKER });
+        }),
+    ]),
+]);
+
+const muster = [
+    chapter('muster'),
+    music('finale'),
+    escort(TAG.DAWNBREAKER),
+    dawnbreakerWarnings(),
+    run((ctx) => ctx.stage.playCue('alarm')),
+    spawn('corvette', { group: 'musterLine', faceTag: TAG.DAWNBREAKER, at: { anchor: 'origin', offset: [1700, -100, 900] } }),
+    spawn('drone', { count: 4, group: 'carrierWing', at: { anchor: 'origin', offset: [0, 300, 2200] } }),
+    say('vega', 'muster.vega.arrival'),
+    say('umbra', 'muster.umbra.wake'),
+    say('tim', 'muster.tim.engage'),
+    objective('objective.carriers', remainingIn('carriers')),
+    hint('hint.melee'),
+    run((ctx) => {
+        ctx.vars.carrierFlights = MUSTER_CARRIER_FLIGHTS;
+        ctx.vars.musterWaves = MUSTER_LINE_WAVES;
+    }),
+    carrierLaunches('carriers'),
+    musterLine(),
+    waitUntil((ctx) => ctx.world.countGroup('carriers') < MUSTER_CARRIERS.length),
+    hint(null),
+    say('vega', 'muster.vega.oneDown'),
+
+    checkpoint('muster-one-down'),
+    music('finale'),
+    escort(TAG.DAWNBREAKER),
+    dawnbreakerWarnings(),
+    objective('objective.carriers', remainingIn('carriers')),
+    carrierLaunches('carriers'),
+    musterLine(),
+    say('rhea', 'muster.rhea.cruisers', { wait: false }),
+    waitUntil((ctx) => ctx.world.countGroup('carriers') <= 1),
+    say('umbra', 'muster.umbra.last'),
+    say('tim', 'muster.tim.last', { wait: false }),
+    spawn('lancer', { count: 3, group: 'carrierWing', targetTag: TAG.DAWNBREAKER, at: around(TAG.DAWNBREAKER, 3400) }),
+    waitForGroup('carriers'),
+    stopBackground('carrierLaunches:carriers'),
+    stopBackground('musterLine'),
+    stopBackground(`hullWarnings:${TAG.DAWNBREAKER}`),
+    run(umbraRetreats),
+    objective(null),
+    music('calm'),
+    wait(6),
+    say('vega', 'muster.vega.clear'),
+    say('rhea', 'muster.rhea.count'),
+    say('tim', 'muster.tim.done'),
+];
+
+// ---- Epilogue: Home -----------------------------------------------------------------------
+
+/** The fleet drops out of warp in formation off Earth. */
+const arrangeFleetAtEarth = (ctx) => parkFleet(ctx, [0, 0, 0], [0, 0, -1]);
+
+const home = [
+    checkpoint('barrens-won'),
     chapter('home'),
     music('calm'),
     escort(null),
@@ -700,7 +1103,7 @@ const home = [
 ];
 
 /** The full campaign, in order. */
-export const CAMPAIGN = Object.freeze([...prologue, ...interdiction, ...graveyard, ...theForge, ...holdTheLine, ...eclipse, ...home]);
+export const CAMPAIGN = Object.freeze([...prologue, ...interdiction, ...graveyard, ...theForge, ...holdTheLine, ...eclipse, ...lantern, ...muster, ...home]);
 
 /** The sector a brand new game starts in. */
 export const STARTING_SECTOR = 'collapse';

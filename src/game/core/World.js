@@ -149,6 +149,7 @@ export class World {
     beginWarpIn(ship) {
         ship.warpDuration = WORLD.warpInSeconds * (1 + Math.min(1, ship.boundingRadius / 800)) * (0.8 + this.rng() * 0.5);
         ship.warpTimer = ship.warpDuration;
+        this.events.emit(GAME_EVENTS.WARP_IN_STARTED, { ship, duration: ship.warpDuration });
     }
 
     /** Removes a ship without destroying it (it warped out or the scene changed). */
@@ -280,7 +281,7 @@ export class World {
         ship.warpTimer -= dt;
         if (ship.warpTimer > 0) return;
         ship.warpTimer = 0;
-        this.events.emit(GAME_EVENTS.WARP_FLASH, { position: ship.position.clone(), size: ship.boundingRadius, quaternion: ship.quaternion.clone() });
+        this.events.emit(GAME_EVENTS.WARP_FLASH, { position: ship.position.clone(), size: ship.boundingRadius, quaternion: ship.quaternion.clone(), ship });
     }
 
     updateScriptedBeams(dt) {
@@ -330,6 +331,8 @@ export class World {
             player: this.player ? { hullFraction: this.player.hullFraction, classId: this.player.classId } : null,
             ships: persistentShips.map((ship) => ({
                 classId: ship.classId,
+                // Only differs from the class's for ships the story lends to another side (Lantern's guns).
+                faction: ship.faction,
                 callsign: ship.callsign,
                 group: ship.group,
                 tags: [...ship.tags],

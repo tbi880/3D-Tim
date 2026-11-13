@@ -7,5 +7,6 @@ export const CHARACTERS = Object.freeze({
     tim: { id: 'tim', color: '#ffc46b', portrait: { image: '/Tim Bi.webp' } },
     rhea: { id: 'rhea', color: '#9dffb0', portrait: { glyph: 'officer' } },
     sato: { id: 'sato', color: '#c8b6ff', portrait: { glyph: 'officer' } },
+    okoro: { id: 'okoro', color: '#ffd98a', portrait: { glyph: 'officer' } },
     umbra: { id: 'umbra', color: '#ff4f8b', portrait: { glyph: 'unknown' }, glitch: true },
 });

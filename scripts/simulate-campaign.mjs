@@ -9,8 +9,11 @@
  * tuning values (src/game/config): it fails if the story dead-locks, a checkpoint cannot
  * be loaded, or the autopilot is destroyed too often to be plausible for a human.
  */
+import { playerBeamRange } from '../src/game/core/systems/weapons.js';
+import { WEAPONS } from '../src/game/config/weapons.js';
 import { Quaternion, Vector3 } from 'three';
 import { FACTION } from '../src/game/config/gameConfig.js';
+import { SHIP_CLASSES } from '../src/game/config/shipClasses.js';
 import { GameSession, PHASE } from '../src/game/state/GameSession.js';
 import { loadSave, writeSave } from '../src/game/state/saveGame.js';
 
@@ -25,15 +28,23 @@ globalThis.localStorage = {
 const QUIET = process.argv.includes('--quiet');
 /** `--difficulty=cadet|captain|admiral` flies the campaign at another setting (default captain). */
 const DIFFICULTY_ID = process.argv.find((arg) => arg.startsWith('--difficulty='))?.split('=')[1] ?? 'captain';
-/** `--ship=kestrel|swift|shrike|bulwark` picks the player's ship (default kestrel). */
+/** `--ship=kestrel|swift|shrike|bulwark|peregrine` picks the player's ship (default kestrel). */
 const SHIP_ID = process.argv.find((arg) => arg.startsWith('--ship='))?.split('=')[1] ?? 'kestrel';
 const STEP = 1 / 30;
-const MAX_STORY_SECONDS = 45 * 60;
-const MAX_RETRIES = 12;
+// A slow hull simply takes longer to cross the same battlefields, so it gets more time
+// (the Bulwark, at under half the Kestrel's speed, gets 95 minutes).
+const MAX_STORY_SECONDS = (SHIP_CLASSES[SHIP_ID]?.maxSpeed < 100 ? 95 : 60) * 60;
+// Losses allowed over a whole campaign (raised from 12 when the two Barrens chapters made it half as long again).
+const MAX_RETRIES = 16;
 const log = (...args) => { if (!QUIET) console.log(...args); };
 
 const scratchLocal = new Vector3();
 const scratchInverse = new Quaternion();
+const scratchForwardPick = new Vector3();
+const scratchOffsetPick = new Vector3();
+const scratchLanceOrigin = new Vector3();
+const scratchAway = new Vector3();
+const scratchDodge = new Vector3();
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 /**
@@ -54,8 +65,42 @@ function pickTarget(world, focused) {
         if (ship.classId === 'lancer') return 0.6;
         return 1;
     };
-    hostiles.sort((a, b) => a.position.distanceTo(player.position) * priority(a) - b.position.distanceTo(player.position) * priority(b));
+    // A sluggish hull (the Bulwark) can't chase what is behind it, so its pilot, like a human,
+    // works on whatever is already near the nose.
+    const turn = player.cls.handling?.turn ?? 1;
+    const swingCost = turn < 0.5 ? (0.5 - turn) * 12 : 0;
+    const forward = scratchForwardPick.set(0, 0, -1).applyQuaternion(player.quaternion);
+    const cost = (ship) => {
+        const offset = scratchOffsetPick.copy(ship.position).sub(player.position);
+        const distance = offset.length();
+        const facing = distance > 0 ? offset.dot(forward) / distance : 1;
+        return distance * priority(ship) * (1 + swingCost * (1 - facing));
+    };
+    hostiles.sort((a, b) => cost(a) - cost(b));
     return hostiles[0];
+}
+
+/**
+ * If a charging or firing lance is lined up on the player (within its corridor plus a safety
+ * margin), a point to fly to that leads straight out of the corridor; otherwise null.
+ */
+function lanceDodgePoint(world, player) {
+    for (const ship of world.ships) {
+        if (!ship.alive) continue;
+        for (const weapon of ship.weapons) {
+            if (weapon.def.type !== 'lance' || (weapon.lancePhase !== 'charging' && weapon.lancePhase !== 'firing')) continue;
+            scratchLanceOrigin.fromArray(weapon.def.mount ?? [0, 0, 0]).applyQuaternion(ship.quaternion).add(ship.position);
+            scratchAway.copy(player.position).sub(scratchLanceOrigin);
+            const along = scratchAway.dot(weapon.lanceDirection);
+            if (along < 0 || along > weapon.def.range) continue;
+            scratchAway.addScaledVector(weapon.lanceDirection, -along);
+            const offAxis = scratchAway.length();
+            if (offAxis > weapon.def.corridorRadius + player.boundingRadius + 250) continue;
+            if (offAxis < 1) scratchAway.set(0, 1, 0).cross(weapon.lanceDirection);
+            return scratchDodge.copy(player.position).addScaledVector(scratchAway.normalize(), 1500);
+        }
+    }
+    return null;
 }
 
 /** A simple but honest pilot: it uses the same controls a human has. */
@@ -69,7 +114,11 @@ function autopilot(session, focused = true) {
     let target = mustHoldLock ? world.findByTag('eclipse') : pickTarget(world, focused);
     if (target && player.target !== target) world.setPlayerTarget(target);
 
-    let destination = target?.position ?? session.waypoint?.position ?? null;
+    // Like a human, get out from under the Eclipse's lance once it starts charging.
+    const dodge = mustHoldLock ? null : lanceDodgePoint(world, player);
+    if (dodge) target = null;
+
+    let destination = dodge ?? target?.position ?? session.waypoint?.position ?? null;
     let keepDistance = 0;
     // Gun batteries are torpedoed from outside their 2.6 km reach.
     const sniping = target?.classId === 'eclipseCannon';
@@ -87,11 +136,15 @@ function autopilot(session, focused = true) {
     const direction = tooClose && !mustHoldLock ? -1 : 1;
     controls.yaw = clamp(scratchLocal.x * 3 * direction + (scratchLocal.z > 0 ? direction : 0), -1, 1);
     controls.pitch = clamp(scratchLocal.y * 3 * direction, -1, 1);
-    controls.throttle = tooClose && (mustHoldLock || sniping) ? -1 : 1;
+    // Holding a lock, brake; too close to a gun battery (a carrier can drift up on you), turn
+    // away and open the range again at full throttle.
+    controls.throttle = tooClose && mustHoldLock ? -1 : 1;
     controls.boost = !target && distance > 900;
+    // A fast ship eases off near its target, as a human would, instead of overshooting into it.
+    if (target && !tooClose && surfaceDistance < 1500) controls.throttle = Math.min(1, 160 / player.cls.maxSpeed);
 
     if (target && scratchLocal.z < -0.9 && direction === 1) {
-        controls.firePrimary = surfaceDistance < 950;
+        controls.firePrimary = surfaceDistance < playerBeamRange(player, WEAPONS.playerBeam) * 0.73;
         const shieldsDown = target.shield <= 0 || target.maxShield === 0;
         controls.fireSecondary = shieldsDown && target.cls.kind !== 'fighter' && surfaceDistance < (sniping ? 3800 : 1400) && scratchLocal.z < -0.97;
     }
@@ -181,3 +234,5 @@ if (sloppy.reason !== 'ending') fail(`the careless pilot stopped with "${sloppy.
 log(`  ✓ finished in ${(careless.stats.time / 60).toFixed(1)} min with ${sloppy.retries} losses`);
 
 console.log(`\nCampaign OK: ${(session.stats.time / 60).toFixed(1)} min of story, ${session.stats.kills} kills, ${full.retries} autopilot losses, ${expected.length} checkpoints.`);
+const score = session.finalScore;
+if (score) console.log(`Final score: ${score.total} (rank ${score.rank}) = (${score.combat} combat + ${score.missionBonus} mission + ${score.timeBonus} time - ${score.lossPenalty} losses) x ${score.multiplier}`);

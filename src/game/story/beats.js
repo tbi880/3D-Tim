@@ -1,4 +1,4 @@
-import { Vector3 } from 'three';
+import { Quaternion, Vector3 } from 'three';
 import { FACTION } from '../config/gameConfig.js';
 import { GAME_EVENTS } from '../core/EventBus.js';
 import { forwardOf, lookRotation } from '../core/math.js';
@@ -214,6 +214,53 @@ export const holdNear = (tag, radius, seconds, varName) => ({
         const near = target.distanceToPoint(player.position) < radius;
         vars[varName] = Math.min(1, Math.max(0, vars[varName] + (near ? dt : -dt * 0.5) / seconds));
         return vars[varName] >= 1;
+    },
+});
+
+// ---- Docking ----------------------------------------------------------------------------
+
+const scratchGlideFacing = new Vector3();
+const scratchGlideQuaternion = new Quaternion();
+const smoothstep = (t) => t * t * (3 - 2 * t);
+
+/**
+ * Takes the helm and flies the player's ship in a straight line to `to` (a placement), turning
+ * its nose to `facing`, over `seconds` - the dock's traffic control doing the flying. With
+ * `release: false` the helm stays locked afterwards (the ship sits in its berth); otherwise it is
+ * handed back with the throttle at `throttle`.
+ */
+export const glide = ({ to, facing, seconds, release = true, throttle = 0.6 }) => ({
+    type: 'glide',
+    begin(ctx, state) {
+        const player = ctx.world.player;
+        ctx.world.controlsLocked = true;
+        state.elapsed = 0;
+        state.from = player.position.clone();
+        state.to = resolvePlacement(ctx.world, to, new Vector3());
+        state.fromQuaternion = player.quaternion.clone();
+        state.toQuaternion = lookRotation(scratchGlideFacing.fromArray(facing).normalize(), new Quaternion());
+    },
+    tick(ctx, dt, state) {
+        const player = ctx.world.player;
+        if (!player?.alive) return true;
+        state.elapsed += dt;
+        const t = Math.min(1, state.elapsed / seconds);
+        const eased = smoothstep(t);
+        scratchPoint.copy(player.position);
+        player.position.lerpVectors(state.from, state.to, eased);
+        player.quaternion.copy(scratchGlideQuaternion.copy(state.fromQuaternion).slerp(state.toQuaternion, smoothstep(Math.min(1, t * 1.6))));
+        player.velocity.copy(player.position).sub(scratchPoint).multiplyScalar(dt > 0 ? 1 / dt : 0);
+        player.speed = player.velocity.length();
+        player.angularVelocity.set(0, 0, 0);
+        if (t < 1) return false;
+        if (release) {
+            player.throttle = throttle;
+            ctx.world.controlsLocked = false;
+        } else {
+            player.velocity.set(0, 0, 0);
+            player.speed = 0;
+        }
+        return true;
     },
 });
 

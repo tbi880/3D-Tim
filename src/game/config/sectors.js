@@ -108,6 +108,45 @@ export const SECTORS = Object.freeze({
         ],
         asteroids: null,
     },
+    // ---- The Barrens: further out from the Sun than anywhere else in the story, poor in
+    // everything but dust. Dim, cold suns and little sky light.
+    lantern: {
+        id: 'lantern',
+        nameKey: 'sector.lantern',
+        // At the far end of Lantern Station's arrival lane, nose towards the station.
+        playerStart: { position: [0, -120, -5300], facing: [0, 0, 1] },
+        sky: { nebulaA: '#101a2c', nebulaB: '#5b6b8a', intensity: 0.32 },
+        light: { sunDirection: [0.55, 0.45, -0.7], sunColor: '#ffd9b0', sunIntensity: 2.6, ambient: 0.17 },
+        backdrop: [
+            {
+                model: 'planets/jupiter-transformed.glb', modelSize: 3.85, direction: [-0.9, -0.35, -0.6], radiusKm: 52_000, distanceKm: 260_000, brightness: 0.35,
+                rotation: [0.4, 1.2, 0.2],
+            },
+            {
+                model: 'planets/mars-transformed.glb', modelSize: 5.5, direction: [0.7, -0.5, 0.9], radiusKm: 2_100, distanceKm: 9_500,
+                rotation: [0.2, 2.1, 0.1], brightness: 0.45,
+            },
+        ],
+        asteroids: null,
+    },
+    muster: {
+        id: 'muster',
+        nameKey: 'sector.muster',
+        playerStart: { position: [0, 250, 7600], facing: [0, -0.03, -1] },
+        sky: { nebulaA: '#1e0d26', nebulaB: '#8a3a5c', intensity: 0.4 },
+        light: { sunDirection: [-0.35, 0.3, -0.9], sunColor: '#ffc2a0', sunIntensity: 2.7, ambient: 0.17 },
+        backdrop: [
+            {
+                model: 'strangest_star-transformed.glb', modelSize: 43, direction: [-0.35, 0.3, -0.9], radiusKm: 300_000, distanceKm: 2_400_000,
+                rotation: [0.2, 0.4, 0], animation: 'Animation', animationSpeed: 0.05,
+            },
+            {
+                model: 'planets/purplePlanet-transformed.glb', modelSize: 2.07, direction: [0.8, -0.45, -0.5], radiusKm: 6_000, distanceKm: 26_000, brightness: 0.4,
+                rotation: [0.5, 0.2, 0.1], animation: 'Take 01', animationSpeed: 0.012,
+            },
+        ],
+        asteroids: null,
+    },
     home: {
         id: 'home',
         nameKey: 'sector.home',
