@@ -6,6 +6,7 @@ import { damageObstacle } from './obstacles.js';
 
 const scratchCentre = new Vector3();
 const scratchNormal = new Vector3();
+const scratchOwn = new Vector3();
 
 const COLLISION_DAMAGE_COOLDOWN = 0.6;
 /** Damage from ramming an asteroid at cruise speed: a base amount plus some per metre of rock, capped. */
@@ -16,28 +17,41 @@ const ROCK_DAMAGE_MAX = 95;
 const COLLISION_DAMAGE_PER_SPEED = 0.11;
 const SOLID_KINDS = new Set(['capital', 'station', 'module', 'object']);
 
-/** Pushes the player out of a solid sphere centred on `centre` and scrapes some hull off. */
-function bounce(world, player, centre, solidRadius) {
-    scratchNormal.copy(player.position).sub(centre);
+/** World position of one of the player's collision spheres (see Ship.collisionSpheres). */
+function sphereCentre(player, sphere, out) {
+    return out.copy(sphere.centre).applyQuaternion(player.quaternion).add(player.position);
+}
+
+/**
+ * Pushes the player out of a solid sphere centred on `centre` and scrapes some hull off.
+ * `own` is the player's collision sphere doing the touching, already in world space.
+ */
+function bounce(world, player, own, ownRadius, centre, solidRadius) {
+    scratchNormal.copy(own).sub(centre);
     const distance = scratchNormal.length();
-    const overlap = solidRadius + player.radius - distance;
-    if (overlap <= 0) return;
+    const overlap = solidRadius + ownRadius - distance;
+    if (overlap <= 0) return false;
     if (distance < 1e-3) scratchNormal.set(0, 1, 0);
     else scratchNormal.multiplyScalar(1 / distance);
 
     player.position.addScaledVector(scratchNormal, overlap);
     const closingSpeed = -player.velocity.dot(scratchNormal);
-    if (closingSpeed <= 0) return;
+    if (closingSpeed <= 0) return true;
 
     player.velocity.addScaledVector(scratchNormal, closingSpeed * 1.4);
     player.speed *= 0.5;
-    if (world.time < player.collisionReadyAt) return;
+    if (world.time < player.collisionReadyAt) return true;
     player.collisionReadyAt = world.time + COLLISION_DAMAGE_COOLDOWN;
-    applyDamage(world, player, clamp(closingSpeed * COLLISION_DAMAGE_PER_SPEED, 3, 18), { point: player.position });
+    applyDamage(world, player, clamp(closingSpeed * COLLISION_DAMAGE_PER_SPEED, 3, 18), { point: own });
     world.events.emit(GAME_EVENTS.PLAYER_COLLISION, { speed: closingSpeed });
+    return true;
 }
 
-/** Only the player collides with hulls and rocks; AI pilots steer around them instead. */
+/**
+ * Only the player collides with hulls and rocks; AI pilots steer around them instead.
+ * The player's hull is its collision spheres: one for small craft, a row along the
+ * hit boxes for long ones (the Bulwark), so the hull bumps where the model does.
+ */
 export function resolvePlayerCollisions(world) {
     const player = world.player;
     if (!player?.alive) return;
@@ -45,16 +59,25 @@ export function resolvePlayerCollisions(world) {
 
     for (const ship of world.ships) {
         if (ship === player || !ship.alive || ship.arriving || !SOLID_KINDS.has(ship.cls.kind)) continue;
-        if (ship.distanceToPoint(player.position) > player.radius) continue;
-        ship.closestPoint(player.position, scratchCentre);
-        // Deep inside a hull the closest point is the player's own position: push out from the centre line instead.
-        if (scratchCentre.distanceToSquared(player.position) < 1e-6) scratchCentre.copy(ship.position);
-        bounce(world, player, scratchCentre, 0);
+        if (ship.distanceToPoint(player.position) > player.boundingRadius) continue;
+        for (const sphere of player.collisionSpheres) {
+            sphereCentre(player, sphere, scratchOwn);
+            if (ship.distanceToPoint(scratchOwn) > sphere.radius) continue;
+            ship.closestPoint(scratchOwn, scratchCentre);
+            // Deep inside a hull the closest point is the sphere's own centre: push out from the ship's centre instead.
+            if (scratchCentre.distanceToSquared(scratchOwn) < 1e-6) scratchCentre.copy(ship.position);
+            if (bounce(world, player, scratchOwn, sphere.radius, scratchCentre, 0)) break;
+        }
     }
     for (const obstacle of world.obstacles) {
         if (!obstacle.alive) continue;
-        const reach = obstacle.radius + player.radius;
-        if (obstacle.position.distanceToSquared(player.position) > reach * reach) continue;
+        const outer = obstacle.radius + player.boundingRadius;
+        if (obstacle.position.distanceToSquared(player.position) > outer * outer) continue;
+        const touching = player.collisionSpheres.some((sphere) => {
+            const reach = obstacle.radius + sphere.radius;
+            return sphereCentre(player, sphere, scratchOwn).distanceToSquared(obstacle.position) <= reach * reach;
+        });
+        if (!touching) continue;
         // The rock shatters on impact and the ship pays for it: more for a bigger rock, more at speed.
         const speedFactor = 0.45 + 0.55 * Math.min(1.5, player.velocity.length() / Math.max(1, player.cls.maxSpeed));
         damageObstacle(world, obstacle, Infinity, obstacle.position);

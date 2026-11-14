@@ -7,10 +7,13 @@ import { useComposerMultisampling } from '../../hooks/useComposerMultisampling';
 import { GRAPHICS } from '../config/graphics.js';
 import { useGameStore } from '../state/gameStore.js';
 import ManagedEffectComposer from '../../modelComponents/ManagedEffectComposer';
+import { arrivalShock } from './effects/WarpArrivalEffects.js';
 
 /** Colour fringing (as a fraction of the screen) at full warp and under afterburner. */
 const WARP_ABERRATION = 0.012;
 const BOOST_ABERRATION = 0.0018;
+/** Extra fringing for a moment when a big ship drops out of warp right next to the player. */
+const ARRIVAL_ABERRATION = 0.006;
 
 /**
  * Bloom makes beams, engines and explosions glow (their colours are deliberately brighter
@@ -27,7 +30,8 @@ export default function PostEffects({ session }) {
     useFrame(() => {
         const player = session.world.player;
         if (!player) return;
-        const amount = session.world.warpFactor * WARP_ABERRATION + (player.boosting ? BOOST_ABERRATION : 0);
+        const amount = session.world.warpFactor * WARP_ABERRATION + (player.boosting ? BOOST_ABERRATION : 0)
+            + arrivalShock.value * ARRIVAL_ABERRATION;
         aberrationOffset.set(amount, amount);
     });
 

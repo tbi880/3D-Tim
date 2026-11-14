@@ -558,7 +558,8 @@ def build(model_id):
     builder = sf.ShipBuilder(model_id, seed)
     builder_fn(builder)
     size = builder.normalise(length, recentre=model_id not in KEEP_ORIGIN)
-    entry = {"file": f"game/{model_id}.glb", "size": size, "engines": builder.engines}
+    entry = {"file": f"game/{model_id}-transformed.glb",  # optimised copy, see optimize.mjs
+              "size": size, "engines": builder.engines}
     if builder.markers:
         entry["markers"] = builder.markers
     obj, hidden = builder.to_object(palette_fn(), tile)

@@ -14,6 +14,7 @@ import SectorBackdrop from './SectorBackdrop.jsx';
 import ShipsLayer from './ShipsLayer.jsx';
 import { ShipModelPreloader } from './models/ShipModel.jsx';
 import SpaceDust from './SpaceDust.jsx';
+import WarpArrivalsLayer from './WarpArrivalsLayer.jsx';
 
 const markAssetsReady = () => useGameStore.setState({ assetsReady: true });
 
@@ -52,6 +53,7 @@ export default function GameScene({ game, markerCanvasRef, radarCanvasRef }) {
             <ProjectilesLayer session={session} />
             <BeamsLayer session={session} />
             <ExplosionsLayer session={session} />
+            <WarpArrivalsLayer session={session} />
             <SpaceDust session={session} />
             <HudCanvasBridge game={game} markerCanvasRef={markerCanvasRef} radarCanvasRef={radarCanvasRef} />
             <PostEffects session={session} />

@@ -56,6 +56,23 @@ export function clearSave() {
     }
 }
 
+/** Best final score so far, per difficulty: `{ captain: { total, rank, shipId, at } }`. */
+export function loadBestScores() {
+    return readJson(STORAGE_KEYS.bestScore) ?? {};
+}
+
+/**
+ * Records `result` if it beats the best on its difficulty.
+ * @returns {{ isRecord: boolean, previous: object | null }}
+ */
+export function recordFinalScore(result, shipId) {
+    const best = loadBestScores();
+    const previous = best[result.difficultyId] ?? null;
+    const isRecord = !previous || result.total > previous.total;
+    if (isRecord) writeJson(STORAGE_KEYS.bestScore, { ...best, [result.difficultyId]: { total: result.total, rank: result.rank, shipId, at: Date.now() } });
+    return { isRecord, previous };
+}
+
 export const CAMERA_MODES = Object.freeze(['cockpit', 'chase']);
 
 export function defaultSettings() {

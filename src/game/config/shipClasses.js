@@ -57,7 +57,8 @@ export const SHIP_CLASSES = Object.freeze({
     //                  three axes), acceleration, boostDuration (how long the afterburner tank
     //                  lasts) and boostMultiplier (afterburner top speed)
     //   weaponDamage - multiplier on beam and torpedo damage
-    //   weaponRange  - multiplier on beam reach (1300 m) and torpedo flight time (about 5 km)
+    //   weaponRange  - multiplier on beam reach (3 km) and torpedo flight time (about 1.8 km);
+    //                  beams always outreach torpedoes on the same ship
     // `radius` is the hit sphere: bigger hulls are easier to hit and to scrape on rocks.
     // Models: MODEL_OVERRIDES in scene/models/ShipModel.jsx.
     kestrel: {
@@ -278,7 +279,7 @@ export const SHIP_CLASSES = Object.freeze({
         // A gun battery bolted to the Eclipse. Short-ranged for its size: stay outside its reach or kill it.
         nameKey: 'ship.eclipseCannon', faction: FACTION.UMBRA, behavior: 'module', kind: 'module',
         model: 'stationTurret', radius: 42,
-        // One torpedo's worth: they can be picked off from outside their own range.
+        // One torpedo's worth up close, or a few seconds of beam from outside their own range.
         hull: 220, shield: 0, shieldRegen: 0, shieldDelay: 0,
         maxSpeed: 0, turnRate: 0, acceleration: 0,
         weapons: ['eclipseCannon'],

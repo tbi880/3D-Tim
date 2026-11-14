@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { bucketURL, stageOfENV } from '../Settings';
+import useClickToFullscreen from '../hooks/useClickToFullscreen';
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 import { SoundEngine } from '../game/audio/SoundEngine.js';
 import { graphicsDpr } from '../game/config/graphics.js';
@@ -53,6 +54,9 @@ function EchoesOfDawn() {
     const markerCanvasRef = useRef(null);
     const radarCanvasRef = useRef(null);
     const graphics = useGameStore((state) => state.settings.graphics);
+    // Any click or tap goes fullscreen - again after Esc - and on phones too, so a game turned
+    // sideways fills the screen. Production only, like the rest of the site.
+    useClickToFullscreen({ once: false, skipPortrait: false });
 
     useEffect(() => {
         const created = createGame();

@@ -11,6 +11,9 @@
  *
  * shieldMult / hullMult scale damage against shields and hull, giving each weapon a job:
  * beams strip shields, torpedoes break hulls.
+ *
+ * The player's beams always outreach their own torpedoes (about 3 km against 1.8 km, both scaled
+ * by the ship's `weaponRange`): beams work from stand-off range, torpedoes are a closing blow.
  */
 
 const DAWN_BEAM = '#ffb648';
@@ -22,14 +25,15 @@ const UMBRA_TORPEDO = '#b6ff3d';
 export const WEAPONS = Object.freeze({
     // ---- Player -------------------------------------------------------------------------
     playerBeam: {
-        type: 'beam', range: 1300, dps: 36, arcDeg: 26, energyPerSecond: 21,
+        type: 'beam', range: 3000, dps: 36, arcDeg: 26, energyPerSecond: 21,
         shieldMult: 1.3, hullMult: 0.8, color: DAWN_BEAM, width: 0.34,
         // Twin emitters under the Kestrel's nose (see build_kestrel); both beams converge on the target.
         mounts: [[-3.6, -0.9, -8], [3.6, -0.9, -8]],
     },
     playerTorpedo: {
         type: 'torpedo', speed: 420, turnRate: 1.9, damage: 150, shieldMult: 0.55, hullMult: 1.5,
-        lifetime: 12, cooldown: 0.7, capacity: 6, reloadTime: 4.5, lockConeDeg: 40,
+        // 420 m/s for 4.3 s: about 1.8 km of fuel, well short of the beams' 3 km.
+        lifetime: 4.3, cooldown: 0.7, capacity: 6, reloadTime: 4.5, lockConeDeg: 40,
         radius: 2.2, hp: 30, color: DAWN_TORPEDO, mount: [0, -1.2, -9],
     },
 

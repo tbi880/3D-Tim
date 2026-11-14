@@ -1,6 +1,7 @@
 import { MUSIC_TRACKS } from '../config/gameConfig.js';
 import { GAME_EVENTS } from '../core/EventBus.js';
 import { SESSION_EVENTS } from '../state/GameSession.js';
+import { WarpArrivalAudio } from './WarpArrivalAudio.js';
 
 /**
  * All game audio. Sound effects are synthesised with the Web Audio API (no asset files to
@@ -31,6 +32,8 @@ export class SoundEngine {
         this.music = null;
         this.musicTrackId = null;
         this.fadeTimers = new Set();
+        /** Ships dropping out of warp nearby, heard in 3D (WarpArrivalAudio.js). */
+        this.arrivals = new WarpArrivalAudio(this);
     }
 
     // ---- Setup --------------------------------------------------------------------------
@@ -67,7 +70,11 @@ export class SoundEngine {
             world.on(GAME_EVENTS.WEAPON_EMPTY, () => this.tone({ from: 160, to: 120, duration: 0.12, gain: 0.15, type: 'square' })),
             world.on(GAME_EVENTS.LANCE_CHARGING, ({ weapon }) => this.tone({ from: 60, to: 520, duration: weapon.def.chargeTime, gain: 0.16, type: 'sawtooth' })),
             world.on(GAME_EVENTS.LANCE_FIRING, ({ weapon }) => this.noise({ duration: weapon.def.fireTime, frequency: 240, gain: 0.5 })),
-            world.on(GAME_EVENTS.WARP_FLASH, ({ position }) => this.noise({ duration: 0.7, frequency: 900, gain: 0.25 * this.attenuation(position) })),
+            world.on(GAME_EVENTS.WARP_IN_STARTED, ({ ship }) => this.arrivals.onStart(ship)),
+            world.on(GAME_EVENTS.WARP_FLASH, ({ position, ship }) => {
+                if (ship) this.arrivals.onLanding(ship);
+                else this.noise({ duration: 0.7, frequency: 900, gain: 0.25 * this.attenuation(position) });
+            }),
             stage.on(SESSION_EVENTS.CUE, ({ id }) => this.playCue(id)),
             stage.on(SESSION_EVENTS.MUSIC, ({ id }) => this.setMusic(id)),
             stage.on(SESSION_EVENTS.WARP, ({ stage: warpStage }) => this.onWarp(warpStage)),
@@ -83,6 +90,7 @@ export class SoundEngine {
         this.unsubscribe = [];
         for (const timer of this.fadeTimers) clearInterval(timer);
         this.fadeTimers.clear();
+        this.arrivals.dispose();
         if (this.music) {
             this.music.pause();
             this.music.src = '';
@@ -259,6 +267,7 @@ export class SoundEngine {
         this.beamVoice.gain.setTargetAtTime(flying && player.beamFiring ? 0.07 : 0, now, 0.03);
         this.engineVoice.gain.gain.setTargetAtTime(flying ? 0.1 + speedFraction * 0.22 : 0, now, 0.2);
         this.engineVoice.filter.frequency.setTargetAtTime(90 + speedFraction * 260, now, 0.2);
+        this.arrivals.update(world);
     }
 
     // ---- Music --------------------------------------------------------------------------

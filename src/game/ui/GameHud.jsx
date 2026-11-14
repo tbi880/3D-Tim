@@ -214,6 +214,53 @@ function DamageFlash({ session }) {
     return <div key={flash.id} className={`eod-damage-flash eod-damage-flash--${flash.kind}`} />;
 }
 
+/** How long a "+points" line stays up before it has faded away (keep in step with hud.css). */
+const SCORE_POPUP_MS = 3800;
+const MAX_SCORE_POPUPS = 5;
+
+/**
+ * "+150 Raider" for each kill the player scores, stacked under the reticle with the running
+ * total. Each line holds for three seconds, then fades out (the `eod-score-pop` animation).
+ */
+function ScoreFeed({ session }) {
+    const [popups, setPopups] = useState([]);
+    const [total, setTotal] = useState(null);
+    const t = useT();
+
+    useEffect(() => {
+        let nextId = 0;
+        const timers = new Set();
+        const off = session.events.on(SESSION_EVENTS.SCORE, ({ points, classId, total: newTotal }) => {
+            const id = nextId++;
+            setPopups((list) => [...list, { id, points, classId }].slice(-MAX_SCORE_POPUPS));
+            setTotal({ value: newTotal, id });
+            const timer = setTimeout(() => {
+                timers.delete(timer);
+                setPopups((list) => list.filter((popup) => popup.id !== id));
+                setTotal((current) => (current?.id === id ? null : current));
+            }, SCORE_POPUP_MS);
+            timers.add(timer);
+        });
+        return () => {
+            off();
+            for (const timer of timers) clearTimeout(timer);
+        };
+    }, [session]);
+
+    if (popups.length === 0) return null;
+    return (
+        <div className="eod-score-feed">
+            {total && <span key={total.id} className="eod-score-total">{t('hud.score')} {total.value.toLocaleString()}</span>}
+            {popups.map(({ id, points, classId }) => (
+                <div key={id} className="eod-score-pop">
+                    <strong>+{points}</strong>
+                    <span>{t(`ship.${classId}`)}</span>
+                </div>
+            ))}
+        </div>
+    );
+}
+
 /** White-out at the moment of a warp jump. */
 function WarpFlash({ session }) {
     const [flashId, setFlashId] = useState(null);
@@ -256,6 +303,7 @@ export default function GameHud({ session, markerCanvasRef, radarCanvasRef }) {
                     <HintBar />
                     <TitleCard />
                     <Toast />
+                    <ScoreFeed session={session} />
                     <div className="eod-centre-stack">
                         <CommsPanel />
                         <canvas ref={radarCanvasRef} className="eod-radar" />

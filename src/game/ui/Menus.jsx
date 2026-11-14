@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { DIFFICULTY_ORDER } from '../config/gameConfig.js';
 import { GRAPHICS_ORDER } from '../config/graphics.js';
 import { PLAYER_SHIPS, RATING_MAX, RATING_ORDER } from '../config/playerShips.js';
+import { FINAL_SCORE } from '../config/scoring.js';
 import { LOCALES, LOCALE_LABELS } from '../i18n/index.js';
 import { PHASE } from '../state/GameSession.js';
 import { useGameStore, useT } from '../state/gameStore.js';
@@ -206,20 +207,58 @@ function GameOverScreen({ session }) {
     );
 }
 
+const formatPoints = (points) => Math.round(points).toLocaleString();
+
+/** The ending scoreboard: what each part of the final score came from, then the total. */
+function Scoreboard({ stats, score }) {
+    const t = useT();
+    const rows = [
+        { label: t('ui.score.combat'), detail: t('ui.score.kills', { count: stats.kills }), value: `+${formatPoints(score.combat)}` },
+        { label: t('ui.score.mission'), detail: '', value: `+${formatPoints(score.missionBonus)}` },
+        {
+            label: t('ui.score.time'),
+            detail: t('ui.score.par', { time: formatDuration(stats.time), par: formatDuration(FINAL_SCORE.parSeconds) }),
+            value: `+${formatPoints(score.timeBonus)}`,
+        },
+        { label: t('ui.score.losses'), detail: t('ui.score.lossCount', { count: stats.losses }), value: score.lossPenalty > 0 ? `−${formatPoints(score.lossPenalty)}` : '0', negative: score.lossPenalty > 0 },
+        { label: t('ui.score.difficulty'), detail: t(`ui.difficulty.${score.difficultyId}`), value: `×${score.multiplier.toFixed(1)}` },
+    ];
+    return (
+        <div className="eod-scoreboard">
+            <div className="eod-scoreboard-rows">
+                {rows.map(({ label, detail, value, negative }) => (
+                    <div key={label} className="eod-scoreboard-row">
+                        <span className="eod-scoreboard-label">{label}</span>
+                        <span className="eod-scoreboard-detail">{detail}</span>
+                        <span className={`eod-scoreboard-value ${negative ? 'eod-scoreboard-value--negative' : ''}`}>{value}</span>
+                    </div>
+                ))}
+            </div>
+            <div className="eod-scoreboard-total">
+                <span className={`eod-rank eod-rank--${score.rank}`}>{score.rank}</span>
+                <div>
+                    <span className="eod-scoreboard-label">{t('ui.score.total')}</span>
+                    <strong>{formatPoints(score.total)}</strong>
+                    <small>
+                        {score.isRecord
+                            ? t('ui.score.newRecord')
+                            : t('ui.score.best', { score: formatPoints(score.previousBest ?? 0) })}
+                    </small>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function EndingScreen({ session }) {
     const stats = useGameStore((state) => state.stats);
+    const finalScore = useGameStore((state) => state.finalScore);
     const t = useT();
     return (
         <div className="eod-screen eod-screen--ending">
             <h2 className="eod-screen-heading">{t('ui.ending.title')}</h2>
             <p className="eod-screen-text">{t('ui.ending.text')}</p>
-            {stats && (
-                <dl className="eod-stats">
-                    <div><dt>{t('ui.ending.time')}</dt><dd>{formatDuration(stats.time)}</dd></div>
-                    <div><dt>{t('ui.ending.kills')}</dt><dd>{stats.kills}</dd></div>
-                    <div><dt>{t('ui.ending.losses')}</dt><dd>{stats.losses}</dd></div>
-                </dl>
-            )}
+            {stats && finalScore && <Scoreboard stats={stats} score={finalScore} />}
             <div className="eod-menu">
                 <a className="eod-button eod-button--primary" href="/ship_casino">{t('ui.ending.casino')}</a>
                 <a className="eod-button" href="/">{t('ui.ending.site')}</a>

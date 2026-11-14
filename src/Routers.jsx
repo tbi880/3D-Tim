@@ -5,6 +5,7 @@ import GlobalProviders from './sharedContexts/GlobalProviders';
 import { OverlayDisplayManager } from './Tools/OverlayDisplayManager';
 import ProtectedRoute from './utils/ProtectedRoute';
 import { useAuthStore } from './hooks/useAuthStore';
+import useClickToFullscreen from './hooks/useClickToFullscreen';
 
 // 使用 React.lazy 动态加载页面组件
 const HomePage = lazy(() => import('./urls/HomePage'));
@@ -26,6 +27,9 @@ function Routers() {
 
     const initFromStorage = useAuthStore(state => state.initFromStorage);
 
+    // 生产环境下，第一次点击页面任意位置时进入全屏（竖屏手机除外）。游戏页面另有自己的设置。
+    useClickToFullscreen();
+
     useEffect(() => {
         initFromStorage();
     }, [initFromStorage]);
@@ -46,36 +50,6 @@ function Routers() {
         }
 
         checkBrowser();
-
-        // 定义进入全屏的函数
-        if (stageOfENV === "prod" && !isPortraitPhoneScreen) {
-            const requestFullscreen = () => {
-                if (document.documentElement.requestFullscreen) {
-                    document.documentElement.requestFullscreen();
-                } else if (document.documentElement.mozRequestFullScreen) { /* Firefox */
-                    document.documentElement.mozRequestFullScreen();
-                } else if (document.documentElement.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
-                    document.documentElement.webkitRequestFullscreen();
-                } else if (document.documentElement.msRequestFullscreen) { /* IE/Edge */
-                    document.documentElement.msRequestFullscreen();
-                }
-            };
-
-            // 定义处理第一次用户交互的事件处理器
-            const handleFirstUserInteraction = () => {
-                requestFullscreen();
-                // 移除事件监听器，以确保这段代码只执行一次
-                document.removeEventListener('click', handleFirstUserInteraction);
-            };
-
-            // 添加事件监听器，监听第一次点击事件
-            document.addEventListener('click', handleFirstUserInteraction);
-
-            // 组件卸载时清理
-            return () => {
-                document.removeEventListener('click', handleFirstUserInteraction);
-            };
-        }
     }, []);
 
 

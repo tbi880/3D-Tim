@@ -131,8 +131,9 @@ function spawnBolt(world, ship, weapon, origin, direction) {
     world.events.emit(GAME_EVENTS.WEAPON_FIRED, { ship, weapon, kind: 'bolt' });
 }
 
-function spawnTorpedo(world, ship, weapon, origin, direction, target, damageScale = 1) {
+function spawnTorpedo(world, ship, weapon, origin, direction, target, damageScale = 1, lifeScale = 1) {
     const torpedo = new Projectile('torpedo', weapon.def, ship);
+    torpedo.life *= lifeScale;
     torpedo.position.copy(origin);
     torpedo.previousPosition.copy(origin);
     torpedo.velocity.copy(direction).multiplyScalar(weapon.def.speed).add(ship.velocity);
@@ -159,13 +160,24 @@ function consumeBurstShot(weapon) {
 // Player weapons
 // ---------------------------------------------------------------------------------------
 
+/** Reach of the player's beams in metres: the weapon's range scaled by the ship's `weaponRange`. */
+export function playerBeamRange(ship, def) {
+    return def.range * (ship.cls.weaponRange ?? 1);
+}
+
+/** Reach of the player's torpedoes in metres: speed times fuel, stretched by the ship's `weaponRange`. */
+export function playerTorpedoRange(ship, def) {
+    return def.speed * def.lifetime * (ship.cls.weaponRange ?? 1);
+}
+
 /** Best beam target: the locked target if it is inside the firing arc, else whatever is nearest the crosshair. */
 function pickPlayerBeamTarget(world, ship, def, origin, forward) {
     const maxAngle = degToRad(def.arcDeg);
+    const range = playerBeamRange(ship, def);
     const inArc = (candidate) => {
         if (!isValidTarget(candidate) || !areHostile(ship, candidate)) return Infinity;
         aimPointOn(candidate, origin, forward, scratchAim);
-        if (distanceToSurface(candidate, origin) > def.range) return Infinity;
+        if (distanceToSurface(candidate, origin) > range) return Infinity;
         const angle = angleOffAxis(candidate, origin, forward, scratchAim);
         return angle <= maxAngle ? angle : Infinity;
     };
@@ -236,8 +248,9 @@ function updatePlayerBeam(world, ship, weapon, dt, triggerHeld) {
         });
     } else {
         // Nothing hostile in the ring: the beams fire dead ahead and carve up any asteroid in the way.
-        const rock = raycastObstacles(world, origin, scratchForward, def.range);
-        scratchImpact.copy(origin).addScaledVector(scratchForward, rock ? rock.distance : def.range);
+        const range = playerBeamRange(ship, def);
+        const rock = raycastObstacles(world, origin, scratchForward, range);
+        scratchImpact.copy(origin).addScaledVector(scratchForward, rock ? rock.distance : range);
         if (rock) damageObstacle(world, rock.obstacle, damage, scratchImpact, true);
     }
     for (const mount of def.mounts) {
@@ -272,7 +285,9 @@ function updatePlayerTorpedo(world, ship, weapon, dt, triggerPressed) {
             target = ship.target;
         }
     }
-    spawnTorpedo(world, ship, weapon, scratchOrigin, scratchForward, target, POWER_MODES[ship.powerMode].damage * (ship.cls.weaponDamage ?? 1));
+    // `weaponRange` stretches the torpedo's fuel, so the same warhead reaches further.
+    spawnTorpedo(world, ship, weapon, scratchOrigin, scratchForward, target,
+        POWER_MODES[ship.powerMode].damage * (ship.cls.weaponDamage ?? 1), ship.cls.weaponRange ?? 1);
     weapon.ammo -= 1;
     weapon.cooldown = def.cooldown;
 }

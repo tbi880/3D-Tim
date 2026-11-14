@@ -9,7 +9,7 @@
  * tuning values (src/game/config): it fails if the story dead-locks, a checkpoint cannot
  * be loaded, or the autopilot is destroyed too often to be plausible for a human.
  */
-import { playerBeamRange } from '../src/game/core/systems/weapons.js';
+import { playerBeamRange, playerTorpedoRange } from '../src/game/core/systems/weapons.js';
 import { WEAPONS } from '../src/game/config/weapons.js';
 import { Quaternion, Vector3 } from 'three';
 import { FACTION } from '../src/game/config/gameConfig.js';
@@ -120,9 +120,13 @@ function autopilot(session, focused = true) {
 
     let destination = dodge ?? target?.position ?? session.waypoint?.position ?? null;
     let keepDistance = 0;
-    // Gun batteries are torpedoed from outside their 2.6 km reach.
+    // Gun batteries are beamed down from outside their 2.6 km reach, where the ship's beams get
+    // that far; a short-ranged ship has to close in and trade fire with them.
     const sniping = target?.classId === 'eclipseCannon';
-    if (target) keepDistance = target.cls.kind === 'fighter' ? 60 : (mustHoldLock ? 2500 : (sniping ? 2750 : 320));
+    const beamRange = playerBeamRange(player, WEAPONS.playerBeam);
+    const torpedoRange = playerTorpedoRange(player, WEAPONS.playerTorpedo);
+    const snipeDistance = Math.min(2750, beamRange * 0.85);
+    if (target) keepDistance = target.cls.kind === 'fighter' ? 60 : (mustHoldLock ? 2500 : (sniping ? snipeDistance : 320));
     if (!destination) return { ...controls, throttle: -1 };
 
     scratchInverse.copy(player.quaternion).invert();
@@ -144,9 +148,10 @@ function autopilot(session, focused = true) {
     if (target && !tooClose && surfaceDistance < 1500) controls.throttle = Math.min(1, 160 / player.cls.maxSpeed);
 
     if (target && scratchLocal.z < -0.9 && direction === 1) {
-        controls.firePrimary = surfaceDistance < playerBeamRange(player, WEAPONS.playerBeam) * 0.73;
+        controls.firePrimary = surfaceDistance < beamRange * (sniping ? 0.97 : 0.73);
         const shieldsDown = target.shield <= 0 || target.maxShield === 0;
-        controls.fireSecondary = shieldsDown && target.cls.kind !== 'fighter' && surfaceDistance < (sniping ? 3800 : 1400) && scratchLocal.z < -0.97;
+        controls.fireSecondary = shieldsDown && target.cls.kind !== 'fighter'
+            && surfaceDistance < Math.min(1400, torpedoRange * 0.8) && scratchLocal.z < -0.97;
     }
     return controls;
 }

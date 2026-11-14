@@ -1,5 +1,6 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useAnimations, useGLTF } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
 import { clone as cloneWithSkeletons } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { bucketURL } from '../../../Settings';
 
@@ -26,8 +27,16 @@ import { bucketURL } from '../../../Settings';
  *
  * `materials` (see shipMaterials.js) replaces the file's materials with the game's shared
  * ones; it is what turns a generated ship's placeholder "hull" and "glow" into the real thing.
+ *
+ * Models with their own engine flames (the player ships) carry four looping clips, one per
+ * thrust level (tools/game-models/player-ships). `getThrust()` (0.15 idle .. 1 full throttle
+ * .. 1.6 afterburner) cross-fades between the two clips either side of the current thrust
+ * every frame; without it the flames idle at cruise.
  */
-export default function GltfModel({ url, animation = null, animationSpeed = 1, brightness = 1, distant = false, materials = null, ...groupProps }) {
+const EXHAUST_LEVELS = [['Exhaust_Idle', 0.15], ['Exhaust_Cruise', 0.575], ['Exhaust_Full', 1], ['Exhaust_Boost', 1.6]];
+const EXHAUST_CRUISE = 0.575;
+
+export default function GltfModel({ url, animation = null, animationSpeed = 1, brightness = 1, distant = false, materials = null, getThrust = null, ...groupProps }) {
     const gltf = useGLTF(bucketURL + url, true, true);
     const object = useMemo(() => {
         const clone = cloneWithSkeletons(gltf.scene);
@@ -38,6 +47,10 @@ export default function GltfModel({ url, animation = null, animationSpeed = 1, b
         }
         if (brightness !== 1) dimMaterials(clone, brightness);
         if (distant) dropTransmission(clone);
+        // The exhaust is one skinned mesh whose bounds change with the flames' length.
+        clone.traverse((node) => {
+            if (node.isSkinnedMesh) node.frustumCulled = false;
+        });
         return clone;
     }, [gltf.scene, brightness, distant, materials]);
     const root = useMemo(() => ({ current: object }), [object]);
@@ -49,6 +62,35 @@ export default function GltfModel({ url, animation = null, animationSpeed = 1, b
         action.setEffectiveTimeScale(animationSpeed).play();
         return () => action.stop();
     }, [actions, animation, animationSpeed]);
+
+    // Engine flames: all four thrust levels play in step; their weights pick the level.
+    const exhaust = useMemo(() => {
+        const levels = EXHAUST_LEVELS.map(([name, thrust]) => ({ action: actions[name], thrust }));
+        return levels.every((level) => level.action) ? levels : null;
+    }, [actions]);
+    const thrustSource = useRef(getThrust);
+    useEffect(() => {
+        thrustSource.current = getThrust;
+    }, [getThrust]);
+
+    useEffect(() => {
+        if (!exhaust) return undefined;
+        for (const { action } of exhaust) action.reset().setEffectiveWeight(0).play();
+        return () => exhaust.forEach(({ action }) => action.stop());
+    }, [exhaust]);
+
+    useFrame(() => {
+        if (!exhaust) return;
+        const thrust = thrustSource.current ? thrustSource.current() : EXHAUST_CRUISE;
+        const t = Math.min(EXHAUST_LEVELS[3][1], Math.max(EXHAUST_LEVELS[0][1], Number.isFinite(thrust) ? thrust : EXHAUST_CRUISE));
+        let upper = 1;
+        while (upper < exhaust.length - 1 && t > exhaust[upper].thrust) upper++;
+        const lower = upper - 1;
+        const blend = (t - exhaust[lower].thrust) / (exhaust[upper].thrust - exhaust[lower].thrust);
+        exhaust.forEach(({ action }, index) => {
+            action.setEffectiveWeight(index === lower ? 1 - blend : index === upper ? blend : 0);
+        });
+    });
 
     return <primitive object={object} {...groupProps} />;
 }

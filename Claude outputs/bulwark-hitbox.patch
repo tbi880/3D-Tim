@@ -1,0 +1,244 @@
+diff --git a/scripts/simulate-campaign.mjs b/scripts/simulate-campaign.mjs
+--- a/scripts/simulate-campaign.mjs	2026-11-14 03:44:08.835812483 +1300
++++ b/scripts/simulate-campaign.mjs	2026-11-14 03:44:08.842798750 +1300
+@@ -13,6 +13,7 @@
+ import { WEAPONS } from '../src/game/config/weapons.js';
+ import { Quaternion, Vector3 } from 'three';
+ import { FACTION } from '../src/game/config/gameConfig.js';
++import { SHIP_CLASSES } from '../src/game/config/shipClasses.js';
+ import { GameSession, PHASE } from '../src/game/state/GameSession.js';
+ import { loadSave, writeSave } from '../src/game/state/saveGame.js';
+ 
+@@ -27,10 +28,12 @@
+ const QUIET = process.argv.includes('--quiet');
+ /** `--difficulty=cadet|captain|admiral` flies the campaign at another setting (default captain). */
+ const DIFFICULTY_ID = process.argv.find((arg) => arg.startsWith('--difficulty='))?.split('=')[1] ?? 'captain';
+-/** `--ship=kestrel|swift|shrike|bulwark` picks the player's ship (default kestrel). */
++/** `--ship=kestrel|swift|shrike|bulwark|peregrine` picks the player's ship (default kestrel). */
+ const SHIP_ID = process.argv.find((arg) => arg.startsWith('--ship='))?.split('=')[1] ?? 'kestrel';
+ const STEP = 1 / 30;
+-const MAX_STORY_SECONDS = 45 * 60;
++// A slow hull simply takes longer to cross the same battlefields, so it gets more time
++// (the Bulwark, at a third of the Kestrel's speed, gets 75 minutes).
++const MAX_STORY_SECONDS = (SHIP_CLASSES[SHIP_ID]?.maxSpeed < 60 ? 75 : 45) * 60;
+ const MAX_RETRIES = 12;
+ const log = (...args) => { if (!QUIET) console.log(...args); };
+ 
+@@ -38,6 +41,9 @@
+ const scratchInverse = new Quaternion();
+ const scratchForwardPick = new Vector3();
+ const scratchOffsetPick = new Vector3();
++const scratchLanceOrigin = new Vector3();
++const scratchAway = new Vector3();
++const scratchDodge = new Vector3();
+ const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+ 
+ /**
+@@ -73,6 +79,29 @@
+     return hostiles[0];
+ }
+ 
++/**
++ * If a charging or firing lance is lined up on the player (within its corridor plus a safety
++ * margin), a point to fly to that leads straight out of the corridor; otherwise null.
++ */
++function lanceDodgePoint(world, player) {
++    for (const ship of world.ships) {
++        if (!ship.alive) continue;
++        for (const weapon of ship.weapons) {
++            if (weapon.def.type !== 'lance' || (weapon.lancePhase !== 'charging' && weapon.lancePhase !== 'firing')) continue;
++            scratchLanceOrigin.fromArray(weapon.def.mount ?? [0, 0, 0]).applyQuaternion(ship.quaternion).add(ship.position);
++            scratchAway.copy(player.position).sub(scratchLanceOrigin);
++            const along = scratchAway.dot(weapon.lanceDirection);
++            if (along < 0 || along > weapon.def.range) continue;
++            scratchAway.addScaledVector(weapon.lanceDirection, -along);
++            const offAxis = scratchAway.length();
++            if (offAxis > weapon.def.corridorRadius + player.boundingRadius + 250) continue;
++            if (offAxis < 1) scratchAway.set(0, 1, 0).cross(weapon.lanceDirection);
++            return scratchDodge.copy(player.position).addScaledVector(scratchAway.normalize(), 1500);
++        }
++    }
++    return null;
++}
++
+ /** A simple but honest pilot: it uses the same controls a human has. */
+ function autopilot(session, focused = true) {
+     const { world } = session;
+@@ -84,7 +113,11 @@
+     let target = mustHoldLock ? world.findByTag('eclipse') : pickTarget(world, focused);
+     if (target && player.target !== target) world.setPlayerTarget(target);
+ 
+-    let destination = target?.position ?? session.waypoint?.position ?? null;
++    // Like a human, get out from under the Eclipse's lance once it starts charging.
++    const dodge = mustHoldLock ? null : lanceDodgePoint(world, player);
++    if (dodge) target = null;
++
++    let destination = dodge ?? target?.position ?? session.waypoint?.position ?? null;
+     let keepDistance = 0;
+     // Gun batteries are torpedoed from outside their 2.6 km reach.
+     const sniping = target?.classId === 'eclipseCannon';
+diff --git a/src/game/config/shipClasses.js b/src/game/config/shipClasses.js
+--- a/src/game/config/shipClasses.js	2026-11-14 03:44:08.291812464 +1300
++++ b/src/game/config/shipClasses.js	2026-11-14 03:44:08.295142132 +1300
+@@ -23,6 +23,9 @@
+  * [[cx, cy, cz, hx, hy, hz], ...] is several, for hulls a single box would wrap too
+  * loosely (the Eclipse's blades, the Forge's dock). Boxes hug the solid hull and leave out
+  * antennae and fins, so near misses do not count and modules mounted on the hull stay reachable.
++ * A player ship with boxes also rams and is rammed by them (systems/collisions.js); its
++ * `radius` then only places the camera and the gun muzzles. `shieldExtents` [x, y, z]
++ * optionally sets the half-size of the shield shell, if the default (boxes x 1.45) fits badly.
+  *
+  * ai.prefers lists target kinds in order of preference
+  * ('player', 'bomber', 'fighter', 'capital').
+@@ -78,6 +81,11 @@
+         // heavy burns are the only way it covers ground. At 39 m it is the biggest target in the sky.
+         nameKey: 'ship.bulwark', faction: FACTION.DAWN, behavior: 'player', kind: 'fighter',
+         model: 'bulwark', radius: 19,
++        // Measured from vigilant-transformed.glb as ShipModel places it: a 39 m hull that narrows
++        // from 8.5 m across the stern to under 3 m at the bow. Nose towards -z.
++        hitBoxes: [[0, -0.6, -13.5, 2.15, 1.9, 6], [0, -0.1, -1.5, 2.8, 2.75, 6], [0, 0.05, 12, 4.3, 3, 7.5]],
++        // The smallest ellipsoid that clears every vertex by about 2 m.
++        shieldExtents: [7.3, 5.8, 24.6],
+         hull: 330, shield: 310, shieldRegen: 24, shieldDelay: 3,
+         maxSpeed: 33, turnRate: 1.2, acceleration: 110,
+         handling: { turn: 0.15, acceleration: 0.17, boostDuration: 1.6, boostMultiplier: 1.25 },
+diff --git a/src/game/core/Ship.js b/src/game/core/Ship.js
+--- a/src/game/core/Ship.js	2026-11-14 03:44:27.617379079 +1300
++++ b/src/game/core/Ship.js	2026-11-14 03:44:27.605315525 +1300
+@@ -25,6 +25,21 @@
+     return half;
+ }
+ 
++/** One sphere for small craft; for box hulls a row of spheres down each box's long axis. */
++function createCollisionSpheres(boxes, radius) {
++    if (!boxes) return [{ centre: new Vector3(), radius }];
++    const spheres = [];
++    for (const { centre, half } of boxes) {
++        const sphereRadius = Math.max(half.x, half.y);
++        const count = Math.max(1, Math.ceil(half.z / sphereRadius));
++        for (let i = 0; i < count; i++) {
++            const along = count === 1 ? 0 : -half.z + sphereRadius + (i * (2 * half.z - 2 * sphereRadius)) / (count - 1);
++            spheres.push({ centre: new Vector3(centre.x, centre.y, centre.z + along), radius: sphereRadius });
++        }
++    }
++    return spheres;
++}
++
+ function clampToBox(point, box, out) {
+     for (const axis of AXES) {
+         out[axis] = clamp(point[axis], box.centre[axis] - box.half[axis], box.centre[axis] + box.half[axis]);
+@@ -96,6 +111,8 @@
+         this.halfExtents = this.boxes ? overallHalfExtents(this.boxes) : null;
+         /** Radius of the sphere that encloses the whole hit shape (markers, effects, spacing). */
+         this.boundingRadius = this.halfExtents ? this.halfExtents.length() : cls.radius;
++        /** Spheres (local centre + radius) that stand in for the hull when the player rams things. */
++        this.collisionSpheres = createCollisionSpheres(this.boxes, cls.radius);
+ 
+         this.maxHull = cls.hull;
+         this.hull = cls.hull * clamp(options.hullFraction ?? 1, 0.01, 1);
+diff --git a/src/game/core/systems/collisions.js b/src/game/core/systems/collisions.js
+--- a/src/game/core/systems/collisions.js	2026-11-14 03:44:27.617422255 +1300
++++ b/src/game/core/systems/collisions.js	2026-11-14 03:44:27.606643111 +1300
+@@ -6,6 +6,7 @@
+ 
+ const scratchCentre = new Vector3();
+ const scratchNormal = new Vector3();
++const scratchOwn = new Vector3();
+ 
+ const COLLISION_DAMAGE_COOLDOWN = 0.6;
+ /** Damage from ramming an asteroid at cruise speed: a base amount plus some per metre of rock, capped. */
+@@ -16,28 +17,41 @@
+ const COLLISION_DAMAGE_PER_SPEED = 0.11;
+ const SOLID_KINDS = new Set(['capital', 'station', 'module', 'object']);
+ 
+-/** Pushes the player out of a solid sphere centred on `centre` and scrapes some hull off. */
+-function bounce(world, player, centre, solidRadius) {
+-    scratchNormal.copy(player.position).sub(centre);
++/** World position of one of the player's collision spheres (see Ship.collisionSpheres). */
++function sphereCentre(player, sphere, out) {
++    return out.copy(sphere.centre).applyQuaternion(player.quaternion).add(player.position);
++}
++
++/**
++ * Pushes the player out of a solid sphere centred on `centre` and scrapes some hull off.
++ * `own` is the player's collision sphere doing the touching, already in world space.
++ */
++function bounce(world, player, own, ownRadius, centre, solidRadius) {
++    scratchNormal.copy(own).sub(centre);
+     const distance = scratchNormal.length();
+-    const overlap = solidRadius + player.radius - distance;
+-    if (overlap <= 0) return;
++    const overlap = solidRadius + ownRadius - distance;
++    if (overlap <= 0) return false;
+     if (distance < 1e-3) scratchNormal.set(0, 1, 0);
+     else scratchNormal.multiplyScalar(1 / distance);
+ 
+     player.position.addScaledVector(scratchNormal, overlap);
+     const closingSpeed = -player.velocity.dot(scratchNormal);
+-    if (closingSpeed <= 0) return;
++    if (closingSpeed <= 0) return true;
+ 
+     player.velocity.addScaledVector(scratchNormal, closingSpeed * 1.4);
+     player.speed *= 0.5;
+-    if (world.time < player.collisionReadyAt) return;
++    if (world.time < player.collisionReadyAt) return true;
+     player.collisionReadyAt = world.time + COLLISION_DAMAGE_COOLDOWN;
+-    applyDamage(world, player, clamp(closingSpeed * COLLISION_DAMAGE_PER_SPEED, 3, 18), { point: player.position });
++    applyDamage(world, player, clamp(closingSpeed * COLLISION_DAMAGE_PER_SPEED, 3, 18), { point: own });
+     world.events.emit(GAME_EVENTS.PLAYER_COLLISION, { speed: closingSpeed });
++    return true;
+ }
+ 
+-/** Only the player collides with hulls and rocks; AI pilots steer around them instead. */
++/**
++ * Only the player collides with hulls and rocks; AI pilots steer around them instead.
++ * The player's hull is its collision spheres: one for small craft, a row along the
++ * hit boxes for long ones (the Bulwark), so the hull bumps where the model does.
++ */
+ export function resolvePlayerCollisions(world) {
+     const player = world.player;
+     if (!player?.alive) return;
+@@ -45,16 +59,25 @@
+ 
+     for (const ship of world.ships) {
+         if (ship === player || !ship.alive || ship.arriving || !SOLID_KINDS.has(ship.cls.kind)) continue;
+-        if (ship.distanceToPoint(player.position) > player.radius) continue;
+-        ship.closestPoint(player.position, scratchCentre);
+-        // Deep inside a hull the closest point is the player's own position: push out from the centre line instead.
+-        if (scratchCentre.distanceToSquared(player.position) < 1e-6) scratchCentre.copy(ship.position);
+-        bounce(world, player, scratchCentre, 0);
++        if (ship.distanceToPoint(player.position) > player.boundingRadius) continue;
++        for (const sphere of player.collisionSpheres) {
++            sphereCentre(player, sphere, scratchOwn);
++            if (ship.distanceToPoint(scratchOwn) > sphere.radius) continue;
++            ship.closestPoint(scratchOwn, scratchCentre);
++            // Deep inside a hull the closest point is the sphere's own centre: push out from the ship's centre instead.
++            if (scratchCentre.distanceToSquared(scratchOwn) < 1e-6) scratchCentre.copy(ship.position);
++            if (bounce(world, player, scratchOwn, sphere.radius, scratchCentre, 0)) break;
++        }
+     }
+     for (const obstacle of world.obstacles) {
+         if (!obstacle.alive) continue;
+-        const reach = obstacle.radius + player.radius;
+-        if (obstacle.position.distanceToSquared(player.position) > reach * reach) continue;
++        const outer = obstacle.radius + player.boundingRadius;
++        if (obstacle.position.distanceToSquared(player.position) > outer * outer) continue;
++        const touching = player.collisionSpheres.some((sphere) => {
++            const reach = obstacle.radius + sphere.radius;
++            return sphereCentre(player, sphere, scratchOwn).distanceToSquared(obstacle.position) <= reach * reach;
++        });
++        if (!touching) continue;
+         // The rock shatters on impact and the ship pays for it: more for a bigger rock, more at speed.
+         const speedFactor = 0.45 + 0.55 * Math.min(1.5, player.velocity.length() / Math.max(1, player.cls.maxSpeed));
+         damageObstacle(world, obstacle, Infinity, obstacle.position);
+diff --git a/src/game/scene/ShipsLayer.jsx b/src/game/scene/ShipsLayer.jsx
+--- a/src/game/scene/ShipsLayer.jsx	2026-11-14 03:44:08.627812476 +1300
++++ b/src/game/scene/ShipsLayer.jsx	2026-11-14 03:44:08.633061871 +1300
+@@ -37,6 +37,7 @@
+ 
+ /** Half-size of a ship's shield shell along its own x, y, z. */
+ function shieldExtent(ship) {
++    if (ship.cls.shieldExtents) return [...ship.cls.shieldExtents];
+     if (ship.halfExtents) return ship.halfExtents.clone().multiplyScalar(SHIELD_STANDOFF).toArray();
+     const size = ship.radius * 1.3;
+     return [size, size, size];

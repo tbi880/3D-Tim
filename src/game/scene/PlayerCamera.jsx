@@ -57,6 +57,12 @@ export default function PlayerCamera({ session }) {
                 addTrauma(Math.max(0, 1 - distance / (size * 10)) * 0.6);
             }),
             world.events.on(GAME_EVENTS.LANCE_FIRING, () => addTrauma(0.35)),
+            // A big ship dropping out of warp close by shoves space aside.
+            world.events.on(GAME_EVENTS.WARP_FLASH, ({ ship, position, size }) => {
+                if (!ship || !world.player || ship.cls.kind === 'fighter') return;
+                const distance = world.player.position.distanceTo(position);
+                addTrauma(Math.max(0, 1 - distance / (size * 10 + 1200)) * Math.min(0.75, size / 900));
+            }),
             session.events.on(SESSION_EVENTS.CUE, ({ id }) => { if (id === 'dawnCannon') addTrauma(1); }),
             session.events.on(SESSION_EVENTS.WARP, ({ stage }) => { if (stage === 'arrive') addTrauma(0.8); }),
         ];
@@ -82,7 +88,9 @@ export default function PlayerCamera({ session }) {
             else rig.orientation.slerp(player.quaternion, 1 - Math.exp(-CHASE_ROTATION_FOLLOW * dt));
             rig.ready = true;
             const pullBack = 1 + Math.min(1.2, player.speed / player.cls.maxSpeed) * 0.22;
-            scratchOffset.copy(CHASE_OFFSET).multiplyScalar(pullBack).applyQuaternion(rig.orientation);
+            // Big hulls (the Bulwark) get a camera a little further back, clear of their exhaust.
+            const hullScale = Math.max(1, player.cls.radius / 15);
+            scratchOffset.copy(CHASE_OFFSET).multiplyScalar(pullBack * hullScale).applyQuaternion(rig.orientation);
             camera.position.copy(player.position).add(scratchOffset);
             scratchTarget.set(0, 0, -CHASE_LOOK_AHEAD).applyQuaternion(rig.orientation).add(player.position);
             scratchUp.set(0, 1, 0).applyQuaternion(rig.orientation);

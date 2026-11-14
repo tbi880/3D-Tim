@@ -209,6 +209,20 @@
 .eod-toast strong { color: var(--eod-green); font-size: 11px; }
 .eod-toast span { font-size: 10px; color: rgba(210, 235, 255, 0.75); }
 
+/* Kill points: one line per kill under the reticle, held 3 s then faded (GameHud ScoreFeed). */
+.eod-score-feed { position: absolute; left: 50%; top: calc(50% + 46px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; pointer-events: none; }
+.eod-score-total { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(215, 238, 255, 0.7); animation: eod-score-pop 3.8s ease-out forwards; }
+.eod-score-pop { display: flex; align-items: baseline; gap: 7px; animation: eod-score-pop 3.8s ease-out forwards; text-shadow: 0 0 10px rgba(255, 190, 80, 0.55); }
+.eod-score-pop strong { font-size: 20px; font-weight: 800; color: var(--eod-amber); }
+.eod-score-pop span { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(235, 245, 255, 0.85); }
+@keyframes eod-score-pop {
+    0% { opacity: 0; transform: translateY(8px) scale(0.9); }
+    5% { opacity: 1; transform: translateY(0) scale(1.08); }
+    10% { transform: scale(1); }
+    79% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-14px); }
+}
+
 .eod-damage-flash { position: absolute; inset: 0; animation: eod-flash 0.32s ease-out forwards; }
 .eod-damage-flash--shield { box-shadow: inset 0 0 120px 30px rgba(89, 208, 255, 0.5); }
 .eod-damage-flash--hull { box-shadow: inset 0 0 140px 40px rgba(255, 50, 60, 0.6); }
@@ -243,9 +257,9 @@
 .eod-screen-footnote { margin: 0; font-size: 11px; color: rgba(225, 240, 255, 0.5); letter-spacing: 0.2em; }
 
 /* Hangar: ship selection before a new game. */
-.eod-hangar { display: flex; flex-direction: column; align-items: center; gap: 14px; width: min(1080px, 94vw); }
+.eod-hangar { display: flex; flex-direction: column; align-items: center; gap: 14px; width: min(1280px, 96vw); }
 .eod-hangar-title { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: var(--eod-cyan); }
-.eod-hangar-ships { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; width: 100%; }
+.eod-hangar-ships { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; width: 100%; }
 .eod-ship-card {
     display: flex; flex-direction: column; gap: 6px; padding: 14px 14px 12px; text-align: left; font: inherit; color: inherit; cursor: pointer;
     background: rgba(6, 18, 32, 0.72); border: 1px solid rgba(120, 200, 255, 0.28); transition: border-color 0.15s, background 0.15s, transform 0.15s;
@@ -256,9 +270,11 @@
 .eod-ship-card--selected strong { color: var(--eod-amber); }
 .eod-ship-card em { font-style: normal; font-size: 11px; letter-spacing: 0.08em; color: var(--eod-cyan); }
 .eod-ship-card p { margin: 2px 0 6px; min-height: 5.6em; font-size: 12px; line-height: 1.45; color: rgba(225, 240, 255, 0.78); }
-.eod-rating { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(225, 240, 255, 0.7); }
-.eod-rating-pips { display: flex; gap: 3px; }
-.eod-rating-pip { width: 16px; height: 5px; background: rgba(120, 200, 255, 0.16); }
+.eod-rating { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(225, 240, 255, 0.7); }
+/* Ten pips (RATING_MAX) in the same share of every card, so the rows line up. */
+.eod-rating-pips { display: flex; flex: none; width: min(110px, 48%); gap: 2px; }
+.eod-rating span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eod-rating-pip { flex: 1 1 0; min-width: 3px; height: 5px; background: rgba(120, 200, 255, 0.16); }
 .eod-rating-pip--on { background: var(--eod-cyan); }
 .eod-ship-card--selected .eod-rating-pip--on { background: var(--eod-amber); }
 .eod-hangar-actions { display: flex; gap: 10px; width: min(420px, 90vw); }
@@ -304,9 +320,32 @@
 .eod-controls-row dt { color: var(--eod-amber); font-weight: 600; }
 .eod-controls-row dd { margin: 0; color: rgba(225, 240, 255, 0.85); letter-spacing: 0.02em; }
 
-.eod-stats { display: flex; gap: 34px; margin: 0; }
-.eod-stats dt { font-size: 10px; color: rgba(215, 238, 255, 0.6); text-transform: uppercase; }
-.eod-stats dd { margin: 4px 0 0; font-size: 26px; font-weight: 700; color: var(--eod-amber); }
+
+/* Ending scoreboard (Menus.jsx Scoreboard). */
+.eod-scoreboard { display: flex; align-items: stretch; gap: 22px; width: min(720px, 92vw); padding: 16px 20px; text-align: left; background: rgba(6, 18, 32, 0.72); border: 1px solid var(--eod-border); }
+.eod-scoreboard-rows { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.eod-scoreboard-row { display: grid; grid-template-columns: 1.1fr 1.2fr auto; align-items: baseline; gap: 12px; padding-bottom: 5px; border-bottom: 1px solid rgba(120, 200, 255, 0.12); animation: eod-rise 0.4s ease-out both; }
+.eod-scoreboard-row:nth-child(2) { animation-delay: 0.12s; }
+.eod-scoreboard-row:nth-child(3) { animation-delay: 0.24s; }
+.eod-scoreboard-row:nth-child(4) { animation-delay: 0.36s; }
+.eod-scoreboard-row:nth-child(5) { animation-delay: 0.48s; }
+.eod-scoreboard-label { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(215, 238, 255, 0.75); }
+.eod-scoreboard-detail { font-size: 12px; color: rgba(215, 238, 255, 0.55); }
+.eod-scoreboard-value { font-size: 17px; font-weight: 700; color: #e9f6ff; text-align: right; font-variant-numeric: tabular-nums; }
+.eod-scoreboard-value--negative { color: var(--eod-red); }
+.eod-scoreboard-total { display: flex; align-items: center; gap: 16px; padding-left: 20px; border-left: 1px solid var(--eod-border); animation: eod-rise 0.5s 0.7s ease-out both; }
+.eod-scoreboard-total div { display: flex; flex-direction: column; gap: 4px; }
+.eod-scoreboard-total strong { font-size: clamp(30px, 4vw, 46px); font-weight: 900; color: var(--eod-amber); font-variant-numeric: tabular-nums; text-shadow: 0 0 22px rgba(255, 182, 72, 0.45); }
+.eod-scoreboard-total small { font-size: 11px; color: rgba(215, 238, 255, 0.6); letter-spacing: 0.05em; }
+.eod-rank { display: grid; place-items: center; width: 64px; height: 64px; font-size: 40px; font-weight: 900; border: 2px solid currentColor; color: var(--eod-cyan); }
+.eod-rank--S { color: var(--eod-amber); text-shadow: 0 0 18px rgba(255, 182, 72, 0.7); }
+.eod-rank--A { color: var(--eod-green); }
+@media (max-width: 760px) {
+    .eod-scoreboard { flex-direction: column; gap: 12px; padding: 12px 14px; }
+    .eod-scoreboard-total { padding-left: 0; padding-top: 12px; border-left: none; border-top: 1px solid var(--eod-border); }
+    .eod-scoreboard-row { grid-template-columns: 1fr auto; }
+    .eod-scoreboard-detail { display: none; }
+}
 
 /* ---- Touch controls (shown only on touch devices) ---------------------------------------- */
 

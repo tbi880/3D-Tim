@@ -27,6 +27,8 @@ export const useGameStore = create(() => ({
     // Menus
     gameOverReason: null,
     stats: null,
+    /** The ending screen's score breakdown (config/scoring.js computeFinalScore + record info). */
+    finalScore: null,
     hasSave: false,
     saveCheckpointId: null,
 

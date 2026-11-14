@@ -1,0 +1,593 @@
+{
+ "archont": {
+  "rest": "/home/claude/work/rest/archont.glb",
+  "dir": [
+   -1,
+   0,
+   0
+  ],
+  "A": "y",
+  "B": "z",
+  "ship_len": 20.5,
+  "len_frac": 0.36,
+  "hot": [
+   0.86,
+   1.0,
+   0.93
+  ],
+  "engine": [
+   0.3,
+   1.0,
+   0.58
+  ],
+  "strength": 4.0,
+  "nozzles": [
+   {
+    "name": "TriL",
+    "shape": "poly",
+    "pts": [
+     [
+      1.732,
+      1.181
+     ],
+     [
+      2.68,
+      0.876
+     ],
+     [
+      1.998,
+      0.222
+     ]
+    ],
+    "fit": 0.78,
+    "fac": 1.0
+   },
+   {
+    "name": "TriR",
+    "shape": "poly",
+    "pts": [
+     [
+      -1.719,
+      1.186
+     ],
+     [
+      -1.998,
+      0.228
+     ],
+     [
+      -2.673,
+      0.876
+     ]
+    ],
+    "fit": 0.78,
+    "fac": 1.0
+   },
+   {
+    "name": "VentL1",
+    "shape": "rrect",
+    "c": [
+     1.3,
+     1.255
+    ],
+    "w": 0.26,
+    "h": 0.41,
+    "r": 0.06,
+    "fit": 0.85,
+    "fac": 0.6
+   },
+   {
+    "name": "VentR1",
+    "shape": "rrect",
+    "c": [
+     -1.29,
+     1.255
+    ],
+    "w": 0.26,
+    "h": 0.41,
+    "r": 0.06,
+    "fit": 0.85,
+    "fac": 0.6
+   },
+   {
+    "name": "VentL2",
+    "shape": "rrect",
+    "c": [
+     1.375,
+     0.685
+    ],
+    "w": 0.41,
+    "h": 0.25,
+    "r": 0.06,
+    "fit": 0.85,
+    "fac": 0.6
+   },
+   {
+    "name": "VentR2",
+    "shape": "rrect",
+    "c": [
+     -1.37,
+     0.685
+    ],
+    "w": 0.41,
+    "h": 0.25,
+    "r": 0.06,
+    "fit": 0.85,
+    "fac": 0.6
+   },
+   {
+    "name": "VentL3",
+    "shape": "rrect",
+    "c": [
+     1.505,
+     0.22
+    ],
+    "w": 0.41,
+    "h": 0.3,
+    "r": 0.06,
+    "fit": 0.85,
+    "fac": 0.6
+   },
+   {
+    "name": "VentR3",
+    "shape": "rrect",
+    "c": [
+     -1.495,
+     0.215
+    ],
+    "w": 0.41,
+    "h": 0.3,
+    "r": 0.06,
+    "fit": 0.85,
+    "fac": 0.6
+   }
+  ]
+ },
+ "spaceship": {
+  "rest": "/home/claude/work/rest/spaceship.glb",
+  "dir": [
+   0,
+   1,
+   0
+  ],
+  "A": "x",
+  "B": "z",
+  "ship_len": 6.2,
+  "len_frac": 0.32,
+  "hot": [
+   1.0,
+   0.66,
+   0.42
+  ],
+  "engine": [
+   1.0,
+   0.16,
+   0.04
+  ],
+  "strength": 4.0,
+  "nozzles": [
+   {
+    "name": "InnerL",
+    "shape": "mesh_hull",
+    "object": "spaceship_back light 1_0",
+    "side": 1,
+    "face": "max",
+    "slab": 0.6,
+    "fit": 0.8,
+    "fac": 1.0
+   },
+   {
+    "name": "InnerR",
+    "shape": "mesh_hull",
+    "object": "spaceship_back light 1_0",
+    "side": -1,
+    "face": "max",
+    "slab": 0.6,
+    "fit": 0.8,
+    "fac": 1.0
+   },
+   {
+    "name": "OuterL",
+    "shape": "mesh_hull",
+    "object": "spaceship_back light 2_0",
+    "side": 1,
+    "face": "max",
+    "slab": 0.6,
+    "fit": 0.8,
+    "fac": 0.85
+   },
+   {
+    "name": "OuterR",
+    "shape": "mesh_hull",
+    "object": "spaceship_back light 2_0",
+    "side": -1,
+    "face": "max",
+    "slab": 0.6,
+    "fit": 0.8,
+    "fac": 0.85
+   }
+  ]
+ },
+ "alien": {
+  "rest": "/home/claude/work/rest/alien.glb",
+  "dir": [
+   0,
+   1,
+   0
+  ],
+  "A": "x",
+  "B": "z",
+  "ship_len": 2.7,
+  "len_frac": 0.4,
+  "hot": [
+   1.0,
+   0.82,
+   0.9
+  ],
+  "engine": [
+   1.0,
+   0.1,
+   0.32
+  ],
+  "strength": 4.0,
+  "nozzles": [
+   {
+    "name": "Main",
+    "shape": "ellipse",
+    "c": [
+     -0.0145,
+     0.683
+    ],
+    "rx": 0.135,
+    "ry": 0.135,
+    "fit": 1.0,
+    "fac": 1.0
+   },
+   {
+    "name": "SideL",
+    "shape": "ellipse",
+    "c": [
+     0.222,
+     0.669
+    ],
+    "rx": 0.04,
+    "ry": 0.09,
+    "fit": 1.0,
+    "fac": 0.55
+   },
+   {
+    "name": "SideR",
+    "shape": "ellipse",
+    "c": [
+     -0.258,
+     0.668
+    ],
+    "rx": 0.04,
+    "ry": 0.09,
+    "fit": 1.0,
+    "fac": 0.55
+   },
+   {
+    "name": "PodL",
+    "shape": "ellipse",
+    "c": [
+     0.749,
+     1.03
+    ],
+    "rx": 0.055,
+    "ry": 0.03,
+    "fit": 1.0,
+    "fac": 0.45
+   },
+   {
+    "name": "PodR",
+    "shape": "ellipse",
+    "c": [
+     -0.75,
+     1.022
+    ],
+    "rx": 0.055,
+    "ry": 0.03,
+    "fit": 1.0,
+    "fac": 0.45
+   }
+  ]
+ },
+ "xwing": {
+  "rest": "/home/claude/work/rest/xwing.glb",
+  "dir": [
+   0,
+   -1,
+   0
+  ],
+  "A": "x",
+  "B": "z",
+  "ship_len": 3.0,
+  "len_frac": 0.38,
+  "hot": [
+   1.0,
+   0.86,
+   0.82
+  ],
+  "engine": [
+   1.0,
+   0.24,
+   0.2
+  ],
+  "strength": 4.0,
+  "carrier": "Plane",
+  "remove_materials": [
+   "BakedCycles"
+  ],
+  "nozzles": [
+   {
+    "name": "TopL",
+    "shape": "ellipse",
+    "c": [
+     0.411,
+     0.482
+    ],
+    "rx": 0.09,
+    "ry": 0.09,
+    "depth": -1.6,
+    "fit": 1.0,
+    "fac": 1.0
+   },
+   {
+    "name": "TopR",
+    "shape": "ellipse",
+    "c": [
+     -0.407,
+     0.483
+    ],
+    "rx": 0.09,
+    "ry": 0.09,
+    "depth": -1.6,
+    "fit": 1.0,
+    "fac": 1.0
+   },
+   {
+    "name": "BotL",
+    "shape": "ellipse",
+    "c": [
+     0.411,
+     0.167
+    ],
+    "rx": 0.09,
+    "ry": 0.09,
+    "depth": -1.6,
+    "fit": 1.0,
+    "fac": 1.0
+   },
+   {
+    "name": "BotR",
+    "shape": "ellipse",
+    "c": [
+     -0.408,
+     0.169
+    ],
+    "rx": 0.09,
+    "ry": 0.09,
+    "depth": -1.6,
+    "fit": 1.0,
+    "fac": 1.0
+   }
+  ]
+ },
+ "vigilant": {
+  "rest": "/home/claude/work/rest/vigilant.glb",
+  "dir": [
+   0,
+   1,
+   0
+  ],
+  "A": "x",
+  "B": "z",
+  "ship_len": 23.7,
+  "len_frac": 0.3,
+  "hot": [
+   1.0,
+   0.92,
+   0.78
+  ],
+  "engine": [
+   1.0,
+   0.42,
+   0.18
+  ],
+  "strength": 4.0,
+  "carrier": "AUTO",
+  "remove_materials": [
+   "tail_mtl"
+  ],
+  "nozzles": [
+   {
+    "name": "SideL",
+    "shape": "poly",
+    "pts": [
+     [
+      0.573,
+      -0.207
+     ],
+     [
+      1.06,
+      -0.123
+     ],
+     [
+      1.097,
+      -0.08
+     ],
+     [
+      1.077,
+      0.233
+     ],
+     [
+      0.567,
+      0.327
+     ]
+    ],
+    "fit": 0.9,
+    "fac": 1.0
+   },
+   {
+    "name": "SideR",
+    "shape": "poly",
+    "pts": [
+     [
+      -1.093,
+      0.18
+     ],
+     [
+      -1.093,
+      -0.093
+     ],
+     [
+      -1.053,
+      -0.16
+     ],
+     [
+      -0.563,
+      -0.227
+     ],
+     [
+      -0.573,
+      0.307
+     ],
+     [
+      -1.047,
+      0.223
+     ]
+    ],
+    "fit": 0.9,
+    "fac": 1.0
+   },
+   {
+    "name": "Top",
+    "shape": "poly",
+    "pts": [
+     [
+      -0.397,
+      0.927
+     ],
+     [
+      -0.39,
+      0.603
+     ],
+     [
+      0.213,
+      0.547
+     ],
+     [
+      0.373,
+      0.617
+     ],
+     [
+      0.35,
+      0.957
+     ],
+     [
+      0.187,
+      0.987
+     ],
+     [
+      -0.223,
+      0.977
+     ]
+    ],
+    "fit": 0.88,
+    "fac": 0.75
+   },
+   {
+    "name": "Bottom",
+    "shape": "poly",
+    "pts": [
+     [
+      -0.367,
+      -0.843
+     ],
+     [
+      -0.187,
+      -0.89
+     ],
+     [
+      0.22,
+      -0.883
+     ],
+     [
+      0.383,
+      -0.847
+     ],
+     [
+      0.393,
+      -0.51
+     ],
+     [
+      0.233,
+      -0.403
+     ],
+     [
+      -0.213,
+      -0.41
+     ],
+     [
+      -0.373,
+      -0.523
+     ]
+    ],
+    "fit": 0.88,
+    "fac": 0.75
+   },
+   {
+    "name": "VentA",
+    "shape": "rrect",
+    "c": [
+     1.01,
+     0.576
+    ],
+    "w": 0.13,
+    "h": 0.12,
+    "r": 0.02,
+    "fit": 0.9,
+    "fac": 0.35
+   },
+   {
+    "name": "VentB",
+    "shape": "rrect",
+    "c": [
+     -1.025,
+     0.541
+    ],
+    "w": 0.13,
+    "h": 0.12,
+    "r": 0.02,
+    "fit": 0.9,
+    "fac": 0.35
+   },
+   {
+    "name": "VentC",
+    "shape": "rrect",
+    "c": [
+     1.027,
+     -0.445
+    ],
+    "w": 0.13,
+    "h": 0.12,
+    "r": 0.02,
+    "fit": 0.9,
+    "fac": 0.35
+   },
+   {
+    "name": "VentD",
+    "shape": "rrect",
+    "c": [
+     -1.008,
+     -0.479
+    ],
+    "w": 0.13,
+    "h": 0.12,
+    "r": 0.02,
+    "fit": 0.9,
+    "fac": 0.35
+   }
+  ]
+ }
+}

@@ -25,6 +25,21 @@ function overallHalfExtents(boxes) {
     return half;
 }
 
+/** One sphere for small craft; for box hulls a row of spheres down each box's long axis. */
+function createCollisionSpheres(boxes, radius) {
+    if (!boxes) return [{ centre: new Vector3(), radius }];
+    const spheres = [];
+    for (const { centre, half } of boxes) {
+        const sphereRadius = Math.max(half.x, half.y);
+        const count = Math.max(1, Math.ceil(half.z / sphereRadius));
+        for (let i = 0; i < count; i++) {
+            const along = count === 1 ? 0 : -half.z + sphereRadius + (i * (2 * half.z - 2 * sphereRadius)) / (count - 1);
+            spheres.push({ centre: new Vector3(centre.x, centre.y, centre.z + along), radius: sphereRadius });
+        }
+    }
+    return spheres;
+}
+
 function clampToBox(point, box, out) {
     for (const axis of AXES) {
         out[axis] = clamp(point[axis], box.centre[axis] - box.half[axis], box.centre[axis] + box.half[axis]);
@@ -96,6 +111,8 @@ export class Ship {
         this.halfExtents = this.boxes ? overallHalfExtents(this.boxes) : null;
         /** Radius of the sphere that encloses the whole hit shape (markers, effects, spacing). */
         this.boundingRadius = this.halfExtents ? this.halfExtents.length() : cls.radius;
+        /** Spheres (local centre + radius) that stand in for the hull when the player rams things. */
+        this.collisionSpheres = createCollisionSpheres(this.boxes, cls.radius);
 
         this.maxHull = cls.hull;
         this.hull = cls.hull * clamp(options.hullFraction ?? 1, 0.01, 1);

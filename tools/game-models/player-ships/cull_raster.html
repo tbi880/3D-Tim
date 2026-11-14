@@ -1,0 +1,61 @@
+<!doctype html><html><body style="margin:0">
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+const q = new URLSearchParams(location.search);
+const prefix = q.get('p');
+const S = +(q.get('res') || 2048);
+const tris = new Float32Array(await (await fetch(`/work/${prefix}.tris.bin`)).arrayBuffer());
+const flags = new Uint8Array(await (await fetch(`/work/${prefix}.flags.bin`)).arrayBuffer());
+const T = flags.length;
+const renderer = new THREE.WebGLRenderer({ antialias: false });
+renderer.setSize(16, 16);
+const rt = new THREE.WebGLRenderTarget(S, S, { depthBuffer: true, samples: 0 });
+const scene = new THREE.Scene();
+function build(sel, side) {
+  const idx = []; for (let t = 0; t < T; t++) if (sel(t)) idx.push(t);
+  const pos = new Float32Array(idx.length * 9), col = new Uint8Array(idx.length * 12);
+  idx.forEach((t, k) => {
+    pos.set(tris.subarray(t * 9, t * 9 + 9), k * 9);
+    const id = t + 1;
+    for (let v = 0; v < 3; v++) { col[k*12+v*4] = id & 255; col[k*12+v*4+1] = (id >> 8) & 255; col[k*12+v*4+2] = (id >> 16) & 255; col[k*12+v*4+3] = 255; }
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('idc', new THREE.BufferAttribute(col, 4, true));
+  const m = new THREE.ShaderMaterial({ side, vertexShader: 'attribute vec4 idc; varying vec4 vId; void main(){ vId = idc; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }', fragmentShader: 'varying vec4 vId; void main(){ gl_FragColor = vId; }' });
+  m.toneMapped = false;
+  const mesh = new THREE.Mesh(g, m); mesh.frustumCulled = false; scene.add(mesh);
+}
+// occluders only (opaque); single- and double-sided separately
+build(t => (flags[t] & 1) && !(flags[t] & 2), THREE.FrontSide);
+build(t => (flags[t] & 1) && (flags[t] & 2), THREE.DoubleSide);
+const box = new THREE.Box3().setFromBufferAttribute(new THREE.BufferAttribute(tris, 3));
+const c = box.getCenter(new THREE.Vector3()); const R = box.getSize(new THREE.Vector3()).length() / 2;
+const ortho = new THREE.OrthographicCamera(-R, R, R, -R, 0.001, R * 10);
+const persp = new THREE.PerspectiveCamera(50, 1, R * 0.01, R * 20);
+const visible = new Uint8Array(T);
+const buf = new Uint8Array(S * S * 4);
+const N = +(q.get('n') || 160);
+renderer.setClearColor(0x000000, 0);
+function pass(cam, dir, dist) {
+  cam.position.copy(c).addScaledVector(dir, dist);
+  cam.up.set(Math.abs(dir.y) > 0.9 ? 1 : 0, Math.abs(dir.y) > 0.9 ? 0 : 1, 0);
+  cam.lookAt(c); cam.updateMatrixWorld();
+  renderer.setRenderTarget(rt); renderer.clear(); renderer.render(scene, cam);
+  renderer.readRenderTargetPixels(rt, 0, 0, S, S, buf);
+  for (let i = 0; i < buf.length; i += 4) {
+    const id = buf[i] | (buf[i+1] << 8) | (buf[i+2] << 16);
+    if (id) visible[id - 1] = 1;
+  }
+}
+for (let i = 0; i < N; i++) {
+  const phi = Math.acos(1 - 2 * (i + 0.5) / N), th = Math.PI * (1 + Math.sqrt(5)) * (i + 0.5);
+  const dir = new THREE.Vector3(Math.cos(th) * Math.sin(phi), Math.cos(phi), Math.sin(th) * Math.sin(phi));
+  pass(ortho, dir, R * 3);
+  pass(persp, dir, R * 1.25);
+}
+let n = 0; for (const v of visible) n += v;
+window.result = { visible: Array.from(visible), count: n };
+window.ready = true;
+</script></body></html>

@@ -1,4 +1,4 @@
-import { FACTION, POWER_MODES, WORLD } from '../../config/gameConfig.js';
+import { ALLIES, FACTION, POWER_MODES, WORLD } from '../../config/gameConfig.js';
 import { GAME_EVENTS } from '../EventBus.js';
 
 /** Two things fight each other when they belong to different, non-neutral factions. */
@@ -79,7 +79,9 @@ export function applyDamage(world, target, amount, options = {}) {
         remaining *= world.difficulty.allyDamageTaken;
     } else if (target.faction === FACTION.UMBRA) {
         remaining /= world.difficulty.enemyToughness;
-        if (source && !source.isPlayer && source.faction === FACTION.DAWN) remaining *= world.difficulty.allyDamage;
+        if (source && !source.isPlayer && source.faction === FACTION.DAWN) {
+            remaining *= world.difficulty.allyDamage * (target.cls.kind === 'module' ? 1 : ALLIES.damageVsShips);
+        }
     }
 
     let shieldHit = false;

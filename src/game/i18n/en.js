@@ -340,7 +340,7 @@ export default {
     'playerShip.bulwark.text': 'A destroyer with a fighter crew: the deepest shields, heaviest plate and longest, hardest-hitting guns in the fleet. It is by far the slowest ship to fly and to turn, and the biggest target in the sky. Pick your spot, and let them come to you.',
     'playerShip.peregrine.role': 'Runner — speed',
     'playerShip.peregrine.text': 'A flat, wide racer that is mostly engine grilles: fastest in a line, off the mark and on the afterburner, with a good shield to run behind. Light guns and a paper hull — it decides where the fight happens.',
-    'hint.cannons': 'The Eclipse\'s gun batteries reach 2.6 km and need two seconds to lock — stay outside that, or torpedo them from beyond it',
+    'hint.cannons': 'The Eclipse\'s gun batteries reach 2.6 km and need two seconds to lock — stay outside that, or burn them down with beams from beyond it',
 
     // ---- The Barrens: chapters 6 and 7 ------------------------------------------------------
     'speaker.okoro': 'Station Master Okoro',
@@ -365,7 +365,7 @@ export default {
     'hint.arrivalLane': 'Amber lights pulse towards the dock: fly with them. White lights pulse outwards: that lane is for leaving',
     'hint.departureLane': 'Traffic control has the helm until you are clear of the dock — follow the white lights out',
     'hint.carrier': 'No generators to knock out here: strip the carrier\'s shield with beams, then torpedo the hull. Its gun batteries die to one torpedo',
-    'hint.melee': 'Three carriers and their escorts: pick one, torpedo its guns from outside 2.6 km, then work on the hull while the fleet keeps the fighters busy',
+    'hint.melee': 'Three carriers and their escorts: pick one, beam its guns down from outside 2.6 km, then work on the hull while the fleet keeps the fighters busy',
     'waypoint.dock': 'DOCK',
 
     'lantern.vega.mayday': 'Commander, a mayday on an old Dawn frequency — from further out than any chart we carry. The Barrens.',

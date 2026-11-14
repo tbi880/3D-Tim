@@ -40,8 +40,13 @@ export const GAME_EVENTS = Object.freeze({
     HIT: 'hit',
     /** { ship, weapon, kind: 'bolt' | 'torpedo' } */
     WEAPON_FIRED: 'weaponFired',
-    /** { position, size, quaternion? } - a ship dropped out of / jumped into warp here */
+    /**
+     * { position, size, quaternion?, ship? } - a ship dropped out of / jumped into warp here.
+     * `ship` is set when it is a ship finishing its warp-in (WARP_IN_STARTED came first).
+     */
     WARP_FLASH: 'warpFlash',
+    /** { ship, duration } - a ship has started dropping out of warp; it lands at `ship.position` in `duration` s */
+    WARP_IN_STARTED: 'warpInStarted',
     /** { position, radius } - an asteroid was blown apart */
     OBSTACLE_DESTROYED: 'obstacleDestroyed',
     /** { ship, weapon } - a lance started charging */

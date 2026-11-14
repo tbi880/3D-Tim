@@ -7,7 +7,8 @@ import { CAMPAIGN, STARTING_SECTOR } from '../story/campaign.js';
 import { resolvePlacement } from '../story/placement.js';
 import { StoryDirector } from '../story/StoryDirector.js';
 import { CommsQueue, estimateReadingTime } from './CommsQueue.js';
-import { CAMERA_MODES, clearSave, loadSave, saveSettings, writeSave } from './saveGame.js';
+import { computeFinalScore, killPoints } from '../config/scoring.js';
+import { CAMERA_MODES, clearSave, loadSave, recordFinalScore, saveSettings, writeSave } from './saveGame.js';
 
 export const PHASE = Object.freeze({
     TITLE: 'title',
@@ -33,6 +34,8 @@ export const SESSION_EVENTS = Object.freeze({
     CHECKPOINT: 'checkpoint',
     /** { settings } */
     SETTINGS: 'settings',
+    /** { points, classId, total } - the player destroyed something worth points */
+    SCORE: 'score',
 });
 
 /** Seconds between the player's death and the game-over screen, so the wreck can be seen. */
@@ -44,7 +47,7 @@ const TITLE_DRIFT_RATE = 0.03;
 const AXIS_Y = Object.freeze(new Vector3(0, 1, 0));
 const scratchSpin = new Quaternion();
 
-const emptyStats = () => ({ time: 0, kills: 0, losses: 0 });
+const emptyStats = () => ({ time: 0, kills: 0, losses: 0, score: 0 });
 
 function shipStatus(ship) {
     return {
@@ -106,11 +109,20 @@ export class GameSession {
             this.world.events.on(GAME_EVENTS.SHIP_REMOVED, () => this.publishRoster()),
             this.world.events.on(GAME_EVENTS.SHIP_DESTROYED, ({ ship, killer }) => {
                 this.publishRoster();
-                if (killer?.isPlayer && ship.faction === FACTION.UMBRA) this.stats.kills += 1;
+                if (killer?.isPlayer && ship.faction === FACTION.UMBRA) this.recordKill(ship);
             }),
         ];
 
         this.enterTitle();
+    }
+
+    /** Counts a kill by the player and announces the points it was worth. */
+    recordKill(ship) {
+        this.stats.kills += 1;
+        const points = killPoints(ship);
+        if (points <= 0) return;
+        this.stats.score += points;
+        this.events.emit(SESSION_EVENTS.SCORE, { points, classId: ship.classId, total: this.stats.score });
     }
 
     dispose() {
@@ -208,7 +220,7 @@ export class GameSession {
         this.toastTimer = 0;
         this.ui.set({
             objective: null, hint: null, titleCard: null, toast: null, progress: null,
-            escort: null, boss: null, target: null, gameOverReason: null, stats: null,
+            escort: null, boss: null, target: null, gameOverReason: null, stats: null, finalScore: null,
         });
     }
 
@@ -333,7 +345,10 @@ export class GameSession {
 
     endGame() {
         this.world.controlsLocked = true;
-        this.ui.set({ stats: { ...this.stats } });
+        const result = computeFinalScore(this.stats, this.settings.difficulty);
+        const { isRecord, previous } = recordFinalScore(result, this.world.playerClassId ?? this.settings.playerShip);
+        this.finalScore = { ...result, isRecord, previousBest: previous?.total ?? null };
+        this.ui.set({ stats: { ...this.stats }, finalScore: this.finalScore });
         this.setPhase(PHASE.ENDING);
     }
 

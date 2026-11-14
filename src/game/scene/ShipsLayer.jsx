@@ -7,14 +7,10 @@ import { forwardOf } from '../core/math.js';
 import { breakupPose, breakupSeconds } from './effects/breakup.js';
 import { ExhaustPlume } from './effects/ExhaustPlume.js';
 import { ShieldShell, shieldShells } from './effects/ShieldShell.js';
+import { WARP_IN_DISTANCE, WARP_STRETCH, warpDisplacement } from './effects/warpPath.js';
 import { useGameStore } from '../state/gameStore.js';
 import ShipModel, { getModelInfo } from './models/ShipModel.jsx';
 
-/** How far behind its destination a ship starts its warp-in streak, and how much it is stretched. */
-const WARP_IN_DISTANCE = 9000;
-const WARP_STRETCH = 45;
-/** Final seconds of a departing ship's life, during which it stretches away into warp. */
-const WARP_OUT_SECONDS = 0.9;
 const HALF_PI = Math.PI / 2;
 
 const FACTION_COLORS = Object.freeze({
@@ -37,6 +33,7 @@ const SHIELD_STANDOFF = 1.45;
 
 /** Half-size of a ship's shield shell along its own x, y, z. */
 function shieldExtent(ship) {
+    if (ship.cls.shieldExtents) return [...ship.cls.shieldExtents];
     if (ship.halfExtents) return ship.halfExtents.clone().multiplyScalar(SHIELD_STANDOFF).toArray();
     const size = ship.radius * 1.3;
     return [size, size, size];
@@ -84,8 +81,8 @@ function Exhaust({ engines, faction, ship, session }) {
 }
 
 /**
- * The player's own exhaust: simple glowing cones whose length follows the thrust (0..~1.6).
- * Kept as it is until the player's ship models are replaced.
+ * Glowing cones whose length follows the thrust (0..~1.6), for a player ship model that
+ * lists `engines` instead of carrying its own animated flames.
  */
 function EnginePlumes({ engines, faction, getThrust }) {
     const groupRef = useRef(null);
@@ -126,14 +123,8 @@ function EnginePlumes({ engines, faction, getThrust }) {
  * that decelerates into (or accelerates away from) its real position.
  */
 function applyWarpTransform(group, streak, ship) {
-    let displacement = 0;
-    if (ship.warpTimer > 0) {
-        // Arriving: comes in from far behind along its own heading.
-        displacement = -((ship.warpTimer / ship.warpDuration) ** 3);
-    } else if (ship.despawnTimer != null && ship.despawnTimer < WARP_OUT_SECONDS) {
-        // Leaving: leaps forward.
-        displacement = (1 - Math.max(0, ship.despawnTimer) / WARP_OUT_SECONDS) ** 3;
-    }
+    // Arriving: comes in from far behind along its own heading. Leaving: leaps forward.
+    const displacement = warpDisplacement(ship);
     group.position.copy(ship.position);
     if (displacement === 0) {
         group.scale.setScalar(1);
@@ -193,14 +184,15 @@ function PlayerShipView({ session }) {
         group.quaternion.copy(player.quaternion);
     });
 
+    // 0.15 idle .. 1 at top speed .. 1.6 on the afterburner (coasting down from a burn stays capped there).
     const getThrust = () => {
         if (!player?.alive) return 0;
-        return player.boosting ? 1.6 : 0.15 + (player.speed / player.cls.maxSpeed) * 0.85;
+        return player.boosting ? 1.6 : Math.min(1.6, 0.15 + (player.speed / player.cls.maxSpeed) * 0.85);
     };
 
     return (
         <group ref={groupRef} visible={false}>
-            <ShipModel modelId={player?.cls.model ?? 'kestrel'} faction={FACTION.DAWN} />
+            <ShipModel modelId={player?.cls.model ?? 'kestrel'} faction={FACTION.DAWN} getThrust={getThrust} />
             {info?.engines?.length > 0 && <EnginePlumes engines={info.engines} faction={FACTION.DAWN} getThrust={getThrust} />}
             {player && <Shield key={player.id} ship={player} world={session.world} />}
         </group>
