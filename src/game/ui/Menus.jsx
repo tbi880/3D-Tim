@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { DIFFICULTY_ORDER } from '../config/gameConfig.js';
+import { GRAPHICS_ORDER } from '../config/graphics.js';
 import { PLAYER_SHIPS, RATING_MAX, RATING_ORDER } from '../config/playerShips.js';
 import { LOCALES, LOCALE_LABELS } from '../i18n/index.js';
 import { PHASE } from '../state/GameSession.js';
@@ -57,6 +58,14 @@ function SettingsRows({ session }) {
             </button>
             <button type="button" className="eod-setting" onClick={() => session.updateSettings({ autoFire: !settings.autoFire })}>
                 <span>{t('ui.autoFire')}</span><strong>{settings.autoFire ? t('ui.on') : t('ui.off')}</strong>
+            </button>
+            <button
+                type="button"
+                className="eod-setting"
+                title={t(`ui.graphicsHint.${settings.graphics}`)}
+                onClick={() => session.updateSettings({ graphics: next(GRAPHICS_ORDER, settings.graphics) })}
+            >
+                <span>{t('ui.graphics')}</span><strong>{t(`ui.graphics.${settings.graphics}`)}</strong>
             </button>
             <p className="eod-setting-hint">{t(`ui.difficultyHint.${settings.difficulty}`)}</p>
         </div>

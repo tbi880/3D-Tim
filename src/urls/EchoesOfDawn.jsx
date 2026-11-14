@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet';
 import { bucketURL, stageOfENV } from '../Settings';
 import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 import { SoundEngine } from '../game/audio/SoundEngine.js';
+import { graphicsDpr } from '../game/config/graphics.js';
 import { InputController } from '../game/input/InputController.js';
 import GameScene from '../game/scene/GameScene.jsx';
 import { GameSession } from '../game/state/GameSession.js';
@@ -51,6 +52,7 @@ function EchoesOfDawn() {
     const inputSurfaceRef = useRef(null);
     const markerCanvasRef = useRef(null);
     const radarCanvasRef = useRef(null);
+    const graphics = useGameStore((state) => state.settings.graphics);
 
     useEffect(() => {
         const created = createGame();
@@ -96,7 +98,8 @@ function EchoesOfDawn() {
                 {game && (
                     <>
                         <div className="eod-canvas-container">
-                            <CanvasProvider glOptions={GL_OPTIONS}>
+                            {/* No canvas antialiasing or shadow maps: the composer does the smoothing and no light casts shadows. */}
+                            <CanvasProvider glOptions={GL_OPTIONS} dpr={graphicsDpr(graphics)} antialias={false} shadows={false}>
                                 <GameScene game={game} markerCanvasRef={markerCanvasRef} radarCanvasRef={radarCanvasRef} />
                             </CanvasProvider>
                         </div>

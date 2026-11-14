@@ -27,9 +27,14 @@ installGLTFMemoryGuard();
  *    requestAnimationFrame loop. Neither was ever released, so every scene change left
  *    one more behind.
  * WebGPU needs R3F v9 (async `gl` support) plus a renderer created with `await renderer.init()`.
+ *
+ * `dpr`, `antialias` and `shadows` default to the site's graphics menu (and the shadows every
+ * story scene uses); a page with its own graphics options, such as the game, passes them in.
  */
-export const CanvasProvider = ({ children, frameLoopSetting = "always", glOptions = null }) => {
-    const { dpr, antialias } = useContext(graphicSettingContext);
+export const CanvasProvider = ({ children, frameLoopSetting = "always", glOptions = null, dpr: pageDpr, antialias: pageAntialias, shadows = "variance" }) => {
+    const siteSettings = useContext(graphicSettingContext);
+    const dpr = pageDpr ?? siteSettings.dpr;
+    const antialias = pageAntialias ?? siteSettings.antialias;
 
     // On iOS the drawing buffer counts towards the page's memory budget.
     const effectiveDpr = isIOSDevice ? Math.min(dpr, IOS_MAX_DPR) : dpr;
@@ -49,7 +54,7 @@ export const CanvasProvider = ({ children, frameLoopSetting = "always", glOption
 
     return (
         <Canvas
-            shadows="variance"
+            shadows={shadows}
             frameloop={frameLoopSetting}
             dpr={effectiveDpr}
             performance={{ min: 0.25 }}

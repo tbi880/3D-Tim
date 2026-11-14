@@ -169,6 +169,7 @@ function BackdropObject({ config }) {
                 animation={config.animation ?? null}
                 animationSpeed={config.animationSpeed ?? 1}
                 brightness={config.brightness ?? 1}
+                distant
             />
         </group>
     );

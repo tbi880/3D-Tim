@@ -4,6 +4,8 @@ import { Bloom, ChromaticAberration, ToneMapping, Vignette } from '@react-three/
 import { ToneMappingMode } from 'postprocessing';
 import { Vector2 } from 'three';
 import { useComposerMultisampling } from '../../hooks/useComposerMultisampling';
+import { GRAPHICS } from '../config/graphics.js';
+import { useGameStore } from '../state/gameStore.js';
 import ManagedEffectComposer from '../../modelComponents/ManagedEffectComposer';
 
 /** Colour fringing (as a fraction of the screen) at full warp and under afterburner. */
@@ -16,7 +18,9 @@ const BOOST_ABERRATION = 0.0018;
  * the edges of the screen smear into colour fringes.
  */
 export default function PostEffects({ session }) {
-    const multisampling = useComposerMultisampling();
+    // The preset's MSAA, still capped by the iOS memory guard.
+    const graphics = useGameStore((state) => state.settings.graphics);
+    const multisampling = Math.min(GRAPHICS[graphics].multisampling, useComposerMultisampling());
     // The effect keeps a reference to this vector, so updating it in place is enough.
     const aberrationOffset = useMemo(() => new Vector2(0, 0), []);
 

@@ -1,6 +1,7 @@
 import { DEFAULT_DIFFICULTY, DIFFICULTY, STORAGE_KEYS } from '../config/gameConfig.js';
 import { LOCALES, detectLocale } from '../i18n/index.js';
 import { DEFAULT_PLAYER_SHIP, isPlayerShip } from '../config/playerShips.js';
+import { DEFAULT_GRAPHICS, GRAPHICS } from '../config/graphics.js';
 import { isTouchDevice } from '../input/device.js';
 
 /**
@@ -69,6 +70,8 @@ export function defaultSettings() {
         cameraMode: 'cockpit',
         /** Beams fire by themselves at hostiles in the ring. On by default where there is no trigger finger to spare. */
         autoFire: isTouchDevice(),
+        /** Rendering preset (config/graphics.js). */
+        graphics: DEFAULT_GRAPHICS,
     };
 }
 
@@ -78,6 +81,7 @@ export function loadSettings() {
     if (!DIFFICULTY[settings.difficulty]) settings.difficulty = DEFAULT_DIFFICULTY;
     if (!isPlayerShip(settings.playerShip)) settings.playerShip = DEFAULT_PLAYER_SHIP;
     if (!CAMERA_MODES.includes(settings.cameraMode)) settings.cameraMode = 'cockpit';
+    if (!GRAPHICS[settings.graphics]) settings.graphics = DEFAULT_GRAPHICS;
     return settings;
 }
 

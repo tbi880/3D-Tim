@@ -18,10 +18,16 @@ import { bucketURL } from '../../../Settings';
  * a small, dim corner of the site can look washed out when they fill half the sky here.
  * A dimmed instance gets its own copies of the materials, so other instances are unaffected.
  *
+ * `distant` marks scenery far beyond the battle (SectorBackdrop). Its glass-like materials
+ * lose their transmission: three.js draws the whole scene a second time, every frame, for a
+ * transmissive material to refract, which made one barely visible star layer cost more GPU
+ * time than the rest of the battle. From hundreds of thousands of kilometres away a plain
+ * transparent shell looks the same.
+ *
  * `materials` (see shipMaterials.js) replaces the file's materials with the game's shared
  * ones; it is what turns a generated ship's placeholder "hull" and "glow" into the real thing.
  */
-export default function GltfModel({ url, animation = null, animationSpeed = 1, brightness = 1, materials = null, ...groupProps }) {
+export default function GltfModel({ url, animation = null, animationSpeed = 1, brightness = 1, distant = false, materials = null, ...groupProps }) {
     const gltf = useGLTF(bucketURL + url, true, true);
     const object = useMemo(() => {
         const clone = cloneWithSkeletons(gltf.scene);
@@ -31,8 +37,9 @@ export default function GltfModel({ url, animation = null, animationSpeed = 1, b
             });
         }
         if (brightness !== 1) dimMaterials(clone, brightness);
+        if (distant) dropTransmission(clone);
         return clone;
-    }, [gltf.scene, brightness, materials]);
+    }, [gltf.scene, brightness, distant, materials]);
     const root = useMemo(() => ({ current: object }), [object]);
     const { actions } = useAnimations(gltf.animations, root);
 
@@ -57,6 +64,22 @@ function dimMaterials(root, brightness) {
             dimmed.set(node.material, copy);
         }
         node.material = dimmed.get(node.material);
+    });
+}
+
+/** Replaces transmissive materials with plain transparent copies (see `distant` above). */
+function dropTransmission(root) {
+    const replaced = new Map();
+    root.traverse((node) => {
+        if (!(node.material?.transmission > 0)) return;
+        if (!replaced.has(node.material)) {
+            // A copy: the cached model is shared with the site's other scenes.
+            const copy = node.material.clone();
+            copy.transmission = 0;
+            copy.transparent = true;
+            replaced.set(node.material, copy);
+        }
+        node.material = replaced.get(node.material);
     });
 }
 
