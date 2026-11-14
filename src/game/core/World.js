@@ -5,6 +5,7 @@ import { SHIP_CLASSES } from '../config/shipClasses.js';
 import { EventBus, GAME_EVENTS } from './EventBus.js';
 import { Ship } from './Ship.js';
 import { createRng, lookRotation } from './math.js';
+import { upgradedClass } from './refit.js';
 import { updateAI } from './systems/aiPilot.js';
 import { resolvePlayerCollisions } from './systems/collisions.js';
 import { regenerateShield } from './systems/damage.js';
@@ -58,10 +59,14 @@ export class World {
         this.playerCannonLock = 0;
         /** Ship class the player flies (chosen on the title screen, restored from saves). */
         this.playerClassId = PLAYER.classId;
+        /** Levels bought at refits ({ rating: levels }, core/refit.js); saved with the player. */
+        this.playerUpgrades = {};
         /** Assist: the player's beams fire by themselves when something hostile is in the ring. */
         this.autoFire = false;
         /** 0..1 strength of the warp effect; driven by the story's warp beat. */
         this.warpFactor = 0;
+        /** 0..1 how far the screen has faded to black (docking cut-scenes); driven by the story's fade beat. */
+        this.screenFade = 0;
     }
 
     // ---- Lifecycle ----------------------------------------------------------------------
@@ -82,6 +87,7 @@ export class World {
         this.controlsLocked = false;
         this.outOfBounds = false;
         this.warpFactor = 0;
+        this.screenFade = 0;
     }
 
     setDifficulty(difficultyId) {
@@ -113,8 +119,9 @@ export class World {
      * @param {boolean} [options.warpIn] play an arrival flash
      */
     spawnShip(classId, options = {}) {
-        const cls = SHIP_CLASSES[classId];
+        let cls = SHIP_CLASSES[classId];
         if (!cls) throw new Error(`Unknown ship class "${classId}"`);
+        if (cls.behavior === 'player') cls = upgradedClass(classId, cls, this.playerUpgrades);
         const ship = new Ship(classId, cls, options);
         toVector3(options.position, ship.position);
         if (options.quaternion) ship.quaternion.fromArray(options.quaternion);
@@ -160,6 +167,23 @@ export class World {
         this.ships.splice(index, 1);
         if (flash) this.events.emit(GAME_EVENTS.WARP_FLASH, { position: ship.position.clone(), size: ship.boundingRadius, quaternion: ship.quaternion.clone() });
         this.events.emit(GAME_EVENTS.SHIP_REMOVED, { ship });
+    }
+
+    /**
+     * Installs refit upgrades on the player's ship right away: its class is rebuilt with them and
+     * hull and shields keep the same fraction of their (new) maximums.
+     */
+    setPlayerUpgrades(upgrades) {
+        this.playerUpgrades = { ...upgrades };
+        const player = this.player;
+        if (!player?.alive) return;
+        const hullFraction = player.hullFraction;
+        const shieldFraction = player.shieldFraction;
+        player.cls = upgradedClass(player.classId, SHIP_CLASSES[player.classId], this.playerUpgrades);
+        player.maxHull = player.cls.hull;
+        player.hull = player.maxHull * hullFraction;
+        player.maxShield = player.cls.shield;
+        player.shield = player.maxShield * shieldFraction;
     }
 
     followParent(ship) {
@@ -328,7 +352,7 @@ export class World {
         const persistentShips = this.ships.filter((ship) => ship.alive && ship.persistent && !ship.isPlayer);
         return {
             sectorId: this.sectorId,
-            player: this.player ? { hullFraction: this.player.hullFraction, classId: this.player.classId } : null,
+            player: this.player ? { hullFraction: this.player.hullFraction, classId: this.player.classId, upgrades: { ...this.playerUpgrades } } : null,
             ships: persistentShips.map((ship) => ({
                 classId: ship.classId,
                 // Only differs from the class's for ships the story lends to another side (Lantern's guns).
@@ -358,6 +382,7 @@ export class World {
         const hullFraction = Math.max(PLAYER.checkpointMinHull, snapshot.player?.hullFraction ?? 1);
         // Saves from before ships were selectable have no class: they were all Kestrels.
         this.playerClassId = SHIP_CLASSES[snapshot.player?.classId] ? snapshot.player.classId : PLAYER.classId;
+        this.playerUpgrades = { ...(snapshot.player?.upgrades ?? {}) };
         this.spawnShip(this.playerClassId, { ...sector.playerStart, hullFraction });
 
         // Parents first, so mounted modules can find them.

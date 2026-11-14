@@ -54,7 +54,9 @@ function bounce(world, player, own, ownRadius, centre, solidRadius) {
  */
 export function resolvePlayerCollisions(world) {
     const player = world.player;
-    if (!player?.alive) return;
+    // While the story has the helm (warp, docking) the ship flies a scripted path: it may pass
+    // through a hangar door into a hull, and must not be bounced or scraped on the way.
+    if (!player?.alive || world.controlsLocked) return;
     player.collisionReadyAt ??= 0;
 
     for (const ship of world.ships) {

@@ -27,6 +27,11 @@ export class StoryDirector {
         /** Live (non-serialisable) getters behind the objective counter and progress bar. */
         this.objectiveParams = null;
         this.progress = null;
+        /**
+         * True from loading a checkpoint until the next checkpoint is reached: lets the beats
+         * right after a checkpoint tell a replay (after a loss) from the first time through.
+         */
+        this.resumed = false;
         this.context = { world, stage, director: this, vars: this.vars };
     }
 
@@ -37,6 +42,7 @@ export class StoryDirector {
     /** Starts the campaign from its first beat. */
     startFromBeginning() {
         this.resetRuntime();
+        this.resumed = false;
         this.main = new BeatRunner(this.beats);
     }
 
@@ -51,6 +57,7 @@ export class StoryDirector {
         Object.assign(this.vars, savedVars);
         Object.assign(this.scene, savedScene);
         this.main = new BeatRunner(this.beats, index + 1);
+        this.resumed = true;
         return true;
     }
 

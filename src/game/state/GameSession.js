@@ -1,6 +1,7 @@
 import { Quaternion, Vector3 } from 'three';
 import { FACTION, HUD_REFRESH_INTERVAL, PLAYER, POWER_MODES, WORLD } from '../config/gameConfig.js';
 import { EventBus, GAME_EVENTS } from '../core/EventBus.js';
+import { mergeUpgrades } from '../core/refit.js';
 import { World } from '../core/World.js';
 import { setLocale, t } from '../i18n/index.js';
 import { CAMPAIGN, STARTING_SECTOR } from '../story/campaign.js';
@@ -146,6 +147,7 @@ export class GameSession {
         this.world.setSector(STARTING_SECTOR);
         this.world.spawnShip(this.settings.playerShip, { position: [0, 0, 600], facing: [0, 0, -1] });
         this.world.controlsLocked = true;
+        this.world.playerUpgrades = {};
         this.director.startFromBeginning();
         const save = loadSave();
         this.ui.set({ hasSave: Boolean(save), saveCheckpointId: save?.checkpointId ?? null });
@@ -161,6 +163,7 @@ export class GameSession {
         this.world.setDifficulty(this.settings.difficulty);
         const sector = this.world.setSector(STARTING_SECTOR);
         this.world.playerClassId = this.settings.playerShip;
+        this.world.playerUpgrades = {};
         this.world.spawnShip(this.world.playerClassId, sector.playerStart);
         this.director.startFromBeginning();
         this.ui.set({ hasSave: false, saveCheckpointId: null });
@@ -218,7 +221,9 @@ export class GameSession {
         this.failureTimer = 0;
         this.titleCardTimer = 0;
         this.toastTimer = 0;
+        this.pendingRefit = null;
         this.ui.set({
+            refit: null,
             objective: null, hint: null, titleCard: null, toast: null, progress: null,
             escort: null, boss: null, target: null, gameOverReason: null, stats: null, finalScore: null,
         });
@@ -291,6 +296,36 @@ export class GameSession {
 
     setObjective(textKey) {
         this.ui.set({ objective: textKey ? { key: textKey, params: this.director.objectiveParams?.(this.director.context) ?? null } : null });
+    }
+
+    /**
+     * Opens the refit window (ui/RefitPanel.jsx): the player spends `points` on their ship.
+     * `onDone` runs once the choice has been installed (see applyRefit).
+     */
+    openRefit(points, onDone) {
+        const classId = this.world.playerClassId;
+        this.pendingRefit = { points, classId, onDone };
+        this.ui.set({ refit: { points, classId, upgrades: { ...this.world.playerUpgrades } } });
+    }
+
+    /**
+     * Installs the levels chosen in the refit window ({ rating: levels }, at most the points
+     * offered; anything over a rating's cap is dropped) and closes it.
+     */
+    applyRefit(added) {
+        const pending = this.pendingRefit;
+        if (!pending) return;
+        let spent = 0;
+        const allowed = {};
+        for (const [rating, levels] of Object.entries(added ?? {})) {
+            const take = Math.max(0, Math.min(Math.floor(levels), pending.points - spent));
+            if (take > 0) allowed[rating] = take;
+            spent += take;
+        }
+        this.world.setPlayerUpgrades(mergeUpgrades(pending.classId, this.world.playerUpgrades, allowed));
+        this.pendingRefit = null;
+        this.ui.set({ refit: null });
+        pending.onDone();
     }
 
     setHint(textKey) {

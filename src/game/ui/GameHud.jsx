@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { GAME_EVENTS } from '../core/EventBus.js';
 import { hasTranslation } from '../i18n/index.js';
 import { isTouchDevice } from '../input/device.js';
@@ -283,6 +283,26 @@ function WarpFlash({ session }) {
     return <div key={flashId} className="eod-warp-flash" />;
 }
 
+/**
+ * Black-out for docking cut-scenes: follows `world.screenFade` (set by the story's fade beat)
+ * every animation frame, so it is smooth however often the rest of the HUD refreshes.
+ */
+function ScreenFade({ session }) {
+    const ref = useRef(null);
+
+    useEffect(() => {
+        let frame = 0;
+        const update = () => {
+            if (ref.current) ref.current.style.opacity = String(session.world.screenFade ?? 0);
+            frame = requestAnimationFrame(update);
+        };
+        frame = requestAnimationFrame(update);
+        return () => cancelAnimationFrame(frame);
+    }, [session]);
+
+    return <div ref={ref} className="eod-screen-fade" style={{ opacity: 0 }} />;
+}
+
 export default function GameHud({ session, markerCanvasRef, radarCanvasRef }) {
     const phase = useGameStore((state) => state.phase);
     const inFlight = phase === PHASE.PLAYING || phase === PHASE.PAUSED;
@@ -292,6 +312,7 @@ export default function GameHud({ session, markerCanvasRef, radarCanvasRef }) {
             <canvas ref={markerCanvasRef} className="eod-marker-canvas" />
             <DamageFlash session={session} />
             <WarpFlash session={session} />
+            <ScreenFade session={session} />
             {inFlight && (
                 <>
                     <ObjectivePanel />

@@ -14,6 +14,7 @@ import { WEAPONS } from '../src/game/config/weapons.js';
 import { Quaternion, Vector3 } from 'three';
 import { FACTION } from '../src/game/config/gameConfig.js';
 import { SHIP_CLASSES } from '../src/game/config/shipClasses.js';
+import { weakestFirst } from '../src/game/core/refit.js';
 import { GameSession, PHASE } from '../src/game/state/GameSession.js';
 import { loadSave, writeSave } from '../src/game/state/saveGame.js';
 
@@ -175,6 +176,8 @@ function fly(session, stop, focused = true) {
     while (seconds < MAX_STORY_SECONDS) {
         session.comms.skip();
         session.update(STEP, autopilot(session, focused));
+        // At a refit the autopilot shores up the ship's weakest ratings.
+        if (session.pendingRefit) session.applyRefit(weakestFirst(session.pendingRefit.classId, session.pendingRefit.points));
         seconds += STEP;
         if (session.phase === PHASE.ENDING) return { reason: 'ending', retries, seconds };
         if (session.phase === PHASE.GAME_OVER) {

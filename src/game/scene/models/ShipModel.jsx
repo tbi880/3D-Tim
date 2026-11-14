@@ -5,6 +5,7 @@ import { bucketURL } from '../../../Settings';
 import { FACTION } from '../../config/gameConfig.js';
 import { SHIP_CLASSES } from '../../config/shipClasses.js';
 import { useGameStore } from '../../state/gameStore.js';
+import DockGates from './DockGates.jsx';
 import GltfModel, { useModelPreload } from './GltfModel.jsx';
 import manifest from './modelManifest.json';
 import { HULL_TEXTURE_FILES, ROCK_TEXTURE_FILES, configureSurfaceTextures, createShipMaterials } from './shipMaterials.js';
@@ -28,6 +29,7 @@ import { HULL_TEXTURE_FILES, ROCK_TEXTURE_FILES, configureSurfaceTextures, creat
  *   engines  - [x, y, z, radius] exhaust positions in metres, for the engine glow
  *   exhaust  - the file carries its own engine flames, animated by thrust (see GltfModel)
  *   guideLights - the file has blinking beacons (material "guideLight", guideLightMaterial.js)
+ *   dockGates - hangar doors drawn over the dock mouths (DockGates.jsx), in metres
  */
 const MODEL_OVERRIDES = Object.freeze({
     // Captain Tim's ship is the upgraded ship from the site's Project Dawn scene:
@@ -52,6 +54,12 @@ const MODEL_OVERRIDES = Object.freeze({
         size: [5360, 5170, 4920],
         engines: [],
         guideLights: true,
+        // Over the dock mouths (build/layout.json), just in front of the tower's face. The story
+        // flies docking ships through them (ARRIVAL_HANGAR / DEPARTURE_HANGAR in story/campaign.js).
+        dockGates: [
+            { centre: [0, -120, 1678], size: [280, 124], color: '#ffb04a' },
+            { centre: [0, 300, 1653], size: [280, 124], color: '#bfe6ff' },
+        ],
     },
 
     // ---- Player ships (config/playerShips.js) -------------------------------------------
@@ -177,6 +185,7 @@ function TexturedShip({ info, getThrust }) {
     return (
         <>
             {info.guideLights && <GuideLightClock materials={materials} />}
+            {info.dockGates && <DockGates gates={info.dockGates} />}
             <GltfModel
                 url={info.file}
                 scale={info.scale ?? 1}

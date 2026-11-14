@@ -15,8 +15,8 @@ from Captain Tim's flagship. The story runs as one continuous campaign with fift
 | 3 · The Forge | The Forge (Umbra shipyard) | Cut the captured Osprey out of the slipway, blow the reactors, get clear |
 | 4 · Hold the Line | Cinder (lava planet) | Defend the Dawnbreaker while the Dawn core recharges |
 | 5 · Eclipse | Cinder | Tim's fleet arrives; break the dreadnought's shield and paint it for the Dawn cannon |
-| 6 · Lantern | Lantern Station (the Barrens) | Dock at a 4.7 km frontier station along its guide lights, undock under attack, break a cruiser screen and kill a Penumbra carrier head-on (no shield generators out here) |
-| 7 · The Muster | The Muster (the Barrens) | Fleet melee: three Penumbra carriers with cruiser and corvette waves against the Dawnbreaker, four frigates and the darts |
+| 6 · Lantern | Lantern Station (the Barrens) | Go ahead of the fleet, dock along the station's guide lights and refit; undock with Lantern's five Darts to stall the Umbra vanguard and a Penumbra carrier (no shield generators out here) until Tim's fleet warps in, then finish the carrier together |
+| 7 · The Muster | The Muster (the Barrens) | Fleet melee: three Penumbra carriers with cruiser and corvette waves against the Dawnbreaker, six frigates and three darts (lost ones are replaced when a Muster checkpoint is reloaded) |
 | Epilogue · Home | Earth | The fleet jumps home |
 
 Ships come in tiers, and distances are metres: fighters are 13–30 m, the corvette 130 m,
@@ -163,6 +163,13 @@ under the reticle for three seconds (`ScoreFeed` in `ui/GameHud.jsx`). At the en
 ship lost and multiplies by difficulty; the ending screen shows the breakdown, a rank (S–C)
 and the best score per difficulty (kept in localStorage). The simulation prints the final
 score of its run, which is how the rank thresholds were set.
+
+**Refits** – `refit(points)` (story/beats.js) opens the "Ship maintenance and refit" window
+(`ui/RefitPanel.jsx`) and waits for the player: each point raises one of the ship's hangar
+ratings by a level, up to 10. What a level is worth is `UPGRADE_PER_LEVEL` in
+`config/refit.js`; `core/refit.js` builds the upgraded class the player's ship flies with
+(`world.playerUpgrades`, saved with checkpoints). Lantern Station hands out three points while
+the ship is docked; hull and shields are refilled as it undocks.
 
 **Big battles** – `BATTLE` in `config/gameConfig.js` caps the ships in a sector and the Umbra
 fighters in the air; the Barrens chapters only send reinforcements (carrier launches, cruiser

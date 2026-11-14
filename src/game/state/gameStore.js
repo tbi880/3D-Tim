@@ -23,6 +23,8 @@ export const useGameStore = create(() => ({
     comms: null,
     titleCard: null,
     toast: null,
+    /** The open refit window ({ points, classId, upgrades }, GameSession.openRefit) or null. */
+    refit: null,
 
     // Menus
     gameOverReason: null,

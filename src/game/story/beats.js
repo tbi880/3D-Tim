@@ -177,7 +177,10 @@ export const stopBackground = (id) => ({
 export const checkpoint = (id) => ({
     type: 'checkpoint',
     id,
-    begin(ctx) { ctx.stage.saveCheckpoint(id); },
+    begin(ctx) {
+        ctx.stage.saveCheckpoint(id);
+        ctx.director.resumed = false;
+    },
 });
 
 /** Player must keep `tag` locked and in their sights; fills `vars[varName]` from 0 to 1. */
@@ -257,11 +260,43 @@ export const glide = ({ to, facing, seconds, release = true, throttle = 0.6 }) =
             player.throttle = throttle;
             ctx.world.controlsLocked = false;
         } else {
+            // Held in place: idle the engines so the ship does not creep on afterwards.
             player.velocity.set(0, 0, 0);
             player.speed = 0;
+            player.throttle = 0;
         }
         return true;
     },
+});
+
+/**
+ * Fades the screen to black (`to` = 1) or back (`to` = 0) over `seconds` (ui/ScreenFade.jsx draws
+ * it). Blocks the script until done unless `wait: false`; a fade already under way is replaced.
+ */
+export const fade = (to, seconds, { wait: blocking = true } = {}) => ({
+    type: 'fade',
+    begin(ctx, state) {
+        state.from = ctx.world.screenFade;
+        state.elapsed = 0;
+        if (!blocking) ctx.director.startBackground('screenFade', [fade(to, seconds)]);
+    },
+    tick(ctx, dt, state) {
+        if (!blocking) return true;
+        state.elapsed += dt;
+        const t = seconds > 0 ? Math.min(1, state.elapsed / seconds) : 1;
+        ctx.world.screenFade = state.from + (to - state.from) * smoothstep(t);
+        return t >= 1;
+    },
+});
+
+/** Opens the refit window with `points` to spend and waits until the player confirms it. */
+export const refit = (points) => ({
+    type: 'refit',
+    begin(ctx, state) {
+        state.done = false;
+        ctx.stage.openRefit(points, () => { state.done = true; });
+    },
+    tick(ctx, dt, state) { return state.done; },
 });
 
 // ---- Warp -------------------------------------------------------------------------------

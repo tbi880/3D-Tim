@@ -4,7 +4,8 @@
  * decides which classes are on offer and how the hangar describes them.
  *
  * `ratings` are the 1-10 bars shown on the ship's card (the Kestrel, the yardstick, is 5 across). They are a summary for the player,
- * not what the simulation reads, so keep them in step with the class when rebalancing.
+ * not what the simulation reads, so keep them in step with the class when rebalancing. They are also
+ * where refits start from: a rating already at 10 cannot be upgraded (config/refit.js).
  * Names and descriptions are in the i18n files: `ship.<id>`, `playerShip.<id>.role` and
  * `playerShip.<id>.text`.
  */

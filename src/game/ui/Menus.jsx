@@ -6,8 +6,9 @@ import { FINAL_SCORE } from '../config/scoring.js';
 import { LOCALES, LOCALE_LABELS } from '../i18n/index.js';
 import { PHASE } from '../state/GameSession.js';
 import { useGameStore, useT } from '../state/gameStore.js';
+import RefitPanel from './RefitPanel.jsx';
 
-/** Title screen, pause menu, game-over and ending screens. */
+/** Title screen, pause menu, game-over and ending screens, and the refit window. */
 
 const CONTROL_ROWS = ['steer', 'throttle', 'roll', 'boost', 'beam', 'torpedo', 'target', 'power', 'view', 'skip', 'pause'];
 
@@ -283,6 +284,8 @@ export default function Menus({ session, onStart }) {
         case PHASE.PAUSED: return <PauseMenu session={session} />;
         case PHASE.GAME_OVER: return <GameOverScreen session={session} />;
         case PHASE.ENDING: return <EndingScreen session={session} />;
+        // In flight the only menu is the refit window, and only while one is open.
+        case PHASE.PLAYING: return <RefitPanel session={session} />;
         default: return null;
     }
 }
