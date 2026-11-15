@@ -1,0 +1,114 @@
+import { PILOT_ACTIONS } from '../core/systems/pilotActions.js';
+import { PacketError } from './codec/binary.js';
+import { NET } from './netConfig.js';
+
+/**
+ * Messages on the reliable channel, as JSON objects `{ t: type, ... }`.
+ *
+ * Client to host - the only four things a client may say; anything else is refused:
+ *   hello   { v, m }        protocol version and match id: "send me the world"
+ *   action  { a, f? }       a one-shot pilot action (core/systems/pilotActions.js);
+ *                           f = [x, y, z] line of sight for 'targetCrosshair' (VR gaze)
+ *   req     { k, d? }       a request to the game mode (jump to a planet, spend refit points...):
+ *                           k names it, d is its data. The mode checks both (modes/index.js).
+ *   ping    { n }           echoed back as pong, for the latency read-out
+ *
+ * Host to client:
+ *   welcome { ... }         the whole place the player is in, as it is now (match/replication.js);
+ *                           sent again whenever the player moves to another place
+ *   batch   { e: [...] }    what happened in one host frame, in order (WORLD_EVENT entries)
+ *   pong    { n }
+ *   refused { reason }      the host will not let this client into the match
+ */
+export const MSG = Object.freeze({
+    HELLO: 'hello',
+    ACTION: 'action',
+    REQUEST: 'req',
+    PING: 'ping',
+    WELCOME: 'welcome',
+    BATCH: 'batch',
+    PONG: 'pong',
+    REFUSED: 'refused',
+});
+
+/** Entries of a batch: `[kind, ...fields]`. Field lists are in match/replication.js. */
+export const WORLD_EVENT = Object.freeze({
+    SPAWN: 'spawn',
+    REMOVE: 'remove',
+    DESTROY: 'destroy',
+    HIT: 'hit',
+    FIRE: 'fire',
+    PROJECTILE_GONE: 'gone',
+    ROCK: 'rock',
+    LANCE: 'lance',
+    /** The local player's ship ran into something: `[kind, speed]`, sent only to that player. */
+    BUMP: 'bump',
+    /** A ship changed sides: `[kind, shipId, faction]`. */
+    FACTION: 'faction',
+    /** A player ship was refitted: `[kind, shipId, upgrades]`. */
+    REFIT: 'refit',
+    /** A call on the client's stage (hint, music, cue...): `[kind, method, arg]`. */
+    STAGE: 'stage',
+    /** The match state for the receiving player: `[kind, matchState]`. */
+    MATCH: 'match',
+    /** Points for the receiving player: `[kind, points, classId, total]`. */
+    SCORE: 'score',
+    /** Something only the game mode understands: `[kind, name, data]` (see the mode's client). */
+    MODE: 'mode',
+});
+
+const REQUEST_NAME = /^[a-z][A-Za-z]{0,23}$/;
+
+const isFiniteNumber = (value) => typeof value === 'number' && Number.isFinite(value);
+
+/**
+ * Checks a reliable message from a client. Returns it in a clean, known shape - only the
+ * fields the host uses, each of the type it expects - so nothing a client invents can reach
+ * the simulation. (A request's data is the one thing passed on as received: the game mode
+ * it is for checks it, field by field.)
+ * @param {unknown} raw the text received
+ * @throws {PacketError} if it is not one of the client messages, well formed
+ */
+export function parseClientMessage(raw) {
+    if (typeof raw !== 'string') throw new PacketError('message is not text');
+    if (raw.length > NET.maxEventLength) throw new PacketError('message is too long');
+    let message;
+    try {
+        message = JSON.parse(raw);
+    } catch {
+        throw new PacketError('message is not JSON');
+    }
+    if (message === null || typeof message !== 'object' || Array.isArray(message)) throw new PacketError('message is not an object');
+
+    switch (message.t) {
+        case MSG.HELLO:
+            if (!Number.isInteger(message.v)) throw new PacketError('hello without a version');
+            if (typeof message.m !== 'string' || message.m.length === 0 || message.m.length > 64) throw new PacketError('hello without a match id');
+            return { t: MSG.HELLO, v: message.v, m: message.m };
+
+        case MSG.ACTION: {
+            if (!PILOT_ACTIONS.includes(message.a)) throw new PacketError('unknown action');
+            if (message.f === undefined) return { t: MSG.ACTION, a: message.a, f: null };
+            if (message.a !== 'targetCrosshair') throw new PacketError('this action takes no direction');
+            const f = message.f;
+            if (!Array.isArray(f) || f.length !== 3 || !f.every(isFiniteNumber)) throw new PacketError('direction is not a vector');
+            const length = Math.hypot(f[0], f[1], f[2]);
+            if (length < 0.5 || length > 2) throw new PacketError('direction is not a unit vector');
+            return { t: MSG.ACTION, a: message.a, f: [f[0] / length, f[1] / length, f[2] / length] };
+        }
+
+        case MSG.REQUEST: {
+            if (typeof message.k !== 'string' || !REQUEST_NAME.test(message.k)) throw new PacketError('request without a name');
+            const data = message.d ?? null;
+            if (data !== null && (typeof data !== 'object' || Array.isArray(data))) throw new PacketError('request data is not an object');
+            return { t: MSG.REQUEST, k: message.k, d: data };
+        }
+
+        case MSG.PING:
+            if (!isFiniteNumber(message.n)) throw new PacketError('ping without a number');
+            return { t: MSG.PING, n: message.n };
+
+        default:
+            throw new PacketError('unknown message type');
+    }
+}

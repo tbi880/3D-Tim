@@ -138,6 +138,8 @@ export class Ship {
             stateTimer: 0,
             retargetTimer: 0,
             forcedTargetTag: options.targetTag ?? null,
+            /** Hostiles further away than this (metres) are ignored until they attack; Infinity = hunt anything in the sector. */
+            engageRange: options.engageRange ?? Infinity,
             wantsFire: false,
             firedThisFrame: false,
             breakDirection: new Vector3(),

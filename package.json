@@ -9,6 +9,7 @@
     "lint": "eslint src --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "game:simulate": "node scripts/simulate-campaign.mjs",
+    "game:test": "node --test \"tests/game/*.test.js\"",
     "game:models": "python3 tools/game-models/build_models.py && npm run game:optimize",
     "game:optimize": "node tools/game-models/optimize.mjs --game public/assets/game/*.glb",
     "game:textures": "python3 tools/game-models/make_textures.py",

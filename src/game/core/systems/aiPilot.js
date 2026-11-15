@@ -50,6 +50,8 @@ function chooseTarget(world, ship) {
         let rank = prefers.indexOf(targetKindFor(ship, other));
         if (rank < 0) rank = prefers.length + 1;
         const distance = ship.position.distanceTo(other.position);
+        // A ship on guard leaves alone whatever keeps its distance - unless it has been shot at.
+        if (distance > ai.engageRange && ship.lastAttacker !== other) continue;
         // A stable per-pair jitter spreads a squadron over several targets.
         const jitter = 0.75 + (((ship.id * 31 + other.id * 17) % 10) / 10) * 0.5;
         const score = distance * (1 + rank * 0.8) * jitter;

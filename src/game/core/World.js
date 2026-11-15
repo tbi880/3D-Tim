@@ -128,6 +128,7 @@ export class World {
      * @param {Ship} [options.parent] with `mountOffset`: mounts this ship on another
      * @param {boolean} [options.warpIn] play an arrival flash
      * @param {number} [options.warpSeconds] with `warpIn`: exact seconds until it lands (a copy of a ship already arriving elsewhere)
+     * @param {number} [options.engageRange] AI: ignore hostiles further away than this until they attack (default: none)
      * @param {string} [options.pilotId] multiplayer: the player who flies this (player-class) ship
      * @param {boolean} [options.local] false for a player ship flown from another device; it never becomes `world.player`
      * @param {object} [options.upgrades] refit levels for a player ship (default: `world.playerUpgrades`)

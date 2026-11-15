@@ -377,6 +377,12 @@ export class GameSession {
         this.ui.set({ hint: textKey });
     }
 
+    /** A short notice that fades by itself (`params` fill the text's placeholders). */
+    showToast(textKey, params = null) {
+        this.toastTimer = TOAST_SECONDS;
+        this.ui.set({ toast: { key: textKey, params } });
+    }
+
     setWaypoint(waypoint) {
         this.waypoint = waypoint ? { ...waypoint, position: new Vector3() } : null;
         this.updateWaypoint();

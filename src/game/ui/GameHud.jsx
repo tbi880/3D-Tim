@@ -211,7 +211,7 @@ function Toast() {
     if (!toast) return null;
     return (
         <div className="eod-toast">
-            <strong>{t(toast.key)}</strong>
+            <strong>{t(toast.key, toast.params ?? undefined)}</strong>
             {toast.checkpointId && <span>{t(`checkpoint.${toast.checkpointId}`)}</span>}
         </div>
     );
