@@ -20,6 +20,8 @@ const COLORS = Object.freeze({
 });
 const FONT = '600 11px Orbitron, sans-serif';
 const EDGE_MARGIN = 46;
+/** Off-screen hostiles sit a little closer to the edge than the waypoint and escort arrows. */
+const EDGE_CONTACT_MARGIN = 26;
 const RADAR_RANGE = 6500;
 /** Must match the stick radius in input/InputController.js. */
 const STICK_RADIUS = 0.36;
@@ -67,16 +69,33 @@ function drawDiamond(ctx, x, y, size) {
     ctx.stroke();
 }
 
-/** Arrow on the screen edge pointing towards something that is not in view. */
-function drawEdgeArrow(ctx, projected, width, height, color, label) {
+const edgeScratch = { x: 0, y: 0, dx: 0, dy: 0 };
+
+/** Where on the screen edge (inset by `margin`) the direction towards an off-screen point lands. */
+function edgePoint(projected, width, height, margin, out = edgeScratch) {
     const centreX = width / 2;
     const centreY = height / 2;
-    const length = Math.hypot(projected.dirX, projected.dirY) || 1;
-    const dx = projected.dirX / length;
-    const dy = projected.dirY / length;
-    const scale = Math.min((centreX - EDGE_MARGIN) / Math.abs(dx || 1e-6), (centreY - EDGE_MARGIN) / Math.abs(dy || 1e-6));
-    const x = centreX + dx * scale;
-    const y = centreY + dy * scale;
+    let dirX = projected.dirX;
+    let dirY = projected.dirY;
+    // Straight behind: there is no screen direction, so park it at the bottom edge.
+    if (Math.hypot(dirX, dirY) < 1e-6) {
+        dirX = 0;
+        dirY = 1;
+    }
+    const length = Math.hypot(dirX, dirY);
+    const dx = dirX / length;
+    const dy = dirY / length;
+    const scale = Math.min((centreX - margin) / Math.max(Math.abs(dx), 1e-6), (centreY - margin) / Math.max(Math.abs(dy), 1e-6));
+    out.x = centreX + dx * scale;
+    out.y = centreY + dy * scale;
+    out.dx = dx;
+    out.dy = dy;
+    return out;
+}
+
+/** Arrow on the screen edge pointing towards something that is not in view. */
+function drawEdgeArrow(ctx, projected, width, height, color, label) {
+    const { x, y, dx, dy } = edgePoint(projected, width, height, EDGE_MARGIN);
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(Math.atan2(dy, dx));
@@ -94,6 +113,58 @@ function drawEdgeArrow(ctx, projected, width, height, color, label) {
         ctx.textAlign = 'center';
         ctx.fillText(label, x - dx * 30, y - dy * 30 + 4);
     }
+}
+
+/** A filled contact dot with a dark rim so it reads against bright planets and nebulae. */
+function drawDot(ctx, x, y, radius, color, alpha = 1) {
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+    ctx.beginPath();
+    ctx.arc(x, y, radius + 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+}
+
+/** The locked target's slowly turning dashed ring. */
+function drawLockRing(ctx, x, y, radius, color, time) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(time * 0.9);
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.lineWidth = 4;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+}
+
+/** Edge marker for a hostile that is out of view: a red dot with a small tick pointing to it. */
+function drawEdgeContact(ctx, projected, width, height, color, radius, locked, time) {
+    const { x, y, dx, dy } = edgePoint(projected, width, height, EDGE_CONTACT_MARGIN);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.atan2(dy, dx));
+    ctx.fillStyle = color;
+    ctx.globalAlpha = locked ? 1 : 0.8;
+    ctx.beginPath();
+    const tip = radius + (locked ? 13 : 8);
+    ctx.moveTo(tip, 0);
+    ctx.lineTo(radius + 3, -4);
+    ctx.lineTo(radius + 3, 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    drawDot(ctx, x, y, radius, color, locked ? 1 : 0.8);
+    if (locked) drawLockRing(ctx, x, y, radius + 11, color, time);
 }
 
 function shipName(ship) {
@@ -164,27 +235,45 @@ function drawShipMarkers(ctx, session, camera, width, height) {
     const player = world.player;
     const focalLength = height / 2 / Math.tan((camera.fov * Math.PI) / 360);
     const escortTag = session.director.scene.escortTag;
+    const time = performance.now() / 1000;
+    let locked = null;
 
     for (const ship of world.ships) {
         if (ship === player || !ship.alive || !ship.targetable || ship.arriving) continue;
         const isLocked = player.target === ship;
         const isEscort = escortTag && ship.tags.has(escortTag);
+        const hostile = ship.faction === FACTION.UMBRA;
         const color = COLORS[ship.faction];
+        const dotRadius = ship.cls.kind === 'capital' ? 6 : 4.5;
         project(ship.position, camera, width, height, projected);
 
         if (!projected.onScreen) {
-            if (isLocked) drawEdgeArrow(ctx, projected, width, height, color, null);
+            // Every hostile is shown on the edge in its direction, so the pilot can tell at a
+            // glance which way to turn; friendlies only when they matter.
+            if (hostile) drawEdgeContact(ctx, projected, width, height, color, dotRadius, isLocked, time);
+            else if (isLocked) drawEdgeArrow(ctx, projected, width, height, color, null);
             else if (isEscort) drawEdgeArrow(ctx, projected, width, height, color, shipName(ship));
+            if (isLocked && !hostile) {
+                const { x, y } = edgePoint(projected, width, height, EDGE_MARGIN);
+                drawLockRing(ctx, x, y, 14, color, time);
+            }
             continue;
         }
 
         const apparentRadius = (ship.boundingRadius * 0.7 / projected.distance) * focalLength;
-        const half = Math.max(isLocked ? 16 : 9, Math.min(apparentRadius * 1.15, 150));
-        const hostile = ship.faction === FACTION.UMBRA;
-        ctx.strokeStyle = color;
-        ctx.globalAlpha = isLocked ? 1 : hostile ? 0.75 : 0.4;
-        ctx.lineWidth = isLocked ? 2 : 1;
-        drawBrackets(ctx, projected.x, projected.y, half, Math.max(4, half * 0.35));
+        const half = Math.max(isLocked ? 24 : 9, Math.min(apparentRadius * 1.15, 150));
+        // Brackets only once a ship is big enough on screen to frame; far away it is just a dot.
+        if (isLocked || !hostile || apparentRadius > 10) {
+            ctx.strokeStyle = color;
+            ctx.globalAlpha = isLocked ? 0.9 : hostile ? 0.6 : 0.4;
+            ctx.lineWidth = isLocked ? 1.5 : 1;
+            drawBrackets(ctx, projected.x, projected.y, half, Math.max(4, half * 0.35));
+            ctx.globalAlpha = 1;
+        }
+        if (hostile) drawDot(ctx, projected.x, projected.y, dotRadius, color, isLocked ? 1 : 0.9);
+        if (isLocked) {
+            locked = { x: projected.x, y: projected.y, ring: Math.max(dotRadius + 12, Math.min(apparentRadius * 0.9, 120)), color };
+        }
 
         if (isLocked || isEscort) {
             ctx.globalAlpha = 1;
@@ -201,6 +290,8 @@ function drawShipMarkers(ctx, session, camera, width, height) {
         }
         ctx.globalAlpha = 1;
     }
+    // Drawn last so the lock ring sits on top of any other contact's dot.
+    if (locked) drawLockRing(ctx, locked.x, locked.y, locked.ring, locked.color, time);
 
     // Incoming torpedoes are worth seeing: they can be shot down.
     ctx.strokeStyle = COLORS.torpedo;
