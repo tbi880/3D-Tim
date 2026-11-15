@@ -179,6 +179,8 @@ function drawBar(ctx, x, y, width, fraction, color) {
 }
 
 const projected = { x: 0, y: 0, inFront: false, onScreen: false, distance: 0, dirX: 0, dirY: 0 };
+/** The beam cone ring around the reticle, as drawn this frame (screen px). */
+const beamRing = { x: 0, y: 0, radius: 0 };
 
 /** How far ahead of the ship the reticle is anchored, in metres. */
 const AIM_DISTANCE = 1500;
@@ -202,6 +204,9 @@ function drawReticle(ctx, session, camera, width, height, stick) {
     ctx.arc(centreX, centreY, arcRadius, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
+    beamRing.x = centreX;
+    beamRing.y = centreY;
+    beamRing.radius = arcRadius;
 
     ctx.strokeStyle = COLORS.reticle;
     ctx.lineWidth = 1.5;
@@ -262,17 +267,20 @@ function drawShipMarkers(ctx, session, camera, width, height) {
 
         const apparentRadius = (ship.boundingRadius * 0.7 / projected.distance) * focalLength;
         const half = Math.max(isLocked ? 24 : 9, Math.min(apparentRadius * 1.15, 150));
-        // Brackets only once a ship is big enough on screen to frame; far away it is just a dot.
-        if (isLocked || !hostile || apparentRadius > 10) {
+        // Inside the beam ring the pilot wants to see the ship itself, so hostiles there get
+        // only brackets; outside it they are red dots (plus brackets once they are big).
+        const inRing = Math.hypot(projected.x - beamRing.x, projected.y - beamRing.y) < beamRing.radius;
+        const showDot = hostile && !inRing;
+        if (isLocked || !hostile || inRing || apparentRadius > 10) {
             ctx.strokeStyle = color;
             ctx.globalAlpha = isLocked ? 0.9 : hostile ? 0.6 : 0.4;
             ctx.lineWidth = isLocked ? 1.5 : 1;
             drawBrackets(ctx, projected.x, projected.y, half, Math.max(4, half * 0.35));
             ctx.globalAlpha = 1;
         }
-        if (hostile) drawDot(ctx, projected.x, projected.y, dotRadius, color, isLocked ? 1 : 0.9);
+        if (showDot) drawDot(ctx, projected.x, projected.y, dotRadius, color, isLocked ? 1 : 0.9);
         if (isLocked) {
-            locked = { x: projected.x, y: projected.y, ring: Math.max(dotRadius + 12, Math.min(apparentRadius * 0.9, 120)), color };
+            locked = { x: projected.x, y: projected.y, ring: inRing ? Math.min(half * 1.3, 190) : Math.max(dotRadius + 12, Math.min(apparentRadius * 0.9, 120)), color };
         }
 
         if (isLocked || isEscort) {
