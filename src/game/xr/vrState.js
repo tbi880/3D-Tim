@@ -23,9 +23,36 @@ const CONTROLLER = { rayPointer: false, grabPointer: false, teleportPointer: fal
 
 let store = null;
 
+/**
+ * Keeps the game's depth buffer away from the headset's compositor.
+ *
+ * On headsets with WebXR layers (Quest), three renders straight into a projection layer that
+ * has a depth texture, and the compositor reads that depth to re-project each frame to the
+ * latest head pose. It assumes ordinary perspective depth, but this game writes a logarithmic
+ * depth buffer (it spans metres to thousands of kilometres), so the compositor took the
+ * cockpit, a metre away, for something a couple of centimetres from the eyes and warped it
+ * out of view: only the HUD screens (which write no depth) and distant objects survived.
+ * Asking for the layer without depth (depthFormat 0) makes three keep its own depth buffer
+ * for drawing and hand the compositor colour only.
+ */
+function submitColourOnly() {
+    const binding = typeof XRWebGLBinding === 'undefined' ? null : XRWebGLBinding.prototype;
+    if (!binding?.createProjectionLayer || binding.createProjectionLayer.colourOnly) return;
+    const create = binding.createProjectionLayer;
+    const createColourOnly = function createProjectionLayer(init = {}) {
+        const layer = create.call(this, { ...init, depthFormat: 0 });
+        // three keys its own depth buffer off this; a layer without depth must report it.
+        if (layer && layer.ignoreDepthValues !== true) Object.defineProperty(layer, 'ignoreDepthValues', { value: true });
+        return layer;
+    };
+    createColourOnly.colourOnly = true;
+    binding.createProjectionLayer = createColourOnly;
+}
+
 /** The page's XR store, created on first use. */
 export function getXRStore() {
     if (!store) {
+        submitColourOnly();
         store = createXRStore({
             emulate: false,
             offerSession: false,
