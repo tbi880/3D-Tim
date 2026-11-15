@@ -6,23 +6,24 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { useGameStore } from '../state/gameStore.js';
 
 /**
- * The back half of the cockpit, for VR only: a luxury cabin behind the pilot.
+ * The cockpit interior for VR: a luxury cabin built round the pilot.
  *
- * cockpit.glb was built for a flat screen, where only what lies ahead is ever seen (canopy
- * frame, dashboard, side consoles), and it is open behind and below the pilot. In a headset
- * the pilot can turn round, so this adds, in the cockpit model's own frame (eye at the
- * origin, -z ahead, metres):
- *  - a sculpted seat: quilted saddle-leather centre, black leather bolsters, a floating
- *    headrest, armrests with satin-metal caps, on a metal pedestal;
- *  - a curved rear wall (an ellipse that meets the canopy's rear arch) lined with quilted
- *    black leather between a satin-metal waist rail and a piano-black band, a fabric
- *    headliner, carpet on the floor;
- *  - ambient lighting: thin light lines along the waist rail, the roof edge and the floor
- *    (under the consoles), each with a soft halo. Their colour follows the power mode -
- *    blue balanced, cyan defense, red attack - and fades between them. Kept dim on purpose.
+ * cockpit.glb was built for a flat screen (only what lies ahead is ever seen, and it is
+ * steel ship plating with the long nose out in front), so in VR it is not drawn and this
+ * cabin replaces it, in the cockpit model's own frame (eye at the origin, -z ahead, metres):
+ *  - a wraparound dashboard that runs into the door sills: microfibre top, a satin-metal
+ *    strip, open-pore walnut, cognac leather below, turbine air vents, and a piano-black
+ *    housing under the flight display;
+ *  - a sculpted seat: quilted cognac centre, black bolsters, floating headrest, armrests;
+ *  - a curved rear wall in quilted black leather between a satin-metal waist rail and a
+ *    piano-black band, a fabric headliner, carpet, and a slim piano-black canopy frame
+ *    (rear arch and two roof rails) so the view ahead stays open;
+ *  - ambient lighting: thin light lines round the waist (dash edge and rear rail), along the
+ *    roof edge and round the footwell, each with a soft halo. Their colour follows the
+ *    power mode - blue balanced, cyan defense, red attack - and fades between them.
  *
- * Everything is merged into one mesh per material (eight draw calls), and the one fill
- * light (which was already there) takes the ambient colour instead of adding a light.
+ * Everything is merged into one mesh per material (eleven draw calls), and the one fill
+ * light takes the ambient colour instead of adding a light.
  */
 
 /** Ambient-light colours per power mode. */
@@ -98,6 +99,143 @@ function wallArc(y, inset, arc, count = 32) {
     return Array.from({ length: count + 1 }, (_, i) => wallPoint(-arc / 2 + (arc * i) / count, y, inset));
 }
 
+// ---- The front: a "U" from the rear arch forward round the dashboard and back --------------
+const FRONT_CENTRE_Z = -0.55;
+const FRONT_DEPTH = 1.05;
+const DASH_TOP_Y = -0.6;
+const FLOOR_Y = -1.25;
+
+/** Plan points of the U: {x, z, nx, nz (inward normal), w (1 dead ahead, 0 at the sides)}. */
+function buildFrontPath() {
+    const path = [];
+    const sideSteps = 6;
+    const curveSteps = 56;
+    // Left sill, from the rear arch forward (stopping short of where the curve starts).
+    for (let i = 0; i < sideSteps; i++) {
+        path.push({ x: -WALL_HALF_WIDTH, z: WALL_CENTRE_Z + ((FRONT_CENTRE_Z - WALL_CENTRE_Z) * i) / sideSteps, nx: 1, nz: 0, w: 0 });
+    }
+    // The dashboard: half an ellipse ahead of the pilot.
+    for (let i = 0; i <= curveSteps; i++) {
+        const theta = -Math.PI / 2 + (Math.PI * i) / curveSteps;
+        const nx = -Math.sin(theta) / WALL_HALF_WIDTH;
+        const nz = Math.cos(theta) / FRONT_DEPTH;
+        const length = Math.hypot(nx, nz);
+        path.push({ x: Math.sin(theta) * WALL_HALF_WIDTH, z: FRONT_CENTRE_Z - Math.cos(theta) * FRONT_DEPTH, nx: nx / length, nz: nz / length, w: Math.cos(theta) ** 2 });
+    }
+    // Right sill, back to the rear arch.
+    for (let i = 1; i <= sideSteps; i++) {
+        path.push({ x: WALL_HALF_WIDTH, z: FRONT_CENTRE_Z + ((WALL_CENTRE_Z - FRONT_CENTRE_Z) * i) / sideSteps, nx: -1, nz: 0, w: 0 });
+    }
+    return path;
+}
+const FRONT_PATH = buildFrontPath();
+
+/** How deep the dash top is (from the shell inwards): a sill at the sides, deep ahead. */
+const dashInset = (w) => 0.03 + 0.77 * w ** 1.5;
+
+/** A row of points along the U at height y, `inset(w)` metres in from the shell. */
+function frontRow(inset, y) {
+    return FRONT_PATH.map(({ x, z, nx, nz, w }) => {
+        const d = typeof inset === 'function' ? inset(w) : inset;
+        return new THREE.Vector3(x + nx * d, y, z + nz * d);
+    });
+}
+
+/**
+ * A strip between two rows of points, facing `towards` (a function of a point giving the
+ * direction the surface should face there). u runs along the strip in metres, v across it.
+ */
+function ribbon(rowA, rowB, towards) {
+    const count = rowA.length;
+    const positions = new Float32Array(count * 2 * 3);
+    const uvs = new Float32Array(count * 2 * 2);
+    let u = 0;
+    for (let i = 0; i < count; i++) {
+        if (i > 0) u += rowA[i].distanceTo(rowA[i - 1]);
+        rowA[i].toArray(positions, i * 6);
+        rowB[i].toArray(positions, i * 6 + 3);
+        uvs.set([u, 0, u, 1], i * 4);
+    }
+    // Pick the winding so the strip faces the right way (checked at its middle).
+    const mid = Math.floor(count / 2);
+    const a = rowA[mid];
+    const normal = new THREE.Vector3().subVectors(rowB[mid], a).cross(new THREE.Vector3().subVectors(rowA[mid + 1], a));
+    const flip = normal.dot(towards(a)) < 0;
+    const index = [];
+    for (let i = 0; i < count - 1; i++) {
+        const a0 = i * 2; const b0 = a0 + 1; const a1 = a0 + 2; const b1 = a0 + 3;
+        if (flip) index.push(a0, a1, b0, b0, a1, b1);
+        else index.push(a0, b0, a1, b0, b1, a1);
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+    geometry.setIndex(index);
+    geometry.computeVertexNormals();
+    return geometry;
+}
+const UP = () => new THREE.Vector3(0, 1, 0);
+const DOWN = () => new THREE.Vector3(0, -1, 0);
+/** Faces the pilot (the vertical axis through the eye). */
+const INWARD = (point) => new THREE.Vector3(-point.x, 0, -point.z);
+
+/** A vertical band of the dash face between heights y0 and y1, `inset` in from the shell. */
+const faceBand = (inset, y0, y1) => ribbon(frontRow(inset, y0), frontRow(inset, y1), INWARD);
+
+/** A turbine air vent set into the dash face at path angle `theta` (0 = ahead). */
+function airVent(theta, y) {
+    const i = Math.round(6 + ((theta + Math.PI / 2) / Math.PI) * 56);
+    const { x, z, nx, nz, w } = FRONT_PATH[i];
+    const d = dashInset(w);
+    const place = (geometry, out) => {
+        geometry.rotateX(Math.PI / 2);
+        geometry.rotateY(Math.atan2(nx, nz));
+        geometry.translate(x + nx * (d + out), y, z + nz * (d + out));
+        return geometry;
+    };
+    return {
+        ring: place(new THREE.CylinderGeometry(0.048, 0.044, 0.03, 28), 0.012),
+        hub: place(new THREE.CylinderGeometry(0.03, 0.03, 0.03, 20), 0.018),
+    };
+}
+
+/** Open-pore walnut: dark grain lines over a warm brown, as a repeating colour map. */
+function createWoodTexture() {
+    const width = 512;
+    const height = 128;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#74482a';
+    ctx.fillRect(0, 0, width, height);
+    // Deterministic pseudo-random so the grain is the same every run.
+    let seed = 7;
+    const random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    for (let k = 0; k < 70; k++) {
+        const y0 = random() * height;
+        const amplitude = 2 + random() * 6;
+        const wave = 1 + random() * 3;
+        const phase = random() * Math.PI * 2;
+        const shade = random();
+        ctx.strokeStyle = shade < 0.6 ? `rgba(30, 16, 8, ${0.25 + random() * 0.35})` : `rgba(140, 92, 52, ${0.15 + random() * 0.25})`;
+        ctx.lineWidth = 0.6 + random() * 2.2;
+        ctx.beginPath();
+        for (let x = 0; x <= width; x += 8) {
+            const y = y0 + Math.sin((x / width) * Math.PI * 2 * wave + phase) * amplitude;
+            if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+    }
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(1 / 1.4, 1);
+    texture.anisotropy = 4;
+    return texture;
+}
+
 /** Gives every part the same attributes (hull plating also needs RGBA vertex colours), then merges. */
 function merge(parts, colour = null) {
     const prepared = parts.map((part) => {
@@ -165,11 +303,14 @@ function buildCabin() {
     quiltColour.colorSpace = THREE.SRGBColorSpace;
     quiltColour.repeat.set(5, 5);
     quilt.repeat.set(5, 5);
+    const wood = createWoodTexture();
 
     const materials = {
         saddle: new THREE.MeshStandardMaterial({ color: '#7a4a2c', map: quiltColour, bumpMap: quilt, bumpScale: 2.5, roughness: 0.55, metalness: 0 }),
+        cognac: new THREE.MeshStandardMaterial({ color: '#6e4128', roughness: 0.5, metalness: 0 }),
         leather: new THREE.MeshStandardMaterial({ color: '#1a1716', roughness: 0.5, metalness: 0 }),
         quiltedBlack: new THREE.MeshStandardMaterial({ color: '#2a2523', map: quiltColour, bumpMap: quilt, bumpScale: 2, roughness: 0.55, metalness: 0 }),
+        wood: new THREE.MeshStandardMaterial({ color: '#ffffff', map: wood, roughness: 0.62, metalness: 0 }),
         metal: new THREE.MeshStandardMaterial({ color: '#c3c7cf', roughness: 0.28, metalness: 1 }),
         piano: new THREE.MeshStandardMaterial({ color: '#06070a', roughness: 0.12, metalness: 0.1 }),
         fabric: new THREE.MeshStandardMaterial({ color: '#1e1f24', roughness: 1, metalness: 0 }),
@@ -183,21 +324,31 @@ function buildCabin() {
     wallQuiltColour.repeat.set(18, 5);
     materials.quiltedBlack.map = wallQuiltColour;
     materials.quiltedBlack.bumpMap = wallQuilt;
-    const textures = [quilt, quiltColour, wallQuilt, wallQuiltColour];
+    const textures = [quilt, quiltColour, wallQuilt, wallQuiltColour, wood];
+
+    // The dash face, top to bottom: metal strip, walnut, then cognac leather set back a little.
+    const inner = dashInset;
+    const woodTop = DASH_TOP_Y - 0.04;
+    const woodBottom = DASH_TOP_Y - 0.2;
+    // At the sides (w = 0) the cognac meets the shell, in line with the rear wall's.
+    const recessed = (w) => inner(w) - 0.03 + 0.07 * w;
+    const vents = [-0.95, -0.45, 0.45, 0.95].map((theta) => airVent(theta, (woodTop + woodBottom) / 2));
+
+    // The flight display (VRHud's dashboard panel) sits in a piano-black housing.
+    const DISPLAY_TILT = -0.6;
+    const displayNormal = new THREE.Vector3(0, Math.sin(-DISPLAY_TILT), Math.cos(DISPLAY_TILT));
+    const housingCentre = new THREE.Vector3(0, -0.5, -0.72).addScaledVector(displayNormal, -0.03);
 
     const pieces = {
-        // The structure, in the ship's own plating so it ties into the cockpit model.
-        hull: [
-            box(3.9, 0.1, 3.75, 0, -1.3, -0.6),
-            box(0.1, 0.62, 3.0, -1.95, -0.95, -0.95),
-            box(0.1, 0.62, 3.0, 1.95, -0.95, -0.95),
-            wallBand(-1.3, -0.68, { inset: 0 }),
-            wallBand(0.98, 1.27, { inset: 0 }),
-        ],
-        // Seat centre panels.
         saddle: [
+            // Seat centre panels.
             box(0.36, 0.08, 0.5, 0, -0.73, -0.04, { radius: 0.035 }),
             box(0.34, 0.62, 0.07, 0, -0.33, 0.29, { radius: 0.03, rotationX: 0.14 }),
+        ],
+        cognac: [
+            faceBand(recessed, FLOOR_Y, woodBottom),
+            // Lower rear wall, behind the seat.
+            wallBand(FLOOR_Y - 0.05, -0.6, { inset: 0 }),
         ],
         leather: [
             // Cushion base and its side bolsters.
@@ -213,12 +364,13 @@ function buildCabin() {
             // Armrests.
             box(0.11, 0.07, 0.42, -0.42, -0.52, 0.04, { radius: 0.03 }),
             box(0.11, 0.07, 0.42, 0.42, -0.52, 0.04, { radius: 0.03 }),
-            // Door-panel style upholstery on the lower side walls, behind the consoles' reach.
-            box(0.04, 0.32, 1.2, -1.88, -0.92, -0.1, { radius: 0.015 }),
-            box(0.04, 0.32, 1.2, 1.88, -0.92, -0.1, { radius: 0.015 }),
+            // The underside of the walnut where the cognac steps back.
+            ribbon(frontRow(inner, woodBottom), frontRow(recessed, woodBottom), DOWN),
         ],
+        wood: [faceBand(inner, woodBottom, woodTop)],
         quiltedBlack: [wallBand(-0.6, 0.78, { inset: 0.02 })],
         metal: [
+            faceBand(inner, woodTop, DASH_TOP_Y),
             // Waist rail around the rear wall, headrest posts, armrest caps, seat pedestal.
             wallBand(-0.68, -0.6, { inset: 0.03 }),
             box(0.025, 0.12, 0.025, -0.08, 0.1, 0.39),
@@ -226,14 +378,26 @@ function buildCabin() {
             box(0.115, 0.075, 0.06, -0.42, -0.52, -0.19, { radius: 0.02 }),
             box(0.115, 0.075, 0.06, 0.42, -0.52, -0.19, { radius: 0.02 }),
             box(0.36, 0.38, 0.36, 0, -1.06, 0.02, { radius: 0.04 }),
+            ...vents.map((vent) => vent.ring),
         ],
         piano: [
             wallBand(0.78, 0.98, { inset: 0.025 }),
             // Gloss backs of the seat and headrest.
             box(0.5, 0.7, 0.02, 0, -0.3, 0.42, { radius: 0.008, rotationX: 0.14 }),
+            // A low cowl along the dash's outer edge, the display housing, the vent hubs.
+            faceBand(0, DASH_TOP_Y, DASH_TOP_Y + 0.05),
+            box(0.8, 0.33, 0.04, housingCentre.x, housingCentre.y, housingCentre.z, { radius: 0.015, rotationX: DISPLAY_TILT }),
+            ...vents.map((vent) => vent.hub),
+            // The canopy frame: the rear arch and two slim roof rails sweeping up from the sills.
+            new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+                [-1.9, FLOOR_Y], [-1.9, 0.95], [-1.72, 1.22], [-1.4, 1.28], [1.4, 1.28], [1.72, 1.22], [1.9, 0.95], [1.9, FLOOR_Y],
+            ].map(([x, y]) => new THREE.Vector3(x, y, WALL_CENTRE_Z)), false, 'centripetal'), 64, 0.04, 10, false),
+            ...[-1, 1].map((side) => new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+                [1.86, -0.6, -0.95], [1.8, 0.1, -0.8], [1.6, 0.75, -0.45], [1.32, 1.14, 0.05], [1.2, 1.28, WALL_CENTRE_Z],
+            ].map(([x, y, z]) => new THREE.Vector3(x * side, y, z)), false, 'centripetal'), 48, 0.03, 8, false)),
         ],
         fabric: [
-            // Headliner (half an ellipse, facing down) and the carpet.
+            // Headliner (half an ellipse, facing down) and the band below it, and the carpet.
             (() => {
                 const roof = new THREE.CircleGeometry(WALL_DEPTH, 40, 0, Math.PI);
                 roof.rotateX(Math.PI / 2);
@@ -241,29 +405,27 @@ function buildCabin() {
                 roof.translate(0, 1.26, WALL_CENTRE_Z);
                 return roof;
             })(),
-            box(3.0, 0.02, 3.2, 0, -1.24, -0.55),
+            wallBand(0.98, 1.27, { inset: 0 }),
+            // Dash top in matt microfibre, from the shell to the pilot-side edge (leather this
+            // wide and flat catches the starlight like a mirror).
+            ribbon(frontRow(0, DASH_TOP_Y), frontRow(inner, DASH_TOP_Y), UP),
+            box(3.8, 0.04, 2.95, 0, FLOOR_Y, -0.17),
         ],
     };
 
-    // Ambient light lines: under the waist rail's top edge, along the roof edge, and at the
-    // floor (running forward under the consoles, so it reads as indirect footwell light).
+    // Ambient light lines, each a closed loop: round the waist (along the dash's pilot-side
+    // edge and the rear waist rail), along the roof edge, and round the footwell.
+    const rearArc = (y, inset, arc) => wallArc(y, inset, arc, 40).reverse();
     const lines = [
-        lightLine(wallArc(-0.585, 0.045, Math.PI * 0.98)),
+        lightLine([...frontRow((w) => inner(w) - 0.015 * w, -0.588), ...rearArc(-0.588, 0.03, Math.PI)], true),
         lightLine(wallArc(0.965, 0.05, Math.PI * 0.75)),
-        lightLine([new THREE.Vector3(-1.86, -1.215, -2.1), ...wallArc(-1.215, 0.04, Math.PI, 40), new THREE.Vector3(1.86, -1.215, -2.1)]),
+        lightLine([...frontRow((w) => recessed(w) + 0.04 + 0.01 * w, FLOOR_Y + 0.035), ...rearArc(FLOOR_Y + 0.035, 0.04, Math.PI)], true),
     ];
 
-    const geometries = {
-        hull: merge(pieces.hull, [0.13, 0.14, 0.19, 1]),
-        saddle: merge(pieces.saddle),
-        leather: merge(pieces.leather),
-        quiltedBlack: merge(pieces.quiltedBlack),
-        metal: merge(pieces.metal),
-        piano: merge(pieces.piano),
-        fabric: merge(pieces.fabric),
-        line: merge(lines.map((line) => line.core)),
-        halo: merge(lines.map((line) => line.halo)),
-    };
+    const geometries = {};
+    for (const [name, parts] of Object.entries(pieces)) geometries[name] = merge(parts);
+    geometries.line = merge(lines.map((line) => line.core));
+    geometries.halo = merge(lines.map((line) => line.halo));
     return {
         materials,
         geometries,
@@ -275,9 +437,10 @@ function buildCabin() {
     };
 }
 
-export default function VRCockpitShell({ materials: shipMaterials }) {
+const SURFACES = ['saddle', 'cognac', 'leather', 'quiltedBlack', 'wood', 'metal', 'piano', 'fabric'];
+
+export default function VRCockpitShell() {
     const cabin = useMemo(() => buildCabin(), []);
-    const hullMaterial = useMemo(() => shipMaterials.resolve({ name: 'hull', metalness: 0.75, roughness: 1 }), [shipMaterials]);
     const fillRef = useRef(null);
     const colour = useMemo(() => new THREE.Color().copy(AMBIENT_COLOURS.balanced), []);
 
@@ -294,8 +457,7 @@ export default function VRCockpitShell({ materials: shipMaterials }) {
     const { geometries, materials } = cabin;
     return (
         <>
-            <mesh geometry={geometries.hull} material={hullMaterial} frustumCulled={false} />
-            {['saddle', 'leather', 'quiltedBlack', 'metal', 'piano', 'fabric'].map((name) => (
+            {SURFACES.map((name) => (
                 <mesh key={name} geometry={geometries[name]} material={materials[name]} frustumCulled={false} />
             ))}
             <mesh geometry={geometries.line} material={materials.line} frustumCulled={false} />

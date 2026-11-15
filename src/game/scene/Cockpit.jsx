@@ -14,14 +14,10 @@ import { ModelErrorBoundary, getModelInfo, useShipMaterials } from './models/Shi
  */
 function CockpitModel() {
     const materials = useShipMaterials();
-    // In VR the pilot can look behind them, where the flat-screen model is open.
+    // In VR the pilot can look all round, so the flat-screen model (steel plating, open behind,
+    // the nose out ahead) gives way to a full cabin built for the headset.
     const inVR = useVRActive();
-    return (
-        <>
-            <GltfModel url={getModelInfo('cockpit').file} materials={materials} />
-            {inVR && <VRCockpitShell materials={materials} />}
-        </>
-    );
+    return inVR ? <VRCockpitShell /> : <GltfModel url={getModelInfo('cockpit').file} materials={materials} />;
 }
 
 export default function Cockpit({ baseFov }) {
