@@ -35,7 +35,9 @@ const AMBIENT_COLOURS = Object.freeze({
 /** Brightness of the light lines (they are not tone mapped, so 1 = full colour). */
 const LINE_BRIGHTNESS = 0.8;
 const HALO_OPACITY = 0.16;
-const FILL_INTENSITY = 0.3;
+const FILL_INTENSITY = 0.9;
+/** Faint self-illumination of the cabin surfaces (fraction of their colour). */
+const SELF_LIGHT = 0.22;
 /** How fast the colour follows a mode change (1/s). */
 const COLOUR_FOLLOW = 3.5;
 
@@ -75,6 +77,13 @@ function flipInwards(geometry) {
     const normals = flat.attributes.normal.array;
     for (let i = 0; i < normals.length; i++) normals[i] = -normals[i];
     return flat;
+}
+
+/** A part of the seat (or anything sized to the pilot): left out of the room scaling. */
+function seatBox(...args) {
+    const geometry = box(...args);
+    geometry.userData.seat = true;
+    return geometry;
 }
 
 function box(sx, sy, sz, x, y, z, { radius = 0, rotationX = 0 } = {}) {
@@ -131,7 +140,7 @@ function buildFrontPath() {
 const FRONT_PATH = buildFrontPath();
 
 /** How deep the dash top is (from the shell inwards): a sill at the sides, deep ahead. */
-const dashInset = (w) => 0.03 + 0.77 * w ** 1.5;
+const dashInset = (w) => 0.03 + 0.93 * w ** 1.5;
 
 /** A row of points along the U at height y, `inset(w)` metres in from the shell. */
 function frontRow(inset, y) {
@@ -139,6 +148,31 @@ function frontRow(inset, y) {
         const d = typeof inset === 'function' ? inset(w) : inset;
         return new THREE.Vector3(x + nx * d, y, z + nz * d);
     });
+}
+
+/**
+ * The room is built at a compact size and then widened round the pilot: x and z by
+ * ROOM_SCALE, and heights above the eye too (more headroom), while everything below the eye
+ * keeps its height so the floor, sills and dash stay where a seated pilot expects them.
+ * The seat and the display housing are left at human size.
+ */
+const ROOM_SCALE = 1.25;
+function scaleRoom(geometry) {
+    const position = geometry.attributes.position;
+    const normal = geometry.attributes.normal;
+    for (let i = 0; i < position.count; i++) {
+        const above = position.getY(i) > 0;
+        const sy = above ? ROOM_SCALE : 1;
+        position.setXYZ(i, position.getX(i) * ROOM_SCALE, position.getY(i) * sy, position.getZ(i) * ROOM_SCALE);
+        if (normal && !above) {
+            // Inverse-transpose of the scale: x and z shrink relative to y below the eye.
+            const nx = normal.getX(i) / ROOM_SCALE; const ny = normal.getY(i); const nz = normal.getZ(i) / ROOM_SCALE;
+            const length = Math.hypot(nx, ny, nz) || 1;
+            normal.setXYZ(i, nx / length, ny / length, nz / length);
+        }
+    }
+    position.needsUpdate = true;
+    return geometry;
 }
 
 /**
@@ -308,12 +342,12 @@ function buildCabin() {
     const materials = {
         saddle: new THREE.MeshStandardMaterial({ color: '#7a4a2c', map: quiltColour, bumpMap: quilt, bumpScale: 2.5, roughness: 0.55, metalness: 0 }),
         cognac: new THREE.MeshStandardMaterial({ color: '#6e4128', roughness: 0.5, metalness: 0 }),
-        leather: new THREE.MeshStandardMaterial({ color: '#1a1716', roughness: 0.5, metalness: 0 }),
-        quiltedBlack: new THREE.MeshStandardMaterial({ color: '#2a2523', map: quiltColour, bumpMap: quilt, bumpScale: 2, roughness: 0.55, metalness: 0 }),
+        leather: new THREE.MeshStandardMaterial({ color: '#2b2624', roughness: 0.5, metalness: 0 }),
+        quiltedBlack: new THREE.MeshStandardMaterial({ color: '#3a3330', map: quiltColour, bumpMap: quilt, bumpScale: 2, roughness: 0.55, metalness: 0 }),
         wood: new THREE.MeshStandardMaterial({ color: '#ffffff', map: wood, roughness: 0.62, metalness: 0 }),
         metal: new THREE.MeshStandardMaterial({ color: '#c3c7cf', roughness: 0.28, metalness: 1 }),
         piano: new THREE.MeshStandardMaterial({ color: '#06070a', roughness: 0.12, metalness: 0.1 }),
-        fabric: new THREE.MeshStandardMaterial({ color: '#1e1f24', roughness: 1, metalness: 0 }),
+        fabric: new THREE.MeshStandardMaterial({ color: '#2e2f36', roughness: 1, metalness: 0 }),
         line: new THREE.MeshBasicMaterial({ color: AMBIENT_COLOURS.balanced, toneMapped: false }),
         halo: new THREE.MeshBasicMaterial({ color: AMBIENT_COLOURS.balanced, toneMapped: false, transparent: true, opacity: HALO_OPACITY, blending: THREE.AdditiveBlending, depthWrite: false }),
     };
@@ -342,8 +376,8 @@ function buildCabin() {
     const pieces = {
         saddle: [
             // Seat centre panels.
-            box(0.36, 0.08, 0.5, 0, -0.73, -0.04, { radius: 0.035 }),
-            box(0.34, 0.62, 0.07, 0, -0.33, 0.29, { radius: 0.03, rotationX: 0.14 }),
+            seatBox(0.36, 0.08, 0.5, 0, -0.73, -0.04, { radius: 0.035 }),
+            seatBox(0.34, 0.62, 0.07, 0, -0.33, 0.29, { radius: 0.03, rotationX: 0.14 }),
         ],
         cognac: [
             faceBand(recessed, FLOOR_Y, woodBottom),
@@ -352,18 +386,18 @@ function buildCabin() {
         ],
         leather: [
             // Cushion base and its side bolsters.
-            box(0.6, 0.1, 0.58, 0, -0.81, -0.02, { radius: 0.04 }),
-            box(0.12, 0.14, 0.54, -0.25, -0.73, -0.03, { radius: 0.05 }),
-            box(0.12, 0.14, 0.54, 0.25, -0.73, -0.03, { radius: 0.05 }),
+            seatBox(0.6, 0.1, 0.58, 0, -0.81, -0.02, { radius: 0.04 }),
+            seatBox(0.12, 0.14, 0.54, -0.25, -0.73, -0.03, { radius: 0.05 }),
+            seatBox(0.12, 0.14, 0.54, 0.25, -0.73, -0.03, { radius: 0.05 }),
             // Backrest shell and bolsters.
-            box(0.56, 0.78, 0.1, 0, -0.32, 0.36, { radius: 0.045, rotationX: 0.14 }),
-            box(0.12, 0.66, 0.15, -0.25, -0.36, 0.3, { radius: 0.05, rotationX: 0.14 }),
-            box(0.12, 0.66, 0.15, 0.25, -0.36, 0.3, { radius: 0.05, rotationX: 0.14 }),
+            seatBox(0.56, 0.78, 0.1, 0, -0.32, 0.36, { radius: 0.045, rotationX: 0.14 }),
+            seatBox(0.12, 0.66, 0.15, -0.25, -0.36, 0.3, { radius: 0.05, rotationX: 0.14 }),
+            seatBox(0.12, 0.66, 0.15, 0.25, -0.36, 0.3, { radius: 0.05, rotationX: 0.14 }),
             // Floating headrest.
-            box(0.3, 0.22, 0.11, 0, 0.24, 0.4, { radius: 0.05, rotationX: 0.1 }),
+            seatBox(0.3, 0.22, 0.11, 0, 0.24, 0.4, { radius: 0.05, rotationX: 0.1 }),
             // Armrests.
-            box(0.11, 0.07, 0.42, -0.42, -0.52, 0.04, { radius: 0.03 }),
-            box(0.11, 0.07, 0.42, 0.42, -0.52, 0.04, { radius: 0.03 }),
+            seatBox(0.11, 0.07, 0.42, -0.42, -0.52, 0.04, { radius: 0.03 }),
+            seatBox(0.11, 0.07, 0.42, 0.42, -0.52, 0.04, { radius: 0.03 }),
             // The underside of the walnut where the cognac steps back.
             ribbon(frontRow(inner, woodBottom), frontRow(recessed, woodBottom), DOWN),
         ],
@@ -373,20 +407,20 @@ function buildCabin() {
             faceBand(inner, woodTop, DASH_TOP_Y),
             // Waist rail around the rear wall, headrest posts, armrest caps, seat pedestal.
             wallBand(-0.68, -0.6, { inset: 0.03 }),
-            box(0.025, 0.12, 0.025, -0.08, 0.1, 0.39),
-            box(0.025, 0.12, 0.025, 0.08, 0.1, 0.39),
-            box(0.115, 0.075, 0.06, -0.42, -0.52, -0.19, { radius: 0.02 }),
-            box(0.115, 0.075, 0.06, 0.42, -0.52, -0.19, { radius: 0.02 }),
-            box(0.36, 0.38, 0.36, 0, -1.06, 0.02, { radius: 0.04 }),
+            seatBox(0.025, 0.12, 0.025, -0.08, 0.1, 0.39),
+            seatBox(0.025, 0.12, 0.025, 0.08, 0.1, 0.39),
+            seatBox(0.115, 0.075, 0.06, -0.42, -0.52, -0.19, { radius: 0.02 }),
+            seatBox(0.115, 0.075, 0.06, 0.42, -0.52, -0.19, { radius: 0.02 }),
+            seatBox(0.36, 0.38, 0.36, 0, -1.06, 0.02, { radius: 0.04 }),
             ...vents.map((vent) => vent.ring),
         ],
         piano: [
             wallBand(0.78, 0.98, { inset: 0.025 }),
             // Gloss backs of the seat and headrest.
-            box(0.5, 0.7, 0.02, 0, -0.3, 0.42, { radius: 0.008, rotationX: 0.14 }),
+            seatBox(0.5, 0.7, 0.02, 0, -0.3, 0.42, { radius: 0.008, rotationX: 0.14 }),
             // A low cowl along the dash's outer edge, the display housing, the vent hubs.
             faceBand(0, DASH_TOP_Y, DASH_TOP_Y + 0.05),
-            box(0.8, 0.33, 0.04, housingCentre.x, housingCentre.y, housingCentre.z, { radius: 0.015, rotationX: DISPLAY_TILT }),
+            seatBox(0.8, 0.33, 0.04, housingCentre.x, housingCentre.y, housingCentre.z, { radius: 0.015, rotationX: DISPLAY_TILT }),
             ...vents.map((vent) => vent.hub),
             // The canopy frame: the rear arch and two slim roof rails sweeping up from the sills.
             new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
@@ -423,9 +457,18 @@ function buildCabin() {
     ];
 
     const geometries = {};
-    for (const [name, parts] of Object.entries(pieces)) geometries[name] = merge(parts);
-    geometries.line = merge(lines.map((line) => line.core));
-    geometries.halo = merge(lines.map((line) => line.halo));
+    const room = (parts) => parts.map((part) => (part.userData.seat ? part : scaleRoom(part)));
+    for (const [name, parts] of Object.entries(pieces)) geometries[name] = merge(room(parts));
+    geometries.line = merge(room(lines.map((line) => line.core)));
+    geometries.halo = merge(room(lines.map((line) => line.halo)));
+
+    // A headset shows near-black as black: give every surface a faint glow of its own colour
+    // so the cabin reads in the dark without adding lights.
+    for (const material of Object.values(materials)) {
+        if (!material.isMeshStandardMaterial) continue;
+        material.emissive.copy(material.color).multiplyScalar(material.metalness > 0.5 ? 0.06 : SELF_LIGHT);
+        if (material.map) material.emissiveMap = material.map;
+    }
     return {
         materials,
         geometries,
@@ -463,7 +506,7 @@ export default function VRCockpitShell() {
             <mesh geometry={geometries.line} material={materials.line} frustumCulled={false} />
             <mesh geometry={geometries.halo} material={materials.halo} frustumCulled={false} renderOrder={1} />
             {/* The cabin's one fill light, tinted with the ambient colour. */}
-            <pointLight ref={fillRef} position={[0, 0.6, 0.75]} intensity={FILL_INTENSITY} distance={2.6} decay={1.2} />
+            <pointLight ref={fillRef} position={[0, 0.7, 0.6]} intensity={FILL_INTENSITY} distance={4} decay={1.2} />
         </>
     );
 }

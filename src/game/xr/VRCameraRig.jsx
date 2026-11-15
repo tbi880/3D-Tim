@@ -15,8 +15,12 @@ import { getXRStore, useVRActive, vr } from './vrState.js';
 
 /** Runs before the simulation (-2), so this frame's stick positions are used this frame. */
 const INPUT_PRIORITY = -3;
-/** Frames after the session starts before the seat is centred on the head (tracking settles). */
-const AUTO_RECENTER_FRAMES = 20;
+/**
+ * Re-centres after the session starts: the full one early, then (position only, so the view
+ * never swings round) once more when a real headset's tracking has surely settled, in case
+ * the first poses were stale and left the pilot's head above or beside the seat.
+ */
+const AUTO_RECENTER = [{ frame: 20, turn: true }, { frame: 90, turn: false }];
 const MENU_TEXTURE = [1024, 768];
 const MENU_METERS = [1.48, 1.11];
 const MENU_POSITION = [0, 0.02, -1.5];
@@ -32,10 +36,12 @@ const scratchForward = new THREE.Vector3();
  * Re-centres the seat: turns and shifts the headset's tracking origin so the head, where it
  * is now, sits at the pilot's eye looking straight ahead. Works the same seated or standing.
  */
-function recenter(origin, xrCamera) {
-    scratchEuler.setFromQuaternion(xrCamera.quaternion, 'YXZ');
-    origin.rotation.set(0, -scratchEuler.y, 0);
-    origin.position.copy(xrCamera.position).applyAxisAngle(THREE.Object3D.DEFAULT_UP, -scratchEuler.y).negate();
+function recenter(origin, xrCamera, turn = true) {
+    if (turn) {
+        scratchEuler.setFromQuaternion(xrCamera.quaternion, 'YXZ');
+        origin.rotation.set(0, -scratchEuler.y, 0);
+    }
+    origin.position.copy(xrCamera.position).applyAxisAngle(THREE.Object3D.DEFAULT_UP, origin.rotation.y).negate();
     origin.updateMatrix();
 }
 
@@ -48,7 +54,10 @@ export default function VRCameraRig({ game }) {
     const originRef = useRef(null);
     const seatRef = useRef(null);
     const xrCamera = useThree((state) => state.gl.xr.getCamera());
-    const recenterIn = useRef(AUTO_RECENTER_FRAMES);
+    // Frame numbers (counted from the session start) at which to re-centre.
+    const recenterAt = useRef([...AUTO_RECENTER]);
+    const frameCount = useRef(0);
+    const recenterSoon = () => { recenterAt.current.push({ frame: frameCount.current + 1, turn: true }); };
     const menuTimer = useRef(0);
 
     const menu = useMemo(() => new VRMenu(game), [game]);
@@ -66,7 +75,7 @@ export default function VRCameraRig({ game }) {
             onMenuAction: (action) => menu.handle(action, store(), t),
             onFlightAction: (action) => {
                 switch (action) {
-                    case 'recenter': recenterIn.current = 1; break;
+                    case 'recenter': recenterSoon(); break;
                     case 'pause': session.togglePause(); break;
                     case 'toggleView': vr.view = vr.view === 'chase' ? 'cockpit' : 'chase'; break;
                     case 'skip':
@@ -96,7 +105,8 @@ export default function VRCameraRig({ game }) {
     useEffect(() => getXRStore().subscribe((state, previous) => {
         if (state.visibilityState !== previous.visibilityState && state.visibilityState && state.visibilityState !== 'visible') game.session.pause();
         if (state.session !== previous.session) {
-            recenterIn.current = AUTO_RECENTER_FRAMES;
+            frameCount.current = 0;
+            recenterAt.current = [...AUTO_RECENTER];
             gamepads.release();
             if (!state.session) game.input.setXRControls(null);
         }
@@ -118,7 +128,7 @@ export default function VRCameraRig({ game }) {
     const referenceSpace = active ? getXRStore().getState().originReferenceSpace : null;
     useEffect(() => {
         if (!referenceSpace?.addEventListener) return undefined;
-        const onReset = () => { recenterIn.current = 1; };
+        const onReset = () => recenterSoon();
         referenceSpace.addEventListener('reset', onReset);
         return () => referenceSpace.removeEventListener('reset', onReset);
     }, [referenceSpace]);
@@ -127,9 +137,12 @@ export default function VRCameraRig({ game }) {
         if (!vr.active) return;
         gamepads.update(gl.xr.getSession(), delta);
         const origin = originRef.current;
-        if (origin && recenterIn.current > 0) {
-            recenterIn.current -= 1;
-            if (recenterIn.current === 0) recenter(origin, xrCamera);
+        frameCount.current += 1;
+        const pending = recenterAt.current;
+        const due = pending.filter(({ frame }) => frame <= frameCount.current);
+        if (origin && due.length) {
+            recenterAt.current = pending.filter(({ frame }) => frame > frameCount.current);
+            recenter(origin, xrCamera, due.some(({ turn }) => turn));
         }
     }, INPUT_PRIORITY);
 
