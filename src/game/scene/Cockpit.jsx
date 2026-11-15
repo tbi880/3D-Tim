@@ -1,6 +1,7 @@
 import { Suspense, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { vr } from '../xr/vrState.js';
+import { useVRActive, vr } from '../xr/vrState.js';
+import VRCockpitShell from '../xr/VRCockpitShell.jsx';
 import GltfModel from './models/GltfModel.jsx';
 import { ModelErrorBoundary, getModelInfo, useShipMaterials } from './models/ShipModel.jsx';
 
@@ -13,7 +14,14 @@ import { ModelErrorBoundary, getModelInfo, useShipMaterials } from './models/Shi
  */
 function CockpitModel() {
     const materials = useShipMaterials();
-    return <GltfModel url={getModelInfo('cockpit').file} materials={materials} />;
+    // In VR the pilot can look behind them, where the flat-screen model is open.
+    const inVR = useVRActive();
+    return (
+        <>
+            <GltfModel url={getModelInfo('cockpit').file} materials={materials} />
+            {inVR && <VRCockpitShell materials={materials} />}
+        </>
+    );
 }
 
 export default function Cockpit({ baseFov }) {
