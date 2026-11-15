@@ -13,6 +13,7 @@ import {
     enterFullscreen, exitFullscreen, FULLSCREEN_CHANGE_EVENTS, getFullscreenElement, isFullscreenSupported, setAutoFullscreenOff,
 } from '../../utils/fullscreen.js';
 import { enterVR, useVRActive, useVRSupported } from '../xr/vrState.js';
+import { bucketURL } from '../../Settings';
 import RefitPanel from './RefitPanel.jsx';
 
 /** Title screen, pause menu, game-over and ending screens, and the refit window. */
@@ -164,18 +165,19 @@ function Rating({ label, value }) {
 
 /**
  * Hangar pictures: every player ship from three views, rendered from the game's models by
- * tools/game-models/player-ships/render_previews.mjs. A few KB each, bundled with the page.
+ * tools/game-models/player-ships/render_previews.mjs and hosted in the asset bucket.
  */
-const HANGAR_IMAGES = import.meta.glob('./hangar/*.webp', { eager: true, import: 'default' });
 const HANGAR_VIEWS = ['front', 'side', 'rear'];
-const hangarImage = (classId, view) => HANGAR_IMAGES[`./hangar/${classId}-${view}.webp`] ?? null;
+const hangarImage = (classId, view) => `${bucketURL}game/player/${classId}-${view}.webp`;
 
 /** Starts fetching every hangar picture, so switching ships shows the next one at once. */
 function usePreloadHangarImages() {
     useEffect(() => {
-        for (const url of Object.values(HANGAR_IMAGES)) {
-            const image = new Image();
-            image.src = url;
+        for (const ship of PLAYER_SHIPS) {
+            for (const view of HANGAR_VIEWS) {
+                const image = new Image();
+                image.src = hangarImage(ship.classId, view);
+            }
         }
     }, []);
 }
