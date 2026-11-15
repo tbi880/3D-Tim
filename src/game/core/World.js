@@ -12,7 +12,7 @@ import { regenerateShield } from './systems/damage.js';
 import { generateAsteroids, updateObstacles } from './systems/obstacles.js';
 import { IDLE_CONTROLS, updatePlayerFlight } from './systems/playerFlight.js';
 import { updateProjectiles } from './systems/projectiles.js';
-import { findNearestHostile, findTargetNearCrosshair, getLockCandidates, isValidTarget } from './systems/targeting.js';
+import { findFriendlyUnderCrosshair, findNearestHostile, findTargetNearCrosshair, getLockCandidates, isValidTarget } from './systems/targeting.js';
 import { createWeaponState, updateShipWeapons } from './systems/weapons.js';
 
 const scratchVector = new Vector3();
@@ -60,6 +60,10 @@ export class World {
         this.playerUpgrades = {};
         /** Assist: the player's beams fire by themselves when something hostile is in the ring. */
         this.autoFire = false;
+        /** Multiplayer: players can hurt the computer-flown ships of their own side (see mayAttack). */
+        this.friendlyFire = false;
+        /** Multiplayer: `(target, source, amount)` called for every bit of damage a ship deals, for whoever keeps the rules. */
+        this.onDamage = null;
         /** 0..1 strength of the warp effect; driven by the story's warp beat. */
         this.warpFactor = 0;
         /** 0..1 how far the screen has faded to black (docking cut-scenes); driven by the story's fade beat. */
@@ -176,7 +180,7 @@ export class World {
         ship.alive = false;
         this.ships.splice(index, 1);
         if (flash) this.events.emit(GAME_EVENTS.WARP_FLASH, { position: ship.position.clone(), size: ship.boundingRadius, quaternion: ship.quaternion.clone() });
-        this.events.emit(GAME_EVENTS.SHIP_REMOVED, { ship });
+        this.events.emit(GAME_EVENTS.SHIP_REMOVED, { ship, flash });
     }
 
     /**
@@ -185,15 +189,19 @@ export class World {
      */
     setPlayerUpgrades(upgrades) {
         this.playerUpgrades = { ...upgrades };
-        const player = this.player;
-        if (!player?.alive) return;
-        const hullFraction = player.hullFraction;
-        const shieldFraction = player.shieldFraction;
-        player.cls = upgradedClass(player.classId, SHIP_CLASSES[player.classId], this.playerUpgrades);
-        player.maxHull = player.cls.hull;
-        player.hull = player.maxHull * hullFraction;
-        player.maxShield = player.cls.shield;
-        player.shield = player.maxShield * shieldFraction;
+        if (this.player?.alive) this.refitShip(this.player, this.playerUpgrades);
+    }
+
+    /** Rebuilds a player ship's class with `upgrades` (see setPlayerUpgrades); multiplayer refits go through here too. */
+    refitShip(ship, upgrades) {
+        const hullFraction = ship.hullFraction;
+        const shieldFraction = ship.shieldFraction;
+        ship.upgrades = { ...upgrades };
+        ship.cls = upgradedClass(ship.classId, SHIP_CLASSES[ship.classId], ship.upgrades);
+        ship.maxHull = ship.cls.hull;
+        ship.hull = ship.maxHull * hullFraction;
+        ship.maxShield = ship.cls.shield;
+        ship.shield = ship.maxShield * shieldFraction;
     }
 
     followParent(ship) {
@@ -248,7 +256,11 @@ export class World {
     /** @param {Vector3} [forward] look along this direction instead of the ship's nose (VR gaze) */
     targetNearestToCrosshair(forward = null, ship = this.player) {
         if (!ship) return;
-        const target = findTargetNearCrosshair(this, undefined, forward, ship) ?? getLockCandidates(this, ship)[0] ?? null;
+        const target = findTargetNearCrosshair(this, undefined, forward, ship)
+            // Nothing hostile in the cone: with friendly fire on, a ship of one's own side dead
+            // ahead can be locked - deliberately, never by cycling.
+            ?? (this.friendlyFire ? findFriendlyUnderCrosshair(this, forward, ship) : null)
+            ?? getLockCandidates(this, ship)[0] ?? null;
         this.setPlayerTarget(target, ship);
     }
 

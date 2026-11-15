@@ -55,17 +55,6 @@ const scratchSpin = new Quaternion();
 
 const emptyStats = () => ({ time: 0, kills: 0, losses: 0, score: 0 });
 
-/** The HUD's mission panels as a story director describes them (see GameSession.missionHud). */
-export function directorMissionHud(director) {
-    const { world, scene, progress, context } = director;
-    return {
-        escort: scene.escortTag ? world.findByTag(scene.escortTag) : null,
-        boss: scene.bossTag ? world.findByTag(scene.bossTag) : null,
-        progress: progress ? { labelKey: progress.labelKey, value: progress.getValue(context) } : null,
-        objective: scene.objectiveKey ? { key: scene.objectiveKey, params: director.objectiveParams?.(context) ?? null } : null,
-    };
-}
-
 function shipStatus(ship) {
     return {
         id: ship.id,
@@ -587,7 +576,6 @@ export class GameSession {
      * It comes from the campaign story, or from the match while one is being played.
      */
     missionHud() {
-        if (this.match) return this.match.missionHud();
-        return directorMissionHud(this.director);
+        return this.match ? this.match.missionHud() : this.director.missionHud();
     }
 }

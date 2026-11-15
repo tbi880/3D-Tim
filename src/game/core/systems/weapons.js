@@ -4,7 +4,7 @@ import { WEAPONS } from '../../config/weapons.js';
 import { GAME_EVENTS } from '../EventBus.js';
 import { Projectile } from '../Projectile.js';
 import { degToRad, forwardOf, randomInCone, randomRange } from '../math.js';
-import { applyDamage, areHostile } from './damage.js';
+import { applyDamage, areHostile, mayAttack } from './damage.js';
 import { damageObstacle, raycastObstacles } from './obstacles.js';
 import { IDLE_CONTROLS } from './playerFlight.js';
 import { aimPointOn, angleOffAxis, isValidTarget } from './targeting.js';
@@ -175,15 +175,16 @@ export function playerTorpedoRange(ship, def) {
 function pickPlayerBeamTarget(world, ship, def, origin, forward) {
     const maxAngle = degToRad(def.arcDeg);
     const range = playerBeamRange(ship, def);
-    const inArc = (candidate) => {
-        if (!isValidTarget(candidate) || !areHostile(ship, candidate)) return Infinity;
+    const inArc = (candidate, deliberate = false) => {
+        // The guns pick hostiles by themselves; anything else is only fired on when the pilot locked it.
+        if (!isValidTarget(candidate) || !(deliberate ? mayAttack(world, ship, candidate) : areHostile(ship, candidate))) return Infinity;
         aimPointOn(candidate, origin, forward, scratchAim);
         if (distanceToSurface(candidate, origin) > range) return Infinity;
         const angle = angleOffAxis(candidate, origin, forward, scratchAim);
         return angle <= maxAngle ? angle : Infinity;
     };
 
-    if (ship.target && inArc(ship.target) !== Infinity) return ship.target;
+    if (ship.target && inArc(ship.target, true) !== Infinity) return ship.target;
 
     let best = null;
     let bestAngle = Infinity;

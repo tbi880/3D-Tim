@@ -1,6 +1,7 @@
 import { Quaternion, Vector3 } from 'three';
 import { FACTION } from '../config/gameConfig.js';
 import { WEAPONS } from '../config/weapons.js';
+import { areHostile } from '../core/systems/damage.js';
 import { t } from '../i18n/index.js';
 
 /**
@@ -10,14 +11,23 @@ import { t } from '../i18n/index.js';
  */
 
 const COLORS = Object.freeze({
-    [FACTION.UMBRA]: '#ff4b6e',
-    [FACTION.DAWN]: '#59d0ff',
+    hostile: '#ff4b6e',
+    friendly: '#59d0ff',
     [FACTION.NEUTRAL]: '#d8dde6',
     waypoint: '#ffd36b',
     torpedo: '#b6ff3d',
     reticle: 'rgba(160, 225, 255, 0.85)',
     reticleDim: 'rgba(160, 225, 255, 0.22)',
 });
+/**
+ * Red for what is hostile to the pilot, blue for their own side - whichever side that is: in
+ * multiplayer the pilot may be flying for Umbra, or for nobody.
+ */
+function contactColor(player, ship) {
+    if (ship.faction === FACTION.NEUTRAL) return COLORS[FACTION.NEUTRAL];
+    return areHostile(player, ship) ? COLORS.hostile : COLORS.friendly;
+}
+
 const FONT = '600 11px Orbitron, sans-serif';
 const EDGE_MARGIN = 46;
 /** Off-screen hostiles sit a little closer to the edge than the waypoint and escort arrows. */
@@ -247,8 +257,8 @@ function drawShipMarkers(ctx, session, camera, width, height) {
         if (ship === player || !ship.alive || !ship.targetable || ship.arriving) continue;
         const isLocked = player.target === ship;
         const isEscort = escortTag && ship.tags.has(escortTag);
-        const hostile = ship.faction === FACTION.UMBRA;
-        const color = COLORS[ship.faction];
+        const hostile = areHostile(player, ship);
+        const color = contactColor(player, ship);
         const dotRadius = ship.cls.kind === 'capital' ? 6 : 4.5;
         project(ship.position, camera, width, height, projected);
 
@@ -305,7 +315,7 @@ function drawShipMarkers(ctx, session, camera, width, height) {
     ctx.strokeStyle = COLORS.torpedo;
     ctx.lineWidth = 1.5;
     for (const projectile of world.projectiles) {
-        if (projectile.kind !== 'torpedo' || projectile.faction !== FACTION.UMBRA) continue;
+        if (projectile.kind !== 'torpedo' || !areHostile(player, projectile)) continue;
         project(projectile.position, camera, width, height, projected);
         if (projected.onScreen) drawDiamond(ctx, projected.x, projected.y, 6);
     }
@@ -397,10 +407,10 @@ export function drawRadar(ctx, session, size) {
 
     for (const ship of world.ships) {
         if (ship === player || !ship.alive || !ship.targetable || ship.arriving) continue;
-        plot(ship.position, COLORS[ship.faction], ship.cls.kind === 'capital' ? 6 : 3.5, player.target === ship);
+        plot(ship.position, contactColor(player, ship), ship.cls.kind === 'capital' ? 6 : 3.5, player.target === ship);
     }
     for (const projectile of world.projectiles) {
-        if (projectile.kind === 'torpedo' && projectile.faction === FACTION.UMBRA) plot(projectile.position, COLORS.torpedo, 2, false);
+        if (projectile.kind === 'torpedo' && areHostile(player, projectile)) plot(projectile.position, COLORS.torpedo, 2, false);
     }
     if (session.waypoint) plot(session.waypoint.position, COLORS.waypoint, 4, true);
 

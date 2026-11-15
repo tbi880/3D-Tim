@@ -18,6 +18,7 @@ const FACTION_COLORS = Object.freeze({
     [FACTION.DAWN]: { shield: '#59c8ff', engine: '#7fdcff' },
     [FACTION.UMBRA]: { shield: '#d04dff', engine: '#ff5c8f' },
     [FACTION.NEUTRAL]: { shield: '#ffffff', engine: '#ffd36b' },
+    [FACTION.PIRATE]: { shield: '#ffb347', engine: '#ffc56b' },
 });
 
 const scratchForward = new THREE.Vector3();
@@ -187,6 +188,8 @@ function PlayerShipView({ session }) {
     // Replaced on every new game or reload, which is also when a different ship may have been chosen.
     const player = useGameStore((state) => state.playerShip);
     const info = getModelInfo(player?.cls.model ?? 'kestrel');
+    // Always the Federation's in single player; in multiplayer the side the player was dealt.
+    const faction = player?.faction ?? FACTION.DAWN;
 
     useFrame(() => {
         const group = groupRef.current;
@@ -200,8 +203,8 @@ function PlayerShipView({ session }) {
 
     return (
         <group ref={groupRef} visible={false}>
-            <ShipModel modelId={player?.cls.model ?? 'kestrel'} faction={FACTION.DAWN} getThrust={getThrust} />
-            {info?.engines?.length > 0 && <EnginePlumes engines={info.engines} faction={FACTION.DAWN} getThrust={getThrust} />}
+            <ShipModel modelId={player?.cls.model ?? 'kestrel'} faction={faction} getThrust={getThrust} />
+            {info?.engines?.length > 0 && <EnginePlumes engines={info.engines} faction={faction} getThrust={getThrust} />}
             {player && <Shield key={player.id} ship={player} world={session.world} />}
         </group>
     );

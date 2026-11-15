@@ -84,6 +84,21 @@ export class StoryDirector {
         }
     }
 
+    /**
+     * What the script wants on the HUD right now: the ship being protected, the boss, the
+     * progress bar and the objective (ships, `{ labelKey, value }`, `{ key, params }`; null
+     * for anything not shown).
+     */
+    missionHud() {
+        const { world, scene, progress, context } = this;
+        return {
+            escort: scene.escortTag ? world.findByTag(scene.escortTag) : null,
+            boss: scene.bossTag ? world.findByTag(scene.bossTag) : null,
+            progress: progress ? { labelKey: progress.labelKey, value: progress.getValue(context) } : null,
+            objective: scene.objectiveKey ? { key: scene.objectiveKey, params: this.objectiveParams?.(context) ?? null } : null,
+        };
+    }
+
     /** Ids of every checkpoint in script order (used to label saves and by tests). */
     listCheckpoints() {
         return this.beats.filter((beat) => beat.type === 'checkpoint').map((beat) => beat.id);

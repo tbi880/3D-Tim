@@ -11,6 +11,8 @@ export const FACTION = Object.freeze({
     DAWN: 'dawn',
     UMBRA: 'umbra',
     NEUTRAL: 'neutral',
+    /** Multiplayer only: players with no side, at war with everyone including each other. */
+    PIRATE: 'pirate',
 });
 
 /** Player ship handling. */
@@ -61,6 +63,8 @@ export const POWER_MODE_ORDER = ['balanced', 'attack', 'defense'];
  *   enemyBeamDamage  - damage of Umbra continuous beams (they have no "rate" to scale)
  *   allyDamage       - damage dealt by Dawn ships other than the player
  *   shieldRegen      - recharge rate of the player's shields
+ *   allyDamageVsShips - optional, replaces ALLIES.damageVsShips (multiplayer sets it to 1:
+ *                       there both fleets fight each other for real)
  */
 export const DIFFICULTY = Object.freeze({
     cadet: {
@@ -117,6 +121,8 @@ export const TARGETING = Object.freeze({
     lockRange: 14000,
     /** Half-angle (deg) used by "target nearest to crosshair". */
     crosshairConeDeg: 25,
+    /** The same for locking a ship of one's own side (multiplayer friendly fire): it has to be dead ahead. */
+    friendlyConeDeg: 4,
 });
 
 export const STORAGE_KEYS = Object.freeze({

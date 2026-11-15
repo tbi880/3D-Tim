@@ -34,9 +34,10 @@ function hitShip(world, projectile, ship) {
 function findHit(world, projectile) {
     scratchMidpoint.copy(projectile.position).add(projectile.previousPosition).multiplyScalar(0.5);
     for (const ship of world.ships) {
-        if (!ship.alive || ship.arriving) continue;
-        // Shots hit enemies, and are also stopped by neutral scenery (wrecks, buoys).
-        if (!areHostile(projectile, ship) && ship.faction !== FACTION.NEUTRAL) continue;
+        if (!ship.alive || ship.arriving || ship === projectile.owner) continue;
+        // Shots hit enemies, and are also stopped by neutral scenery (wrecks, buoys). A torpedo
+        // also hits what it was locked on, whoever that is (multiplayer friendly fire).
+        if (!areHostile(projectile, ship) && ship.faction !== FACTION.NEUTRAL && ship !== projectile.target) continue;
         const reach = projectile.radius;
         if (ship.distanceToPoint(projectile.position) <= reach || ship.distanceToPoint(scratchMidpoint) <= reach) {
             return ship;
@@ -54,17 +55,26 @@ function findObstacleHit(world, projectile) {
     return null;
 }
 
+/**
+ * Flies one shot for `dt` seconds: burns fuel, homes (torpedoes) and moves. No hit testing.
+ * @returns {boolean} false once its fuel has run out (it did not move)
+ */
+export function flyProjectile(projectile, dt) {
+    projectile.life -= dt;
+    if (projectile.life <= 0) return false;
+    if (projectile.kind === 'torpedo') steerTorpedo(projectile, dt);
+    projectile.previousPosition.copy(projectile.position);
+    projectile.position.addScaledVector(projectile.velocity, dt);
+    return true;
+}
+
 export function updateProjectiles(world, dt) {
     for (const projectile of world.projectiles) {
         if (!projectile.alive) continue;
-        projectile.life -= dt;
-        if (projectile.life <= 0) {
+        if (!flyProjectile(projectile, dt)) {
             destroyProjectile(world, projectile, projectile.kind === 'torpedo');
             continue;
         }
-        if (projectile.kind === 'torpedo') steerTorpedo(projectile, dt);
-        projectile.previousPosition.copy(projectile.position);
-        projectile.position.addScaledVector(projectile.velocity, dt);
 
         const ship = findHit(world, projectile);
         if (ship) {

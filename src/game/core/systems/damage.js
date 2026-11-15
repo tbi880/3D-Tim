@@ -1,9 +1,24 @@
 import { ALLIES, FACTION, POWER_MODES, WORLD } from '../../config/gameConfig.js';
 import { GAME_EVENTS } from '../EventBus.js';
 
-/** Two things fight each other when they belong to different, non-neutral factions. */
+/**
+ * Two things fight each other on sight when they belong to different, non-neutral factions.
+ * Pirates have no side: they are hostile to everyone, each other included.
+ */
 export function areHostile(a, b) {
-    return a.faction !== b.faction && a.faction !== FACTION.NEUTRAL && b.faction !== FACTION.NEUTRAL;
+    if (a.faction !== b.faction) return a.faction !== FACTION.NEUTRAL && b.faction !== FACTION.NEUTRAL;
+    return a.faction === FACTION.PIRATE && a !== b && a.owner !== b && b.owner !== a;
+}
+
+/**
+ * Whether `ship`'s pilot may open fire on `target` on purpose: on anything hostile, and -
+ * where the world allows friendly fire (multiplayer) - a player on the computer-flown ships
+ * of their own side. Never the other way round, and never player on player of one side.
+ */
+export function mayAttack(world, ship, target) {
+    if (areHostile(ship, target)) return true;
+    return Boolean(world.friendlyFire) && ship.isPlayer && !target.isPlayer && !target.isProjectile
+        && target.faction === ship.faction && target.faction !== FACTION.NEUTRAL;
 }
 
 function emitHit(world, target, position, shieldHit, amount, continuous) {
@@ -13,6 +28,11 @@ function emitHit(world, target, position, shieldHit, amount, continuous) {
         target.hitEffectTimer = world.time + WORLD.beamHitEffectInterval;
     }
     world.events.emit(GAME_EVENTS.HIT, { target, position, shield: shieldHit, amount });
+}
+
+/** Tells whoever keeps the rules that `source` hurt `target` (every time, unlike the rate-limited HIT effect). */
+function reportDamage(world, target, source, amount) {
+    if (source && world.onDamage) world.onDamage(target, source, amount);
 }
 
 export function destroyProjectile(world, projectile, withExplosion) {
@@ -81,7 +101,7 @@ export function applyDamage(world, target, amount, options = {}) {
     } else if (target.faction === FACTION.UMBRA) {
         remaining /= world.difficulty.enemyToughness;
         if (source && !source.isPlayer && source.faction === FACTION.DAWN) {
-            remaining *= world.difficulty.allyDamage * (target.cls.kind === 'module' ? 1 : ALLIES.damageVsShips);
+            remaining *= world.difficulty.allyDamage * (target.cls.kind === 'module' ? 1 : world.difficulty.allyDamageVsShips ?? ALLIES.damageVsShips);
         }
     }
 
@@ -103,6 +123,7 @@ export function applyDamage(world, target, amount, options = {}) {
     target.lastDamagedAt = world.time;
     target.lastAttacker = source;
     emitHit(world, target, position, shieldHit, amount, continuous);
+    reportDamage(world, target, source, amount);
 
     if (target.hull <= 0) destroyShip(world, target, source);
 }

@@ -1,7 +1,7 @@
 import { Vector3 } from 'three';
 import { TARGETING } from '../../config/gameConfig.js';
 import { degToRad, forwardOf } from '../math.js';
-import { areHostile } from './damage.js';
+import { areHostile, mayAttack } from './damage.js';
 
 const scratchForward = new Vector3();
 const scratchToTarget = new Vector3();
@@ -65,6 +65,31 @@ export function findTargetNearCrosshair(world, coneDeg = TARGETING.crosshairCone
     let best = null;
     let bestAngle = maxAngle;
     for (const ship of getLockCandidates(world, player)) {
+        aimPointOn(ship, player.position, scratchForward, aimPoint);
+        const angle = angleOffAxis(ship, player.position, scratchForward, aimPoint);
+        if (angle < bestAngle) {
+            bestAngle = angle;
+            best = ship;
+        }
+    }
+    return best;
+}
+
+/**
+ * A ship the player may attack but is not hostile to (friendly fire: one of their own side's
+ * computer-flown ships), if one is almost exactly under the crosshair.
+ */
+export function findFriendlyUnderCrosshair(world, forward = null, player = world.player) {
+    if (!player) return null;
+    if (forward) scratchForward.copy(forward);
+    else forwardOf(player.quaternion, scratchForward);
+    const maxAngle = degToRad(TARGETING.friendlyConeDeg);
+    const aimPoint = new Vector3();
+    let best = null;
+    let bestAngle = maxAngle;
+    for (const ship of world.ships) {
+        if (ship === player || !isValidTarget(ship) || areHostile(player, ship) || !mayAttack(world, player, ship)) continue;
+        if (ship.position.distanceTo(player.position) > TARGETING.lockRange) continue;
         aimPointOn(ship, player.position, scratchForward, aimPoint);
         const angle = angleOffAxis(ship, player.position, scratchForward, aimPoint);
         if (angle < bestAngle) {
