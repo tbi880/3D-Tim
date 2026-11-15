@@ -239,6 +239,7 @@ export default {
     'ui.view.chase': 'Chase',
     'ui.autoFire': 'Auto-fire beams',
     'ui.graphics': 'Graphics',
+    'ui.fullscreen': 'Fullscreen',
     'ui.graphics.performance': 'Smooth',
     'ui.graphics.quality': 'Sharp',
     'ui.graphicsHint.performance': 'Standard resolution, no extra anti-aliasing: the smoothest frame rate.',

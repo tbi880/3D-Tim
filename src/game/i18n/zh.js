@@ -239,6 +239,7 @@ export default {
     'ui.view.chase': '追尾',
     'ui.autoFire': '光束自动开火',
     'ui.graphics': '画质',
+    'ui.fullscreen': '全屏',
     'ui.graphics.performance': '流畅',
     'ui.graphics.quality': '清晰',
     'ui.graphicsHint.performance': '标准分辨率、不额外抗锯齿：帧率最稳。',

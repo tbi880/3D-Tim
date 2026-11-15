@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { stageOfENV } from '../Settings';
-import { enterFullscreen, getFullscreenElement } from '../utils/fullscreen';
+import { enterFullscreen, getFullscreenElement, isAutoFullscreenOff } from '../utils/fullscreen';
 
 const GESTURES = ['pointerup', 'touchend', 'click'];
 
@@ -26,7 +26,7 @@ export default function useClickToFullscreen({ enabled = stageOfENV === 'prod', 
             for (const type of GESTURES) document.removeEventListener(type, onGesture, true);
         };
         function onGesture(event) {
-            if (getFullscreenElement()) return;
+            if (getFullscreenElement() || isAutoFullscreenOff()) return;
             // Controls that need the click for something else (entering VR) opt out.
             if (event?.target?.closest?.('[data-skip-fullscreen]')) return;
             if (skipPortrait && window.innerHeight > window.innerWidth) return;

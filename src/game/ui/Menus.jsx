@@ -9,7 +9,9 @@ import { PHASE } from '../state/GameSession.js';
 import { loadSave } from '../state/saveGame.js';
 import { playerModelFile, requestShipModel } from '../scene/models/ShipModel.jsx';
 import { useGameStore, useT } from '../state/gameStore.js';
-import { isFullscreenSupported } from '../../utils/fullscreen.js';
+import {
+    enterFullscreen, exitFullscreen, FULLSCREEN_CHANGE_EVENTS, getFullscreenElement, isFullscreenSupported, setAutoFullscreenOff,
+} from '../../utils/fullscreen.js';
 import { enterVR, useVRActive, useVRSupported } from '../xr/vrState.js';
 import RefitPanel from './RefitPanel.jsx';
 
@@ -69,6 +71,37 @@ function VRButton({ onStart }) {
     );
 }
 
+/** Whether the page is fullscreen right now (also after Esc or the browser's own controls). */
+function useIsFullscreen() {
+    const [fullscreen, setFullscreen] = useState(() => Boolean(getFullscreenElement()));
+    useEffect(() => {
+        const update = () => setFullscreen(Boolean(getFullscreenElement()));
+        for (const type of FULLSCREEN_CHANGE_EVENTS) document.addEventListener(type, update);
+        return () => { for (const type of FULLSCREEN_CHANGE_EVENTS) document.removeEventListener(type, update); };
+    }, []);
+    return fullscreen;
+}
+
+/**
+ * Desktop fullscreen switch. Switching it off also stops clicks from going fullscreen again
+ * (useClickToFullscreen) until it is switched back on. It opts out of click-to-fullscreen
+ * itself, so the click is not undone by the page.
+ */
+function FullscreenSetting() {
+    const fullscreen = useIsFullscreen();
+    const t = useT();
+    const toggle = () => {
+        setAutoFullscreenOff(fullscreen);
+        if (fullscreen) exitFullscreen();
+        else enterFullscreen();
+    };
+    return (
+        <button type="button" className="eod-setting" data-skip-fullscreen="" onClick={toggle}>
+            <span>{t('ui.fullscreen')}</span><strong>{fullscreen ? t('ui.on') : t('ui.off')}</strong>
+        </button>
+    );
+}
+
 /** Language, difficulty, sound and pitch-inversion switches (shared by title and pause menus). */
 function SettingsRows({ session }) {
     const settings = useGameStore((state) => state.settings);
@@ -109,6 +142,7 @@ function SettingsRows({ session }) {
             >
                 <span>{t('ui.graphics')}</span><strong>{t(`ui.graphics.${settings.graphics}`)}</strong>
             </button>
+            {!IS_TOUCH && isFullscreenSupported() && <FullscreenSetting />}
             <p className="eod-setting-hint">{t(`ui.difficultyHint.${settings.difficulty}`)}</p>
         </div>
     );

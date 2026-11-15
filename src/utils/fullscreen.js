@@ -4,6 +4,16 @@
  */
 
 let pending = false;
+/** Set when the player chose a window with the game's fullscreen switch: clicks stop going fullscreen. */
+let autoFullscreenOff = false;
+
+export function isAutoFullscreenOff() {
+    return autoFullscreenOff;
+}
+
+export function setAutoFullscreenOff(off) {
+    autoFullscreenOff = Boolean(off);
+}
 
 /** The element currently shown fullscreen, or null. */
 export function getFullscreenElement() {
@@ -36,3 +46,17 @@ export async function enterFullscreen(element = document.documentElement) {
         pending = false;
     }
 }
+
+/** Leaves fullscreen if the page is showing fullscreen. */
+export async function exitFullscreen() {
+    if (!getFullscreenElement()) return;
+    const exit = document.exitFullscreen ?? document.webkitExitFullscreen ?? document.mozCancelFullScreen ?? document.msExitFullscreen;
+    try {
+        await exit?.call(document);
+    } catch {
+        // Already left (e.g. Esc pressed at the same time).
+    }
+}
+
+/** Events fired when the page enters or leaves fullscreen, across browsers. */
+export const FULLSCREEN_CHANGE_EVENTS = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
