@@ -97,7 +97,7 @@ export default function VRCameraRig({ game }) {
                     case 'gazeTarget':
                         if (session.phase === PHASE.PLAYING && session.world.player?.alive && !session.world.controlsLocked) {
                             scratchForward.set(0, 0, -1).applyQuaternion(viewPose.quaternion);
-                            session.world.targetNearestToCrosshair(scratchForward);
+                            session.handleAction('targetCrosshair', { forward: scratchForward });
                         }
                         break;
                     default: session.handleAction(action);
@@ -136,12 +136,15 @@ export default function VRCameraRig({ game }) {
 
     // A rumble when the ship is hit or rams something.
     useEffect(() => {
-        const { events } = game.session.world;
+        const { world } = game.session;
+        const { events } = world;
+        // Only for the ship flown on this device: in multiplayer other players' ships are hit too.
+        const isOwnShip = (ship) => Boolean(ship) && ship === world.player;
         const offs = [
             events.on(GAME_EVENTS.HIT, ({ target, amount, shield }) => {
-                if (vr.active && target?.isPlayer && amount > 0) gamepads.pulse((shield ? 0.25 : 0.5) + amount / 200, shield ? 40 : 80);
+                if (vr.active && isOwnShip(target) && amount > 0) gamepads.pulse((shield ? 0.25 : 0.5) + amount / 200, shield ? 40 : 80);
             }),
-            events.on(GAME_EVENTS.PLAYER_COLLISION, () => { if (vr.active) gamepads.pulse(1, 160); }),
+            events.on(GAME_EVENTS.PLAYER_COLLISION, ({ ship }) => { if (vr.active && isOwnShip(ship)) gamepads.pulse(1, 160); }),
         ];
         return () => offs.forEach((off) => off());
     }, [game, gamepads]);

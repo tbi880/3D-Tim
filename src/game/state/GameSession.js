@@ -1,8 +1,10 @@
 import { Quaternion, Vector3 } from 'three';
-import { FACTION, HUD_REFRESH_INTERVAL, PLAYER, POWER_MODES, WORLD } from '../config/gameConfig.js';
+import { FACTION, HUD_REFRESH_INTERVAL, PLAYER, WORLD } from '../config/gameConfig.js';
 import { EventBus, GAME_EVENTS } from '../core/EventBus.js';
 import { isTouchDevice } from '../input/device.js';
 import { mergeUpgrades } from '../core/refit.js';
+import { applyPilotAction } from '../core/systems/pilotActions.js';
+import { IDLE_CONTROLS } from '../core/systems/playerFlight.js';
 import { World } from '../core/World.js';
 import { setLocale, t } from '../i18n/index.js';
 import { CAMPAIGN, STARTING_SECTOR } from '../story/campaign.js';
@@ -18,6 +20,8 @@ export const PHASE = Object.freeze({
     PAUSED: 'paused',
     GAME_OVER: 'gameover',
     ENDING: 'ending',
+    /** A multiplayer match has ended and its results are on screen. */
+    MATCH_OVER: 'matchover',
 });
 
 /** Events the session emits for the presentation layers (sound, screen effects). */
@@ -51,6 +55,17 @@ const scratchSpin = new Quaternion();
 
 const emptyStats = () => ({ time: 0, kills: 0, losses: 0, score: 0 });
 
+/** The HUD's mission panels as a story director describes them (see GameSession.missionHud). */
+export function directorMissionHud(director) {
+    const { world, scene, progress, context } = director;
+    return {
+        escort: scene.escortTag ? world.findByTag(scene.escortTag) : null,
+        boss: scene.bossTag ? world.findByTag(scene.bossTag) : null,
+        progress: progress ? { labelKey: progress.labelKey, value: progress.getValue(context) } : null,
+        objective: scene.objectiveKey ? { key: scene.objectiveKey, params: director.objectiveParams?.(context) ?? null } : null,
+    };
+}
+
 function shipStatus(ship) {
     return {
         id: ship.id,
@@ -70,6 +85,10 @@ function shipStatus(ship) {
  *
  * It never imports React. The UI passes in `ui.set(partialState)` (the zustand store in the
  * browser, a stub in tests), which keeps the whole session runnable in Node.
+ *
+ * A multiplayer match (net/match) borrows the session instead of replacing it: while
+ * `match` is set, the match drives the world in place of the campaign story, and the scene,
+ * HUD, sound and input keep working on the same session and world as in single player.
  */
 export class GameSession {
     /**
@@ -92,6 +111,8 @@ export class GameSession {
             },
         });
         this.director = new StoryDirector({ world: this.world, stage: this, beats: CAMPAIGN });
+        /** The multiplayer match being played (see beginMatch), or null in single player. */
+        this.match = null;
 
         this.phase = PHASE.TITLE;
         this.stats = emptyStats();
@@ -111,7 +132,8 @@ export class GameSession {
             this.world.events.on(GAME_EVENTS.SHIP_REMOVED, () => this.publishRoster()),
             this.world.events.on(GAME_EVENTS.SHIP_DESTROYED, ({ ship, killer }) => {
                 this.publishRoster();
-                if (killer?.isPlayer && ship.faction === FACTION.UMBRA) this.recordKill(ship);
+                // A match keeps its own score, per player.
+                if (!this.match && killer?.isPlayer && ship.faction === FACTION.UMBRA) this.recordKill(ship);
             }),
         ];
 
@@ -128,6 +150,7 @@ export class GameSession {
     }
 
     dispose() {
+        this.dropMatch();
         for (const unsubscribe of this.unsubscribe) unsubscribe();
         this.world.events.clear();
         this.events.clear();
@@ -143,6 +166,7 @@ export class GameSession {
 
     /** Title screen: an empty sector with the camera drifting, no story running. */
     enterTitle() {
+        this.dropMatch();
         this.resetPresentation();
         this.world.clear();
         this.world.setSector(STARTING_SECTOR);
@@ -158,6 +182,7 @@ export class GameSession {
 
     newGame() {
         clearSave();
+        this.dropMatch();
         this.resetPresentation();
         this.stats = emptyStats();
         this.world.clear();
@@ -178,6 +203,7 @@ export class GameSession {
             this.newGame();
             return;
         }
+        this.dropMatch();
         this.resetPresentation();
         this.world.setDifficulty(this.settings.difficulty);
         this.world.restore(save.world);
@@ -215,6 +241,42 @@ export class GameSession {
         else if (this.phase === PHASE.PAUSED) this.resume();
     }
 
+    // ---- Multiplayer --------------------------------------------------------------------
+
+    /**
+     * Hands the world to a multiplayer match and starts flying. The match is an object with
+     * `begin(session)`, `update(dt, controls)`, `handleAction(action, params)`, `missionHud()`
+     * and `dispose()` (net/match/HostMatch.js on the host's device, ClientMatch.js elsewhere).
+     */
+    beginMatch(match) {
+        this.dropMatch();
+        this.resetPresentation();
+        this.stats = emptyStats();
+        this.world.clear();
+        this.world.playerUpgrades = {};
+        this.match = match;
+        match.begin(this);
+        this.setPhase(PHASE.PLAYING);
+    }
+
+    /** The match is over: its results stay on screen until the player leaves (enterTitle). */
+    showMatchResults() {
+        if (!this.match) return;
+        this.world.controlsLocked = true;
+        this.setPhase(PHASE.MATCH_OVER);
+    }
+
+    /** Lets go of the match, if there is one, and puts back what it changed. */
+    dropMatch() {
+        const match = this.match;
+        if (!match) return;
+        this.match = null;
+        match.dispose();
+        this.world.setDifficulty(this.settings.difficulty);
+        this.world.autoFire = Boolean(this.settings.autoFire);
+        this.ui.set({ match: null });
+    }
+
     resetPresentation() {
         this.comms.clear();
         this.waypoint = null;
@@ -234,7 +296,8 @@ export class GameSession {
 
     updateSettings(partial) {
         Object.assign(this.settings, partial);
-        if (partial.difficulty) this.world.setDifficulty(partial.difficulty);
+        // A match flies at the difficulty its host chose; the setting applies again afterwards.
+        if (partial.difficulty && !this.match) this.world.setDifficulty(partial.difficulty);
         if (partial.locale) setLocale(partial.locale);
         if ('autoFire' in partial) this.world.autoFire = Boolean(partial.autoFire);
         saveSettings(this.settings);
@@ -242,8 +305,11 @@ export class GameSession {
         this.events.emit(SESSION_EVENTS.SETTINGS, { settings: this.settings });
     }
 
-    /** One-shot player actions (key presses, buttons). Held controls go through `update`. */
-    handleAction(action) {
+    /**
+     * One-shot player actions (key presses, buttons). Held controls go through `update`.
+     * `params` carries what a few actions need (see applyPilotAction).
+     */
+    handleAction(action, params) {
         if (action === 'pause') {
             this.togglePause();
             return;
@@ -260,30 +326,17 @@ export class GameSession {
             return;
         }
         if (this.phase !== PHASE.PLAYING) return;
-        const player = this.world.player;
-        switch (action) {
-            case 'skip': this.comms.skip(); break;
-            case 'cycleTarget': this.world.cycleTarget(1); break;
-            case 'targetCrosshair': this.world.targetNearestToCrosshair(); break;
-            case 'power:balanced':
-            case 'power:attack':
-            case 'power:defense': {
-                const mode = action.split(':')[1];
-                if (player?.alive && POWER_MODES[mode] && player.powerMode !== mode) {
-                    player.powerMode = mode;
-                    this.playCue('power');
-                }
-                break;
-            }
-            // One button that steps through the modes, for touch screens.
-            case 'power:cycle': {
-                const modes = Object.keys(POWER_MODES);
-                const next = modes[(modes.indexOf(player?.powerMode) + 1) % modes.length];
-                this.handleAction(`power:${next}`);
-                break;
-            }
-            default: break;
+        if (action === 'skip') {
+            this.comms.skip();
+            return;
         }
+        // In a match the host decides what the action does, so it goes through the match.
+        if (this.match) {
+            this.match.handleAction(action, params);
+            return;
+        }
+        const cue = applyPilotAction(this.world, this.world.player, action, params);
+        if (cue) this.playCue(cue);
     }
 
     // ---- Stage API used by the story script (story/beats.js) ----------------------------
@@ -397,9 +450,19 @@ export class GameSession {
      * @param {object} controls held controls from the input layer
      */
     update(dt, controls) {
-        this.effectsDelta = this.phase === PHASE.PAUSED ? 0 : Math.min(dt, WORLD.maxStep);
+        // A match cannot be frozen: "paused" there only means this player has the menu open.
+        const frozen = this.phase === PHASE.PAUSED && !this.match;
+        this.effectsDelta = frozen ? 0 : Math.min(dt, WORLD.maxStep);
         if (this.phase === PHASE.TITLE) {
             this.updateTitleDrift(dt);
+            return;
+        }
+        if (this.match) {
+            // With a menu open the ship flies on with its controls released.
+            this.match.update(dt, this.phase === PHASE.PLAYING ? controls : IDLE_CONTROLS);
+            this.updateWaypoint();
+            this.updateTimers(dt);
+            this.publishHud(dt);
             return;
         }
         if (this.phase !== PHASE.PLAYING && this.phase !== PHASE.ENDING) return;
@@ -466,7 +529,9 @@ export class GameSession {
 
     /** Publishes a fresh, immutable list of the ships the 3D scene should draw. */
     publishRoster() {
-        this.ui.set({ roster: this.world.ships.filter((ship) => ship.alive && !ship.isPlayer), playerShip: this.world.player ?? null });
+        // Everything but the ship flown on this device (other players' ships in multiplayer are drawn like any other).
+        const own = this.world.player;
+        this.ui.set({ roster: this.world.ships.filter((ship) => ship.alive && ship !== own), playerShip: own ?? null });
     }
 
     publishSector() {
@@ -482,15 +547,13 @@ export class GameSession {
         if (this.hudTimer > 0) return;
         this.hudTimer = HUD_REFRESH_INTERVAL;
 
-        const { world, director } = this;
+        const { world } = this;
         const player = world.player;
         if (!player) return;
         const torpedoes = player.weapons.find((weapon) => weapon.def.type === 'torpedo');
         const beam = player.weapons.find((weapon) => weapon.def.type === 'beam');
         const target = player.target?.alive ? player.target : null;
-        const escortShip = director.scene.escortTag ? world.findByTag(director.scene.escortTag) : null;
-        const bossShip = director.scene.bossTag ? world.findByTag(director.scene.bossTag) : null;
-        const objectiveKey = director.scene.objectiveKey;
+        const mission = this.missionHud();
 
         this.ui.set({
             hud: {
@@ -511,10 +574,20 @@ export class GameSession {
                 cannonLock: world.playerCannonLock,
             },
             target: target ? { ...shipStatus(target), distance: Math.round(Math.max(0, target.distanceToPoint(player.position))) } : null,
-            escort: escortShip ? shipStatus(escortShip) : null,
-            boss: bossShip ? shipStatus(bossShip) : null,
-            progress: director.progress ? { labelKey: director.progress.labelKey, value: director.progress.getValue(director.context) } : null,
-            objective: objectiveKey ? { key: objectiveKey, params: director.objectiveParams?.(director.context) ?? null } : null,
+            escort: mission.escort ? shipStatus(mission.escort) : null,
+            boss: mission.boss ? shipStatus(mission.boss) : null,
+            progress: mission.progress,
+            objective: mission.objective,
         });
+    }
+
+    /**
+     * What the mission wants on the HUD right now: `{ escort, boss, progress, objective }`
+     * (ships, `{ labelKey, value }`, `{ key, params }`; null for anything not shown).
+     * It comes from the campaign story, or from the match while one is being played.
+     */
+    missionHud() {
+        if (this.match) return this.match.missionHud();
+        return directorMissionHud(this.director);
     }
 }

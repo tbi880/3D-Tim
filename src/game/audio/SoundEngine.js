@@ -65,9 +65,9 @@ export class SoundEngine {
             world.on(GAME_EVENTS.WEAPON_FIRED, (event) => this.onWeaponFired(event)),
             world.on(GAME_EVENTS.EXPLOSION, (event) => this.onExplosion(event)),
             world.on(GAME_EVENTS.HIT, (event) => this.onHit(event)),
-            world.on(GAME_EVENTS.PLAYER_COLLISION, () => this.thud(0.5)),
+            world.on(GAME_EVENTS.PLAYER_COLLISION, ({ ship }) => this.isOwnShip(ship) && this.thud(0.5)),
             world.on(GAME_EVENTS.TARGET_CHANGED, ({ target }) => target && this.tone({ from: 1250, to: 1250, duration: 0.05, gain: 0.12, type: 'square' })),
-            world.on(GAME_EVENTS.WEAPON_EMPTY, () => this.tone({ from: 160, to: 120, duration: 0.12, gain: 0.15, type: 'square' })),
+            world.on(GAME_EVENTS.WEAPON_EMPTY, ({ ship }) => this.isOwnShip(ship) && this.tone({ from: 160, to: 120, duration: 0.12, gain: 0.15, type: 'square' })),
             world.on(GAME_EVENTS.LANCE_CHARGING, ({ weapon }) => this.tone({ from: 60, to: 520, duration: weapon.def.chargeTime, gain: 0.16, type: 'sawtooth' })),
             world.on(GAME_EVENTS.LANCE_FIRING, ({ weapon }) => this.noise({ duration: weapon.def.fireTime, frequency: 240, gain: 0.5 })),
             world.on(GAME_EVENTS.WARP_IN_STARTED, ({ ship }) => this.arrivals.onStart(ship)),
@@ -197,9 +197,14 @@ export class SoundEngine {
 
     // ---- Event handlers -----------------------------------------------------------------
 
+    /** True for the ship flown on this device (in multiplayer other players' ships are `isPlayer` too). */
+    isOwnShip(ship) {
+        return Boolean(ship) && ship === this.session?.world.player;
+    }
+
     onWeaponFired({ ship, kind }) {
         if (kind === 'torpedo') {
-            const loudness = ship.isPlayer ? 1 : this.attenuation(ship.position);
+            const loudness = this.isOwnShip(ship) ? 1 : this.attenuation(ship.position);
             this.tone({ from: 240, to: 70, duration: 0.5, gain: 0.3 * loudness });
             this.noise({ duration: 0.45, frequency: 1400, gain: 0.2 * loudness });
             return;
@@ -215,7 +220,7 @@ export class SoundEngine {
     }
 
     onHit({ target, shield, amount }) {
-        if (!target?.isPlayer || amount <= 0) return;
+        if (!this.isOwnShip(target) || amount <= 0) return;
         if (shield) this.tone({ from: 1500, to: 500, duration: 0.14, gain: 0.14, type: 'triangle' });
         else this.thud(0.35);
     }

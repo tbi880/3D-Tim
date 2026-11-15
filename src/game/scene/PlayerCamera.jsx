@@ -59,9 +59,9 @@ export default function PlayerCamera({ session, children }) {
         const addTrauma = (amount) => { trauma.current = Math.min(1, trauma.current + amount); };
         const unsubscribe = [
             world.events.on(GAME_EVENTS.HIT, ({ target, amount, shield }) => {
-                if (target?.isPlayer) addTrauma((shield ? 0.1 : 0.22) + amount / 120);
+                if (target && target === world.player) addTrauma((shield ? 0.1 : 0.22) + amount / 120);
             }),
-            world.events.on(GAME_EVENTS.PLAYER_COLLISION, () => addTrauma(0.7)),
+            world.events.on(GAME_EVENTS.PLAYER_COLLISION, ({ ship }) => { if (ship === world.player) addTrauma(0.7); }),
             world.events.on(GAME_EVENTS.EXPLOSION, ({ position, size }) => {
                 const distance = world.player ? world.player.position.distanceTo(position) : Infinity;
                 addTrauma(Math.max(0, 1 - distance / (size * 10)) * 0.6);

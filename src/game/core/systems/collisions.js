@@ -43,20 +43,25 @@ function bounce(world, player, own, ownRadius, centre, solidRadius) {
     if (world.time < player.collisionReadyAt) return true;
     player.collisionReadyAt = world.time + COLLISION_DAMAGE_COOLDOWN;
     applyDamage(world, player, clamp(closingSpeed * COLLISION_DAMAGE_PER_SPEED, 3, 18), { point: own });
-    world.events.emit(GAME_EVENTS.PLAYER_COLLISION, { speed: closingSpeed });
+    world.events.emit(GAME_EVENTS.PLAYER_COLLISION, { speed: closingSpeed, ship: player });
     return true;
 }
 
 /**
- * Only the player collides with hulls and rocks; AI pilots steer around them instead.
- * The player's hull is its collision spheres: one for small craft, a row along the
+ * Only player ships collide with hulls and rocks; AI pilots steer around them instead.
+ * A player's hull is its collision spheres: one for small craft, a row along the
  * hit boxes for long ones (the Bulwark), so the hull bumps where the model does.
  */
 export function resolvePlayerCollisions(world) {
-    const player = world.player;
     // While the story has the helm (warp, docking) the ship flies a scripted path: it may pass
     // through a hangar door into a hull, and must not be bounced or scraped on the way.
-    if (!player?.alive || world.controlsLocked) return;
+    if (world.controlsLocked) return;
+    for (const ship of world.ships) {
+        if (ship.isPlayer && ship.alive) resolveCollisionsOf(world, ship);
+    }
+}
+
+function resolveCollisionsOf(world, player) {
     player.collisionReadyAt ??= 0;
 
     for (const ship of world.ships) {
@@ -86,6 +91,6 @@ export function resolvePlayerCollisions(world) {
         applyDamage(world, player, clamp(ROCK_DAMAGE_BASE + obstacle.radius * ROCK_DAMAGE_PER_METRE, 0, ROCK_DAMAGE_MAX) * speedFactor, {
             point: obstacle.position,
         });
-        world.events.emit(GAME_EVENTS.PLAYER_COLLISION, { speed: player.speed });
+        world.events.emit(GAME_EVENTS.PLAYER_COLLISION, { speed: player.speed, ship: player });
     }
 }

@@ -37,9 +37,8 @@ export function angleOffAxis(target, origin, forward, aimPoint) {
     return Math.max(0, angle - angularRadius);
 }
 
-/** Hostile ships the player is allowed to lock, nearest first. */
-export function getLockCandidates(world) {
-    const player = world.player;
+/** Hostile ships a player ship (default: the local one) is allowed to lock, nearest first. */
+export function getLockCandidates(world, player = world.player) {
     if (!player) return [];
     const candidates = [];
     for (const ship of world.ships) {
@@ -55,10 +54,9 @@ export function getLockCandidates(world) {
 /**
  * The hostile ship closest to the crosshair, or null if none is inside the cone.
  * `forward` (unit vector) looks along another line instead of the nose: in VR, where the
- * pilot is looking.
+ * pilot is looking. `player` is the ship doing the looking (default: the local one).
  */
-export function findTargetNearCrosshair(world, coneDeg = TARGETING.crosshairConeDeg, forward = null) {
-    const player = world.player;
+export function findTargetNearCrosshair(world, coneDeg = TARGETING.crosshairConeDeg, forward = null, player = world.player) {
     if (!player) return null;
     if (forward) scratchForward.copy(forward);
     else forwardOf(player.quaternion, scratchForward);
@@ -66,7 +64,7 @@ export function findTargetNearCrosshair(world, coneDeg = TARGETING.crosshairCone
     const aimPoint = new Vector3();
     let best = null;
     let bestAngle = maxAngle;
-    for (const ship of getLockCandidates(world)) {
+    for (const ship of getLockCandidates(world, player)) {
         aimPointOn(ship, player.position, scratchForward, aimPoint);
         const angle = angleOffAxis(ship, player.position, scratchForward, aimPoint);
         if (angle < bestAngle) {

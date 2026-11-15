@@ -19,10 +19,10 @@ export const IDLE_CONTROLS = Object.freeze({
  * Past the edge of the sector the helm is gently overridden so the nose swings back to
  * the centre. It keeps the fight in one place without an invisible wall.
  */
-function applyBoundaryAssist(world, ship, turn) {
+function applyBoundaryAssist(ship, turn) {
     const distance = ship.position.length();
-    world.outOfBounds = distance > WORLD.arenaRadius;
-    if (!world.outOfBounds) return;
+    ship.outOfBounds = distance > WORLD.arenaRadius;
+    if (!ship.outOfBounds) return;
 
     const strength = clamp((distance - WORLD.arenaRadius) / 600, 0, 1);
     scratchToCentre.copy(ship.position).multiplyScalar(-1 / distance);
@@ -54,7 +54,7 @@ export function updatePlayerFlight(world, ship, controls, dt) {
     // --- Rotation ------------------------------------------------------------------------
     turnCommand.yaw = controls.yaw;
     turnCommand.pitch = controls.pitch;
-    applyBoundaryAssist(world, ship, turnCommand);
+    applyBoundaryAssist(ship, turnCommand);
 
     // The chosen ship bends the baseline handling (see `handling` in config/shipClasses.js).
     const handling = { ...DEFAULT_HANDLING, ...ship.cls.handling };

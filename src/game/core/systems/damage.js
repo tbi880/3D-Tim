@@ -18,6 +18,7 @@ function emitHit(world, target, position, shieldHit, amount, continuous) {
 export function destroyProjectile(world, projectile, withExplosion) {
     if (!projectile.alive) return;
     projectile.alive = false;
+    world.events.emit(GAME_EVENTS.PROJECTILE_REMOVED, { projectile, exploded: Boolean(withExplosion) });
     if (withExplosion) {
         world.events.emit(GAME_EVENTS.EXPLOSION, {
             position: projectile.position.clone(),

@@ -224,7 +224,7 @@ function DamageFlash({ session }) {
     useEffect(() => {
         let timer = null;
         const off = session.world.events.on(GAME_EVENTS.HIT, ({ target, shield, amount }) => {
-            if (!target?.isPlayer || amount <= 0) return;
+            if (!target || target !== session.world.player || amount <= 0) return;
             setFlash({ kind: shield ? 'shield' : 'hull', id: Date.now() });
             clearTimeout(timer);
             timer = setTimeout(() => setFlash(null), 320);

@@ -38,8 +38,10 @@ export const GAME_EVENTS = Object.freeze({
     EXPLOSION: 'explosion',
     /** { target, position, shield: boolean, amount } */
     HIT: 'hit',
-    /** { ship, weapon, kind: 'bolt' | 'torpedo' } */
+    /** { ship, weapon, kind: 'bolt' | 'torpedo', projectile } */
     WEAPON_FIRED: 'weaponFired',
+    /** { projectile, exploded: boolean } - a shot hit something, was shot down or ran out of fuel */
+    PROJECTILE_REMOVED: 'projectileRemoved',
     /**
      * { position, size, quaternion?, ship? } - a ship dropped out of / jumped into warp here.
      * `ship` is set when it is a ship finishing its warp-in (WARP_IN_STARTED came first).
@@ -47,18 +49,18 @@ export const GAME_EVENTS = Object.freeze({
     WARP_FLASH: 'warpFlash',
     /** { ship, duration } - a ship has started dropping out of warp; it lands at `ship.position` in `duration` s */
     WARP_IN_STARTED: 'warpInStarted',
-    /** { position, radius } - an asteroid was blown apart */
+    /** { position, radius, obstacle } - an asteroid was blown apart */
     OBSTACLE_DESTROYED: 'obstacleDestroyed',
     /** { ship, weapon } - a lance started charging */
     LANCE_CHARGING: 'lanceCharging',
     /** { ship, weapon } */
     LANCE_FIRING: 'lanceFiring',
-    /** { speed } - the player ran into something solid */
+    /** { speed, ship } - a player's ship ran into something solid (in multiplayer: not always the local one) */
     PLAYER_COLLISION: 'playerCollision',
-    /** { target } - the player's lock changed (target may be null) */
+    /** { target } - the local player's lock changed (target may be null) */
     TARGET_CHANGED: 'targetChanged',
     /** { sectorId } - the world moved to another sector; positions from the old one mean nothing now */
     SECTOR_CHANGED: 'sectorChanged',
-    /** {} - the player tried to fire with an empty capacitor / no torpedoes */
+    /** { ship } - a player tried to fire with an empty capacitor / no torpedoes */
     WEAPON_EMPTY: 'weaponEmpty',
 });

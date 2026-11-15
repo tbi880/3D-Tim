@@ -162,6 +162,21 @@ export class Ship {
         this.despawnTimer = null;
 
         // Player-only state.
+        /**
+         * Who flies this ship in a multiplayer match (a player id), or null in single player.
+         * Every player ship is `isPlayer`; `world.player` is the one flown on this device.
+         */
+        this.pilotId = options.pilotId ?? null;
+        /** Refit levels this ship was built with ({ rating: levels }, core/refit.js). */
+        this.upgrades = options.upgrades ?? null;
+        /** Held controls (see IDLE_CONTROLS), refreshed every frame by whoever has the helm. */
+        this.controls = null;
+        /** Assist: the beams fire by themselves when something hostile is in the ring. */
+        this.autoFire = false;
+        /** Whether a ship-mounted cannon is on this ship this step: 0 no, 1 tracking, 2 locked. */
+        this.cannonLock = 0;
+        /** True while the ship is past the sector's edge and the helm is being nudged back. */
+        this.outOfBounds = false;
         this.energy = PLAYER.energyMax;
         this.energyRegenDelay = 0;
         this.boost = 1;

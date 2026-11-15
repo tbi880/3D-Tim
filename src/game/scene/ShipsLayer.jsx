@@ -140,12 +140,23 @@ function applyWarpTransform(group, streak, ship) {
     streak.material.opacity = Math.min(1, amount * 3);
 }
 
+/**
+ * Thrust of a player-flown ship, for the flames its model carries: 0.15 idle .. 1 at top
+ * speed .. 1.6 on the afterburner (coasting down from a burn stays capped there).
+ */
+function pilotThrust(ship) {
+    if (!ship?.alive) return 0;
+    return ship.boosting ? 1.6 : Math.min(1.6, 0.15 + (ship.speed / ship.cls.maxSpeed) * 0.85);
+}
+
 /** One ship: follows its simulation entity, with engine exhaust, shield and warp streak. */
 function ShipView({ ship, session }) {
     const world = session.world;
     const groupRef = useRef(null);
     const streakRef = useRef(null);
     const info = getModelInfo(ship.cls.model);
+    // Another player's ship (multiplayer): its model has its own flames, driven like the local ship's.
+    const getThrust = ship.isPlayer ? () => pilotThrust(ship) : null;
 
     useFrame(() => {
         const group = groupRef.current;
@@ -158,7 +169,7 @@ function ShipView({ ship, session }) {
 
     return (
         <group ref={groupRef}>
-            <ShipModel modelId={ship.cls.model} faction={ship.faction} />
+            <ShipModel modelId={ship.cls.model} faction={ship.faction} getThrust={getThrust} />
             {info?.engines?.length > 0 && <Exhaust engines={info.engines} faction={ship.faction} ship={ship} session={session} />}
             {ship.maxShield > 0 && <Shield ship={ship} world={world} />}
             {/* Bright core of the warp streak; the stretched hull supplies the rest. */}
@@ -185,11 +196,7 @@ function PlayerShipView({ session }) {
         group.quaternion.copy(player.quaternion);
     });
 
-    // 0.15 idle .. 1 at top speed .. 1.6 on the afterburner (coasting down from a burn stays capped there).
-    const getThrust = () => {
-        if (!player?.alive) return 0;
-        return player.boosting ? 1.6 : Math.min(1.6, 0.15 + (player.speed / player.cls.maxSpeed) * 0.85);
-    };
+    const getThrust = () => pilotThrust(player);
 
     return (
         <group ref={groupRef} visible={false}>

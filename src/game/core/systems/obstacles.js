@@ -16,9 +16,11 @@ const HP_PER_RADIUS = 3.2;
 const FRAGMENT_DRAG = 0.6;
 let nextObstacleId = 1;
 
-export function createObstacle(position, radius, seed, velocity = null) {
+export function createObstacle(position, radius, seed, velocity = null, serial = -1) {
     return {
         id: nextObstacleId++,
+        /** Position in the sector's generated field: the same rock has the same serial on every device. */
+        serial,
         position,
         radius,
         seed,
@@ -45,14 +47,14 @@ export function generateAsteroids(config) {
         const radius = config.minRadius + (config.maxRadius - config.minRadius) * rng() ** 2;
         const seed = rng();
         const blocked = clearings.some(([x, y, z, clearRadius]) => position.distanceTo(scratchOffset.set(x, y, z)) < clearRadius + radius);
-        if (!blocked) asteroids.push(createObstacle(position, radius, seed));
+        if (!blocked) asteroids.push(createObstacle(position, radius, seed, null, i));
     }
     return asteroids;
 }
 
 function destroyObstacle(world, obstacle) {
     obstacle.alive = false;
-    world.events.emit(GAME_EVENTS.OBSTACLE_DESTROYED, { position: obstacle.position.clone(), radius: obstacle.radius });
+    world.events.emit(GAME_EVENTS.OBSTACLE_DESTROYED, { position: obstacle.position.clone(), radius: obstacle.radius, obstacle });
 }
 
 /**

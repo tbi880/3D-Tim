@@ -6,6 +6,7 @@ import { Projectile } from '../Projectile.js';
 import { degToRad, forwardOf, randomInCone, randomRange } from '../math.js';
 import { applyDamage, areHostile } from './damage.js';
 import { damageObstacle, raycastObstacles } from './obstacles.js';
+import { IDLE_CONTROLS } from './playerFlight.js';
 import { aimPointOn, angleOffAxis, isValidTarget } from './targeting.js';
 
 const scratchForward = new Vector3();
@@ -128,7 +129,7 @@ function spawnBolt(world, ship, weapon, origin, direction) {
     bolt.previousPosition.copy(origin);
     randomInCone(world.rng, direction, degToRad(weapon.def.spreadDeg ?? 0), bolt.velocity).multiplyScalar(weapon.def.speed);
     world.projectiles.push(bolt);
-    world.events.emit(GAME_EVENTS.WEAPON_FIRED, { ship, weapon, kind: 'bolt' });
+    world.events.emit(GAME_EVENTS.WEAPON_FIRED, { ship, weapon, kind: 'bolt', projectile: bolt });
 }
 
 function spawnTorpedo(world, ship, weapon, origin, direction, target, damageScale = 1, lifeScale = 1) {
@@ -141,7 +142,7 @@ function spawnTorpedo(world, ship, weapon, origin, direction, target, damageScal
     torpedo.target = target;
     torpedo.damageScale = damageScale;
     world.projectiles.push(torpedo);
-    world.events.emit(GAME_EVENTS.WEAPON_FIRED, { ship, weapon, kind: 'torpedo' });
+    world.events.emit(GAME_EVENTS.WEAPON_FIRED, { ship, weapon, kind: 'torpedo', projectile: torpedo });
 }
 
 /** Burst bookkeeping shared by every bolt weapon. */
@@ -212,11 +213,11 @@ function updatePlayerBeam(world, ship, weapon, dt, triggerHeld) {
     const origin = ship.position;
     const target = pickPlayerBeamTarget(world, ship, def, origin, scratchForward);
     // Auto-fire assist (touch devices): the beams open up by themselves on anything hostile in the ring.
-    const wantsFire = triggerHeld || (world.autoFire && !world.controlsLocked && Boolean(target));
+    const wantsFire = triggerHeld || (ship.autoFire && !world.controlsLocked && Boolean(target));
 
     const firing = wantsFire && !weapon.depleted && ship.energy > 0;
     if (triggerHeld && weapon.depleted && !weapon.firing) {
-        world.events.emit(GAME_EVENTS.WEAPON_EMPTY, {});
+        world.events.emit(GAME_EVENTS.WEAPON_EMPTY, { ship });
     }
     weapon.firing = firing;
     ship.beamFiring = firing;
@@ -255,7 +256,7 @@ function updatePlayerBeam(world, ship, weapon, dt, triggerHeld) {
     }
     for (const mount of def.mounts) {
         scratchOrigin.fromArray(mount).applyQuaternion(ship.quaternion).add(origin);
-        world.addBeam(scratchOrigin, scratchImpact, def.color, def.width, 'beam');
+        world.addBeam(scratchOrigin, scratchImpact, def.color, def.width, 'beam', ship, target?.isProjectile ? null : target);
     }
 }
 
@@ -271,7 +272,7 @@ function updatePlayerTorpedo(world, ship, weapon, dt, triggerPressed) {
     }
     if (!triggerPressed || weapon.cooldown > 0) return;
     if (weapon.ammo <= 0) {
-        world.events.emit(GAME_EVENTS.WEAPON_EMPTY, {});
+        world.events.emit(GAME_EVENTS.WEAPON_EMPTY, { ship });
         weapon.cooldown = 0.3;
         return;
     }
@@ -293,7 +294,7 @@ function updatePlayerTorpedo(world, ship, weapon, dt, triggerPressed) {
 }
 
 function updatePlayerWeapons(world, ship, dt) {
-    const controls = world.playerControls;
+    const controls = ship.controls ?? IDLE_CONTROLS;
     const helmFree = !world.controlsLocked;
     for (const weapon of ship.weapons) {
         weapon.cooldown = Math.max(0, weapon.cooldown - dt);
@@ -325,19 +326,19 @@ function updateAiBeam(world, ship, weapon, dt) {
     applyDamage(world, target, def.dps * beamScale * dt, {
         source: ship, point: scratchImpact, shieldMult: def.shieldMult, hullMult: def.hullMult, continuous: true,
     });
-    world.addBeam(scratchOrigin, scratchImpact, def.color, def.width, 'beam');
+    world.addBeam(scratchOrigin, scratchImpact, def.color, def.width, 'beam', ship, target.isProjectile ? null : target);
 }
 
 /**
  * Heavy cannons must hold a target for `lockTime` seconds before they may fire, and lose
- * the lock the moment it leaves their range. While one tracks the player, the world records
- * it (1 = tracking, 2 = locked) so the HUD can warn the pilot. Returns true once locked.
+ * the lock the moment it leaves their range. While one tracks a player's ship, that ship
+ * records it (1 = tracking, 2 = locked) so its pilot's HUD can warn them. Returns true once locked.
  */
 function trackTarget(world, weapon, target, dt) {
     const sameTarget = Boolean(target) && weapon.lockTarget === target;
     weapon.lock = sameTarget ? Math.min(1, (weapon.lock ?? 0) + dt / weapon.def.lockTime) : 0;
     weapon.lockTarget = target ?? null;
-    if (target?.isPlayer) world.playerCannonLock = Math.max(world.playerCannonLock, weapon.lock >= 1 ? 2 : 1);
+    if (target?.isPlayer) target.cannonLock = Math.max(target.cannonLock, weapon.lock >= 1 ? 2 : 1);
     return weapon.lock >= 1;
 }
 
@@ -448,7 +449,7 @@ function updateLance(world, ship, weapon, dt) {
 
     if (weapon.lancePhase === 'charging') {
         if (isValidTarget(weapon.target)) slewLance(weapon, origin, weapon.target, def.slewRate * 6 * dt);
-        world.addBeam(origin, end, def.color, def.width * 0.12, 'lanceCharge');
+        world.addBeam(origin, end, def.color, def.width * 0.12, 'lanceCharge', ship);
         if (weapon.lanceTimer <= 0) {
             weapon.lancePhase = 'firing';
             weapon.lanceTimer = def.fireTime;
@@ -461,7 +462,7 @@ function updateLance(world, ship, weapon, dt) {
     weapon.firing = true;
     if (isValidTarget(weapon.target)) slewLance(weapon, origin, weapon.target, def.slewRate * dt);
     applyLanceDamage(world, ship, weapon, origin, dt);
-    world.addBeam(origin, end, def.color, def.width, 'lance');
+    world.addBeam(origin, end, def.color, def.width, 'lance', ship);
     if (weapon.lanceTimer <= 0) {
         weapon.lancePhase = 'idle';
         weapon.lanceTimer = def.cooldown * randomRange(world.rng, 0.85, 1.15);

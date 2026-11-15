@@ -52,11 +52,8 @@ export class World {
         this.playerControls = IDLE_CONTROLS;
         /** True while the story has the helm (warp jumps, cut-scenes). */
         this.controlsLocked = false;
-        this.outOfBounds = false;
         /** Length (seconds) of the most recent simulation step; story timers use it. */
         this.lastStep = 0;
-        /** Whether a ship-mounted cannon is on the player this step: 0 no, 1 tracking, 2 locked. */
-        this.playerCannonLock = 0;
         /** Ship class the player flies (chosen on the title screen, restored from saves). */
         this.playerClassId = PLAYER.classId;
         /** Levels bought at refits ({ rating: levels }, core/refit.js); saved with the player. */
@@ -85,9 +82,18 @@ export class World {
         this.obstacles = [];
         this.player = null;
         this.controlsLocked = false;
-        this.outOfBounds = false;
         this.warpFactor = 0;
         this.screenFade = 0;
+    }
+
+    /** Whether the local player is past the sector's edge (the HUD's warning). */
+    get outOfBounds() {
+        return Boolean(this.player?.outOfBounds);
+    }
+
+    /** Whether a ship-mounted cannon is on the local player: 0 no, 1 tracking, 2 locked. */
+    get playerCannonLock() {
+        return this.player?.cannonLock ?? 0;
     }
 
     setDifficulty(difficultyId) {
@@ -117,11 +123,15 @@ export class World {
      * @param {boolean} [options.persistent] saved in checkpoints
      * @param {Ship} [options.parent] with `mountOffset`: mounts this ship on another
      * @param {boolean} [options.warpIn] play an arrival flash
+     * @param {number} [options.warpSeconds] with `warpIn`: exact seconds until it lands (a copy of a ship already arriving elsewhere)
+     * @param {string} [options.pilotId] multiplayer: the player who flies this (player-class) ship
+     * @param {boolean} [options.local] false for a player ship flown from another device; it never becomes `world.player`
+     * @param {object} [options.upgrades] refit levels for a player ship (default: `world.playerUpgrades`)
      */
     spawnShip(classId, options = {}) {
         let cls = SHIP_CLASSES[classId];
         if (!cls) throw new Error(`Unknown ship class "${classId}"`);
-        if (cls.behavior === 'player') cls = upgradedClass(classId, cls, this.playerUpgrades);
+        if (cls.behavior === 'player') cls = upgradedClass(classId, cls, options.upgrades ?? this.playerUpgrades);
         const ship = new Ship(classId, cls, options);
         toVector3(options.position, ship.position);
         if (options.quaternion) ship.quaternion.fromArray(options.quaternion);
@@ -140,10 +150,10 @@ export class World {
             this.followParent(ship);
         }
         if (ship.cls.behavior === 'fighter' || ship.cls.behavior === 'bomber') ship.speed = cls.maxSpeed * 0.6;
-        if (options.warpIn) this.beginWarpIn(ship);
+        if (options.warpIn) this.beginWarpIn(ship, options.warpSeconds);
 
         this.ships.push(ship);
-        if (ship.isPlayer) this.player = ship;
+        if (ship.isPlayer && options.local !== false) this.player = ship;
         this.events.emit(GAME_EVENTS.SHIP_SPAWNED, { ship });
         return ship;
     }
@@ -153,8 +163,8 @@ export class World {
      * towards its spot (drawn by scene/ShipsLayer.jsx); it cannot act or be hit until it lands.
      * Bigger ships take a little longer, and a random offset keeps a squadron from landing in unison.
      */
-    beginWarpIn(ship) {
-        ship.warpDuration = WORLD.warpInSeconds * (1 + Math.min(1, ship.boundingRadius / 800)) * (0.8 + this.rng() * 0.5);
+    beginWarpIn(ship, seconds = null) {
+        ship.warpDuration = seconds ?? WORLD.warpInSeconds * (1 + Math.min(1, ship.boundingRadius / 800)) * (0.8 + this.rng() * 0.5);
         ship.warpTimer = ship.warpDuration;
         this.events.emit(GAME_EVENTS.WARP_IN_STARTED, { ship, duration: ship.warpDuration });
     }
@@ -214,42 +224,53 @@ export class World {
     }
 
     // ---- Player targeting ---------------------------------------------------------------
+    // `ship` is the player ship doing the locking; it defaults to the one flown on this device.
 
-    setPlayerTarget(target) {
-        if (!this.player || this.player.target === target) return;
-        this.player.target = target;
-        this.events.emit(GAME_EVENTS.TARGET_CHANGED, { target });
+    setPlayerTarget(target, ship = this.player) {
+        if (!ship || ship.target === target) return;
+        ship.target = target;
+        if (ship === this.player) this.events.emit(GAME_EVENTS.TARGET_CHANGED, { target });
     }
 
     /** Steps through lockable hostiles by distance. `step` is +1 (next) or -1 (previous). */
-    cycleTarget(step = 1) {
-        const candidates = getLockCandidates(this);
+    cycleTarget(step = 1, ship = this.player) {
+        if (!ship) return;
+        const candidates = getLockCandidates(this, ship);
         if (candidates.length === 0) {
-            this.setPlayerTarget(null);
+            this.setPlayerTarget(null, ship);
             return;
         }
-        const index = candidates.indexOf(this.player.target);
+        const index = candidates.indexOf(ship.target);
         const next = (index + step + candidates.length) % candidates.length;
-        this.setPlayerTarget(candidates[index === -1 ? 0 : next]);
+        this.setPlayerTarget(candidates[index === -1 ? 0 : next], ship);
     }
 
     /** @param {Vector3} [forward] look along this direction instead of the ship's nose (VR gaze) */
-    targetNearestToCrosshair(forward = null) {
-        const target = findTargetNearCrosshair(this, undefined, forward) ?? getLockCandidates(this)[0] ?? null;
-        this.setPlayerTarget(target);
+    targetNearestToCrosshair(forward = null, ship = this.player) {
+        if (!ship) return;
+        const target = findTargetNearCrosshair(this, undefined, forward, ship) ?? getLockCandidates(this, ship)[0] ?? null;
+        this.setPlayerTarget(target, ship);
     }
 
     // ---- Beams --------------------------------------------------------------------------
 
-    /** Queues a beam for this frame. `kind` is 'beam', 'lanceCharge', 'lance' or 'cannon'. */
-    addBeam(start, end, color, width, kind) {
+    /**
+     * Queues a beam for this frame. `kind` is 'beam', 'lanceCharge', 'lance' or 'cannon'.
+     * `from` / `to` are the ships it leaves and lands on, when it has them: the drawing does
+     * not need them, a multiplayer host sends them so other devices can pin the beam to the
+     * same hulls.
+     */
+    addBeam(start, end, color, width, kind, from = null, to = null) {
         const index = this.beams.length;
-        const beam = this.beamPool[index] ?? (this.beamPool[index] = { start: new Vector3(), end: new Vector3(), color: '', width: 1, kind: 'beam' });
+        const beam = this.beamPool[index]
+            ?? (this.beamPool[index] = { start: new Vector3(), end: new Vector3(), color: '', width: 1, kind: 'beam', from: null, to: null });
         beam.start.copy(start);
         beam.end.copy(end);
         beam.color = color;
         beam.width = width;
         beam.kind = kind;
+        beam.from = from;
+        beam.to = to;
         this.beams.push(beam);
     }
 
@@ -272,13 +293,20 @@ export class World {
         const step = Math.min(dt, WORLD.maxStep);
         this.time += step;
         this.lastStep = step;
-        this.playerCannonLock = 0;
         if (controls) this.playerControls = controls;
         this.beams.length = 0;
 
-        const player = this.player;
-        if (player?.alive) {
-            updatePlayerFlight(this, player, this.controlsLocked ? IDLE_CONTROLS : this.playerControls, step);
+        // The ship flown on this device takes its helm from here; in a multiplayer match the
+        // host sets `controls` and `autoFire` on the other players' ships itself.
+        if (this.player) {
+            this.player.controls = this.playerControls;
+            this.player.autoFire = this.autoFire;
+            this.player.cannonLock = 0;
+        }
+        for (const ship of this.ships) {
+            if (!ship.alive || !ship.isPlayer) continue;
+            ship.cannonLock = 0;
+            updatePlayerFlight(this, ship, this.controlsLocked ? IDLE_CONTROLS : ship.controls ?? IDLE_CONTROLS, step);
         }
         for (const ship of this.ships) {
             if (ship.alive && !ship.isPlayer) updateAI(this, ship, step);
@@ -313,7 +341,7 @@ export class World {
         for (const beam of this.scriptedBeams) {
             beam.remaining -= dt;
             if (beam.from.alive && beam.to.alive) {
-                this.addBeam(beam.from.position, beam.to.position, beam.color, beam.width, beam.kind);
+                this.addBeam(beam.from.position, beam.to.position, beam.color, beam.width, beam.kind, beam.from, beam.to);
             }
         }
         // A beam also ends when either ship it joins is gone.
@@ -338,11 +366,12 @@ export class World {
     }
 
     keepPlayerTargetValid() {
-        const player = this.player;
-        if (!player?.alive) return;
-        if (player.target && !isValidTarget(player.target)) {
-            // The lock was destroyed: roll straight on to the nearest remaining hostile.
-            this.setPlayerTarget(findNearestHostile(this, player));
+        for (const ship of this.ships) {
+            if (!ship.isPlayer || !ship.alive) continue;
+            if (ship.target && !isValidTarget(ship.target)) {
+                // The lock was destroyed: roll straight on to the nearest remaining hostile.
+                this.setPlayerTarget(findNearestHostile(this, ship), ship);
+            }
         }
     }
 

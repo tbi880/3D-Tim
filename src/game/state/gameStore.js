@@ -26,6 +26,9 @@ export const useGameStore = create(() => ({
     /** The open refit window ({ points, classId, upgrades }, GameSession.openRefit) or null. */
     refit: null,
 
+    /** The multiplayer match on the HUD and the results screen (net/match/matchState.js), or null in single player. */
+    match: null,
+
     // Menus
     gameOverReason: null,
     stats: null,
