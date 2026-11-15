@@ -5,6 +5,8 @@ body,
   height: 100%;
   margin: 0;
   padding: 0;
+  /* Disable double-tap zoom while keeping native pan and pinch gestures. */
+  touch-action: manipulation;
 }
 
 
@@ -60,8 +62,6 @@ body {
   -webkit-touch-callout: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-  touch-action: none;
-  /* 如果你希望 canvas 完全由你自己处理手势的话 */
 }
 
 
