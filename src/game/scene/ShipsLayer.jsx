@@ -10,6 +10,7 @@ import { ShieldShell, shieldShells } from './effects/ShieldShell.js';
 import { WARP_IN_DISTANCE, WARP_STRETCH, warpDisplacement } from './effects/warpPath.js';
 import { useGameStore } from '../state/gameStore.js';
 import ShipModel, { getModelInfo } from './models/ShipModel.jsx';
+import { cameraModeOf } from '../xr/vrState.js';
 
 const HALF_PI = Math.PI / 2;
 
@@ -179,7 +180,7 @@ function PlayerShipView({ session }) {
     useFrame(() => {
         const group = groupRef.current;
         if (!group || !player) return;
-        group.visible = player.alive && session.settings.cameraMode === 'chase';
+        group.visible = player.alive && cameraModeOf(session) === 'chase';
         group.position.copy(player.position);
         group.quaternion.copy(player.quaternion);
     });

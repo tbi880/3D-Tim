@@ -1,5 +1,6 @@
 import { Suspense, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { vr } from '../xr/vrState.js';
 import GltfModel from './models/GltfModel.jsx';
 import { ModelErrorBoundary, getModelInfo, useShipMaterials } from './models/ShipModel.jsx';
 
@@ -22,7 +23,8 @@ export default function Cockpit({ baseFov }) {
     useFrame(({ camera }) => {
         const group = groupRef.current;
         if (!group) return;
-        const ratio = Math.tan((camera.fov * Math.PI) / 360) / baseTangent;
+        // In VR the field of view never changes (and the headset's camera has its own).
+        const ratio = vr.active ? 1 : Math.tan((camera.fov * Math.PI) / 360) / baseTangent;
         group.scale.set(ratio, ratio, 1);
     });
 

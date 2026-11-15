@@ -425,4 +425,20 @@ export default {
     'muster.vega.clear': 'All three carriers are gone. The Muster is empty.',
     'muster.rhea.count': 'Three carriers against our line, and the line held. I will take that.',
     'muster.tim.done': 'That is the last of the old fleet. Lantern can sleep tonight.',
+
+    // ---- VR (xr/) ------------------------------------------------------------------------
+    'ui.vr.enter': 'Enter VR',
+    'ui.vr.enterHint': 'Put on your headset: fly from the cockpit with your VR controllers',
+    'ui.vr.exit': 'Exit VR',
+    'ui.vr.ship': 'Ship',
+    'ui.vr.menuHint': 'Stick: choose · Trigger / A: select · B: back',
+    'ui.vr.refitHint': 'Stick left / right adds or removes a level',
+    'ui.vr.controls': 'Right stick steer · Left stick throttle / roll · Right trigger beams · Left trigger torpedo · Left grip afterburner · Right grip lock what you look at · A next target · B skip comms · X power · Y view · Left stick click re-centre seat · Right stick click pause',
+    'hud.skip.vr': 'B ▸',
+    'hint.flight.vr': 'Right stick steers · left stick: up / down throttle, left / right roll · left grip afterburner · Y switches cockpit / chase view',
+    'hint.weapons.vr': 'A locks the next target, or look at a ship and squeeze the right grip · hold the RIGHT TRIGGER to fire beam arrays — they track anything inside the ring',
+    'hint.torpedoes.vr': 'LEFT TRIGGER launches a torpedo at your lock · beams strip shields, torpedoes break hulls',
+    'hint.power.vr': 'X cycles power: balanced · attack · defense — divert power to suit the moment',
+    'hint.paintTarget.vr': 'Lock the Eclipse (look at it and squeeze the right grip) and keep your nose on it',
+    'hint.modules.vr': 'Emitters, generators and turrets are separate targets — cycle to them with A',
 };

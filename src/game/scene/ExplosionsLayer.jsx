@@ -9,6 +9,7 @@ import { FireballSystem } from './effects/FireballSystem.js';
 import { ParticleSystem, randomDirection } from './effects/ParticleSystem.js';
 import { HULL_WRECKAGE, ROCK_WRECKAGE, SHIP_WRECKAGE } from './effects/wreckageShapes.js';
 import { ModelErrorBoundary, useHullTextures } from './models/ShipModel.jsx';
+import { viewPose } from './viewPose.js';
 
 /**
  * Explosions, impact sparks and warp flashes, all fed by simulation events.
@@ -367,9 +368,11 @@ function Effects({ session, textures }) {
         bursts.forEach((burst) => burst.dispose());
     }, [sparks, fire, debris, bursts]);
 
-    useFrame(({ size, camera }) => {
+    useFrame(() => {
         const dt = session.effectsDelta;
-        sparks.setPixelScale(size.height, camera.fov);
+        // The eye's pose, not state.camera: in VR that camera's pose is relative to the seat.
+        const camera = viewPose;
+        sparks.setPixelScale(viewPose.pixelHeight, viewPose.fov);
         if (dt <= 0) return;
 
         if (pending.current.length > 0) {

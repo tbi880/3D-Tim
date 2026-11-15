@@ -59,6 +59,8 @@ export class InputController {
         this.pointerButtons = { primary: false, secondary: false };
         /** Absolute throttle (0..1) from the touch slider, or null when the keyboard is in charge. */
         this.throttleTarget = null;
+        /** Controls from the VR controllers (xr/XRGamepadInput.js), or null outside VR. */
+        this.xrControls = null;
         this.controls = { yaw: 0, pitch: 0, roll: 0, throttle: 0, throttleTarget: null, boost: false, firePrimary: false, fireSecondary: false };
         this.surface = null;
         this.listeners = [];
@@ -153,6 +155,11 @@ export class InputController {
         this.throttleTarget = value;
     }
 
+    /** VR controllers: their stick / trigger state this frame (already dead-zoned and inverted), or null. */
+    setXRControls(xrControls) {
+        this.xrControls = xrControls;
+    }
+
     setHeld(name, isHeld) {
         if (isHeld) this.held.add(name);
         else this.held.delete(name);
@@ -167,16 +174,19 @@ export class InputController {
         const clampUnit = (value) => Math.max(-1, Math.min(1, value));
         const invert = this.getInvertY() ? -1 : 1;
 
-        controls.yaw = clampUnit(this.pointerStick.x + this.touchStick.x + axis('yawLeft', 'yawRight'));
-        controls.pitch = clampUnit((this.pointerStick.y + this.touchStick.y) * invert + axis('pitchDown', 'pitchUp'));
-        controls.roll = axis('rollLeft', 'rollRight');
-        controls.throttle = axis('throttleDown', 'throttleUp');
-        // Touching W / S hands the throttle back to the keyboard.
+        // In VR the mouse is not where the player is looking: its stick is ignored there.
+        const xr = this.xrControls;
+        const pointer = xr ? 0 : 1;
+        controls.yaw = clampUnit(this.pointerStick.x * pointer + this.touchStick.x + axis('yawLeft', 'yawRight') + (xr?.yaw ?? 0));
+        controls.pitch = clampUnit((this.pointerStick.y * pointer + this.touchStick.y) * invert + axis('pitchDown', 'pitchUp') + (xr?.pitch ?? 0));
+        controls.roll = clampUnit(axis('rollLeft', 'rollRight') + (xr?.roll ?? 0));
+        controls.throttle = clampUnit(axis('throttleDown', 'throttleUp') + (xr?.throttle ?? 0));
+        // Touching W / S (or the VR throttle stick) hands the throttle back to the keyboard.
         if (controls.throttle !== 0) this.throttleTarget = null;
         controls.throttleTarget = this.throttleTarget;
-        controls.boost = held.has('boost');
-        controls.firePrimary = this.pointerButtons.primary || held.has('firePrimary');
-        controls.fireSecondary = this.pointerButtons.secondary || held.has('fireSecondary');
+        controls.boost = held.has('boost') || Boolean(xr?.boost);
+        controls.firePrimary = this.pointerButtons.primary || held.has('firePrimary') || Boolean(xr?.firePrimary);
+        controls.fireSecondary = this.pointerButtons.secondary || held.has('fireSecondary') || Boolean(xr?.fireSecondary);
         return controls;
     }
 }

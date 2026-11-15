@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { PHASE } from '../state/GameSession.js';
 import { drawMarkers, drawRadar } from '../ui/markerRenderer.js';
+import { vr } from '../xr/vrState.js';
 
 const MAX_CANVAS_DPR = 2;
 /** The radar changes slowly; redrawing it every third frame is plenty. */
@@ -32,7 +33,8 @@ export default function HudCanvasBridge({ game, markerCanvasRef, radarCanvasRef 
         const markerCanvas = markerCanvasRef.current;
         if (!markerCanvas) return;
         const ctx = prepareCanvas(markerCanvas, size.width, size.height);
-        if (session.phase !== PHASE.PLAYING) {
+        // In VR the markers are drawn on the headset's HUD (xr/VRHud.jsx) instead.
+        if (session.phase !== PHASE.PLAYING || vr.active) {
             ctx.clearRect(0, 0, size.width, size.height);
             return;
         }

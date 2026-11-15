@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { forwardOf } from '../core/math.js';
+import { viewPose } from './viewPose.js';
 
 const MOTE_COUNT = 380;
 /** Motes live in a cube of this half-size around the camera and wrap to the far side when they leave it. */
@@ -42,7 +43,8 @@ export default function SpaceDust({ session }) {
         return buffer;
     }, []);
 
-    useFrame(({ camera }) => {
+    useFrame(() => {
+        const eye = viewPose.position;
         const { world, effectsDelta: dt } = session;
         const player = world.player;
         if (!player) return;
@@ -58,9 +60,9 @@ export default function SpaceDust({ session }) {
         for (let i = 0; i < MOTE_COUNT; i++) {
             const m = i * 3;
             // During warp the dust itself rushes past, on top of the ship's own movement.
-            motes[m] = wrap(motes[m] - forward.x * rush, camera.position.x);
-            motes[m + 1] = wrap(motes[m + 1] - forward.y * rush, camera.position.y);
-            motes[m + 2] = wrap(motes[m + 2] - forward.z * rush, camera.position.z);
+            motes[m] = wrap(motes[m] - forward.x * rush, eye.x);
+            motes[m + 1] = wrap(motes[m + 1] - forward.y * rush, eye.y);
+            motes[m + 2] = wrap(motes[m + 2] - forward.z * rush, eye.z);
             const v = i * 6;
             positions[v] = motes[m];
             positions[v + 1] = motes[m + 1];

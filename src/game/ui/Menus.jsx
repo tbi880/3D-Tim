@@ -10,6 +10,7 @@ import { loadSave } from '../state/saveGame.js';
 import { playerModelFile, requestShipModel } from '../scene/models/ShipModel.jsx';
 import { useGameStore, useT } from '../state/gameStore.js';
 import { isFullscreenSupported } from '../../utils/fullscreen.js';
+import { enterVR, useVRActive, useVRSupported } from '../xr/vrState.js';
 import RefitPanel from './RefitPanel.jsx';
 
 /** Title screen, pause menu, game-over and ending screens, and the refit window. */
@@ -42,6 +43,29 @@ function ControlsList() {
                 </div>
             ))}
         </dl>
+    );
+}
+
+/**
+ * "Enter VR", shown only when the browser can open a headset session. While VR runs, the
+ * game's menus are inside the headset (xr/VRMenu.js) and this button is greyed out.
+ * The button opts out of click-to-fullscreen: entering fullscreen would use up the click that
+ * the browser needs to allow the VR session.
+ */
+function VRButton({ onStart }) {
+    const supported = useVRSupported();
+    const active = useVRActive();
+    const t = useT();
+    if (!supported) return null;
+    const start = () => {
+        onStart?.();
+        enterVR();
+    };
+    return (
+        <button type="button" className="eod-button" data-skip-fullscreen="" disabled={active} onClick={start}>
+            {t('ui.vr.enter')}
+            <small>{t('ui.vr.enterHint')}</small>
+        </button>
     );
 }
 
@@ -271,6 +295,7 @@ function TitleScreen({ session, onStart }) {
                         {t('ui.newGame')}
                         {confirmingNewGame && <small>{t('ui.confirmNewGame')}</small>}
                     </button>
+                    <VRButton onStart={onStart} />
                     {!IS_TOUCH && <button type="button" className="eod-button" onClick={() => setView('controls')}>{t('ui.controls')}</button>}
                     <SettingsRows session={session} />
                 </div>
@@ -285,7 +310,7 @@ function TitleScreen({ session, onStart }) {
     );
 }
 
-function PauseMenu({ session }) {
+function PauseMenu({ session, onStart }) {
     const hasSave = useGameStore((state) => state.hasSave);
     const t = useT();
     return (
@@ -295,6 +320,7 @@ function PauseMenu({ session }) {
                 <button type="button" className="eod-button eod-button--primary" onClick={() => session.resume()}>{t('ui.resume')}</button>
                 {hasSave && <button type="button" className="eod-button" onClick={() => session.continueGame()}>{t('ui.restartCheckpoint')}</button>}
                 <button type="button" className="eod-button" onClick={() => session.enterTitle()}>{t('ui.quitToTitle')}</button>
+                <VRButton onStart={onStart} />
                 <SettingsRows session={session} />
                 {!IS_TOUCH && <ControlsList />}
             </div>
@@ -390,7 +416,7 @@ export default function Menus({ session, onStart }) {
     if (!assetsReady) return null;
     switch (phase) {
         case PHASE.TITLE: return <TitleScreen session={session} onStart={onStart} />;
-        case PHASE.PAUSED: return <PauseMenu session={session} />;
+        case PHASE.PAUSED: return <PauseMenu session={session} onStart={onStart} />;
         case PHASE.GAME_OVER: return <GameOverScreen session={session} />;
         case PHASE.ENDING: return <EndingScreen session={session} />;
         // In flight the only menu is the refit window, and only while one is open.

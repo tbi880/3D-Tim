@@ -4,7 +4,10 @@ import { PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 import { GAME_EVENTS } from '../core/EventBus.js';
 import { SESSION_EVENTS } from '../state/GameSession.js';
+import { cameraModeOf, vr } from '../xr/vrState.js';
+import { vrRig } from '../xr/VRCameraRig.jsx';
 import Cockpit from './Cockpit.jsx';
+import { viewPose } from './viewPose.js';
 import WarpTunnel from './WarpTunnel.jsx';
 
 const BASE_FOV = 68;
@@ -31,14 +34,21 @@ const scratchOffset = new THREE.Vector3();
 const scratchTarget = new THREE.Vector3();
 const scratchUp = new THREE.Vector3();
 const scratchMatrix = new THREE.Matrix4();
+const scratchScale = new THREE.Vector3();
 
 /**
  * The player's camera, with two views switched by `settings.cameraMode`:
  *  - 'cockpit': first person from the pilot's seat, cockpit interior visible;
  *  - 'chase':   third person behind the ship, which swings in frame as it turns.
  * Hits and explosions add "trauma", which decays into camera shake in both views.
+ *
+ * In VR this camera is the pilot's seat rather than the lens: the headset's own camera hangs
+ * under it (xr/VRCameraRig.jsx), so the head moves freely inside the cockpit. For comfort
+ * the seat is fixed to the ship there - no shake, no field-of-view changes and, in the chase
+ * view, no swing - since anything that moves the picture without the head moving makes people
+ * sick in a headset. `children` hang off the camera too (that VR rig).
  */
-export default function PlayerCamera({ session }) {
+export default function PlayerCamera({ session, children }) {
     const cameraRef = useRef(null);
     const cockpitRef = useRef(null);
     const trauma = useRef(0);
@@ -69,13 +79,23 @@ export default function PlayerCamera({ session }) {
         return () => unsubscribe.forEach((off) => off());
     }, [session]);
 
-    useFrame(() => {
+    useFrame(({ size, gl }) => {
         const camera = cameraRef.current;
         const { world, effectsDelta: dt } = session;
         const player = world.player;
         if (!camera || !player) return;
-        const isCockpit = session.settings.cameraMode !== 'chase';
+        const isCockpit = cameraModeOf(session) !== 'chase';
         const rig = chase.current;
+
+        if (vr.active) {
+            placeVRSeat(camera, player, isCockpit);
+            rig.ready = false;
+            rig.lastPosition.copy(player.position);
+            if (cockpitRef.current) cockpitRef.current.visible = isCockpit && player.alive;
+            trauma.current = 0;
+            syncVRViewPose(camera, gl.xr.getCamera());
+            return;
+        }
 
         if (isCockpit) {
             camera.quaternion.copy(player.quaternion);
@@ -113,14 +133,62 @@ export default function PlayerCamera({ session }) {
             camera.fov += (targetFov - camera.fov) * (1 - Math.exp(-6 * dt));
             camera.updateProjectionMatrix();
         }
+        viewPose.position.copy(camera.position);
+        viewPose.quaternion.copy(camera.quaternion);
+        viewPose.fov = camera.fov;
+        viewPose.pixelHeight = size.height;
     }, CAMERA_PRIORITY);
 
     return (
         <PerspectiveCamera ref={cameraRef} makeDefault fov={BASE_FOV} near={0.1} far={3_000_000}>
+            {children}
             <group ref={cockpitRef}>
                 <Cockpit baseFov={BASE_FOV} />
             </group>
             <WarpTunnel session={session} />
         </PerspectiveCamera>
     );
+}
+
+/**
+ * VR: puts the seat (this camera) at the pilot's eye, or rigidly behind and above the ship
+ * for the chase view. Its field of view is left at the base value: the cockpit model is laid
+ * out for it, and the headset draws with its own lenses' projection anyway.
+ */
+function placeVRSeat(camera, player, isCockpit) {
+    if (isCockpit) {
+        camera.quaternion.copy(player.quaternion);
+        camera.position.copy(COCKPIT_EYE).applyQuaternion(player.quaternion).add(player.position);
+    } else {
+        const hullScale = Math.max(1, player.cls.radius / 15);
+        scratchOffset.copy(CHASE_OFFSET).multiplyScalar(hullScale).applyQuaternion(player.quaternion);
+        camera.position.copy(player.position).add(scratchOffset);
+        scratchTarget.set(0, 0, -CHASE_LOOK_AHEAD).applyQuaternion(player.quaternion).add(player.position);
+        scratchUp.set(0, 1, 0).applyQuaternion(player.quaternion);
+        camera.quaternion.setFromRotationMatrix(scratchMatrix.lookAt(camera.position, scratchTarget, scratchUp));
+    }
+    if (camera.fov !== BASE_FOV) {
+        camera.fov = BASE_FOV;
+        camera.updateProjectionMatrix();
+    }
+    camera.updateMatrixWorld();
+}
+
+/**
+ * VR: the eye in world space = seat x re-centring offset x the head's pose this frame (the
+ * headset camera's matrix is relative to its parent, the rig's origin).
+ */
+function syncVRViewPose(seat, xrCamera) {
+    const origin = vrRig.origin;
+    scratchMatrix.copy(seat.matrixWorld);
+    if (origin) scratchMatrix.multiply(origin.matrix);
+    scratchMatrix.multiply(xrCamera.matrix);
+    scratchMatrix.decompose(viewPose.position, viewPose.quaternion, scratchScale);
+    const eye = xrCamera.cameras?.[0];
+    if (eye) {
+        // Vertical field of view and pixel height of one eye's view, for point-sprite sizes.
+        const focal = eye.projectionMatrix.elements[5];
+        if (focal > 0) viewPose.fov = THREE.MathUtils.radToDeg(2 * Math.atan(1 / focal));
+        if (eye.viewport?.w > 0) viewPose.pixelHeight = eye.viewport.w;
+    }
 }

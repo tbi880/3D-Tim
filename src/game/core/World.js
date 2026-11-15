@@ -233,8 +233,9 @@ export class World {
         this.setPlayerTarget(candidates[index === -1 ? 0 : next]);
     }
 
-    targetNearestToCrosshair() {
-        const target = findTargetNearCrosshair(this) ?? getLockCandidates(this)[0] ?? null;
+    /** @param {Vector3} [forward] look along this direction instead of the ship's nose (VR gaze) */
+    targetNearestToCrosshair(forward = null) {
+        const target = findTargetNearCrosshair(this, undefined, forward) ?? getLockCandidates(this)[0] ?? null;
         this.setPlayerTarget(target);
     }
 

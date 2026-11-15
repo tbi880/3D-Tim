@@ -52,11 +52,16 @@ export function getLockCandidates(world) {
     return candidates.map((entry) => entry.ship);
 }
 
-/** The hostile ship closest to the crosshair, or null if none is inside the cone. */
-export function findTargetNearCrosshair(world, coneDeg = TARGETING.crosshairConeDeg) {
+/**
+ * The hostile ship closest to the crosshair, or null if none is inside the cone.
+ * `forward` (unit vector) looks along another line instead of the nose: in VR, where the
+ * pilot is looking.
+ */
+export function findTargetNearCrosshair(world, coneDeg = TARGETING.crosshairConeDeg, forward = null) {
     const player = world.player;
     if (!player) return null;
-    forwardOf(player.quaternion, scratchForward);
+    if (forward) scratchForward.copy(forward);
+    else forwardOf(player.quaternion, scratchForward);
     const maxAngle = degToRad(coneDeg);
     const aimPoint = new Vector3();
     let best = null;

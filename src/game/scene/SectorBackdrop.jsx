@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { SECTORS } from '../config/sectors.js';
 import { createRng } from '../core/math.js';
 import { useGameStore } from '../state/gameStore.js';
+import { viewPose } from './viewPose.js';
 import GltfModel from './models/GltfModel.jsx';
 
 /**
@@ -153,9 +154,9 @@ function BackdropObject({ config }) {
         [config],
     );
 
-    useFrame(({ camera }) => {
+    useFrame(() => {
         const group = groupRef.current;
-        const offset = scratchOffset.copy(truePosition).sub(camera.position);
+        const offset = scratchOffset.copy(truePosition).sub(viewPose.position);
         const shrink = SKY_DISTANCE / offset.length();
         // The parent group already sits on the camera, so this is a camera-relative position.
         group.position.copy(offset).multiplyScalar(shrink);
@@ -238,8 +239,8 @@ export default function SectorBackdrop() {
     const sector = SECTORS[sectorId];
     const skyRef = useRef(null);
 
-    useFrame(({ camera }) => {
-        skyRef.current?.position.copy(camera.position);
+    useFrame(() => {
+        skyRef.current?.position.copy(viewPose.position);
     });
 
     return (

@@ -15,6 +15,8 @@ const GESTURES = ['pointerup', 'touchend', 'click'];
  * @param {boolean} [options.once] true: only the first click of the visit (the site's pages);
  *   false: every click while not fullscreen, so leaving with Esc is undone by the next click (the game)
  * @param {boolean} [options.skipPortrait] leave a portrait screen (a phone held upright) windowed
+ *
+ * Clicks inside an element with a `data-skip-fullscreen` attribute are left alone.
  */
 export default function useClickToFullscreen({ enabled = stageOfENV === 'prod', once = true, skipPortrait = true } = {}) {
     useEffect(() => {
@@ -23,8 +25,10 @@ export default function useClickToFullscreen({ enabled = stageOfENV === 'prod', 
         const stop = () => {
             for (const type of GESTURES) document.removeEventListener(type, onGesture, true);
         };
-        function onGesture() {
+        function onGesture(event) {
             if (getFullscreenElement()) return;
+            // Controls that need the click for something else (entering VR) opt out.
+            if (event?.target?.closest?.('[data-skip-fullscreen]')) return;
             if (skipPortrait && window.innerHeight > window.innerWidth) return;
             enterFullscreen();
             if (once) stop();
