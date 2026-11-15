@@ -26,6 +26,12 @@ import { useGameStore } from '../state/gameStore.js';
  * light takes the ambient colour instead of adding a light.
  */
 
+/**
+ * The whole cabin (seat included) is drawn this much larger round the pilot's eye, so it
+ * sits further away in the headset. VRHud scales the instrument display the same way.
+ */
+export const CABIN_SCALE = 1.5;
+
 /** Ambient-light colours per power mode. */
 const AMBIENT_COLOURS = Object.freeze({
     balanced: new THREE.Color('#3f7bff'),
@@ -499,14 +505,14 @@ export default function VRCockpitShell() {
 
     const { geometries, materials } = cabin;
     return (
-        <>
+        <group scale={CABIN_SCALE}>
             {SURFACES.map((name) => (
                 <mesh key={name} geometry={geometries[name]} material={materials[name]} frustumCulled={false} />
             ))}
             <mesh geometry={geometries.line} material={materials.line} frustumCulled={false} />
             <mesh geometry={geometries.halo} material={materials.halo} frustumCulled={false} renderOrder={1} />
             {/* The cabin's one fill light, tinted with the ambient colour. */}
-            <pointLight ref={fillRef} position={[0, 0.7, 0.6]} intensity={FILL_INTENSITY} distance={4} decay={1.2} />
-        </>
+            <pointLight ref={fillRef} position={[0, 0.7, 0.6]} intensity={FILL_INTENSITY} distance={4 * CABIN_SCALE} decay={1.2} />
+        </group>
     );
 }

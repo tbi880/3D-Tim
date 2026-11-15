@@ -6,6 +6,7 @@ import { translate } from '../i18n/index.js';
 import { PHASE, SESSION_EVENTS } from '../state/GameSession.js';
 import { useGameStore } from '../state/gameStore.js';
 import { drawMarkers, drawRadar } from '../ui/markerRenderer.js';
+import { CABIN_SCALE } from './VRCockpitShell.jsx';
 import { createCanvasPanel, drawMeter, roundRect, wrapText } from './canvasPanel.js';
 
 /**
@@ -369,7 +370,7 @@ export default function VRHud({ game, seatRef }) {
         <>
             <primitive object={veil} />
             <primitive object={pane.mesh} position={[0, 0, -VIEW_DISTANCE]} />
-            <primitive object={panel.mesh} position={PANEL_POSITION} rotation={[PANEL_TILT, 0, 0]} />
+            <primitive object={panel.mesh} position={PANEL_POSITION.map((v) => v * CABIN_SCALE)} rotation={[PANEL_TILT, 0, 0]} scale={CABIN_SCALE} />
         </>
     );
 }
