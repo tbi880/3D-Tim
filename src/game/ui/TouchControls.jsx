@@ -9,7 +9,10 @@ const STICK_TRAVEL = 56;
  *
  *   left thumb  - steering stick, with a throttle slider beside it
  *   right thumb - FIRE (hold), TORPEDO, BURN (hold), LOCK (next target)
- *   top         - pause, skip comms, switch view, cycle power mode
+ *   top left    - pause
+ *
+ * Phones keep only what a thumb pilot needs: the view is locked to chase, the power mode stays
+ * balanced, and a comms line is revealed or skipped by tapping it (CommsPanel.jsx).
  *
  * With the "auto-fire" setting on (the default on touch devices) the beams fire by
  * themselves whenever a hostile is inside the ring, so flying only needs one thumb.
@@ -84,12 +87,7 @@ export default function TouchControls({ input, session }) {
                     {t('hud.fire')}{autoFire && <small>AUTO</small>}
                 </button>
             </div>
-            <div className="eod-touch-top">
-                <button type="button" {...tap('pause')}>II</button>
-                <button type="button" {...tap('skip')}>▸▸</button>
-                <button type="button" {...tap('toggleView')}>{t('hud.view')}</button>
-                <button type="button" {...tap('power:cycle')}>{t('hud.power')}</button>
-            </div>
+            <button type="button" className="eod-touch-pause" aria-label={t('controls.pause')} {...tap('pause')}>II</button>
         </div>
     );
 }

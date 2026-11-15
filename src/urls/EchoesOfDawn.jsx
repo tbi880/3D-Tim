@@ -6,6 +6,7 @@ import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 import { SoundEngine } from '../game/audio/SoundEngine.js';
 import { graphicsDpr } from '../game/config/graphics.js';
 import { InputController } from '../game/input/InputController.js';
+import { isTouchDevice } from '../game/input/device.js';
 import GameScene from '../game/scene/GameScene.jsx';
 import { GameSession } from '../game/state/GameSession.js';
 import { gameStoreSink, useGameStore, useT } from '../game/state/gameStore.js';
@@ -47,6 +48,23 @@ function RotateHint() {
     );
 }
 
+const GAME_MANIFEST = '/echoes_of_dawn.webmanifest';
+
+/**
+ * While the game is open, the page's web-app manifest is the game's own (public/
+ * echoes_of_dawn.webmanifest: fullscreen, landscape, starts here) instead of the site's, so
+ * "Add to Home Screen" on this page installs the game.
+ */
+function useGameManifest() {
+    useEffect(() => {
+        const link = document.querySelector('link[rel="manifest"]');
+        if (!link) return undefined;
+        const siteManifest = link.getAttribute('href');
+        link.setAttribute('href', GAME_MANIFEST);
+        return () => link.setAttribute('href', siteManifest);
+    }, []);
+}
+
 /** "Echoes of Dawn" - a story-driven space combat game set after Project Dawn. */
 function EchoesOfDawn() {
     const [game, setGame] = useState(null);
@@ -55,8 +73,11 @@ function EchoesOfDawn() {
     const radarCanvasRef = useRef(null);
     const graphics = useGameStore((state) => state.settings.graphics);
     // Any click or tap goes fullscreen - again after Esc - and on phones too, so a game turned
-    // sideways fills the screen. Production only, like the rest of the site.
-    useClickToFullscreen({ once: false, skipPortrait: false });
+    // sideways fills the screen. On a desktop only in production, like the rest of the site; on
+    // a phone always (also when testing a dev build there). Safari on iPhone has no fullscreen
+    // for pages at all: there the title screen suggests opening the game from the home screen.
+    useGameManifest();
+    useClickToFullscreen({ enabled: stageOfENV === 'prod' || isTouchDevice(), once: false, skipPortrait: false });
 
     useEffect(() => {
         const created = createGame();
@@ -73,12 +94,18 @@ function EchoesOfDawn() {
     useEffect(() => {
         if (!game) return undefined;
         game.input.attach(inputSurfaceRef.current);
-        // Leaving the tab mid-fight should never cost the player their ship.
+        // Leaving mid-fight should never cost the player their ship: pause when the tab is hidden,
+        // the browser loses focus (another app or window in front) or the page is put away.
         const pauseWhenHidden = () => { if (document.hidden) game.session.pause(); };
+        const pause = () => game.session.pause();
         document.addEventListener('visibilitychange', pauseWhenHidden);
+        window.addEventListener('blur', pause);
+        window.addEventListener('pagehide', pause);
         return () => {
             game.input.detach();
             document.removeEventListener('visibilitychange', pauseWhenHidden);
+            window.removeEventListener('blur', pause);
+            window.removeEventListener('pagehide', pause);
         };
     }, [game]);
 
@@ -96,6 +123,12 @@ function EchoesOfDawn() {
                 <meta property="og:site_name" content="Tim Bi" />
                 <link rel="canonical" href="https://www.bty.co.nz/echoes_of_dawn" />
                 <meta name="author" content="Tim Bi" />
+                {/* Opened from the home screen the game runs without browser bars (the only fullscreen an iPhone offers). */}
+                <meta name="apple-mobile-web-app-capable" content="yes" />
+                <meta name="mobile-web-app-capable" content="yes" />
+                <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+                <meta name="apple-mobile-web-app-title" content="Echoes of Dawn" />
+                <link rel="apple-touch-icon" href="/Tim%20Bi%20-%20App.webp" />
             </Helmet>
 
             <div className="eod-root">

@@ -4,13 +4,25 @@ import { GRAPHICS_ORDER } from '../config/graphics.js';
 import { PLAYER_SHIPS, RATING_MAX, RATING_ORDER } from '../config/playerShips.js';
 import { FINAL_SCORE } from '../config/scoring.js';
 import { LOCALES, LOCALE_LABELS } from '../i18n/index.js';
+import { isTouchDevice } from '../input/device.js';
 import { PHASE } from '../state/GameSession.js';
 import { loadSave } from '../state/saveGame.js';
 import { playerModelFile, requestShipModel } from '../scene/models/ShipModel.jsx';
 import { useGameStore, useT } from '../state/gameStore.js';
+import { isFullscreenSupported } from '../../utils/fullscreen.js';
 import RefitPanel from './RefitPanel.jsx';
 
 /** Title screen, pause menu, game-over and ending screens, and the refit window. */
+
+/** Phones fly in chase view only and have no keyboard, so their menus drop those rows. */
+const IS_TOUCH = isTouchDevice();
+
+/**
+ * Safari on iPhone has no fullscreen for web pages; the only way to lose the browser bars is
+ * to open the game from the home screen (see the web-app tags in urls/EchoesOfDawn.jsx).
+ */
+const NEEDS_HOME_SCREEN = IS_TOUCH && typeof window !== 'undefined' && !isFullscreenSupported()
+    && !(window.navigator.standalone || window.matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches);
 
 const CONTROL_ROWS = ['steer', 'throttle', 'roll', 'boost', 'beam', 'torpedo', 'target', 'power', 'view', 'skip', 'pause'];
 
@@ -57,9 +69,11 @@ function SettingsRows({ session }) {
             <button type="button" className="eod-setting" onClick={() => session.updateSettings({ invertY: !settings.invertY })}>
                 <span>{t('ui.invertY')}</span><strong>{settings.invertY ? t('ui.on') : t('ui.off')}</strong>
             </button>
-            <button type="button" className="eod-setting" onClick={() => session.handleAction('toggleView')}>
-                <span>{t('ui.view')}</span><strong>{t(`ui.view.${settings.cameraMode}`)}</strong>
-            </button>
+            {!IS_TOUCH && (
+                <button type="button" className="eod-setting" onClick={() => session.handleAction('toggleView')}>
+                    <span>{t('ui.view')}</span><strong>{t(`ui.view.${settings.cameraMode}`)}</strong>
+                </button>
+            )}
             <button type="button" className="eod-setting" onClick={() => session.updateSettings({ autoFire: !settings.autoFire })}>
                 <span>{t('ui.autoFire')}</span><strong>{settings.autoFire ? t('ui.on') : t('ui.off')}</strong>
             </button>
@@ -239,6 +253,7 @@ function TitleScreen({ session, onStart }) {
                 <h1 className="eod-title">{t('ui.title')}</h1>
                 <p className="eod-title-tagline">{t('ui.tagline')}</p>
                 <p className="eod-touch-hint">{t('ui.touchHint')}</p>
+                {NEEDS_HOME_SCREEN && <p className="eod-touch-hint eod-home-screen-hint">{t('ui.homeScreenHint')}</p>}
             </div>
             {view === 'hangar' && <Hangar session={session} onLaunch={launch} onBack={() => setView('main')} />}
             {view === 'loading' && launching && (
@@ -256,7 +271,7 @@ function TitleScreen({ session, onStart }) {
                         {t('ui.newGame')}
                         {confirmingNewGame && <small>{t('ui.confirmNewGame')}</small>}
                     </button>
-                    <button type="button" className="eod-button" onClick={() => setView('controls')}>{t('ui.controls')}</button>
+                    {!IS_TOUCH && <button type="button" className="eod-button" onClick={() => setView('controls')}>{t('ui.controls')}</button>}
                     <SettingsRows session={session} />
                 </div>
             )}
@@ -281,7 +296,7 @@ function PauseMenu({ session }) {
                 {hasSave && <button type="button" className="eod-button" onClick={() => session.continueGame()}>{t('ui.restartCheckpoint')}</button>}
                 <button type="button" className="eod-button" onClick={() => session.enterTitle()}>{t('ui.quitToTitle')}</button>
                 <SettingsRows session={session} />
-                <ControlsList />
+                {!IS_TOUCH && <ControlsList />}
             </div>
         </div>
     );

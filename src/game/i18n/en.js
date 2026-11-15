@@ -53,6 +53,7 @@ export default {
     'ui.score.newRecord': 'New best on this difficulty!',
     'ui.score.best': 'Best on this difficulty: {score}',
     'ui.touchHint': 'Touch controls: left thumb steers, right thumb fights. Beams fire automatically.',
+    'ui.homeScreenHint': 'Safari on iPhone cannot show web pages fullscreen: tap Share → Add to Home Screen and open the game from its icon to play fullscreen.',
 
     // ---- Controls screen ----------------------------------------------------------------
     'controls.steer': 'Steer',
@@ -99,6 +100,7 @@ export default {
     'hud.hullCritical': 'HULL CRITICAL',
     'hud.escortCritical': 'DAWNBREAKER HULL CRITICAL',
     'hud.skip': 'ENTER ▸',
+    'hud.skip.touch': 'TAP ▸',
     'hud.recording': 'RECORDING',
     'hud.fire': 'FIRE',
     'hud.torp': 'TORP',
@@ -307,7 +309,7 @@ export default {
     'forge.vega.cinder': 'Course for Cinder, Commander. This time, no detours.',
 
     // Touch-screen wording for hints that name keys (picked automatically on phones).
-    'hint.flight.touch': 'Left stick steers · slide THR for speed · hold BURN for the afterburner · VIEW switches cockpit / chase',
+    'hint.flight.touch': 'Left stick steers · slide THR for speed · hold BURN for the afterburner',
     'hint.weapons.touch': 'LOCK picks the next target · beam arrays fire by themselves at anything inside the ring',
     'hint.torpedoes.touch': 'TORP launches a torpedo at your lock · beams strip shields, torpedoes break hulls',
     'hint.power.touch': 'POWER cycles balanced · attack · defense — divert power to suit the moment',

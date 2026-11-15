@@ -1,6 +1,7 @@
 import { Quaternion, Vector3 } from 'three';
 import { FACTION, HUD_REFRESH_INTERVAL, PLAYER, POWER_MODES, WORLD } from '../config/gameConfig.js';
 import { EventBus, GAME_EVENTS } from '../core/EventBus.js';
+import { isTouchDevice } from '../input/device.js';
 import { mergeUpgrades } from '../core/refit.js';
 import { World } from '../core/World.js';
 import { setLocale, t } from '../i18n/index.js';
@@ -252,6 +253,8 @@ export class GameSession {
             return;
         }
         if (action === 'toggleView') {
+            // Phones stay in chase view (saveGame.js loadSettings).
+            if (isTouchDevice()) return;
             const next = (CAMERA_MODES.indexOf(this.settings.cameraMode) + 1) % CAMERA_MODES.length;
             this.updateSettings({ cameraMode: CAMERA_MODES[next] });
             return;

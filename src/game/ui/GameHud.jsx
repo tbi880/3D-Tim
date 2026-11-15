@@ -51,6 +51,28 @@ function StatusPanel() {
     );
 }
 
+/**
+ * Phones: one small panel in place of the two corner gauges (the thumbs own the lower corners,
+ * the throttle slider shows speed, and the power mode is not offered on touch screens).
+ */
+function CompactShipPanel() {
+    const hud = useGameStore((state) => state.hud);
+    const t = useT();
+    if (!hud) return null;
+    return (
+        <div className="eod-panel eod-ship-compact">
+            <Meter label={t('hud.shields')} value={hud.shield} tone="shield" warning={hud.shield <= 0.01} />
+            <Meter label={t('hud.hull')} value={hud.hull} tone="hull" warning={hud.hull < 0.3} />
+            <Meter label={t('hud.energy')} value={hud.energy} tone="energy" warning={hud.beamDepleted} />
+            <div className="eod-torpedo-tubes">
+                {Array.from({ length: hud.torpedoCapacity }, (_, index) => (
+                    <span key={index} className={`eod-torpedo ${index < hud.torpedoes ? 'eod-torpedo--loaded' : ''}`} />
+                ))}
+            </div>
+        </div>
+    );
+}
+
 function WeaponsPanel() {
     const hud = useGameStore((state) => state.hud);
     const t = useT();
@@ -171,10 +193,13 @@ function TitleCard() {
     );
 }
 
+/** Hints about controls phones do not have. */
+const TOUCH_HIDDEN_HINTS = new Set(['hint.power']);
+
 function HintBar() {
     const hint = useGameStore((state) => state.hint);
     const t = useT();
-    if (!hint) return null;
+    if (!hint || (IS_TOUCH && TOUCH_HIDDEN_HINTS.has(hint))) return null;
     // Hints that name keys have a `.touch` twin describing the on-screen controls instead.
     const touchHint = `${hint}.touch`;
     return <div className="eod-hint">{t(IS_TOUCH && hasTranslation(touchHint) ? touchHint : hint)}</div>;
@@ -313,7 +338,27 @@ export default function GameHud({ session, markerCanvasRef, radarCanvasRef }) {
             <DamageFlash session={session} />
             <WarpFlash session={session} />
             <ScreenFade session={session} />
-            {inFlight && (
+            {inFlight && IS_TOUCH && (
+                <>
+                    <CompactShipPanel />
+                    <ObjectivePanel />
+                    {/* Boss / escort bars and the hint share the top centre, stacked. */}
+                    <div className="eod-top-stack">
+                        <FleetBars />
+                        <HintBar />
+                    </div>
+                    <TargetPanel />
+                    <canvas ref={radarCanvasRef} className="eod-radar eod-radar--corner" />
+                    <Alerts />
+                    <TitleCard />
+                    <Toast />
+                    <ScoreFeed session={session} />
+                    <div className="eod-centre-stack">
+                        <CommsPanel session={session} />
+                    </div>
+                </>
+            )}
+            {inFlight && !IS_TOUCH && (
                 <>
                     <ObjectivePanel />
                     <FleetBars />
@@ -326,7 +371,7 @@ export default function GameHud({ session, markerCanvasRef, radarCanvasRef }) {
                     <Toast />
                     <ScoreFeed session={session} />
                     <div className="eod-centre-stack">
-                        <CommsPanel />
+                        <CommsPanel session={session} />
                         <canvas ref={radarCanvasRef} className="eod-radar" />
                     </div>
                 </>

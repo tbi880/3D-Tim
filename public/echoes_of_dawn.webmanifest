@@ -1,0 +1,13 @@
+{
+    "name": "Echoes of Dawn",
+    "short_name": "Echoes of Dawn",
+    "start_url": "/echoes_of_dawn",
+    "scope": "/echoes_of_dawn",
+    "display": "fullscreen",
+    "orientation": "landscape",
+    "background_color": "#000000",
+    "theme_color": "#000000",
+    "icons": [
+        { "src": "/Tim%20Bi%20-%20App.webp", "sizes": "750x776", "type": "image/webp", "purpose": "any" }
+    ]
+}

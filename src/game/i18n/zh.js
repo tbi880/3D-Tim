@@ -53,6 +53,7 @@ export default {
     'ui.score.newRecord': '刷新本难度最高分！',
     'ui.score.best': '本难度最高分：{score}',
     'ui.touchHint': '触屏操作：左手拇指转向，右手拇指作战，光束会自动开火。',
+    'ui.homeScreenHint': 'iPhone 的 Safari 不支持网页全屏：点「分享」→「添加到主屏幕」，从主屏幕图标打开即可全屏游玩。',
 
     // ---- 操作说明 -----------------------------------------------------------------------
     'controls.steer': '转向',
@@ -99,6 +100,7 @@ export default {
     'hud.hullCritical': '船体告急',
     'hud.escortCritical': '破晓号船体告急',
     'hud.skip': 'ENTER ▸',
+    'hud.skip.touch': '轻触 ▸',
     'hud.recording': '录音',
     'hud.fire': '开火',
     'hud.torp': '鱼雷',
@@ -307,7 +309,7 @@ export default {
     'forge.vega.cinder': '航向余烬星，指挥官。这一次，不绕路了。',
 
     // Touch-screen wording for hints that name keys (picked automatically on phones).
-    'hint.flight.touch': '左摇杆转向 · 滑动“油门”条调速 · 按住“加力”开启加力燃烧 · “视角”切换座舱 / 追尾',
+    'hint.flight.touch': '左摇杆转向 · 滑动“油门”条调速 · 按住“加力”开启加力燃烧',
     'hint.weapons.touch': '“锁定”切换下一个目标 · 圆环内的目标会被光束阵列自动攻击',
     'hint.torpedoes.touch': '“鱼雷”向锁定目标发射鱼雷 · 光束削护盾，鱼雷破船体',
     'hint.power.touch': '“能量”在均衡 · 攻击 · 防御之间切换 —— 视战况调配能量',

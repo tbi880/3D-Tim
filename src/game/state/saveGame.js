@@ -83,8 +83,8 @@ export function defaultSettings() {
         playerShip: DEFAULT_PLAYER_SHIP,
         muted: false,
         invertY: false,
-        /** 'cockpit' (first person) or 'chase' (third person). */
-        cameraMode: 'cockpit',
+        /** 'cockpit' (first person) or 'chase' (third person). Phones always fly in chase view. */
+        cameraMode: isTouchDevice() ? 'chase' : 'cockpit',
         /** Beams fire by themselves at hostiles in the ring. On by default where there is no trigger finger to spare. */
         autoFire: isTouchDevice(),
         /** Rendering preset (config/graphics.js). */
@@ -98,6 +98,8 @@ export function loadSettings() {
     if (!DIFFICULTY[settings.difficulty]) settings.difficulty = DEFAULT_DIFFICULTY;
     if (!isPlayerShip(settings.playerShip)) settings.playerShip = DEFAULT_PLAYER_SHIP;
     if (!CAMERA_MODES.includes(settings.cameraMode)) settings.cameraMode = 'cockpit';
+    // The cockpit view is too cramped on a phone screen: touch devices are locked to chase view.
+    if (isTouchDevice()) settings.cameraMode = 'chase';
     if (!GRAPHICS[settings.graphics]) settings.graphics = DEFAULT_GRAPHICS;
     return settings;
 }

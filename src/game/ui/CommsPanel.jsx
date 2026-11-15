@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { CHARACTERS } from '../config/characters.js';
+import { isTouchDevice } from '../input/device.js';
 import { useGameStore, useT } from '../state/gameStore.js';
 
 /** Characters revealed per second by the typewriter effect. */
 const TYPE_SPEED = 55;
 const TYPE_TICK_MS = 30;
+const IS_TOUCH = isTouchDevice();
 
 /** Simple drawn portraits for speakers without a photo. */
 function PortraitGlyph({ glyph, color }) {
@@ -35,18 +37,22 @@ function PortraitGlyph({ glyph, color }) {
     );
 }
 
-/** The comms channel: who is talking and what they say, typed out letter by letter. */
-export default function CommsPanel() {
+/**
+ * The comms channel: who is talking and what they say, typed out letter by letter.
+ * Tapping (or clicking) the panel shows the whole line at once; tapping again skips it.
+ */
+export default function CommsPanel({ session }) {
     const comms = useGameStore((state) => state.comms);
     const t = useT();
-    const [visibleCharacters, setVisibleCharacters] = useState(0);
     const lineId = comms?.id ?? null;
+    // The count belongs to one line, so a new line never flashes up with the last one's count.
+    const [typed, setTyped] = useState({ lineId: null, count: 0 });
+    const visibleCharacters = typed.lineId === lineId ? typed.count : 0;
 
     useEffect(() => {
-        setVisibleCharacters(0);
         if (lineId === null) return undefined;
         const timer = setInterval(() => {
-            setVisibleCharacters((count) => count + (TYPE_SPEED * TYPE_TICK_MS) / 1000);
+            setTyped((state) => ({ lineId, count: (state.lineId === lineId ? state.count : 0) + (TYPE_SPEED * TYPE_TICK_MS) / 1000 }));
         }, TYPE_TICK_MS);
         return () => clearInterval(timer);
     }, [lineId]);
@@ -55,9 +61,15 @@ export default function CommsPanel() {
     const character = CHARACTERS[comms.speakerId] ?? CHARACTERS.vega;
     const text = t(comms.textKey);
     const isRecording = comms.textKey.includes('.log');
+    const typing = visibleCharacters < text.length;
+    const onTap = (event) => {
+        event.stopPropagation();
+        if (typing) setTyped({ lineId, count: text.length });
+        else session.handleAction('skip');
+    };
 
     return (
-        <div className={`eod-comms ${character.glitch ? 'eod-comms--glitch' : ''}`} style={{ '--speaker-color': character.color }}>
+        <div className={`eod-comms ${character.glitch ? 'eod-comms--glitch' : ''}`} style={{ '--speaker-color': character.color }} onPointerDown={onTap}>
             <div className="eod-comms-portrait">
                 {character.portrait.image
                     ? <img src={character.portrait.image} alt="" draggable={false} />
@@ -70,7 +82,7 @@ export default function CommsPanel() {
                     {isRecording && <span className="eod-comms-tag">● {t('hud.recording')}</span>}
                 </div>
                 <p className="eod-comms-text">{text.slice(0, Math.ceil(visibleCharacters))}</p>
-                <span className="eod-comms-skip">{t('hud.skip')}</span>
+                <span className="eod-comms-skip">{t(IS_TOUCH ? 'hud.skip.touch' : 'hud.skip')}</span>
             </div>
         </div>
     );
