@@ -8,6 +8,7 @@ import { graphicsDpr } from '../game/config/graphics.js';
 import { InputController } from '../game/input/InputController.js';
 import { isTouchDevice } from '../game/input/device.js';
 import GameScene from '../game/scene/GameScene.jsx';
+import { canvasAntialias } from '../game/xr/vrState.js';
 import { GameSession } from '../game/state/GameSession.js';
 import { gameStoreSink, useGameStore, useT } from '../game/state/gameStore.js';
 import GameHud from '../game/ui/GameHud.jsx';
@@ -135,8 +136,8 @@ function EchoesOfDawn() {
                 {game && (
                     <>
                         <div className="eod-canvas-container">
-                            {/* No canvas antialiasing or shadow maps: the composer does the smoothing and no light casts shadows. */}
-                            <CanvasProvider glOptions={GL_OPTIONS} dpr={graphicsDpr(graphics)} antialias={false} shadows={false}>
+                            {/* No shadow maps (no light casts shadows) and, outside a headset, no canvas antialiasing: the composer does the smoothing. */}
+                            <CanvasProvider glOptions={GL_OPTIONS} dpr={graphicsDpr(graphics)} antialias={canvasAntialias()} shadows={false}>
                                 <GameScene game={game} markerCanvasRef={markerCanvasRef} radarCanvasRef={radarCanvasRef} />
                             </CanvasProvider>
                         </div>

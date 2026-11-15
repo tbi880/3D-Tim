@@ -13,6 +13,8 @@ import { useStore } from 'zustand';
  *    sticks and buttons itself (xr/XRGamepadInput.js) and its menus are driven by the sticks;
  *  - hand tracking is off (flying needs the sticks and triggers);
  *  - fixed foveated rendering at full strength: the edges of the lenses are blurry anyway;
+ *  - 4x multisampling (see `canvasAntialias`): on a headset's tile-based GPU it costs next
+ *    to nothing, and without it every hull edge and light line shimmers as the head moves;
  *  - the headset's default refresh rate (72 Hz on a Quest) instead of the highest one.
  *
  * Without a headset, VR can be tried on a desktop browser with Meta's "Immersive Web
@@ -22,6 +24,21 @@ import { useStore } from 'zustand';
 const CONTROLLER = { rayPointer: false, grabPointer: false, teleportPointer: false };
 
 let store = null;
+
+const HEADSET_BROWSER = /Pico|OculusBrowser|Quest|\bVR\b/i;
+
+/**
+ * Whether the game's WebGL canvas should be created with antialiasing.
+ *
+ * In VR three.js draws straight into the headset's layer, multisampled only if the canvas
+ * itself was created with antialiasing, and that cannot be changed once the canvas exists.
+ * On the flat page the post-processing composer does the smoothing instead (config/
+ * graphics.js) and canvas antialiasing would only cost memory, so it is asked for only in
+ * a headset's own browser (Pico, Quest), where VR is what the page is opened for.
+ */
+export function canvasAntialias() {
+    return typeof navigator !== 'undefined' && HEADSET_BROWSER.test(navigator.userAgent);
+}
 
 /** The page's XR store, created on first use. */
 export function getXRStore() {

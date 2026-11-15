@@ -2,8 +2,9 @@
  * Graphics presets for the game page, picked in the settings menu (`settings.graphics`).
  *
  * The game draws through a post-processing composer (bloom, tone mapping), so the WebGL
- * canvas's own antialiasing never reaches the screen: the canvas is always created without
- * it, and the composer's multisampling is what smooths edges. The other big lever is the
+ * canvas's own antialiasing never reaches the screen: the canvas is created without it
+ * (except in a VR headset's browser, see xr/vrState.js), and the composer's multisampling is
+ * what smooths edges. The other big lever is the
  * pixel ratio, since nearly every cost on the GPU grows with the number of pixels.
  *
  * - `performance` (default): one rendered pixel per CSS pixel, no MSAA. Smooth on laptops

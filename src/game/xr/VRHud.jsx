@@ -13,11 +13,15 @@ import { createCanvasPanel, drawMeter, roundRect, wrapText } from './canvasPanel
  * The flight HUD inside the headset. Everything hangs off the pilot's seat (the player
  * camera), so it stays put in the cockpit while the head looks around.
  *
- *  - Head-up display: a transparent pane VIEW_DISTANCE metres ahead of the seat. The flat
- *    game's marker layer (reticle, target brackets, off-screen arrows, waypoint) is drawn on
- *    it through a virtual camera whose frustum is exactly that pane, so every marker sits on
- *    the line from the eye to its ship. Far enough away that leaning a little in the seat
- *    barely shifts them. Objective, alerts, title cards and the comms line are drawn on it too.
+ *  - Head-up display: two transparent panes, one on the other, VIEW_DISTANCE metres ahead of
+ *    the seat (far enough away that leaning a little in the seat barely shifts them):
+ *      - markers: the flat game's marker layer (reticle, target brackets, off-screen arrows,
+ *        waypoint), drawn through a virtual camera whose frustum is exactly the pane, so every
+ *        marker sits on the line from the eye to its ship. Redrawn every frame: anything
+ *        slower and the brackets trail behind their ships in a turn.
+ *      - text: objective, alerts, title cards and the comms line. Text is what shows a soft
+ *        texture first, so this pane has the headset's own angular resolution; it only changes
+ *        slowly, so it is redrawn (and uploaded to the GPU) TEXT_RATE times a second.
  *  - Instrument panel below the line of sight: shields, hull, beam energy, afterburner,
  *    radar, speed, torpedoes, power mode and the current target. Redrawn ten times a second.
  *  - A veil around the eye for the docking fade-to-black and the warp-arrival white-out.
@@ -26,10 +30,14 @@ import { createCanvasPanel, drawMeter, roundRect, wrapText } from './canvasPanel
 const VIEW_DISTANCE = 12;
 const VIEW_FOV_Y = 62;
 const VIEW_ASPECT = 4 / 3;
-/** The pane's canvas is drawn in "CSS pixels" of this size, scaled up to the texture. */
+/** Both panes are drawn in "CSS pixels" of this size, scaled up to their textures. */
 const VIEW_LOGICAL = [640, 480];
-const VIEW_TEXTURE = [1024, 768];
-const VIEW_SCALE = VIEW_TEXTURE[0] / VIEW_LOGICAL[0];
+/** Markers: 13 pixels per degree, uploaded every frame. */
+const MARKER_TEXTURE = [1024, 768];
+/** Text: 20 pixels per degree, about what the headset's lenses resolve. */
+const TEXT_TEXTURE = [1536, 1152];
+/** Fast enough for the comms line's typewriter and the blinking alerts. */
+const TEXT_RATE = 15;
 
 const PANEL_TEXTURE = [1024, 384];
 const PANEL_METERS = [0.72, 0.27];
@@ -52,6 +60,14 @@ export const vrComms = { lineId: null, startedAt: 0, revealed: false, typing: fa
 function paneSize() {
     const height = 2 * VIEW_DISTANCE * Math.tan(THREE.MathUtils.degToRad(VIEW_FOV_Y / 2));
     return [height * VIEW_ASPECT, height];
+}
+
+/** Clears a head-up pane and sets it up to be drawn in VIEW_LOGICAL pixels. */
+function beginLogicalFrame({ ctx, canvas }) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const scale = canvas.width / VIEW_LOGICAL[0];
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
 }
 
 function drawShadowedText(ctx, text, x, y, color) {
@@ -286,10 +302,8 @@ const VEIL_FLASH_SECONDS = 1.4;
 
 export default function VRHud({ game, seatRef }) {
     const { session, input } = game;
-    const pane = useMemo(() => {
-        const [width, height] = paneSize();
-        return createCanvasPanel({ width: VIEW_TEXTURE[0], height: VIEW_TEXTURE[1], meters: [width, height], renderOrder: 1001 });
-    }, []);
+    const markerPane = useMemo(() => createCanvasPanel({ width: MARKER_TEXTURE[0], height: MARKER_TEXTURE[1], meters: paneSize(), renderOrder: 1001 }), []);
+    const textPane = useMemo(() => createCanvasPanel({ width: TEXT_TEXTURE[0], height: TEXT_TEXTURE[1], meters: paneSize(), renderOrder: 1001.5 }), []);
     const panel = useMemo(() => createCanvasPanel({ width: PANEL_TEXTURE[0], height: PANEL_TEXTURE[1], meters: PANEL_METERS, renderOrder: 1002 }), []);
     const virtualCamera = useMemo(() => {
         const camera = new THREE.PerspectiveCamera(VIEW_FOV_Y, VIEW_ASPECT, 0.1, 3_000_000);
@@ -304,14 +318,15 @@ export default function VRHud({ game, seatRef }) {
         mesh.visible = false;
         return mesh;
     }, []);
-    const state = useRef({ panelTimer: 0, paneBlank: false, flash: 0, time: 0 });
+    const state = useRef({ panelTimer: 0, textTimer: 0, flash: 0, time: 0 });
 
     useEffect(() => () => {
-        pane.dispose();
+        markerPane.dispose();
+        textPane.dispose();
         panel.dispose();
         veil.geometry.dispose();
         veil.material.dispose();
-    }, [pane, panel, veil]);
+    }, [markerPane, textPane, panel, veil]);
 
     useEffect(() => session.events.on(SESSION_EVENTS.WARP, ({ stage }) => {
         if (stage === 'arrive') state.current.flash = VEIL_FLASH_SECONDS;
@@ -326,23 +341,26 @@ export default function VRHud({ game, seatRef }) {
         const t = (key, params) => translate(store.settings.locale, key, params);
         const flying = session.phase === PHASE.PLAYING && !store.refit;
 
-        // Head-up pane.
-        const { ctx } = pane;
+        // Head-up panes. Hidden when not flying, so nothing needs clearing then.
+        markerPane.mesh.visible = flying;
+        textPane.mesh.visible = flying;
+        local.textTimer -= delta;
         if (flying) {
-            ctx.setTransform(VIEW_SCALE, 0, 0, VIEW_SCALE, 0, 0);
             virtualCamera.matrixWorld.copy(seat.matrixWorld);
             virtualCamera.matrixWorldInverse.copy(seat.matrixWorld).invert();
-            drawMarkers(ctx, session, virtualCamera, VIEW_LOGICAL[0], VIEW_LOGICAL[1], input.controls);
-            drawPaneText(ctx, store, t, local.time);
-            pane.commit();
-            local.paneBlank = false;
-        } else if (!local.paneBlank) {
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-            ctx.clearRect(0, 0, VIEW_TEXTURE[0], VIEW_TEXTURE[1]);
-            pane.commit();
-            local.paneBlank = true;
+            beginLogicalFrame(markerPane);
+            drawMarkers(markerPane.ctx, session, virtualCamera, VIEW_LOGICAL[0], VIEW_LOGICAL[1], input.controls);
+            markerPane.commit();
+            if (local.textTimer <= 0) {
+                local.textTimer = 1 / TEXT_RATE;
+                beginLogicalFrame(textPane);
+                drawPaneText(textPane.ctx, store, t, local.time);
+                textPane.commit();
+            }
+        } else {
+            // Redraw the text as soon as flying resumes.
+            local.textTimer = 0;
         }
-        pane.mesh.visible = flying;
 
         // Instrument panel.
         local.panelTimer -= delta;
@@ -369,7 +387,8 @@ export default function VRHud({ game, seatRef }) {
     return (
         <>
             <primitive object={veil} />
-            <primitive object={pane.mesh} position={[0, 0, -VIEW_DISTANCE]} />
+            <primitive object={markerPane.mesh} position={[0, 0, -VIEW_DISTANCE]} />
+            <primitive object={textPane.mesh} position={[0, 0, -VIEW_DISTANCE]} />
             <primitive object={panel.mesh} position={PANEL_POSITION.map((v) => v * CABIN_SCALE)} rotation={[PANEL_TILT, 0, 0]} scale={CABIN_SCALE} />
         </>
     );
