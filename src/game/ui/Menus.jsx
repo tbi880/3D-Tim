@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DIFFICULTY_ORDER } from '../config/gameConfig.js';
 import { GRAPHICS_ORDER } from '../config/graphics.js';
 import { PLAYER_SHIPS, RATING_MAX, RATING_ORDER } from '../config/playerShips.js';
 import { FINAL_SCORE } from '../config/scoring.js';
 import { LOCALES, LOCALE_LABELS } from '../i18n/index.js';
 import { PHASE } from '../state/GameSession.js';
+import { loadSave } from '../state/saveGame.js';
+import { playerModelFile, requestShipModel } from '../scene/models/ShipModel.jsx';
 import { useGameStore, useT } from '../state/gameStore.js';
 import RefitPanel from './RefitPanel.jsx';
 
@@ -88,13 +90,57 @@ function Rating({ label, value }) {
     );
 }
 
+/**
+ * Hangar pictures: every player ship from three views, rendered from the game's models by
+ * tools/game-models/player-ships/render_previews.mjs. A few KB each, bundled with the page.
+ */
+const HANGAR_IMAGES = import.meta.glob('./hangar/*.webp', { eager: true, import: 'default' });
+const HANGAR_VIEWS = ['front', 'side', 'rear'];
+const hangarImage = (classId, view) => HANGAR_IMAGES[`./hangar/${classId}-${view}.webp`] ?? null;
+
+/** Starts fetching every hangar picture, so switching ships shows the next one at once. */
+function usePreloadHangarImages() {
+    useEffect(() => {
+        for (const url of Object.values(HANGAR_IMAGES)) {
+            const image = new Image();
+            image.src = url;
+        }
+    }, []);
+}
+
+/** The chosen ship from three sides. */
+function ShipViews({ classId }) {
+    const t = useT();
+    return (
+        <div className="eod-hangar-views">
+            {HANGAR_VIEWS.map((view) => {
+                const src = hangarImage(classId, view);
+                return (
+                    <figure key={view} className="eod-hangar-view">
+                        {src && <img src={src} alt={`${t(`ship.${classId}`)} - ${t(`ui.hangar.view.${view}`)}`} draggable={false} />}
+                        <figcaption>{t(`ui.hangar.view.${view}`)}</figcaption>
+                    </figure>
+                );
+            })}
+        </div>
+    );
+}
+
 /** The hangar: pick the ship to fly before a new game starts. */
 function Hangar({ session, onLaunch, onBack }) {
     const selected = useGameStore((state) => state.settings.playerShip);
     const t = useT();
+    usePreloadHangarImages();
     return (
         <div className="eod-hangar">
             <h2 className="eod-hangar-title">{t('ui.hangar.title')}</h2>
+            <ShipViews classId={selected} />
+            {/* Phones held sideways show the chosen ship's ratings here instead of on every card. */}
+            <div className="eod-hangar-stats">
+                {RATING_ORDER.map((rating) => (
+                    <Rating key={rating} label={t(`ui.rating.${rating}`)} value={PLAYER_SHIPS.find((ship) => ship.classId === selected)?.ratings[rating] ?? 0} />
+                ))}
+            </div>
             <div className="eod-hangar-ships">
                 {PLAYER_SHIPS.map(({ classId, ratings }) => (
                     <button
@@ -103,6 +149,7 @@ function Hangar({ session, onLaunch, onBack }) {
                         className={`eod-ship-card ${classId === selected ? 'eod-ship-card--selected' : ''}`}
                         onClick={() => session.updateSettings({ playerShip: classId })}
                     >
+                        <img className="eod-ship-card-image" src={hangarImage(classId, 'front')} alt="" draggable={false} />
                         <strong>{t(`ship.${classId}`)}</strong>
                         <em>{t(`playerShip.${classId}.role`)}</em>
                         <p>{t(`playerShip.${classId}.text`)}</p>
@@ -118,12 +165,54 @@ function Hangar({ session, onLaunch, onBack }) {
     );
 }
 
+/**
+ * Between "Launch" and the first frame of flight: makes sure the chosen ship's model is in
+ * (see requestShipModel; normally instant, the loading screen already fetched it), then
+ * starts. The game never begins with a ship that is not there.
+ */
+function ShipLoading({ classId, onReady, onBack }) {
+    const shipLoad = useGameStore((state) => state.shipLoad);
+    const t = useT();
+    const status = shipLoad?.classId === classId ? shipLoad.status : 'loading';
+    useEffect(() => {
+        if (status === 'ready') onReady();
+    }, [status, onReady]);
+    const src = hangarImage(classId, 'side');
+    return (
+        <div className="eod-ship-loading">
+            {src && <img className="eod-ship-loading-image" src={src} alt="" draggable={false} />}
+            {status === 'failed' ? (
+                <>
+                    <p className="eod-screen-text">{t('ui.hangar.loadFailed', { ship: t(`ship.${classId}`) })}</p>
+                    <div className="eod-hangar-actions">
+                        <button type="button" className="eod-button" onClick={onBack}>{t('ui.back')}</button>
+                        <button type="button" className="eod-button eod-button--primary" onClick={() => requestShipModel(classId)}>{t('ui.hangar.retry')}</button>
+                    </div>
+                </>
+            ) : (
+                <>
+                    <p className="eod-ship-loading-text">{t('ui.hangar.loading', { ship: t(`ship.${classId}`) })}</p>
+                    <div className="eod-ship-loading-bar"><span /></div>
+                </>
+            )}
+        </div>
+    );
+}
+
+/** The ship a saved game continues with (as World.restore picks it). */
+function savedShipClass(fallback) {
+    const classId = loadSave()?.world?.player?.classId;
+    return playerModelFile(classId) ? classId : fallback;
+}
+
 function TitleScreen({ session, onStart }) {
     const hasSave = useGameStore((state) => state.hasSave);
     const saveCheckpointId = useGameStore((state) => state.saveCheckpointId);
     const t = useT();
     const [view, setView] = useState('main');
     const [confirmingNewGame, setConfirmingNewGame] = useState(false);
+    /** While the ship model loads: { classId, start, backTo } for the game about to begin. */
+    const [launching, setLaunching] = useState(null);
 
     const startNewGame = () => {
         if (hasSave && !confirmingNewGame) {
@@ -132,17 +221,19 @@ function TitleScreen({ session, onStart }) {
         }
         setView('hangar');
     };
-    const launch = () => {
+    // Audio is unlocked here, in the tap itself (iOS allows it only inside a user gesture);
+    // the game starts once the ship's model is in (ShipLoading).
+    const beginLoading = (classId, start, backTo) => {
         onStart();
-        session.newGame();
+        requestShipModel(classId);
+        setLaunching({ classId, start, backTo });
+        setView('loading');
     };
-    const continueGame = () => {
-        onStart();
-        session.continueGame();
-    };
+    const launch = () => beginLoading(session.settings.playerShip, () => session.newGame(), 'hangar');
+    const continueGame = () => beginLoading(savedShipClass(session.settings.playerShip), () => session.continueGame(), 'main');
 
     return (
-        <div className="eod-screen eod-screen--title">
+        <div className={`eod-screen eod-screen--title ${view === 'hangar' || view === 'loading' ? 'eod-screen--hangar' : ''}`}>
             <div className="eod-title-block">
                 <p className="eod-title-kicker">{t('ui.subtitle')}</p>
                 <h1 className="eod-title">{t('ui.title')}</h1>
@@ -150,6 +241,9 @@ function TitleScreen({ session, onStart }) {
                 <p className="eod-touch-hint">{t('ui.touchHint')}</p>
             </div>
             {view === 'hangar' && <Hangar session={session} onLaunch={launch} onBack={() => setView('main')} />}
+            {view === 'loading' && launching && (
+                <ShipLoading classId={launching.classId} onReady={launching.start} onBack={() => setView(launching.backTo)} />
+            )}
             {view === 'main' && (
                 <div className="eod-menu">
                     {hasSave && (

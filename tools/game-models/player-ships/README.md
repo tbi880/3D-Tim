@@ -20,6 +20,9 @@ Source models (from the web) are in `source/`. Each player ship in
 3. **One draw call for the flames**: `node fx_skin.mjs <culled>.glb <skinned>.glb` turns the
    per-layer meshes into one skinned mesh; each layer node becomes a bone and keeps its clips.
 4. **Web optimisation**: `node ../optimize.mjs <skinned>.glb` → `<ship>-transformed.glb`.
+5. **Hangar pictures**: `node render_previews.mjs` renders every ship from three views
+   (bow, broadside, stern) into `src/game/ui/hangar/<classId>-<view>.webp` (≈190 KB for all
+   fifteen), shown in the hangar. The models themselves load behind the game's loading screen.
 
 Checked by rendering the original and the result from ten views in three.js r182 with the
 game's post-processing: identical apart from texture-compression noise (≈45 dB PSNR).

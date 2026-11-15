@@ -12,7 +12,7 @@ import PostEffects from './PostEffects.jsx';
 import ProjectilesLayer from './ProjectilesLayer.jsx';
 import SectorBackdrop from './SectorBackdrop.jsx';
 import ShipsLayer from './ShipsLayer.jsx';
-import { ShipModelPreloader } from './models/ShipModel.jsx';
+import { PlayerShipLoader, ShipModelPreloader } from './models/ShipModel.jsx';
 import SpaceDust from './SpaceDust.jsx';
 import WarpArrivalsLayer from './WarpArrivalsLayer.jsx';
 
@@ -50,6 +50,7 @@ export default function GameScene({ game, markerCanvasRef, radarCanvasRef }) {
             <Suspense fallback={null}>
                 <ShipsLayer session={session} />
             </Suspense>
+            <PlayerShipLoader />
             <ProjectilesLayer session={session} />
             <BeamsLayer session={session} />
             <ExplosionsLayer session={session} />

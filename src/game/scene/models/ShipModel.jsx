@@ -1,5 +1,5 @@
-import { Component, Suspense, useMemo } from 'react';
-import { useTexture } from '@react-three/drei';
+import { Component, Suspense, useEffect, useMemo } from 'react';
+import { useGLTF, useTexture } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import { bucketURL } from '../../../Settings';
 import { FACTION } from '../../config/gameConfig.js';
@@ -108,16 +108,12 @@ export function getModelInfo(modelId) {
     return MODEL_OVERRIDES[id] ?? manifest[id] ?? null;
 }
 
-/** Model ids only the player flies: only the chosen one is downloaded. */
-const PLAYER_MODEL_IDS = new Set(
-    Object.values(SHIP_CLASSES).filter((cls) => cls.behavior === 'player').map((cls) => cls.model),
-);
-
-/** Every model file the game can show apart from the player's ships, for preloading behind the loading screen. */
+/**
+ * Every model file the game can show, the five player ships included, for preloading behind
+ * the loading screen (ShipModelPreloader), so no ship is ever drawn before its model is in.
+ */
 export const ALL_MODEL_FILES = Object.freeze([...new Set(
-    [...Object.keys(manifest), ...Object.keys(MODEL_OVERRIDES)]
-        .filter((id) => !PLAYER_MODEL_IDS.has(id))
-        .map((id) => getModelInfo(id).file),
+    [...Object.keys(manifest), ...Object.keys(MODEL_OVERRIDES)].map((id) => getModelInfo(id).file),
 )]);
 
 /** A plain block the size of the ship, shown if its model file cannot be loaded. */
@@ -130,15 +126,44 @@ function PlaceholderHull({ size, faction }) {
     );
 }
 
-/** Keeps the game playable when a model is missing (e.g. not uploaded to the bucket yet). */
+/** How often a ship model that failed to load is fetched again (ModelErrorBoundary `url`). */
+const MODEL_RETRIES = 3;
+
+/**
+ * Forgets a failed model load. useGLTF caches the error as well as the result, so without
+ * this one dropped download (common on a phone) would leave the model broken until a reload.
+ */
+export function forgetModel(file) {
+    useGLTF.clear(bucketURL + file);
+}
+
+/**
+ * Keeps the game playable when a model is missing (e.g. not uploaded to the bucket yet).
+ * With `url` (the model file) a failed load is retried a few times before `fallback` stays.
+ */
 export class ModelErrorBoundary extends Component {
     constructor(props) {
         super(props);
         this.state = { failed: false };
+        this.retries = 0;
+        this.retryTimer = null;
     }
 
     static getDerivedStateFromError() {
         return { failed: true };
+    }
+
+    componentDidCatch(error) {
+        const { url } = this.props;
+        console.error(url ? `Echoes of Dawn: model ${url} failed to load` : 'Echoes of Dawn: a model failed to load', error);
+        if (!url || this.retries >= MODEL_RETRIES) return;
+        this.retries += 1;
+        forgetModel(url);
+        this.retryTimer = setTimeout(() => this.setState({ failed: false }), 1500 * this.retries);
+    }
+
+    componentWillUnmount() {
+        clearTimeout(this.retryTimer);
     }
 
     render() {
@@ -207,7 +232,7 @@ export default function ShipModel({ modelId, faction, getThrust = null }) {
     if (!info) return null;
     const placeholder = <PlaceholderHull size={info.size} faction={faction} />;
     return (
-        <ModelErrorBoundary fallback={placeholder}>
+        <ModelErrorBoundary key={info.file} url={info.file} fallback={placeholder}>
             <Suspense fallback={null}>
                 <TexturedShip info={info} getThrust={getThrust} />
             </Suspense>
@@ -224,28 +249,73 @@ useTexture.preload(Object.values(HULL_TEXTURE_URLS));
 useTexture.preload(Object.values(ROCK_TEXTURE_URLS));
 
 /**
- * Downloads every ship model while the loading screen is still up, so nothing pops in
- * mid-battle. A missing file only affects that one ship (see ModelErrorBoundary).
+ * Downloads every ship model, the player ships included, while the loading screen (the
+ * Suspense fallback in GameScene) is still up, so nothing pops in mid-battle. A missing file
+ * only affects that one ship (see ModelErrorBoundary); for the player's ship, the launch
+ * check below then fetches it again.
  */
 export function ShipModelPreloader() {
-    // The player's ship as picked in the hangar; changing the pick downloads the new one in
-    // the background (own Suspense, so the loading screen does not come back).
-    const playerClass = useGameStore((state) => state.settings.playerShip);
-    const playerFile = getModelInfo(SHIP_CLASSES[playerClass]?.model)?.file;
+    return ALL_MODEL_FILES.map((file) => (
+        <ModelErrorBoundary key={file} fallback={null}>
+            <PreloadOne file={file} />
+        </ModelErrorBoundary>
+    ));
+}
+
+/** The model file of a player ship class (null for an unknown class). */
+export function playerModelFile(classId) {
+    return getModelInfo(SHIP_CLASSES[classId]?.model)?.file ?? null;
+}
+
+/** Automatic attempts at the player's ship before the menu offers a manual retry. */
+const SHIP_LOAD_RETRIES = 2;
+
+/**
+ * Launch check for a player ship's model; `shipLoad.status` becomes 'ready' (or 'failed').
+ * Normally the model is already in from the loading screen and this is instant; if that
+ * download failed, PlayerShipLoader fetches it again, so a flight never starts without it.
+ */
+export function requestShipModel(classId) {
+    const file = playerModelFile(classId);
+    const current = useGameStore.getState().shipLoad;
+    if (current?.file === file && current.status !== 'failed') return;
+    if (current?.status === 'failed') forgetModel(current.file);
+    useGameStore.setState({ shipLoad: file ? { classId, file, status: 'loading', attempt: 0 } : null });
+}
+
+/** Tells the store how the requested ship model came out. */
+function ShipLoadReport({ file, ok }) {
+    useEffect(() => {
+        const current = useGameStore.getState().shipLoad;
+        if (current?.file !== file) return undefined;
+        if (ok) {
+            if (current.status !== 'ready') useGameStore.setState({ shipLoad: { ...current, status: 'ready' } });
+            return undefined;
+        }
+        forgetModel(file);
+        if (current.attempt >= SHIP_LOAD_RETRIES) {
+            useGameStore.setState({ shipLoad: { ...current, status: 'failed' } });
+            return undefined;
+        }
+        const timer = setTimeout(() => {
+            const latest = useGameStore.getState().shipLoad;
+            if (latest?.file === file) useGameStore.setState({ shipLoad: { ...latest, attempt: latest.attempt + 1 } });
+        }, 1500 * (current.attempt + 1));
+        return () => clearTimeout(timer);
+    }, [file, ok]);
+    return null;
+}
+
+/** Downloads the player's ship once requestShipModel asks for it (own Suspense: no loading screen). */
+export function PlayerShipLoader() {
+    const request = useGameStore((state) => state.shipLoad);
+    if (!request || request.status === 'failed') return null;
     return (
-        <>
-            {ALL_MODEL_FILES.map((file) => (
-                <ModelErrorBoundary key={file} fallback={null}>
-                    <PreloadOne file={file} />
-                </ModelErrorBoundary>
-            ))}
-            {playerFile && (
-                <ModelErrorBoundary key={playerFile} fallback={null}>
-                    <Suspense fallback={null}>
-                        <PreloadOne file={playerFile} />
-                    </Suspense>
-                </ModelErrorBoundary>
-            )}
-        </>
+        <ModelErrorBoundary key={`${request.file}#${request.attempt}`} fallback={<ShipLoadReport file={request.file} ok={false} />}>
+            <Suspense fallback={null}>
+                <PreloadOne file={request.file} />
+                <ShipLoadReport file={request.file} ok />
+            </Suspense>
+        </ModelErrorBoundary>
     );
 }

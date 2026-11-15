@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>player ship previews</title>
+<style>html,body{margin:0;background:transparent}</style>
+<script type="importmap">{ "imports": { "three": "/node_modules/three/build/three.module.js", "three/addons/": "/node_modules/three/examples/jsm/" } }</script>
+</head>
+<body>
+<script type="module">
+// Renders one player ship from the three hangar views. Driven by render_previews.mjs:
+//   ?file=<glb under /models/>&rotY=<radians that turn the nose to -Z>&w=&h=
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const q = new URLSearchParams(location.search);
+const W = +q.get('w'), H = +q.get('h'), SS = 2; // rendered at 2x, downscaled for smooth edges
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setSize(W * SS, H * SS, false);
+renderer.setClearColor(0x000000, 0);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.3;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.55;
+const key = new THREE.DirectionalLight(0xfff2e0, 2.6); key.position.set(-3, 4, 2);
+const rim = new THREE.DirectionalLight(0x7fc8ff, 2.2); rim.position.set(4, 1.5, -4);
+scene.add(key, rim, new THREE.HemisphereLight(0x9fc4ff, 0x1a1420, 0.5));
+
+const draco = new DRACOLoader().setDecoderPath('/node_modules/three/examples/jsm/libs/draco/gltf/');
+const gltf = await new GLTFLoader().setDRACOLoader(draco).loadAsync('/models/' + q.get('file'));
+const ship = gltf.scene;
+ship.rotation.y = +q.get('rotY');
+const root = new THREE.Group(); root.add(ship); scene.add(root);
+ship.traverse((n) => { if (n.isSkinnedMesh) n.frustumCulled = false; });
+
+// Flames at cruise, as in the game (GltfModel's exhaust blend).
+const mixer = new THREE.AnimationMixer(ship);
+const cruise = gltf.animations.find((a) => a.name === 'Exhaust_Cruise');
+if (cruise) { mixer.clipAction(cruise).play(); mixer.update(0.6); }
+ship.updateMatrixWorld(true);
+
+// Centre the hull (flames excluded, they would pull the framing backwards).
+const box = new THREE.Box3();
+ship.traverse((n) => { if (n.isMesh && !n.isSkinnedMesh) box.expandByObject(n); });
+const centre = box.getCenter(new THREE.Vector3());
+ship.position.sub(centre);
+const size = box.getSize(new THREE.Vector3());
+const radius = size.length() / 2;
+
+// Nose is -Z. Views: front three-quarter, broadside, rear three-quarter (engines lit).
+const VIEWS = {
+    front: new THREE.Vector3(-0.85, 0.42, -1).normalize(),
+    side: new THREE.Vector3(-1, 0.12, 0.02).normalize(),
+    rear: new THREE.Vector3(0.8, 0.5, 1).normalize(),
+};
+const camera = new THREE.PerspectiveCamera(30, W / H, radius / 100, radius * 100);
+const out = document.createElement('canvas'); out.width = W; out.height = H;
+const ctx = out.getContext('2d'); ctx.imageSmoothingQuality = 'high';
+// Up to ~30k hull vertices in world space, for framing by the real silhouette.
+ship.updateMatrixWorld(true);
+const points = [];
+ship.traverse((n) => {
+    if (!n.isMesh || n.isSkinnedMesh) return;
+    const pos = n.geometry.attributes.position;
+    const step = Math.max(1, Math.floor(pos.count / 6000));
+    for (let i = 0; i < pos.count; i += step) points.push(new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(n.matrixWorld));
+});
+
+window.result = {};
+for (const [name, dir] of Object.entries(VIEWS)) {
+    // Aim at the middle of the silhouette and back off until it fills ~82% of the frame (room for the flames).
+    const target = new THREE.Vector3();
+    let dist = radius * 3;
+    const p = new THREE.Vector3();
+    for (let i = 0; i < 40; i++) {
+        camera.position.copy(dir).multiplyScalar(dist).add(target); camera.lookAt(target); camera.updateMatrixWorld();
+        let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
+        for (const v of points) { p.copy(v).project(camera); minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y); }
+        // Shift the aim point towards the silhouette's centre (in camera space), then rescale.
+        const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+        const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
+        const halfH = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * dist, halfW = halfH * camera.aspect;
+        target.addScaledVector(right, (minX + maxX) / 2 * halfW * 0.5).addScaledVector(up, (minY + maxY) / 2 * halfH * 0.5);
+        const ext = Math.max((maxX - minX) / 2, (maxY - minY) / 2);
+        dist *= 1 + (ext - 0.82) * 0.5;
+    }
+    renderer.render(scene, camera);
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(renderer.domElement, 0, 0, W, H);
+    window.result[name] = out.toDataURL('image/webp', 0.82);
+}
+window.ready = true;
+</script>
+</body>
+</html>

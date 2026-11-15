@@ -280,6 +280,26 @@
 .eod-ship-card--selected .eod-rating-pip--on { background: var(--eod-amber); }
 .eod-hangar-actions { display: flex; gap: 10px; width: min(420px, 90vw); }
 .eod-hangar-actions .eod-button { flex: 1; }
+/* The chosen ship from three sides (pictures in ui/hangar/, see Menus.jsx). */
+.eod-hangar-views { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: 100%; }
+.eod-hangar-view {
+    position: relative; margin: 0; aspect-ratio: 16 / 9; max-height: 26vh; justify-self: center; width: 100%;
+    background: radial-gradient(ellipse at center, rgba(89, 208, 255, 0.12), rgba(6, 18, 32, 0.55) 70%); border: 1px solid rgba(120, 200, 255, 0.18);
+}
+.eod-hangar-view img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.eod-hangar-view figcaption {
+    position: absolute; left: 8px; bottom: 5px; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(225, 240, 255, 0.6);
+}
+.eod-hangar-stats { display: none; }
+.eod-ship-card-image { width: 100%; aspect-ratio: 16 / 9; object-fit: contain; margin: -4px 0 2px; pointer-events: none; }
+
+/* Launching: the chosen ship's model loads before the flight starts. */
+.eod-ship-loading { display: flex; flex-direction: column; align-items: center; gap: 14px; width: min(560px, 90vw); }
+.eod-ship-loading-image { width: min(480px, 80vw); max-height: 40vh; object-fit: contain; }
+.eod-ship-loading-text { margin: 0; font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--eod-cyan); }
+.eod-ship-loading-bar { position: relative; width: min(320px, 70vw); height: 3px; overflow: hidden; background: rgba(120, 200, 255, 0.16); }
+.eod-ship-loading-bar span { position: absolute; top: 0; bottom: 0; width: 35%; background: var(--eod-amber); animation: eod-ship-loading 1.3s ease-in-out infinite; }
+@keyframes eod-ship-loading { from { left: -35%; } to { left: 100%; } }
 
 /* ---- Refit window (ui/RefitPanel.jsx) ---------------------------------------------------- */
 .eod-refit { gap: 16px; }
@@ -302,6 +322,24 @@
     .eod-ship-card { padding: 9px 10px; gap: 3px; }
     .eod-ship-card strong { font-size: 14px; }
     .eod-ship-card p { display: none; }
+}
+/* A phone held sideways: no room for the title and full cards. The three views of the chosen
+   ship sit on top, all five ships in one row of picture-and-name cards under them. */
+@media (max-height: 520px) {
+    .eod-screen--hangar { justify-content: flex-start; gap: 8px; padding: 10px 16px; }
+    .eod-screen--hangar .eod-title-block { display: none; }
+    .eod-hangar { gap: 8px; }
+    .eod-hangar-title { font-size: 12px; }
+    .eod-hangar-views { gap: 6px; }
+    .eod-hangar-view { max-height: 30vh; }
+    .eod-hangar-ships { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+    .eod-ship-card { padding: 4px 6px 6px; gap: 0; align-items: center; text-align: center; }
+    .eod-ship-card strong { font-size: 11px; letter-spacing: 0.08em; }
+    .eod-ship-card em, .eod-ship-card p, .eod-ship-card .eod-rating { display: none; }
+    .eod-ship-card-image { margin: 0; max-height: 15vh; }
+    .eod-hangar-actions .eod-button { padding: 8px 12px; }
+    .eod-hangar-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px 18px; width: 100%; }
+    .eod-hangar-stats .eod-rating-pip--on { background: var(--eod-amber); }
 }
 
 .eod-menu { display: flex; flex-direction: column; align-items: stretch; gap: 10px; width: min(380px, 86vw); }

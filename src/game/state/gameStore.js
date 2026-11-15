@@ -41,6 +41,8 @@ export const useGameStore = create(() => ({
     roster: [],
     /** The ship the player is flying (a new object after every new game or reload). */
     playerShip: null,
+    /** The player ship model being fetched for the next flight ({ classId, file, status, attempt }, ShipModel.jsx requestShipModel). */
+    shipLoad: null,
     sectorId: null,
 }));
 
