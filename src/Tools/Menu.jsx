@@ -309,6 +309,11 @@ const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, r
                                     <div style={dividerStyle} ></div>
                                 </li>
 
+                                <li style={listItemStyle} className="menu-item">
+                                    <a href="/echoes_of_dawn" className="menu-link" target="_blank" rel="noopener noreferrer" onClick={(e) => handleClick(e, false)}>Echoes of Dawn</a>
+                                    <div style={dividerStyle} ></div>
+                                </li>
+
                             </ul>
 
                             <div className="vr-container" style={{ marginTop: '10%' }}>
@@ -345,11 +350,6 @@ const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, r
                                     <a href="/ship_casino" className={`menu-link ${!isCasinoUnlocked() ? 'locked' : ''}`} onClick={(e) => handleClick(e, false)} target="_blank" rel="noopener noreferrer">
                                         {isCasinoUnlocked() ? null : <FontAwesomeIcon icon={faLock} className="lock-icon" />}
                                         Game - Ship's Casino</a>
-                                    <div style={dividerStyle} ></div>
-                                </li>
-
-                                <li style={listItemStyle} className="menu-item">
-                                    <a href="/echoes_of_dawn" className="menu-link" target="_blank" rel="noopener noreferrer" onClick={(e) => handleClick(e, false)}>Game - Echoes of Dawn (space combat)</a>
                                     <div style={dividerStyle} ></div>
                                 </li>
 
