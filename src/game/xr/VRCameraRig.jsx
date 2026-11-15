@@ -25,6 +25,14 @@ const MENU_TEXTURE = [1024, 768];
 const MENU_METERS = [1.48, 1.11];
 const MENU_POSITION = [0, 0.02, -1.5];
 const MENU_REDRAW_INTERVAL = 0.2;
+/**
+ * The headset's depth range. three takes it from the camera it renders with, which in VR is
+ * its own XR camera (near 0.1 m, far 2 km by default), not the game camera - so without this
+ * everything beyond 2 km is clipped. Same far as the game camera; a closer near so the cabin
+ * never gets cut when the pilot leans in.
+ */
+const XR_NEAR = 0.02;
+const XR_FAR = 3_000_000;
 
 /** The rig's origin group (read by PlayerCamera to work out the eye's world pose). */
 export const vrRig = { origin: null };
@@ -135,6 +143,10 @@ export default function VRCameraRig({ game }) {
 
     useFrame(({ gl }, delta) => {
         if (!vr.active) return;
+        if (xrCamera.near !== XR_NEAR || xrCamera.far !== XR_FAR) {
+            xrCamera.near = XR_NEAR;
+            xrCamera.far = XR_FAR;
+        }
         gamepads.update(gl.xr.getSession(), delta);
         const origin = originRef.current;
         frameCount.current += 1;
