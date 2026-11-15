@@ -20,6 +20,10 @@ Source models (from the web) are in `source/`. Each player ship in
 3. **One draw call for the flames**: `node fx_skin.mjs <culled>.glb <skinned>.glb` turns the
    per-layer meshes into one skinned mesh; each layer node becomes a bone and keeps its clips.
 4. **Web optimisation**: `node ../optimize.mjs <skinned>.glb` → `<ship>-transformed.glb`.
+   The x-wing, alien-spaceship and vigilant were then run through
+   `npx gltfjsx@6.5.3 <ship>.glb --transform` as well (a third to a half of the size, no
+   visible difference). Not the archont and the spaceship: gltfjsx's JPEG normal maps and
+   coarser Draco normals show as blotchy reflections on their glossy hulls.
 5. **Hangar pictures**: `node render_previews.mjs` renders every ship from three views
    (bow, broadside, stern) into `src/game/ui/hangar/<classId>-<view>.webp` (≈190 KB for all
    fifteen), shown in the hangar. The models themselves load behind the game's loading screen.
