@@ -16,7 +16,7 @@ import { useGameStore } from '../state/gameStore.js';
  *    housing under the flight display;
  *  - a sculpted seat: quilted cognac centre, black bolsters, floating headrest, armrests;
  *  - a curved rear wall in quilted black leather between a satin-metal waist rail and a
- *    piano-black band, a fabric headliner, carpet, and a slim piano-black canopy frame
+ *    piano-black band, a tinted glass roof, carpet, and a slim piano-black canopy frame
  *    (rear arch and two roof rails) so the view ahead stays open;
  *  - ambient lighting: thin light lines round the waist (dash edge and rear rail), along the
  *    roof edge and round the footwell, each with a soft halo. Their colour follows the
@@ -49,8 +49,6 @@ const COLOUR_FOLLOW = 3.5;
 /** Travelling pulses along the light lines. */
 const PULSE_SPACING = 2.6;
 const PULSE_SPEED = 0.9;
-/** Fibre-optic stars in the roof. */
-const STAR_COUNT = 260;
 const X_AXIS = new THREE.Vector3(1, 0, 0);
 
 // ---- The rear wall: half an ellipse in plan, meeting the canopy arch at z = 0.5 ----------
@@ -169,69 +167,6 @@ function createLightMaterial({ opacity = 1, additive = false } = {}) {
         depthWrite: !additive,
         toneMapped: false,
     });
-}
-
-/**
- * Starlight headliner: a few hundred fibre-optic points in the roof that twinkle slowly,
- * each on its own beat.
- */
-function createStarMaterial() {
-    return new THREE.ShaderMaterial({
-        uniforms: { time: { value: 0 }, tint: { value: new THREE.Color() } },
-        vertexShader: /* glsl */ `
-            #include <common>
-            #include <logdepthbuf_pars_vertex>
-            attribute vec2 star;
-            varying float vGlow;
-            uniform float time;
-            void main() {
-                // star.x: phase, star.y: size and brightness (0..1).
-                vGlow = (0.35 + 0.65 * star.y) * (0.55 + 0.45 * sin(time * (0.6 + star.y) + star.x));
-                gl_PointSize = 1.5 + 2.5 * star.y;
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                #include <logdepthbuf_vertex>
-            }`,
-        fragmentShader: /* glsl */ `
-            uniform vec3 tint;
-            varying float vGlow;
-            #include <logdepthbuf_pars_fragment>
-            void main() {
-                #include <logdepthbuf_fragment>
-                vec2 p = gl_PointCoord - 0.5;
-                float round = smoothstep(0.5, 0.15, length(p));
-                gl_FragColor = vec4(mix(vec3(1.0, 0.95, 0.86), tint, 0.25) * vGlow * round, 1.0);
-                #include <colorspace_fragment>
-            }`,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        toneMapped: false,
-    });
-}
-
-/** Fibre-optic stars scattered over the headliner and the band below it. */
-function starlightGeometry() {
-    let seed = 11;
-    const random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-    const positions = [];
-    const stars = [];
-    // In the roof: uniform over the half-ellipse (just under the headliner).
-    for (let i = 0; i < STAR_COUNT; i++) {
-        const r = Math.sqrt(random()) * (WALL_DEPTH - 0.04);
-        const a = (random() - 0.5) * Math.PI;
-        positions.push(Math.sin(a) * r * WALL_STRETCH, 1.255, WALL_CENTRE_Z + Math.cos(a) * r);
-        stars.push(random() * Math.PI * 2, random() ** 2);
-    }
-    // A sparser scatter on the band above the piano black.
-    for (let i = 0; i < STAR_COUNT / 3; i++) {
-        const point = wallPoint((random() - 0.5) * Math.PI * 0.95, 1.0 + random() * 0.24, 0.006);
-        positions.push(point.x, point.y, point.z);
-        stars.push(random() * Math.PI * 2, random() ** 2);
-    }
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geometry.setAttribute('star', new THREE.Float32BufferAttribute(stars, 2));
-    return geometry;
 }
 
 /** Points along the wall's ellipse from -arc/2 to +arc/2. */
@@ -499,7 +434,9 @@ function buildCabin() {
         fabric: new THREE.MeshStandardMaterial({ color: '#2e2f36', roughness: 1, metalness: 0 }),
         line: createLightMaterial(),
         halo: createLightMaterial({ opacity: HALO_OPACITY, additive: true }),
-        stars: createStarMaterial(),
+        // The roof is glass, so there is more of space to see: a faint blue tint, a little
+        // gloss, no depth written (the light lines and frame behind it still show).
+        glass: new THREE.MeshStandardMaterial({ color: '#a9c8ff', transparent: true, opacity: 0.1, roughness: 0.08, metalness: 0.2, depthWrite: false, side: THREE.DoubleSide }),
     };
     // The wall is long and low: its quilting repeats more along it so the diamonds stay square.
     const wallQuilt = quilt.clone();
@@ -578,15 +515,7 @@ function buildCabin() {
                 CANOPY_RAIL.map(([x, y, z]) => new THREE.Vector3(x * side, y, z)), false, 'centripetal'), 48, 0.03, 8, false)),
         ],
         fabric: [
-            // Headliner (half an ellipse, facing down) and the band below it, and the carpet.
-            (() => {
-                const roof = new THREE.CircleGeometry(WALL_DEPTH, 40, 0, Math.PI);
-                roof.rotateX(Math.PI / 2);
-                roof.scale(WALL_STRETCH, 1, 1);
-                roof.translate(0, 1.26, WALL_CENTRE_Z);
-                return roof;
-            })(),
-            wallBand(0.98, 1.27, { inset: 0 }),
+            // The carpet, and the dash top below.
             // Dash top in matt microfibre, from the shell to the pilot-side edge (leather this
             // wide and flat catches the starlight like a mirror).
             ribbon(frontRow(0, DASH_TOP_Y), frontRow(inner, DASH_TOP_Y), UP),
@@ -614,13 +543,23 @@ function buildCabin() {
     const room = (parts) => parts.map((part) => (part.userData.seat ? part : scaleRoom(part)));
     for (const [name, parts] of Object.entries(pieces)) geometries[name] = merge(room(parts));
     geometries.line = merge(room([...lines.map((line) => line.core), ...vents.map((vent) => vent.glow)]));
-    geometries.stars = scaleRoom(starlightGeometry());
+    // The glass roof (half an ellipse) and the glazed band between it and the piano black.
+    geometries.glass = merge(room([
+        (() => {
+            const roof = new THREE.CircleGeometry(WALL_DEPTH, 40, 0, Math.PI);
+            roof.rotateX(Math.PI / 2);
+            roof.scale(WALL_STRETCH, 1, 1);
+            roof.translate(0, 1.26, WALL_CENTRE_Z);
+            return roof;
+        })(),
+        wallBand(0.98, 1.27, { inset: 0 }),
+    ]));
     geometries.halo = merge(room(lines.map((line) => line.halo)));
 
     // A headset shows near-black as black: give every surface a faint glow of its own colour
     // so the cabin reads in the dark without adding lights.
     for (const material of Object.values(materials)) {
-        if (!material.isMeshStandardMaterial) continue;
+        if (!material.isMeshStandardMaterial || material.transparent) continue;
         material.emissive.copy(material.color).multiplyScalar(material.metalness > 0.5 ? 0.06 : SELF_LIGHT);
         if (material.map) material.emissiveMap = material.map;
     }
@@ -648,14 +587,12 @@ export default function VRCockpitShell() {
     useFrame((_, delta) => {
         const mode = useGameStore.getState().hud?.powerMode ?? 'balanced';
         colour.lerp(AMBIENT_COLOURS[mode] ?? AMBIENT_COLOURS.balanced, 1 - Math.exp(-COLOUR_FOLLOW * delta));
-        const { line, halo, stars } = cabin.materials;
+        const { line, halo } = cabin.materials;
         line.uniforms.color.value.copy(colour).multiplyScalar(LINE_BRIGHTNESS);
         halo.uniforms.color.value.copy(colour);
-        stars.uniforms.tint.value.copy(colour);
         cabin.time += delta;
         line.uniforms.time.value = cabin.time;
         halo.uniforms.time.value = cabin.time;
-        stars.uniforms.time.value = cabin.time;
         if (fillRef.current) fillRef.current.color.copy(colour);
     });
 
@@ -667,7 +604,7 @@ export default function VRCockpitShell() {
             ))}
             <mesh geometry={geometries.line} material={materials.line} frustumCulled={false} />
             <mesh geometry={geometries.halo} material={materials.halo} frustumCulled={false} renderOrder={1} />
-            <points geometry={geometries.stars} material={materials.stars} frustumCulled={false} renderOrder={1} />
+            <mesh geometry={geometries.glass} material={materials.glass} frustumCulled={false} renderOrder={2} />
             {/* The cabin's one fill light, tinted with the ambient colour. */}
             <pointLight ref={fillRef} position={[0, 0.7, 0.6]} intensity={FILL_INTENSITY} distance={4 * CABIN_SCALE} decay={1.2} />
         </group>
