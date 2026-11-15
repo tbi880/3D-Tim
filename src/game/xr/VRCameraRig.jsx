@@ -61,7 +61,10 @@ export default function VRCameraRig({ game }) {
     const active = useVRActive();
     const originRef = useRef(null);
     const seatRef = useRef(null);
-    const xrCamera = useThree((state) => state.gl.xr.getCamera());
+    const gl = useThree((state) => state.gl);
+    const xrCamera = gl.xr.getCamera();
+    // autoClear as it was before VR (see the session subscription below).
+    const flatAutoClear = useRef(null);
     // Frame numbers (counted from the session start) at which to re-centre.
     const recenterAt = useRef([...AUTO_RECENTER]);
     const frameCount = useRef(0);
@@ -113,12 +116,23 @@ export default function VRCameraRig({ game }) {
     useEffect(() => getXRStore().subscribe((state, previous) => {
         if (state.visibilityState !== previous.visibilityState && state.visibilityState && state.visibilityState !== 'visible') game.session.pause();
         if (state.session !== previous.session) {
+            // The post-processing composer (unmounted in VR) turns the renderer's autoClear
+            // off for good. Without it nothing clears the headset's framebuffer, whose depth
+            // then keeps every earlier frame's nearest surface and hides the cockpit on a real
+            // headset (an emulator's canvas happens to be cleared by the browser).
+            if (state.session) {
+                if (flatAutoClear.current === null) flatAutoClear.current = gl.autoClear;
+                gl.autoClear = true;
+            } else if (flatAutoClear.current !== null) {
+                gl.autoClear = flatAutoClear.current;
+                flatAutoClear.current = null;
+            }
             frameCount.current = 0;
             recenterAt.current = [...AUTO_RECENTER];
             gamepads.release();
             if (!state.session) game.input.setXRControls(null);
         }
-    }), [game, gamepads]);
+    }), [game, gamepads, gl]);
 
     // A rumble when the ship is hit or rams something.
     useEffect(() => {
@@ -141,8 +155,9 @@ export default function VRCameraRig({ game }) {
         return () => referenceSpace.removeEventListener('reset', onReset);
     }, [referenceSpace]);
 
-    useFrame(({ gl }, delta) => {
+    useFrame((_, delta) => {
         if (!vr.active) return;
+        if (!gl.autoClear) gl.autoClear = true;
         if (xrCamera.near !== XR_NEAR || xrCamera.far !== XR_FAR) {
             xrCamera.near = XR_NEAR;
             xrCamera.far = XR_FAR;
