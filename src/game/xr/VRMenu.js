@@ -168,7 +168,9 @@ export class VRMenu {
         const language = (step) => () => session.updateSettings({ locale: cycle(LOCALES, settings.locale, step) });
         const sound = () => session.updateSettings({ muted: !settings.muted });
         const invert = () => session.updateSettings({ invertY: !settings.invertY });
+        const autoFire = () => session.updateSettings({ autoFire: !settings.autoFire });
         return [
+            { label: t('ui.autoFire'), value: t(settings.autoFire ? 'ui.on' : 'ui.off'), left: autoFire, right: autoFire, select: autoFire },
             { label: t('ui.language'), value: LOCALE_LABELS[settings.locale], left: language(-1), right: language(1), select: language(1) },
             { label: t('ui.sound'), value: t(settings.muted ? 'ui.off' : 'ui.on'), left: sound, right: sound, select: sound },
             { label: t('ui.invertY'), value: t(settings.invertY ? 'ui.on' : 'ui.off'), left: invert, right: invert, select: invert },
@@ -311,7 +313,7 @@ function drawMenu(panel, menu, selected, t) {
 
     // Rows; on long menus they shrink so everything fits above the footer.
     const footer = height - 54;
-    const rowHeight = Math.max(52, Math.min(78, (footer - y) / Math.max(1, menu.items.length)));
+    const rowHeight = Math.max(40, Math.min(78, (footer - y) / Math.max(1, menu.items.length)));
     menu.items.forEach((item, index) => {
         const top = y + index * rowHeight;
         const isSelected = index === selected;
@@ -324,11 +326,11 @@ function drawMenu(panel, menu, selected, t) {
             ctx.stroke();
         }
         const hasSub = Boolean(item.sub);
-        const labelY = top + rowHeight / 2 + (hasSub ? -2 : 11);
+        const labelY = top + rowHeight / 2 + (hasSub ? -2 : rowHeight > 47 ? 11 : 8);
         ctx.globalAlpha = item.disabled ? 0.4 : 1;
         ctx.textAlign = 'left';
         ctx.fillStyle = isSelected ? '#ffffff' : 'rgba(225, 240, 255, 0.9)';
-        ctx.font = `600 ${rowHeight > 60 ? 31 : 27}px "PingFang SC", "Microsoft YaHei", Orbitron, sans-serif`;
+        ctx.font = `600 ${rowHeight > 60 ? 31 : rowHeight > 47 ? 27 : 23}px "PingFang SC", "Microsoft YaHei", Orbitron, sans-serif`;
         ctx.fillText(item.label, left, labelY);
         if (hasSub) {
             ctx.font = '400 19px "PingFang SC", "Microsoft YaHei", sans-serif';
@@ -338,9 +340,9 @@ function drawMenu(panel, menu, selected, t) {
         }
         if (item.value != null) {
             ctx.textAlign = 'right';
-            ctx.font = `600 ${rowHeight > 60 ? 29 : 25}px "PingFang SC", "Microsoft YaHei", Orbitron, sans-serif`;
+            ctx.font = `600 ${rowHeight > 60 ? 29 : rowHeight > 47 ? 25 : 22}px "PingFang SC", "Microsoft YaHei", Orbitron, sans-serif`;
             ctx.fillStyle = isSelected ? ACCENT : 'rgba(150, 215, 255, 0.85)';
-            const valueY = top + rowHeight / 2 + 11;
+            const valueY = top + rowHeight / 2 + (rowHeight > 47 ? 11 : 8);
             ctx.fillText(isSelected && item.left ? `◀  ${item.value}  ▶` : item.value, left + contentWidth, valueY);
         }
         ctx.globalAlpha = 1;
