@@ -46,6 +46,8 @@
 .eod-lan-link--connecting { color: var(--eod-amber) !important; }
 .eod-lan-link--closed { color: var(--eod-red) !important; }
 .eod-lan-options { width: 100%; }
+.eod-lan-kick { align-self: flex-end; margin-top: 2px; padding: 2px 8px; font: inherit; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--eod-red); background: none; border: 1px solid rgba(255, 75, 110, 0.5); cursor: pointer; pointer-events: auto; }
+.eod-lan-kick:hover { background: rgba(255, 75, 110, 0.18); }
 .eod-lan-searching { margin: 6px 0; font-size: 14px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--eod-cyan); animation: eod-blink 1.2s steps(2) infinite; }
 .eod-lan-countdown { display: flex; flex-direction: column; align-items: center; gap: 3px; margin: 0; padding: 8px 12px; font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(225, 240, 255, 0.8); background: var(--eod-panel); border: 1px solid var(--eod-border); }
 .eod-lan-countdown--on { color: var(--eod-amber); border-color: var(--eod-amber); }

@@ -36,6 +36,8 @@ export class FakeLobbyServer {
         const room = {
             code, state: 'Lobby', hostPlayerId: host.playerId, mode: options?.mode ?? 'battleRoyale', settings: options?.settings ?? {},
             maxPlayers: 6, matchId: null, players: [host], visibility, startsInSeconds: null,
+            /** Players the host has put out: not let or matched back in. */
+            removed: [],
         };
         this.rooms.set(code, room);
         return room;
@@ -57,6 +59,7 @@ export class FakeLobbyServer {
         };
         const player = (profile, isHost) => ({ ...profile, playerId: me.playerId, ready: isHost, isHost, isGuest: true, accountName: null });
         const enter = (room, profile) => {
+            if (room.removed.includes(me.playerId)) throw new LobbyError('lan.kicked');
             if (room.state !== 'Lobby') throw new LobbyError('lan.matchInProgress');
             if (room.players.length >= room.maxPlayers) throw new LobbyError('lan.roomFull');
             room.players.push(player(profile, false));
@@ -96,7 +99,7 @@ export class FakeLobbyServer {
             async quickMatch(profile, criteria) {
                 const avoid = new Set(criteria?.avoid ?? []);
                 const room = [...server.rooms.values()].find((candidate) => candidate.visibility === 'Public' && candidate.state === 'Lobby'
-                    && candidate.players.length < candidate.maxPlayers && !avoid.has(candidate.code));
+                    && candidate.players.length < candidate.maxPlayers && !avoid.has(candidate.code) && !candidate.removed.includes(me.playerId));
                 return room ? enter(room, profile) : server.snapshot(server.openRoom(player(profile, true), { mode: criteria?.mode }, 'Public'));
             },
             async updateProfile(profile) {
@@ -108,6 +111,15 @@ export class FakeLobbyServer {
                 const room = myRoom();
                 const entry = room.players.find((candidate) => candidate.playerId === me.playerId);
                 if (!entry.isHost) entry.ready = ready;
+                server.broadcast(room);
+            },
+            async kickPlayer(playerId) {
+                const room = hostedRoom();
+                const index = room.players.findIndex((entry) => entry.playerId === playerId && !entry.isHost);
+                if (index === -1) throw new LobbyError('lan.playerNotFound');
+                room.players.splice(index, 1);
+                room.removed.push(playerId);
+                server.clients.get(playerId)?.handlers.onKicked(room.code);
                 server.broadcast(room);
             },
             async updateOptions(options) {
@@ -169,7 +181,8 @@ export class FakeLobbyServer {
     }
 
     snapshot(room) {
-        return JSON.parse(JSON.stringify({ ...room, startsInSeconds: this.countingDown(room) ? FAKE_AUTO_START_SECONDS : null }));
+        const { removed, ...shown } = room;
+        return JSON.parse(JSON.stringify({ ...shown, startsInSeconds: this.countingDown(room) ? FAKE_AUTO_START_SECONDS : null }));
     }
 
     toRoom(room, action) {

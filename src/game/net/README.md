@@ -52,13 +52,17 @@ whatever its kind a room can be joined from anywhere by typing its five-letter c
   room that is gathering players: same match protocol version and mode, a host in the
   player's country if there is one, else on their continent, else anywhere (the backend
   reads the country from the reverse proxy's header, `Lan:CountryHeader`); the fullest room
-  first. If there is none it opens one and the player waits in it as host. Nobody readies up
-  or presses start: each device reports ready once its link to the host is open, and the
-  server starts the match 20 s after two players are in, 5 s once the room is full
+  first. If there is none it opens one and the player waits in it as host. Players say when
+  they are ready, as in any room, but nobody presses start: the server starts the match
+  20 s after everybody (two players at least) is ready, 5 s once the room is full
   (`LanAutoStartService`). A device that cannot reach a room's host leaves by itself and asks
   for another room (`LanMultiplayer.tryAnotherRoom`); a room whose host leaves before the
   start sends its players looking again.
 * **Private** - listed nowhere. For friends anywhere: one opens it and passes the code on.
+
+In every kind of room the host can put a player out while it is a lobby (`KickPlayer`): one
+who will not ready up, say, and is holding up a public room's countdown. They are told, and
+are neither let nor matched back into that room.
 
 ### Reaching each other across the internet
 

@@ -33,6 +33,8 @@ export const LAN_STATUS = Object.freeze({ OFFLINE: 'offline', CONNECTING: 'conne
 /** Errors this side raises itself, next to the server's `lan.*` codes (all have text in the i18n files). */
 export const LAN_ERROR = Object.freeze({
     ROOM_CLOSED: 'lan.roomClosed', NO_LINK: 'lan.noLink', LINK_FAILED: 'lan.linkFailed',
+    /** The host put this player out of the room. */
+    KICKED: 'lan.kicked',
     /** Quick match: no host could be reached, in any of the rooms tried. */
     NO_HOST_REACHABLE: 'lan.noHostReachable',
 });
@@ -113,8 +115,6 @@ export class LanMultiplayer {
         this.iceServers = cleanIceServers(null);
         /** Quick match: codes of rooms whose host this device could not reach. */
         this.unreachableRooms = [];
-        /** True while a "ready" is on its way to the lobby server (public rooms report it by themselves). */
-        this.reportingReady = false;
         /** @type {Map<string, object>} player id -> link */
         this.links = new Map();
         this.relink = { timer: null, attempts: 0 };
@@ -126,6 +126,7 @@ export class LanMultiplayer {
             onRoomListChanged: (rooms) => this.store.set({ rooms: Array.isArray(rooms) ? rooms : [] }),
             onMatchStarted: (start) => this.onMatchStarted(start),
             onSignal: (signal) => this.onSignal(signal),
+            onKicked: () => this.onKicked(),
             onDisconnected: () => this.onDisconnected(),
         });
         store.set({ pilotName: cleanName(nameStore.load()), loadout: cleanLoadout(loadoutStore?.load()) });
@@ -226,9 +227,10 @@ export class LanMultiplayer {
 
     /**
      * Quick match: asks the lobby server for the best public room that is gathering players
-     * (it opens one if there is none). From here on this device looks after itself: it reports
-     * ready as soon as it is linked to the host, the server starts the match, and a room
-     * that closes or whose host cannot be reached is swapped for another.
+     * (it opens one if there is none). Finding a room that works is this device's business: one
+     * that closes, or whose host cannot be reached, is swapped for another. In the room the
+     * player says when they are ready, as in any room; the server starts the match once
+     * everybody has.
      */
     async quickMatch() {
         this.unreachableRooms = [];
@@ -267,6 +269,11 @@ export class LanMultiplayer {
 
     setReady(ready) {
         return this.attempt(() => this.lobby.setReady(ready));
+    }
+
+    /** Host: puts a player out of the room (in the lobby; they cannot come back into this room). */
+    kick(playerId) {
+        return this.attempt(() => this.lobby.kickPlayer(playerId));
     }
 
     /** Changes the name the player goes by, here and in the room if they are in one. */
@@ -320,7 +327,6 @@ export class LanMultiplayer {
         const seconds = room.startsInSeconds;
         this.store.set({ room, startsAt: Number.isFinite(seconds) ? this.now() + Math.max(0, seconds) * 1000 : null });
         this.syncLinks(room);
-        this.reportReady();
         // The host has ended the match: back to the lobby with everybody else.
         if (room.state === ROOM_STATE.LOBBY && this.inMatch) this.endMatch();
     }
@@ -335,17 +341,12 @@ export class LanMultiplayer {
         else this.refreshRooms();
     }
 
-    /**
-     * In a public room nobody presses "ready": a device is ready when it is linked to the
-     * host, and says so itself - again after every match, when the room is a lobby once more.
-     */
-    reportReady() {
-        const { room, me, links } = this.state;
-        if (!room || !me || room.visibility !== ROOM_VISIBILITY.PUBLIC || room.state !== ROOM_STATE.LOBBY || this.reportingReady) return;
-        const self = room.players.find((player) => player.playerId === me.playerId);
-        if (!self || self.isHost || self.ready || links[room.hostPlayerId] !== LINK_STATUS.OPEN) return;
-        this.reportingReady = true;
-        this.lobby.setReady(true).catch(() => {}).finally(() => { this.reportingReady = false; });
+    /** The host has put this player out of the room. They are not looking for another: that is theirs to ask for. */
+    onKicked() {
+        this.dropLinks();
+        this.store.set({ room: null, links: {}, matching: false, startsAt: null, error: LAN_ERROR.KICKED });
+        if (this.inMatch) this.endMatch();
+        this.refreshRooms();
     }
 
     /**
@@ -428,7 +429,6 @@ export class LanMultiplayer {
             if (!this.isHost && this.state.room && !this.inMatch) this.scheduleRelink(playerId);
         }
         this.publishLinks();
-        if (status === LINK_STATUS.OPEN) this.reportReady();
     }
 
     /** A joiner whose link to the host failed tries a few more times before giving up with an error. */

@@ -115,14 +115,15 @@ function lobbyRoom(game, state, lanState, t, exitItem) {
     const { room, me, links } = lanState;
     const self = room.players.find((player) => player.playerId === me?.playerId);
     const inLobby = room.state === ROOM_STATE.LOBBY;
-    // A public room runs itself: no ready, no start, no options - only the countdown to watch.
+    // A public room starts itself, on a countdown, once everybody is ready: no start, no options for its host.
     const isPublic = room.visibility === ROOM_VISIBILITY.PUBLIC;
     const lines = [`${t(`mp.room.${room.visibility ?? ROOM_VISIBILITY.NETWORK}`)} · ${t('mp.lan.roomCode')}  ${room.code}`];
     if (isPublic && inLobby) {
         const seconds = lanState.startsAt === null ? null : Math.max(0, Math.ceil((lanState.startsAt - Date.now()) / 1000));
         lines.push(seconds !== null ? t('mp.global.startsIn', { seconds })
             : !lan.isHost && links[room.hostPlayerId] !== LINK_STATUS.OPEN ? t('mp.global.linking')
-                : t('mp.global.waiting', { count: room.players.length, max: room.maxPlayers }));
+                : room.players.length > 1 && !room.players.every((player) => player.ready) ? t('mp.global.waitingReady')
+                    : t('mp.global.waiting', { count: room.players.length, max: room.maxPlayers }));
         if (lan.isHost) lines.push(t('mp.global.hostNote'));
     }
     for (const player of room.players) {
@@ -150,8 +151,8 @@ function lobbyRoom(game, state, lanState, t, exitItem) {
         value: piece ? t(`mp.equipment.${piece}.name`) : '—',
         left: pieceRow(-1), right: pieceRow(1), select: pieceRow(1),
     });
-    if (isPublic) {
-        // Nothing to press.
+    if (isPublic && lan.isHost) {
+        // Nothing to set, nothing to start.
     } else if (lan.isHost) {
         const paces = Object.keys(BATTLE_ROYALE.paces);
         const pace = room.settings?.pace ?? BATTLE_ROYALE.defaultPace;
@@ -178,6 +179,12 @@ function lobbyRoom(game, state, lanState, t, exitItem) {
             select: () => { sound.unlock(); lan.setReady(!self?.ready); },
         });
         if (!linked) items.push({ label: t('mp.lan.linkRetry'), select: () => lan.retryLink() });
+    }
+    // The host can put a player out, in any kind of room.
+    if (lan.isHost && inLobby) {
+        for (const player of room.players) {
+            if (!player.isHost) items.push({ label: `${t('mp.lan.kick')} · ${player.displayName}`, value: player.ready ? t('mp.lan.ready') : t('mp.lan.notReady'), select: () => lan.kick(player.playerId) });
+        }
     }
     items.push({ label: isPublic && inLobby ? t('mp.global.cancel') : t('mp.lan.leave'), select: () => lan.leaveRoom() }, exitItem);
     return { key: 'lan:room', title: t(lanState.scope === LOBBY_SCOPE.GLOBAL ? 'mp.global.title' : 'mp.lan.title'), lines, items };

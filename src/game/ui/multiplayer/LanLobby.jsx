@@ -171,7 +171,8 @@ function RoomBrowser({ lan }) {
     );
 }
 
-function PlayerRow({ player, isMe, link }) {
+/** One player of the room. `onKick`, given to the host for everybody else while in the lobby, puts them out. */
+function PlayerRow({ player, isMe, link, onKick = null }) {
     const t = useT();
     return (
         <li className={`eod-lan-player ${isMe ? 'eod-lan-player--me' : ''}`}>
@@ -191,6 +192,7 @@ function PlayerRow({ player, isMe, link }) {
             <span className={`eod-lan-player-ready ${player.ready ? 'eod-lan-player-ready--yes' : ''}`}>
                 {player.ready ? t('mp.lan.ready') : t('mp.lan.notReady')}
                 {link && <small className={`eod-lan-link eod-lan-link--${link}`}>{t(`mp.lan.link.${link}`)}</small>}
+                {onKick && <button type="button" className="eod-lan-kick" onClick={onKick}>{t('mp.lan.kick')}</button>}
             </span>
         </li>
     );
@@ -262,8 +264,10 @@ function Room({ lan, session, onStart }) {
     const t = useT();
     const self = room.players.find((player) => player.playerId === me?.playerId);
     const inLobby = room.state === ROOM_STATE.LOBBY;
-    // A public room runs itself: nobody readies up, nobody presses start, nobody changes its options.
+    // A public room starts itself, on a countdown, once everybody in it is ready: its host has no
+    // start button and no options - only, like every host, the power to put a player out.
     const isPublic = room.visibility === ROOM_VISIBILITY.PUBLIC;
+    const everybodyReady = room.players.every((player) => player.ready);
     const hostLink = links[room.hostPlayerId] ?? LINK_STATUS.CLOSED;
     const linkOf = (player) => {
         if (lan.isHost) return player.isHost ? null : links[player.playerId] ?? LINK_STATUS.CONNECTING;
@@ -289,13 +293,22 @@ function Room({ lan, session, onStart }) {
                 <p className={`eod-lan-countdown ${startsIn !== null ? 'eod-lan-countdown--on' : ''}`} role="status">
                     {startsIn !== null ? t('mp.global.startsIn', { seconds: startsIn })
                         : !lan.isHost && hostLink !== LINK_STATUS.OPEN ? t('mp.global.linking')
-                            : t('mp.global.waiting', { count: room.players.length, max: room.maxPlayers })}
+                            : room.players.length > 1 && !everybodyReady ? t('mp.global.waitingReady')
+                                : t('mp.global.waiting', { count: room.players.length, max: room.maxPlayers })}
                     {lan.isHost && <small>{t('mp.global.hostNote')}</small>}
                     {room.players.length < BATTLE_ROYALE.bots.fillTo && <small>{t('mp.global.botsNote', { count: BATTLE_ROYALE.bots.fillTo })}</small>}
                 </p>
             )}
             <ul className="eod-lan-players">
-                {room.players.map((player) => <PlayerRow key={player.playerId} player={player} isMe={player.playerId === me?.playerId} link={linkOf(player)} />)}
+                {room.players.map((player) => (
+                    <PlayerRow
+                        key={player.playerId}
+                        player={player}
+                        isMe={player.playerId === me?.playerId}
+                        link={linkOf(player)}
+                        onKick={lan.isHost && inLobby && !player.isHost ? () => lan.kick(player.playerId) : null}
+                    />
+                ))}
             </ul>
             {!isPublic && <RoomOptions lan={lan} room={room} />}
             <Loadout lan={lan} editable={inLobby} />
@@ -311,7 +324,7 @@ function Room({ lan, session, onStart }) {
                         {!lan.canStart && <small>{t('mp.lan.startWaiting')}</small>}
                     </button>
                 )}
-                {!isPublic && !lan.isHost && (
+                {!lan.isHost && (
                     <button type="button" className="eod-button eod-button--primary" disabled={!inLobby || hostLink !== LINK_STATUS.OPEN} onClick={ready}>
                         {self?.ready ? t('mp.lan.setNotReady') : t('mp.lan.setReady')}
                         <small>{hostLink === LINK_STATUS.OPEN ? t('mp.lan.waitingForHost') : t(`mp.lan.link.${hostLink}`)}</small>

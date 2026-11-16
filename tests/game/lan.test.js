@@ -75,7 +75,7 @@ test('the client connects as a guest without a token, and with one when signed i
     assert.equal(guest.log.url, '/hub');
     assert.equal(guest.log.options.accessTokenFactory, undefined);
     assert.deepEqual(guest.log.invoked, [['GetSession']]);
-    assert.deepEqual(guest.log.events.sort(), ['MatchStarted', 'RoomClosed', 'RoomListChanged', 'RoomUpdated', 'Signal']);
+    assert.deepEqual(guest.log.events.sort(), ['Kicked', 'MatchStarted', 'RoomClosed', 'RoomListChanged', 'RoomUpdated', 'Signal']);
 
     const account = fakeSignalR();
     await new LobbyClient({ url: '/hub', getToken: () => 'jwt', signalR: account.signalR, handlers: {} }).connect();
@@ -96,11 +96,12 @@ test('requests go to the hub under its method names', async () => {
     await client.leaveRoom();
     await client.quickMatch(profile, { mode: 'battleRoyale', avoid: ['ABCDE'] });
     await client.getIceServers();
+    await client.kickPlayer('p2');
 
     assert.deepEqual(log.invoked.slice(1), [
         ['CreateRoom', profile, { mode: 'battleRoyale' }], ['JoinRoom', 'ABCDE', profile], ['SetReady', true],
         ['SendSignal', 'p2', 'offer', 'sdp'], ['StartMatch'], ['LeaveRoom'],
-        ['QuickMatch', profile, { mode: 'battleRoyale', avoid: ['ABCDE'] }], ['GetIceServers'],
+        ['QuickMatch', profile, { mode: 'battleRoyale', avoid: ['ABCDE'] }], ['GetIceServers'], ['KickPlayer', 'p2'],
     ]);
 });
 
@@ -529,7 +530,7 @@ test('ICE servers from the lobby are checked before the browser gets them', () =
     assert.equal(cleanIceServers(Array.from({ length: 50 }, (_, index) => ({ urls: [`stun:s${index}.example`] }))).length, 8, 'and not any number of them');
 });
 
-test('quick match opens a public room for the first player and puts the next ones in it; nobody presses ready', async () => {
+test('quick match opens a public room for the first player and puts the next ones in it; it counts down once everybody is ready', async () => {
     const { server, devices: [tim, ann, bo], settle, run } = await strangers(['Tim', 'Ann', 'Bo']);
     await tim.lan.quickMatch();
     assert.equal(tim.state.room.visibility, ROOM_VISIBILITY.PUBLIC);
@@ -543,7 +544,10 @@ test('quick match opens a public room for the first player and puts the next one
 
     assert.equal(ann.state.room.code, tim.state.room.code);
     assert.equal(bo.state.room.code, tim.state.room.code);
-    assert.deepEqual(tim.state.room.players.map((player) => player.ready), [true, true, true], 'each device said "ready" itself once it was linked');
+    assert.deepEqual(tim.state.room.players.map((player) => player.ready), [true, false, false], 'being matched in is not being ready: each pilot says so');
+    await ann.lan.setReady(true);
+    assert.equal(tim.state.startsAt, null, 'the countdown waits for Bo too');
+    await bo.lan.setReady(true);
     for (const each of [tim, ann, bo]) {
         assert.equal(each.state.startsAt, 1_000_000 + FAKE_AUTO_START_SECONDS * 1000, 'the countdown is on every screen');
     }
@@ -564,6 +568,7 @@ test('players anywhere draw other ships a little later than players on one Wi-Fi
     await tim.lan.quickMatch();
     await ann.lan.quickMatch();
     await settle();
+    await ann.lan.setReady(true);
     server.startDueRooms();
     run(0.5);
     assert.equal(ann.session.match.timeline.delay, NET.internetInterpolationDelay);
@@ -576,19 +581,65 @@ test('players anywhere draw other ships a little later than players on one Wi-Fi
     assert.equal(lan.guests[0].session.match.timeline.delay, NET.interpolationDelay);
 });
 
-test('after a public match the same players are counted down into the next one', async () => {
+test('after a public match the room waits for everybody to be ready again before the next one', async () => {
     const { server, devices: [tim, ann], settle, run } = await strangers(['Tim', 'Ann']);
     await tim.lan.quickMatch();
     await ann.lan.quickMatch();
     await settle();
+    await ann.lan.setReady(true);
     server.startDueRooms();
     run(0.5);
 
     await tim.lan.returnToLobby();
     await settle();
     assert.equal(ann.session.phase, PHASE.TITLE);
-    assert.deepEqual(ann.state.room.players.map((player) => player.ready), [true, true], 'ready again without being asked');
+    assert.deepEqual(ann.state.room.players.map((player) => player.ready), [true, false]);
+    assert.equal(ann.state.startsAt, null);
+    await ann.lan.setReady(true);
     assert.ok(ann.state.startsAt > 0);
+});
+
+test('the host can put a player out of the room; they are told, and are not matched back into it', async () => {
+    const { server, devices: [tim, ann, bo], settle } = await strangers(['Tim', 'Ann', 'Bo']);
+    await tim.lan.quickMatch();
+    await ann.lan.quickMatch();
+    await bo.lan.quickMatch();
+    await settle();
+    await bo.lan.setReady(true);
+    assert.equal(tim.state.startsAt, null, 'Ann has not readied up: the countdown waits');
+
+    await ann.lan.kick(tim.state.me.playerId);
+    assert.equal(ann.state.error, 'lan.notHost', 'only the host can');
+    await tim.lan.kick(ann.state.me.playerId);
+    await settle();
+
+    assert.deepEqual([ann.state.room, ann.state.matching, ann.state.error], [null, false, LAN_ERROR.KICKED]);
+    assert.deepEqual(ann.state.links, {}, 'her link to the host is closed');
+    assert.deepEqual(tim.state.room.players.map((player) => player.displayName), ['Tim', 'Bo']);
+    assert.deepEqual(Object.keys(tim.state.links), [bo.state.me.playerId], 'and the host has let go of her');
+    assert.ok(tim.state.startsAt > 0, 'with her gone everybody is ready');
+
+    await ann.lan.quickMatch();
+    assert.notEqual(ann.state.room.code, tim.state.room.code, 'looking again, she gets another room');
+    await ann.lan.leaveRoom();
+    await ann.lan.joinRoom(tim.state.room.code);
+    assert.equal(ann.state.error, LAN_ERROR.KICKED, 'nor does the code let her back in');
+    assert.equal(server.rooms.get(tim.state.room.code).players.length, 2);
+});
+
+test('a host on one Wi-Fi can put a player out too, but nobody is put out of a match in progress', async () => {
+    const { host, guests: [ann, bo], settle, run } = await gathered(['Tim', 'Ann', 'Bo']);
+    await host.lan.kick(bo.state.me.playerId);
+    await settle();
+    assert.equal(bo.state.error, LAN_ERROR.KICKED);
+    assert.equal(host.state.room.players.length, 2);
+
+    await ann.lan.setReady(true);
+    await host.lan.startMatch();
+    run(0.5);
+    await host.lan.kick('nobody');
+    assert.equal(host.state.error, 'lan.playerNotFound');
+    assert.equal(ann.session.phase, PHASE.PLAYING);
 });
 
 test('a quick match whose host cannot be reached moves on to another room by itself', async () => {

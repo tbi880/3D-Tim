@@ -8,6 +8,7 @@ const SERVER_EVENTS = Object.freeze({
     RoomListChanged: 'onRoomListChanged',
     MatchStarted: 'onMatchStarted',
     Signal: 'onSignal',
+    Kicked: 'onKicked',
 });
 
 /** The server's refusals reach us inside SignalR's error text; this finds the code ("lan.roomFull"). */
@@ -37,7 +38,7 @@ export class LobbyClient {
      * @param {string} params.url the hub's address
      * @param {() => string | null} params.getToken the signed-in player's token, or null to play as a guest
      * @param {{ HubConnectionBuilder: Function, LogLevel: object }} params.signalR the @microsoft/signalr module (passed in so tests can replace it)
-     * @param {object} params.handlers { onRoomUpdated(room), onRoomClosed(code), onRoomListChanged(rooms), onMatchStarted(start), onSignal(signal), onDisconnected() }
+     * @param {object} params.handlers { onRoomUpdated(room), onRoomClosed(code), onRoomListChanged(rooms), onMatchStarted(start), onSignal(signal), onKicked(code), onDisconnected() }
      */
     constructor({ url, getToken, signalR, handlers }) {
         this.url = url;
@@ -104,6 +105,8 @@ export class LobbyClient {
     getIceServers() { return this.invoke('GetIceServers'); }
     updateProfile(profile) { return this.invoke('UpdateProfile', profile); }
     setReady(ready) { return this.invoke('SetReady', ready); }
+    /** Host: puts a player out of the room. */
+    kickPlayer(playerId) { return this.invoke('KickPlayer', playerId); }
     updateOptions(options) { return this.invoke('UpdateOptions', options); }
     startMatch() { return this.invoke('StartMatch'); }
     endMatch() { return this.invoke('EndMatch'); }
