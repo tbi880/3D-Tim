@@ -129,6 +129,8 @@ export const STORAGE_KEYS = Object.freeze({
     save: 'echoesOfDawn.save.v1',
     settings: 'echoesOfDawn.settings.v1',
     bestScore: 'echoesOfDawn.bestScore.v1',
+    /** The name the player goes by in multiplayer. */
+    pilotName: 'echoesOfDawn.pilotName.v1',
 });
 
 /** Music tracks reuse the site's existing soundtrack (served from the asset bucket). */
