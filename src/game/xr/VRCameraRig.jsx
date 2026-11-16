@@ -13,6 +13,7 @@ import VRHud, { vrComms } from './VRHud.jsx';
 import { VRMenu } from './VRMenu.js';
 import { XRGamepadInput } from './XRGamepadInput.js';
 import { ambientLight } from './cabinLighting.js';
+import { vrPerformance } from './vrPerformance.js';
 import { getXRStore, useVRActive, vr } from './vrState.js';
 
 /** Runs before the simulation (-2), so this frame's stick positions are used this frame. */
@@ -133,6 +134,7 @@ export default function VRCameraRig({ game }) {
                 flatAutoClear.current = null;
             }
             frameCount.current = 0;
+            vrPerformance.reset();
             recenterAt.current = [...AUTO_RECENTER];
             gamepads.release();
             if (!state.session) game.input.setXRControls(null);
@@ -166,8 +168,10 @@ export default function VRCameraRig({ game }) {
         return () => referenceSpace.removeEventListener('reset', onReset);
     }, [referenceSpace]);
 
-    useFrame((state, delta) => {
+    useFrame((state, delta, frame) => {
         if (!vr.active) return;
+        // First, while the renderer still holds last frame's counts.
+        vrPerformance.update(gl, delta, frame, game.session.phase === PHASE.PLAYING);
         // In VR the scene must be drawn with the headset's camera (@react-three/xr switches to
         // it when the session starts). PlayerCamera's <PerspectiveCamera makeDefault> takes the
         // default back whenever its effects run again - e.g. when part of the scene suspends

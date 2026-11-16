@@ -7,6 +7,7 @@ import { PHASE } from '../state/GameSession.js';
 import { loadSave } from '../state/saveGame.js';
 import { roundRect, wrapText } from './canvasPanel.js';
 import { buildMatchMenu, isMatchMenuOpen } from './VRMatchMenu.js';
+import { vrPerformance } from './vrPerformance.js';
 import { exitVR, vr } from './vrState.js';
 
 /**
@@ -142,7 +143,10 @@ export class VRMenu {
                 items.push(...this.commonSettings(settings, t));
                 items.push({ label: t('ui.quitToTitle'), select: () => session.enterTitle() });
                 items.push(exitItem);
-                return { key: 'paused', title: t('ui.paused'), lines: [], columns: t('ui.vr.controls').split(' · '), items };
+                // How the headset was coping just before the pause: the only place to see it from inside.
+                const flight = vrPerformance.flight;
+                const lines = flight ? [t('ui.vr.performance', { ...flight, scale: Math.round(flight.scale * 100), triangles: Math.round(flight.triangles / 1000) })] : [];
+                return { key: 'paused', title: t('ui.paused'), lines, columns: t('ui.vr.controls').split(' · '), items };
             }
             case PHASE.GAME_OVER: {
                 const reason = state.gameOverReason ?? 'player';
