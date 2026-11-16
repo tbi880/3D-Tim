@@ -89,16 +89,34 @@ export const ambientLight = {
 /**
  * Gives a baked model's material its self light: a light map of one white texel, which is
  * light that needs no light in the scene. Returns a function that takes it away again.
+ *
+ * It also takes the material out of reach of the scene's point lights. Those are the battle's
+ * flashes (explosions, a ship dropping out of warp), always mounted so that no shader has to
+ * be rebuilt when one goes off, and so worked out for every pixel of every lit surface even
+ * while they are dark. The cabin fills half of each eye's picture and none of them ever
+ * shines into it: its shader leaves them out (the sun and the sky's reflections stay).
  */
 export function addSelfLight(material) {
     const white = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
     white.needsUpdate = true;
     material.lightMap = white;
     material.lightMapIntensity = SELF_LIGHT;
+    material.onBeforeCompile = withoutPointLights;
     material.needsUpdate = true;
     return () => {
         material.lightMap = null;
         material.needsUpdate = true;
         white.dispose();
     };
+}
+
+/** The line in three.js's lighting code that starts the loop over the point lights. */
+const POINT_LIGHT_LOOP = '#if ( NUM_POINT_LIGHTS > 0 ) && defined( RE_Direct )';
+
+/** `onBeforeCompile`: the standard lighting code with the point-light loop switched off. */
+function withoutPointLights(shader) {
+    const lighting = THREE.ShaderChunk.lights_fragment_begin;
+    // Should a later three.js word that line differently, the material simply stays as it was.
+    if (!lighting.includes(POINT_LIGHT_LOOP)) return;
+    shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_begin>', lighting.replace(POINT_LIGHT_LOOP, '#if 0'));
 }
