@@ -141,10 +141,9 @@ export class BattleRoyaleMode {
             const contestant = new Contestant(pilot, faction);
             this.contestants.set(pilot.id, contestant);
             this.sidesAtStart.add(faction);
-            // A side starts together - except the pirates, who are free to shoot each other and do.
-            const together = isPirate(faction) ? pilot.id : faction;
-            if (!startOf.has(together)) startOf.set(together, this.pickStart(faction, garrisons, new Set(startOf.values())));
-            contestant.start = startOf.get(together);
+            // A side starts together, the pirates like the rest.
+            if (!startOf.has(faction)) startOf.set(faction, this.pickStart(faction, garrisons, new Set(startOf.values())));
+            contestant.start = startOf.get(faction);
         }
         if (this.introLeft <= 0) this.enterSystem({ warpIn: false });
     }
@@ -622,7 +621,7 @@ export class BattleRoyaleMode {
         }
     }
 
-    /** A traitor is nobody's any more: every side's guns, their old one's included, are free to fire. */
+    /** A traitor flies with the pirates from here on: both fleets' guns, their old side's included, are free to fire. */
     brandPirate(contestant, zone) {
         const former = contestant.faction;
         contestant.faction = FACTION.PIRATE;

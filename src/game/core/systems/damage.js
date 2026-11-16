@@ -3,22 +3,26 @@ import { GAME_EVENTS } from '../EventBus.js';
 
 /**
  * Two things fight each other on sight when they belong to different, non-neutral factions.
- * Pirates have no side: they are hostile to everyone, each other included.
+ * Pirates are a side like any other in this: to each other they are comrades.
  */
 export function areHostile(a, b) {
-    if (a.faction !== b.faction) return a.faction !== FACTION.NEUTRAL && b.faction !== FACTION.NEUTRAL;
-    return a.faction === FACTION.PIRATE && a !== b && a.owner !== b && b.owner !== a;
+    return a.faction !== b.faction && a.faction !== FACTION.NEUTRAL && b.faction !== FACTION.NEUTRAL;
 }
 
 /**
  * Whether `ship`'s pilot may open fire on `target` on purpose: on anything hostile, and -
  * where the world allows friendly fire (multiplayer) - a player on the computer-flown ships
- * of their own side. Never the other way round, and never player on player of one side.
+ * of their own side. Never the other way round, and never player on player of one side -
+ * except among pirates, who are comrades with no such scruple.
+ *
+ * What may be attacked but is not hostile is never fired on by accident: the guns do not
+ * pick it, target cycling skips it; the pilot has to aim straight at it and lock it.
  */
 export function mayAttack(world, ship, target) {
     if (areHostile(ship, target)) return true;
-    return Boolean(world.friendlyFire) && ship.isPlayer && !target.isPlayer && !target.isProjectile
-        && target.faction === ship.faction && target.faction !== FACTION.NEUTRAL;
+    if (!world.friendlyFire || !ship.isPlayer || target === ship || target.isProjectile) return false;
+    if (target.faction !== ship.faction || target.faction === FACTION.NEUTRAL) return false;
+    return !target.isPlayer || ship.faction === FACTION.PIRATE;
 }
 
 function emitHit(world, target, position, shieldHit, amount, { continuous, source, weapon }) {

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { BATTLE_ROYALE, NPC_FACTIONS, STAR_SYSTEM } from '../../src/game/config/battleRoyale.js';
 import { FACTION } from '../../src/game/config/gameConfig.js';
-import { applyDamage, areHostile, destroyShip } from '../../src/game/core/systems/damage.js';
+import { applyDamage, areHostile, destroyShip, mayAttack } from '../../src/game/core/systems/damage.js';
 import { LOYALTY } from '../../src/game/modes/battleRoyale/allegiance.js';
 import { BR_EVENT, BR_REQUEST, DOCK_END, DOCK_REFUSAL, JUMP_REFUSAL, VOTE } from '../../src/game/modes/battleRoyale/battleRoyaleProtocol.js';
 import { MATCH_ACTION, MATCH_PANEL } from '../../src/game/modes/battleRoyale/BattleRoyalePresenter.js';
@@ -130,7 +130,7 @@ test('players are dealt into sides, each flying for the side they got', () => {
         const zoneOf = (faction) => [...mode.contestants.values()].filter((c) => c.faction === faction).map((c) => c.pilot.zone.id);
         assert.equal(new Set(zoneOf(DAWN)).size, 1, 'a side starts together');
         assert.equal(new Set(zoneOf(UMBRA)).size, 1);
-        assert.equal(new Set(zoneOf(PIRATE)).size, 2, 'pirates do not');
+        assert.equal(new Set(zoneOf(PIRATE)).size, 1, 'the pirates too');
         assert.ok(server.pilots.size === 6);
     }
 });
@@ -802,7 +802,7 @@ test('pirates and the dead have nobody to call', () => {
 
 // ---- Who can hurt whom -----------------------------------------------------------------------
 
-test('sides are hostile to each other; pirates to everybody, each other included', () => {
+test('sides are hostile to each other; the pirates are a side, comrades to each other', () => {
     const game = arrange({ ann: [DAWN, THIRD], cy: [DAWN, THIRD], bo: [UMBRA, THIRD], pip: [PIRATE, THIRD], pat: [PIRATE, THIRD] });
     const ship = (name) => game.ship(name);
 
@@ -810,14 +810,17 @@ test('sides are hostile to each other; pirates to everybody, each other included
     assert.equal(areHostile(ship('ann'), ship('bo')), true);
     assert.equal(areHostile(ship('ann'), ship('pip')), true);
     assert.equal(areHostile(ship('bo'), ship('pip')), true);
-    assert.equal(areHostile(ship('pip'), ship('pat')), true, 'pirates have no truce');
-    assert.equal(areHostile(ship('pip'), ship('pip')), false, 'but a ship is not its own enemy');
+    assert.equal(areHostile(ship('pip'), ship('pat')), false, 'pirates are no enemies of pirates');
+    const world = game.world(THIRD);
+    assert.equal(mayAttack(world, ship('pip'), ship('pat')), true, 'though one may fire on another on purpose');
+    assert.equal(mayAttack(world, ship('pip'), ship('pip')), false);
+    assert.equal(mayAttack(world, ship('ann'), ship('cy')), false, 'which no other side\'s pilots may');
     const dart = game.world(THIRD).spawnShip('dart', { position: [0, 0, 0] });
     assert.equal(areHostile(dart, ship('ann')), false);
     assert.equal(areHostile(dart, ship('pip')), true);
 });
 
-test('pilots of one side cannot lock or shoot each other; pirates can', () => {
+test('pilots of one side cannot lock or shoot each other; pirates can, by aiming straight at their comrade', () => {
     const game = arrange({ ann: [DAWN, THIRD], cy: [DAWN, THIRD], pip: [PIRATE, THIRD], pat: [PIRATE, THIRD] });
     game.clear(THIRD, DAWN);
     game.clear(THIRD, UMBRA);
@@ -847,6 +850,58 @@ test('pilots of one side cannot lock or shoot each other; pirates can', () => {
 
     assert.equal(game.ship('cy').shield, cyBefore, 'beams do not touch a comrade');
     assert.ok(!game.ship('pat')?.alive || game.ship('pat').shield + game.ship('pat').hull < patBefore, 'a pirate\'s beams hit another pirate');
+});
+
+test('a pirate is never fired on by a comrade\'s guns by accident', () => {
+    const game = arrange({ pip: [PIRATE, THIRD], pat: [PIRATE, THIRD], bo: [UMBRA, THIRD] });
+    game.empty(THIRD);
+    const world = game.world(THIRD);
+    const [pip, pat, bo] = [game.ship('pip'), game.ship('pat'), game.ship('bo')];
+    pip.position.set(0, 0, 0);
+    pip.quaternion.identity();
+    // Pat a little off the nose - inside the beams' arc, not under the crosshair - and Bo far off to the side.
+    pat.position.set(40, 0, -300);
+    bo.position.set(6000, 0, 0);
+
+    world.targetNearestToCrosshair(null, pip);
+    assert.notEqual(pip.target, pat, 'not locked without aiming straight at them');
+    world.cycleTarget(1, pip);
+    assert.notEqual(pip.target, pat, 'and cycling targets passes a comrade by');
+
+    pip.target = null;
+    const before = pat.shield + pat.hull;
+    game.pilot('pip').lastInputAt = Infinity;
+    game.pilot('pip').controls.firePrimary = true;
+    game.pilot('pip').autoFire = true;
+    game.run(1);
+    assert.equal(pat.shield + pat.hull, before, 'beams fired past a comrade do not swing onto them');
+
+    const dart = world.spawnShip('dart', { faction: DAWN, position: [0, 0, 9000] });
+    assert.equal(areHostile(dart, pat), true, 'to the fleets a pirate is a pirate');
+});
+
+test('a torpedo locked on a fellow pirate hits them; a kill among pirates scores like any other', () => {
+    const game = arrange({ pip: [PIRATE, THIRD], pat: [PIRATE, THIRD], bo: [UMBRA, GATE] });
+    game.empty(THIRD);
+    const world = game.world(THIRD);
+    const [pip, pat] = [game.ship('pip'), game.ship('pat')];
+    pip.position.set(0, 0, 0);
+    pip.quaternion.identity();
+    pat.position.set(0, 0, -400);
+    world.targetNearestToCrosshair(null, pip);
+    assert.equal(pip.target, pat);
+
+    const before = pat.shield + pat.hull;
+    game.pilot('pip').lastInputAt = Infinity;
+    game.pilot('pip').controls.fireSecondary = true;
+    game.run(0.2);
+    game.pilot('pip').controls.fireSecondary = false;
+    game.run(4);
+    assert.ok(pat.shield + pat.hull < before, 'the torpedo found its mark');
+
+    destroyShip(world, pat, pip);
+    assert.equal(game.who('pip').score, BATTLE_ROYALE.score.playerKill);
+    assert.equal(game.who('pip').loyalty.status, LOYALTY.TRUSTED, 'and nobody calls it treason');
 });
 
 // ---- Treason ---------------------------------------------------------------------------------

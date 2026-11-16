@@ -25,7 +25,11 @@ export const STAR_SYSTEM = Object.freeze({
     ]),
 });
 
-/** The sides players are dealt into. Pirates have no computer-flown ships and no friends. */
+/**
+ * The sides players are dealt into. The pirates are a side like the other two - they start
+ * together, share what they know and win together - with no computer-flown ships, and with
+ * nothing to stop one pirate shooting another (core/systems/damage.js `mayAttack`).
+ */
 export const PLAYER_FACTIONS = Object.freeze([FACTION.DAWN, FACTION.UMBRA, FACTION.PIRATE]);
 /** The sides that garrison planets. */
 export const NPC_FACTIONS = Object.freeze([FACTION.DAWN, FACTION.UMBRA]);

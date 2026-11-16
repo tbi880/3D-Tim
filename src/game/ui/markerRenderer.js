@@ -21,11 +21,16 @@ const COLORS = Object.freeze({
 });
 /**
  * Red for what is hostile to the pilot, blue for their own side - whichever side that is: in
- * multiplayer the pilot may be flying for Umbra, or for nobody.
+ * multiplayer the pilot may be flying for Umbra, or with the pirates.
  */
 function contactColor(player, ship) {
     if (ship.faction === FACTION.NEUTRAL) return COLORS[FACTION.NEUTRAL];
     return areHostile(player, ship) ? COLORS.hostile : COLORS.friendly;
+}
+
+/** A torpedo worth warning about: an enemy's, or anybody's that is locked on the pilot (a pirate's on a pirate). */
+function isIncoming(player, projectile) {
+    return areHostile(player, projectile) || projectile.target === player;
 }
 
 const FONT = '600 11px Orbitron, sans-serif';
@@ -315,7 +320,7 @@ function drawShipMarkers(ctx, session, camera, width, height) {
     ctx.strokeStyle = COLORS.torpedo;
     ctx.lineWidth = 1.5;
     for (const projectile of world.projectiles) {
-        if (projectile.kind !== 'torpedo' || !areHostile(player, projectile)) continue;
+        if (projectile.kind !== 'torpedo' || !isIncoming(player, projectile)) continue;
         project(projectile.position, camera, width, height, projected);
         if (projected.onScreen) drawDiamond(ctx, projected.x, projected.y, 6);
     }
@@ -410,7 +415,7 @@ export function drawRadar(ctx, session, size) {
         plot(ship.position, contactColor(player, ship), ship.cls.kind === 'capital' ? 6 : 3.5, player.target === ship);
     }
     for (const projectile of world.projectiles) {
-        if (projectile.kind === 'torpedo' && areHostile(player, projectile)) plot(projectile.position, COLORS.torpedo, 2, false);
+        if (projectile.kind === 'torpedo' && isIncoming(player, projectile)) plot(projectile.position, COLORS.torpedo, 2, false);
     }
     if (session.waypoint) plot(session.waypoint.position, COLORS.waypoint, 4, true);
 
