@@ -22,7 +22,8 @@ import layout from './cockpitLayout.json';
  *        waypoint), drawn through a virtual camera whose frustum is exactly the pane, so every
  *        marker sits on the line from the eye to its ship. Redrawn every frame: anything
  *        slower and the brackets trail behind their ships in a turn.
- *      - text: objective, alerts, title cards and the comms line. Text is what shows a soft
+ *      - text: objective, alerts, title cards, the comms line and the points for each kill
+ *        (beside the reticle). Text is what shows a soft
  *        texture first, so this pane has the headset's own angular resolution; it only changes
  *        slowly, so it is redrawn TEXT_RATE times a second, and uploaded to the GPU (1.8
  *        million pixels) only when the redrawn picture differs from the last one.
@@ -65,6 +66,17 @@ const GLITCH_DECAY = 2.2;
 /** Must match ui/CommsPanel.jsx. */
 const TYPE_SPEED = 55;
 
+/**
+ * The points for each kill ("+150 Raider", under the running total), as the flat HUD's score
+ * feed (ui/GameHud.jsx): each line pops in, holds, then rises away, SCORE_POPUP_SECONDS in
+ * all. Here it stands to the right of the reticle at SCORE_FEED_OFFSET (px from the pane's
+ * centre), where no other text of this pane ever is, and shows the last few kills only.
+ */
+const SCORE_POPUP_SECONDS = 3.8;
+const MAX_SCORE_POPUPS = 3;
+const SCORE_FEED_OFFSET = 54;
+const SCORE_ROW_HEIGHT = 22;
+
 const FONT = '"PingFang SC", "Microsoft YaHei", Orbitron, sans-serif';
 const percentText = (value) => `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%`;
 
@@ -95,8 +107,60 @@ function shipTitle(t, ship) {
     return ship.callsign ?? t(ship.nameKey);
 }
 
-/** Text overlays on the head-up pane (logical pixels). */
-function drawPaneText(ctx, state, t, now) {
+/**
+ * How a line of the score feed looks `age` seconds after it appeared: [opacity, rise (px),
+ * scale]. The flat HUD's `eod-score-pop` animation (ui/hud.css): pops in from just below,
+ * settles, holds, then drifts up and fades. While it holds nothing changes, so the pane is
+ * not uploaded again.
+ */
+function scorePop(age) {
+    const progress = age / SCORE_POPUP_SECONDS;
+    if (progress < 0.05) {
+        const arriving = progress / 0.05;
+        return [arriving, 8 * (1 - arriving), 0.9 + 0.18 * arriving];
+    }
+    if (progress < 0.1) return [1, 0, 1.08 - 0.08 * ((progress - 0.05) / 0.05)];
+    if (progress < 0.79) return [1, 0, 1];
+    const leaving = Math.min(1, (progress - 0.79) / 0.21);
+    return [1 - leaving, -14 * leaving, 1];
+}
+
+/**
+ * The score feed: the running total, and under it a line for each recent kill.
+ * @param {{ popups: { points: number, classId: string, at: number }[], total: { value: number, at: number } | null }} feed
+ * @param {number} lowest no line may reach below this (the comms box or the hint is there)
+ */
+function drawScoreFeed(ctx, feed, t, now, lowest) {
+    if (feed.popups.length === 0 || !feed.total) return;
+    const left = VIEW_LOGICAL[0] / 2 + SCORE_FEED_OFFSET;
+    const middle = VIEW_LOGICAL[1] / 2;
+    const rows = Math.max(1, Math.min(MAX_SCORE_POPUPS, Math.floor((lowest - middle) / SCORE_ROW_HEIGHT) + 1));
+    const line = (age, y, draw) => {
+        const [opacity, rise, scale] = scorePop(age);
+        ctx.save();
+        ctx.translate(left, y + rise);
+        ctx.scale(scale, scale);
+        ctx.globalAlpha = opacity;
+        draw();
+        ctx.restore();
+    };
+    ctx.textAlign = 'left';
+    line(now - feed.total.at, middle - SCORE_ROW_HEIGHT, () => {
+        ctx.font = `600 10px ${FONT}`;
+        drawShadowedText(ctx, `${t('hud.score').toUpperCase()} ${feed.total.value.toLocaleString()}`, 0, 0, 'rgba(215, 238, 255, 0.8)');
+    });
+    feed.popups.slice(-rows).forEach((popup, index) => line(now - popup.at, middle + index * SCORE_ROW_HEIGHT, () => {
+        const points = `+${popup.points}`;
+        ctx.font = `800 20px ${FONT}`;
+        drawShadowedText(ctx, points, 0, 0, '#ffb648');
+        const pointsWidth = ctx.measureText(points).width;
+        ctx.font = `600 11px ${FONT}`;
+        drawShadowedText(ctx, t(`ship.${popup.classId}`).toUpperCase(), pointsWidth + 7, 0, 'rgba(235, 245, 255, 0.9)');
+    }));
+}
+
+/** Text overlays on the head-up pane (logical pixels). `scoreFeed`: see drawScoreFeed. */
+function drawPaneText(ctx, state, t, now, scoreFeed) {
     const [width, height] = VIEW_LOGICAL;
     const centre = width / 2;
     ctx.textBaseline = 'alphabetic';
@@ -251,10 +315,15 @@ function drawPaneText(ctx, state, t, now) {
         const hintText = t(vrHint) !== vrHint ? t(vrHint) : t(state.hint);
         ctx.textAlign = 'center';
         ctx.font = `500 13px ${FONT}`;
-        wrapText(ctx, hintText, 460).slice(0, 2).reverse().forEach((line, index) => {
+        const lines = wrapText(ctx, hintText, 460).slice(0, 2);
+        lines.reverse().forEach((line, index) => {
             drawShadowedText(ctx, line, centre, bottom - index * 18, 'rgba(255, 230, 160, 0.95)');
         });
+        bottom -= lines.length * 18;
     }
+
+    // Beside the reticle: the points for the latest kills, kept clear of whatever is below.
+    drawScoreFeed(ctx, scoreFeed, t, now, bottom - 8);
 }
 
 const RADAR_SIZE = 300;
@@ -384,7 +453,7 @@ export default function VRHud({ game, seatRef }) {
         mesh.visible = false;
         return mesh;
     }, []);
-    const state = useRef({ panelTimer: 0, textTimer: 0, flash: 0, time: 0, glitch: 0 });
+    const state = useRef({ panelTimer: 0, textTimer: 0, flash: 0, time: 0, glitch: 0, scoreFeed: { popups: [], total: null } });
 
     useEffect(() => () => {
         markerPane.dispose();
@@ -396,6 +465,13 @@ export default function VRHud({ game, seatRef }) {
 
     useEffect(() => session.events.on(SESSION_EVENTS.WARP, ({ stage }) => {
         if (stage === 'arrive') state.current.flash = VEIL_FLASH_SECONDS;
+    }), [session]);
+
+    // Each kill's points join the score feed, timed on this HUD's own clock.
+    useEffect(() => session.events.on(SESSION_EVENTS.SCORE, ({ points, classId, total }) => {
+        const { scoreFeed, time } = state.current;
+        scoreFeed.popups = [...scoreFeed.popups, { points, classId, at: time }].slice(-MAX_SCORE_POPUPS);
+        scoreFeed.total = { value: total, at: time };
     }), [session]);
 
     useEffect(() => session.world.events.on(GAME_EVENTS.HIT, (hit) => {
@@ -411,6 +487,8 @@ export default function VRHud({ game, seatRef }) {
         const store = useGameStore.getState();
         const t = (key, params) => translate(store.settings.locale, key, params);
         const flying = session.phase === PHASE.PLAYING && !store.refit;
+        const { scoreFeed } = local;
+        if (scoreFeed.popups.length > 0) scoreFeed.popups = scoreFeed.popups.filter((popup) => local.time - popup.at < SCORE_POPUP_SECONDS);
 
         // Head-up panes. Hidden when not flying, so nothing needs clearing then.
         markerPane.mesh.visible = flying;
@@ -425,7 +503,7 @@ export default function VRHud({ game, seatRef }) {
             if (local.textTimer <= 0) {
                 local.textTimer = 1 / TEXT_RATE;
                 beginLogicalFrame(textPane);
-                drawPaneText(textPane.ctx, store, t, local.time);
+                drawPaneText(textPane.ctx, store, t, local.time, scoreFeed);
                 textPane.commit();
             }
         } else {
