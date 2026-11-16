@@ -91,7 +91,11 @@ export class BattleRoyalePresenter {
         else session.world.screenFade = 0.85 * progress;
         if (progress < 1) return;
         this.outro = null;
-        if (outro.won) session.onWarp('arrive');
+        if (outro.won) {
+            // Through the gate: the flash of arrival, and the streaks let go behind the result.
+            session.onWarp('arrive');
+            this.warp = { phase: 'exit', elapsed: 0, seconds: WARP_EXIT_SECONDS };
+        }
         session.ui.set({ matchOutro: null });
         outro.showResults();
     }

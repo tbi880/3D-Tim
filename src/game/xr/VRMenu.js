@@ -1,5 +1,6 @@
 import { DIFFICULTY_ORDER } from '../config/gameConfig.js';
 import { PLAYER_SHIPS, RATING_MAX, RATING_ORDER } from '../config/playerShips.js';
+import { UPGRADE_PER_LEVEL } from '../config/refit.js';
 import { mergeUpgrades, upgradedRatings } from '../core/refit.js';
 import { LOCALES, LOCALE_LABELS } from '../i18n/index.js';
 import { playerModelFile, requestShipModel } from '../scene/models/ShipModel.jsx';
@@ -224,10 +225,20 @@ export class VRMenu {
             if (step > 0 && !canAdd(rating)) return;
             added[rating] = Math.max(0, (added[rating] ?? 0) + step);
         };
+        // As on the flat page: what a level buys, the rating as pips, and what this refit adds.
         const items = RATING_ORDER.map((rating) => {
-            const extra = withAdded[rating] - (owned[rating] ?? 0);
-            const level = withAdded[rating] >= RATING_MAX ? t('ui.refit.max') : String(withAdded[rating]);
-            return { label: t(`ui.rating.${rating}`), value: extra > 0 ? `${level}  (+${extra})` : level, left: change(rating, -1), right: change(rating, 1), select: change(rating, 1) };
+            const now = withAdded[rating];
+            const extra = now - (owned[rating] ?? 0);
+            const level = now >= RATING_MAX ? t('ui.refit.max') : String(now);
+            const pips = '●'.repeat(now) + '○'.repeat(RATING_MAX - now);
+            return {
+                label: t(`ui.rating.${rating}`),
+                sub: t(`ui.refit.effect.${rating}`, { percent: Math.round(UPGRADE_PER_LEVEL[rating] * 100) }),
+                value: `${pips}  ${level}${extra > 0 ? `  (+${extra})` : ''}`,
+                left: change(rating, -1),
+                right: change(rating, 1),
+                select: change(rating, 1),
+            };
         });
         // In a match the window can be confirmed with points to spare, or closed again.
         items.push({
@@ -251,7 +262,7 @@ export class VRMenu {
         return {
             key: 'refit',
             title: t('ui.refit.title'),
-            lines: [t('ui.refit.points', { points: left }), t('ui.vr.refitHint')],
+            lines: [t(inFlight ? 'mp.refit.text' : 'ui.refit.text', { ship: t(`ship.${classId}`) }), `${t('ui.refit.points', { points: left })} · ${t('ui.vr.refitHint')}`],
             items,
         };
     }
@@ -297,7 +308,7 @@ export class VRMenu {
             this.confirmingNewGame = menu.key === 'title' ? this.confirmingNewGame : false;
         }
         this.index = Math.min(this.index, Math.max(0, menu.items.length - 1));
-        const signature = JSON.stringify([menu.title, menu.lines, menu.columns, menu.items.map((item) => [item.label, item.sub, item.value, item.disabled]), this.index]);
+        const signature = JSON.stringify([menu.title, menu.lines, menu.columns, menu.diagramKey, menu.items.map((item) => [item.label, item.sub, item.value, item.disabled]), this.index]);
         if (!this.dirty && signature === this.lastSignature) return false;
         this.dirty = false;
         this.lastSignature = signature;
@@ -315,11 +326,12 @@ function drawMenu(panel, menu, selected, t) {
     ctx.clearRect(0, 0, width, height);
 
     const failure = menu.tone === 'failure';
+    const victory = menu.tone === 'victory';
     roundRect(ctx, 8, 8, width - 16, height - 16, 28);
     ctx.fillStyle = 'rgba(4, 14, 26, 0.88)';
     ctx.fill();
     ctx.lineWidth = 3;
-    ctx.strokeStyle = failure ? 'rgba(255, 90, 110, 0.75)' : 'rgba(89, 208, 255, 0.6)';
+    ctx.strokeStyle = failure ? 'rgba(255, 90, 110, 0.75)' : victory ? 'rgba(255, 200, 110, 0.9)' : 'rgba(89, 208, 255, 0.6)';
     ctx.stroke();
 
     const left = 64;
@@ -327,7 +339,7 @@ function drawMenu(panel, menu, selected, t) {
     let y = 92;
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'left';
-    ctx.fillStyle = failure ? '#ff8a9a' : '#e8f6ff';
+    ctx.fillStyle = failure ? '#ff8a9a' : victory ? '#ffe2a0' : '#e8f6ff';
     ctx.font = '700 46px Orbitron, "PingFang SC", "Microsoft YaHei", sans-serif';
     ctx.fillText(menu.title, left, y);
     y += 26;
@@ -354,6 +366,8 @@ function drawMenu(panel, menu, selected, t) {
         });
         y += 30 + half * 28;
     }
+    // A picture of the menu's own (the star map), between the text and the rows.
+    if (menu.diagram) y += 14 + menu.diagram(ctx, left, y + 14, contentWidth);
     y += 18;
 
     // Rows; on long menus they shrink so everything fits above the footer.
@@ -396,6 +410,7 @@ function drawMenu(panel, menu, selected, t) {
     ctx.textAlign = 'center';
     ctx.font = '400 20px "PingFang SC", "Microsoft YaHei", sans-serif';
     ctx.fillStyle = 'rgba(160, 200, 230, 0.7)';
-    ctx.fillText(t('ui.vr.menuHint'), width / 2, height - 30);
+    // A panel with nothing to choose (the story before a match) has no use for the hint.
+    ctx.fillText(menu.footer ?? t('ui.vr.menuHint'), width / 2, height - 30);
     panel.commit();
 }

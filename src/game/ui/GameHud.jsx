@@ -338,7 +338,9 @@ function ScreenFade({ session }) {
 
 export default function GameHud({ session, markerCanvasRef, radarCanvasRef }) {
     const phase = useGameStore((state) => state.phase);
-    const inFlight = phase === PHASE.PLAYING || phase === PHASE.PAUSED;
+    // A match's introduction and ending have the screen to themselves.
+    const ceremony = useGameStore((state) => Boolean(state.matchOutro) || state.match?.intro != null);
+    const inFlight = (phase === PHASE.PLAYING || phase === PHASE.PAUSED) && !ceremony;
     const flash = useDamageFlash(session);
 
     return (

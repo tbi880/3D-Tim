@@ -1,3 +1,4 @@
+import { BATTLE_ROYALE } from '../../config/battleRoyale.js';
 import { rosterBySide } from '../../modes/battleRoyale/battleRoyaleState.js';
 import { useGameStore, useT } from '../../state/gameStore.js';
 
@@ -12,6 +13,14 @@ import { useGameStore, useT } from '../../state/gameStore.js';
  * Both are timed by the match itself (`match.intro` counts down on the host; the presenter
  * holds `matchOutro` for as long as the ending plays), so every device shows them together.
  */
+
+/**
+ * Seconds into the introduction at which each part appears. They follow the match's own
+ * countdown, not a clock of this page's, so a device that was slow to draw (or whose page
+ * was in the background) shows what everybody else is looking at.
+ */
+const INTRO_BEATS = Object.freeze({ story2: 2, story3: 3, sides: 4 });
+const shown = (visible) => (visible ? 'eod-cine-part' : 'eod-cine-part eod-cine-part--waiting');
 
 function pilotCount(t, count) {
     if (count === 0) return t('mp.intro.noPilots');
@@ -38,13 +47,14 @@ function SideCard({ side, yours, localId }) {
 
 function MatchIntro({ match }) {
     const t = useT();
+    const elapsed = BATTLE_ROYALE.intro.seconds - match.intro;
     return (
         <div className="eod-cinematic eod-intro">
             <h2 className="eod-cinematic-title">{t('mp.intro.title')}</h2>
-            <p className="eod-intro-line eod-intro-line--1">{t('mp.intro.story1')}</p>
-            <p className="eod-intro-line eod-intro-line--2">{t('mp.intro.story2')}</p>
-            <p className="eod-intro-line eod-intro-line--3">{t('mp.intro.story3')}</p>
-            <ol className="eod-intro-sides">
+            <p className="eod-intro-line">{t('mp.intro.story1')}</p>
+            <p className={`eod-intro-line ${shown(elapsed >= INTRO_BEATS.story2)}`}>{t('mp.intro.story2')}</p>
+            <p className={`eod-intro-line eod-intro-line--last ${shown(elapsed >= INTRO_BEATS.story3)}`}>{t('mp.intro.story3')}</p>
+            <ol className={`eod-intro-sides ${shown(elapsed >= INTRO_BEATS.sides)}`}>
                 {rosterBySide(match).map((side) => (
                     <SideCard key={side.faction} side={side} yours={side.faction === match.you?.faction} localId={match.localId} />
                 ))}

@@ -120,15 +120,12 @@
 @keyframes eod-cine-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
 .eod-intro { background: radial-gradient(ellipse at center, rgba(3, 8, 16, 0.35) 0%, rgba(3, 8, 16, 0.86) 100%); }
-.eod-intro-line { margin: 0; max-width: 720px; font-size: clamp(13px, 1.7vw, 17px); line-height: 1.55; color: rgba(232, 244, 255, 0.92); text-shadow: 0 0 10px #000; animation: eod-cine-in 0.8s ease-out both; }
-.eod-intro-line--1 { animation-delay: 0.6s; }
-.eod-intro-line--2 { animation-delay: 2s; }
-.eod-intro-line--3 { animation-delay: 3.4s; color: var(--eod-amber); font-weight: 700; }
+.eod-cine-part { transition: opacity 0.7s ease-out, transform 0.7s ease-out; }
+.eod-cine-part--waiting { opacity: 0; transform: translateY(12px); }
+.eod-intro-line { margin: 0; max-width: 720px; font-size: clamp(13px, 1.7vw, 17px); line-height: 1.55; color: rgba(232, 244, 255, 0.92); text-shadow: 0 0 10px #000; }
+.eod-intro-line--last { color: var(--eod-amber); font-weight: 700; }
 .eod-intro-sides { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: min(900px, 96vw); margin: 10px 0 0; padding: 0; list-style: none; }
-.eod-intro-side { position: relative; display: flex; flex: 1 1 200px; flex-direction: column; align-items: center; gap: 4px; max-width: 290px; padding: 14px 12px 10px; background: var(--eod-panel); border: 1px solid var(--eod-border); animation: eod-cine-in 0.7s ease-out both; }
-.eod-intro-side--dawn { animation-delay: 4.3s; }
-.eod-intro-side--umbra { animation-delay: 4.8s; }
-.eod-intro-side--pirate { animation-delay: 5.3s; }
+.eod-intro-side { position: relative; display: flex; flex: 1 1 200px; flex-direction: column; align-items: center; gap: 4px; max-width: 290px; padding: 14px 12px 10px; background: var(--eod-panel); border: 1px solid var(--eod-border); }
 .eod-intro-side--yours { border-color: var(--eod-amber); box-shadow: 0 0 18px rgba(255, 182, 72, 0.3) inset; }
 .eod-intro-side strong { font-size: 17px; letter-spacing: 0.14em; text-transform: uppercase; }
 .eod-intro-side small { font-size: 10px; color: rgba(225, 240, 255, 0.6); }

@@ -174,6 +174,10 @@ function drawPaneText(ctx, state, t, now) {
         ctx.textAlign = 'center';
         ctx.font = `600 11px ${FONT}`;
         drawShadowedText(ctx, `${t(`mp.faction.${you.faction}`)} · ${place} · ${t('mp.hud.jump')}: ${jump}`, centre, height / 2 + 56, '#cfe8ff');
+        // Something to spend: say so, and where (the flat HUD has buttons for it; here it is in the map menu).
+        if (you.alive && (you.points > 0 || you.summons > 0)) {
+            drawShadowedText(ctx, `${t('mp.vr.spend', { points: you.points, summons: you.summons })} · ${t('mp.vr.mapHint')}`, centre, height / 2 + 40, '#ffb648');
+        }
         const warnings = [];
         if (you.alive && here && here.owner !== you.faction) {
             if (here.status === 'collapsing') warnings.push(t('mp.alert.collapsing', { seconds: here.changesIn ?? 0 }));

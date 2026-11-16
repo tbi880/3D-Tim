@@ -2,7 +2,7 @@ import { BATTLE_ROYALE, STAR_SYSTEM } from '../config/battleRoyale.js';
 import { PLAYER_SHIPS } from '../config/playerShips.js';
 import { MATCH_ACTION, MATCH_PANEL } from '../modes/battleRoyale/BattleRoyalePresenter.js';
 import { VOTE } from '../modes/battleRoyale/battleRoyaleProtocol.js';
-import { rankPlayers } from '../modes/battleRoyale/battleRoyaleState.js';
+import { rankPlayers, rosterBySide } from '../modes/battleRoyale/battleRoyaleState.js';
 import { PLANET_STATUS } from '../modes/battleRoyale/collapse.js';
 import { LAN_STATUS, ROOM_STATE } from '../net/lobby/LanMultiplayer.js';
 import { useLanStore } from '../net/lobby/lanStore.js';
@@ -23,9 +23,10 @@ import { exitVR } from './vrState.js';
 const cycle = (list, current, step) => list[(list.indexOf(current) + step + list.length) % list.length];
 const ORBITS = STAR_SYSTEM.planets.map((planet) => planet.id);
 
-/** True when a multiplayer menu should be up over the flight view. */
+/** True when a multiplayer panel should be up over the flight view: the story, the map, a vote. */
 export function isMatchMenuOpen(state) {
-    return Boolean(state.match) && (Boolean(state.matchPanel) || Boolean(state.match.you?.vote));
+    const { match } = state;
+    return Boolean(match) && (match.intro != null || Boolean(state.matchOutro) || Boolean(state.matchPanel) || Boolean(match.you?.vote));
 }
 
 /**
@@ -62,6 +63,8 @@ export function buildMatchMenu(game, state, t, view) {
         };
     }
     if (session.phase !== PHASE.PLAYING || !match.you) return null;
+    if (state.matchOutro) return ending(state.matchOutro, t);
+    if (match.intro != null) return introduction(match, t);
     const presenter = session.match?.presenter;
     if (!presenter) return null;
     if (match.you.vote) return vote(presenter, match.you.vote, t);
@@ -133,7 +136,135 @@ function lobbyRoom(game, state, lanState, t, exitItem) {
     return { key: 'lan:room', title: t('mp.lan.title'), lines, items };
 }
 
+// ---- The story before a match, and its ending -------------------------------------------------
+
+/** What is happening here, and the three sides with their pilots (ui/multiplayer/MatchCinematic.jsx in the headset). */
+function introduction(match, t) {
+    const lines = [t('mp.intro.story1'), t('mp.intro.story2'), t('mp.intro.story3')];
+    for (const side of rosterBySide(match)) {
+        const count = side.players.length === 0 ? t('mp.intro.noPilots')
+            : side.players.length === 1 ? t('mp.intro.onePilot') : t('mp.intro.pilots', { count: side.players.length });
+        const yours = side.faction === match.you?.faction ? ` (${t('mp.intro.yours')})` : '';
+        const names = side.players.map((player) => player.name).join(', ');
+        lines.push(`${t(`mp.faction.${side.faction}`)}${yours} · ${count}${names ? `: ${names}` : ''}`);
+    }
+    lines.push(t('mp.intro.entering', { seconds: match.intro }));
+    return { key: 'match:intro', title: t('mp.intro.title'), lines, items: [], footer: '' };
+}
+
+function ending(outro, t) {
+    const kind = !outro.winner ? 'none' : outro.won ? 'won' : 'lost';
+    const faction = outro.winner ? t(`mp.faction.${outro.winner}`) : '';
+    return {
+        key: `match:outro:${kind}`,
+        title: t(`mp.outro.${kind}.title`),
+        lines: [t(`mp.outro.${kind}.text`, { faction })],
+        items: [],
+        footer: '',
+        tone: outro.won ? 'victory' : 'failure',
+    };
+}
+
 // ---- In a match -------------------------------------------------------------------------------
+
+const SIDE_COLORS = Object.freeze({ dawn: '#59d0ff', umbra: '#c04dff', pirate: '#ffb648' });
+const STATUS_COLORS = Object.freeze({ [PLANET_STATUS.SAFE]: '#7dffa8', [PLANET_STATUS.COLLAPSING]: '#ffb648', [PLANET_STATUS.SWALLOWED]: '#ff4b6e' });
+const MAP_FONT = '"PingFang SC", "Microsoft YaHei", Orbitron, sans-serif';
+const MAP_HEIGHT = 196;
+
+/**
+ * Draws the star map the flat page shows as cards (ui/multiplayer/StarMapPanel.jsx): the
+ * collapsing sun, then every planet in orbit order with its state and countdown, who holds
+ * it (a ring in that side's colour), both garrisons, comrades, and where the player is.
+ * @returns {number} the height it took
+ */
+function drawStarMap(ctx, x, y, width, match, t) {
+    const { planets, you } = match;
+    const sunWidth = 54;
+    const cell = (width - sunWidth) / planets.length;
+    const centreY = y + 62;
+    ctx.save();
+    ctx.textBaseline = 'alphabetic';
+
+    // The sun that is eating the system, and the line of orbits leading away from it.
+    ctx.strokeStyle = 'rgba(150, 200, 235, 0.35)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x + 30, centreY);
+    ctx.lineTo(x + width - cell / 2, centreY);
+    ctx.stroke();
+    ctx.fillStyle = '#12061f';
+    ctx.strokeStyle = '#b06bff';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(x + 24, centreY, 17, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    planets.forEach((planet, index) => {
+        const cx = x + sunWidth + cell * (index + 0.5);
+        const here = planet.id === you.planet;
+        const gate = index === planets.length - 1;
+        const color = STATUS_COLORS[planet.status];
+        ctx.textAlign = 'center';
+
+        if (here) {
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `700 17px ${MAP_FONT}`;
+            ctx.fillText(`▼ ${t('mp.lan.you')}`, cx, y + 20);
+        }
+        // The side whose bubble covers the planet.
+        if (planet.owner) {
+            ctx.strokeStyle = SIDE_COLORS[planet.owner];
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.arc(cx, centreY, 30, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        ctx.globalAlpha = planet.status === PLANET_STATUS.SWALLOWED ? 0.45 : 1;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(cx, centreY, gate ? 13 : 19, 0, Math.PI * 2);
+        ctx.fill();
+        if (gate) {
+            // The stargate: a ring around the last planet.
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(cx, centreY, 22, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        ctx.fillStyle = here ? '#ffffff' : 'rgba(225, 240, 255, 0.92)';
+        ctx.font = `700 19px ${MAP_FONT}`;
+        ctx.fillText(t(`mp.planet.${planet.id}`), cx, centreY + 56);
+        ctx.fillStyle = color;
+        ctx.font = `600 15px ${MAP_FONT}`;
+        const status = gate && planet.status === PLANET_STATUS.SAFE ? t('mp.map.gate') : t(`mp.hud.status.${planet.status}`);
+        ctx.fillText(planet.changesIn === null ? status : `${status} ${planet.changesIn}s`, cx, centreY + 77);
+
+        // Both garrisons, in their sides' colours; red between them when they are fighting.
+        const battle = planet.forces.dawn > 0 && planet.forces.umbra > 0;
+        ctx.font = `700 16px ${MAP_FONT}`;
+        ctx.fillStyle = SIDE_COLORS.dawn;
+        ctx.fillText(`◆${planet.forces.dawn}`, cx - 26, centreY + 99);
+        ctx.fillStyle = SIDE_COLORS.umbra;
+        ctx.fillText(`◆${planet.forces.umbra}`, cx + 26, centreY + 99);
+        if (battle) {
+            ctx.fillStyle = '#ff4b6e';
+            ctx.fillText('×', cx, centreY + 99);
+        }
+        if (planet.comrades.length > 0) {
+            ctx.fillStyle = SIDE_COLORS[you.faction];
+            ctx.font = `600 14px ${MAP_FONT}`;
+            const names = planet.comrades.join(', ');
+            ctx.fillText(names.length > 14 ? `${names.slice(0, 13)}…` : names, cx, centreY + 119);
+        }
+        ctx.globalAlpha = 1;
+    });
+    ctx.restore();
+    return MAP_HEIGHT;
+}
 
 function planetLine(planet, t) {
     const timer = planet.changesIn === null ? ''
@@ -151,10 +282,10 @@ function starMap(session, presenter, match, t) {
                 : you.jump.cooldown > 0 ? t('mp.hud.jumpCharging', { seconds: you.jump.cooldown }) : null;
     const items = match.planets
         .filter((planet) => Math.abs(ORBITS.indexOf(planet.id) - ORBITS.indexOf(you.planet)) === 1)
+        // (What is at each planet is on the map above; the rows only say where a jump can go.)
         .map((planet) => ({
             label: `${t('mp.map.jump')} · ${t(`mp.planet.${planet.id}`)}`,
-            sub: planetLine(planet, t),
-            value: block,
+            value: block ?? t(`mp.hud.status.${planet.status}`),
             disabled: Boolean(block),
             select: () => presenter.jumpTo(planet.id),
         }));
@@ -171,7 +302,15 @@ function starMap(session, presenter, match, t) {
     );
     const lines = [`${t(`mp.faction.${you.faction}`)} · ${here ? `${t(`mp.planet.${here.id}`)} · ${planetLine(here, t)}` : ''}`];
     if (match.finalStand !== null) lines.push(t('mp.map.finalStand', { seconds: match.finalStand }));
-    return { key: 'match:map', title: t('mp.map.title'), lines, items };
+    return {
+        key: 'match:map',
+        title: t('mp.map.title'),
+        lines,
+        // The whole system at a glance, as on the flat page; redrawn whenever anything on it changes.
+        diagram: (ctx, x, y, width) => drawStarMap(ctx, x, y, width, match, t),
+        diagramKey: JSON.stringify([match.planets, you.planet]),
+        items,
+    };
 }
 
 function vote(presenter, ballot, t) {
