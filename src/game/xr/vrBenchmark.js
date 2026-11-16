@@ -1,13 +1,10 @@
-import { useGameStore } from '../state/gameStore.js';
-import { vrPerformance } from './vrPerformance.js';
-
 /**
  * Finds out, inside the headset, what a frame's time goes on.
  *
  * A headset's GPU and browser are nothing like a desktop's, and what is cheap on one is not
  * on the other, so the only measurement that counts is one taken in the headset. Started from
- * the VR pause menu (development builds), this flies on for half a minute and takes one thing
- * away at a time - the HUD's texture uploads, the HUD, the cabin, the asteroids, the sky,
+ * the VR pause menu (development builds), this flies on for a little over half a minute and
+ * takes one thing away at a time - the HUD, the cabin, the asteroids, each part of the sky,
  * everything - measuring the frame rate with each. What a frame gains when a thing is gone
  * is what that thing costs. The results go to the game store (`vrBenchmark`) and are listed
  * under the page's "Enter VR" button, where they can be read after leaving VR.
@@ -16,7 +13,16 @@ import { vrPerformance } from './vrPerformance.js';
  * (everything the page does in a frame, including handing the frame's drawing to the GPU
  * and uploading textures; what is left of the frame's time is the GPU's), and one eye's
  * picture in pixels.
+ *
+ * What the Pico (1504 x 1504 an eye, 90 Hz) said the first time, 2026-11: 16 frames a second;
+ * 35 with the HUD's canvases not uploaded in mid-frame (now fixed, see canvasPanel.js); 90
+ * with nothing drawn. Turning foveation off changed nothing, and neither did asking for a
+ * smaller viewport, which that browser ignores.
  */
+import * as THREE from 'three';
+import { Impostor } from '../scene/effects/Impostor.js';
+import { useGameStore } from '../state/gameStore.js';
+import { vrPerformance } from './vrPerformance.js';
 
 /** Seconds to let a change settle (shaders, the browser's own pacing), then to measure it. */
 const SETTLE = 0.7;
@@ -47,39 +53,54 @@ function freezeUploads(panels) {
     return () => textures.forEach((texture) => { delete texture.needsUpdate; });
 }
 
+/** Draws `meshes` with a plain, unlit copy of their material (its colour texture only); returns the undo. */
+function unlit(meshes) {
+    const originals = meshes.map((mesh) => mesh.material);
+    const plain = new Map();
+    for (const mesh of meshes) {
+        if (!plain.has(mesh.material)) plain.set(mesh.material, new THREE.MeshBasicMaterial({ map: mesh.material.map ?? null }));
+        mesh.material = plain.get(mesh.material);
+    }
+    return () => {
+        meshes.forEach((mesh, index) => { mesh.material = originals[index]; });
+        for (const material of plain.values()) material.dispose();
+    };
+}
+
 /** The things to take away, in order. Each `apply` returns its undo. */
-function variants(gl, scene) {
+function variants(scene) {
     const all = drawn(scene);
     const panels = all.filter((object) => object.material?.map?.isCanvasTexture);
     const cabinMesh = all.find((object) => object.material?.name === 'cabin');
     const cabin = all.filter((object) => (cabinMesh && object.parent === cabinMesh.parent) || object.material?.name === 'stick');
+    const cabinLit = cabin.filter((object) => object.material?.isMeshStandardMaterial && object.material.map);
     const asteroids = all.filter((object) => object.isInstancedMesh);
-    const sky = all.filter((object) => object.renderOrder < -7);
+    // The sky is told apart by its place in the drawing order (scene/SectorBackdrop.jsx).
+    const nebula = all.filter((object) => object.renderOrder === -10);
+    const stars = all.filter((object) => object.renderOrder === -9);
+    const bodies = all.filter((object) => object.renderOrder < -7 && object.renderOrder > -9);
+    const particles = all.filter((object) => object.isPoints && object.renderOrder > -7);
     const nothing = () => () => {};
     return [
         { name: 'baseline', apply: nothing },
         { name: 'HUD textures not uploaded', apply: () => freezeUploads(panels) },
         { name: 'no HUD', apply: () => hide(panels) },
         { name: 'no cabin or sticks', apply: () => hide(cabin) },
+        { name: 'cabin and sticks unlit', apply: () => unlit(cabinLit) },
         { name: 'no asteroids', apply: () => hide(asteroids) },
-        { name: 'no sky (nebula, stars, distant bodies)', apply: () => hide(sky) },
+        { name: 'no nebula', apply: () => hide(nebula) },
+        { name: 'no stars', apply: () => hide(stars) },
+        { name: 'no distant bodies', apply: () => hide(bodies) },
+        {
+            name: 'distant bodies not re-pictured',
+            apply: () => {
+                Impostor.frozen = true;
+                return () => { Impostor.frozen = false; };
+            },
+        },
+        { name: 'no dust or particles', apply: () => hide(particles) },
         { name: 'nothing drawn at all', apply: () => hide(all) },
-        {
-            name: 'no foveation',
-            apply: () => {
-                const before = gl.xr.getFoveation?.() ?? 1;
-                gl.xr.setFoveation(0);
-                return () => gl.xr.setFoveation(before);
-            },
-        },
-        {
-            name: 'half the pixels (viewport scale 0.7)',
-            apply: () => {
-                vrPerformance.forcedScale = 0.7;
-                return () => { vrPerformance.forcedScale = 1; };
-            },
-        },
-        { name: 'baseline again', apply: () => { vrPerformance.forcedScale = null; return () => {}; } },
+        { name: 'baseline again', apply: nothing },
     ];
 }
 
@@ -100,7 +121,7 @@ export const vrBenchmark = {
     update(gl, scene, delta, onDone) {
         if (this.requested && !run) {
             this.requested = false;
-            const list = variants(gl, scene);
+            const list = variants(scene);
             run = { list, index: 0, undo: list[0].apply(), time: 0, frames: 0, elapsed: 0, js: 0, results: [] };
             return;
         }
@@ -135,6 +156,5 @@ export const vrBenchmark = {
         this.requested = false;
         run?.undo();
         run = null;
-        vrPerformance.forcedScale = null;
     },
 };

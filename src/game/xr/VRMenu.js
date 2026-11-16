@@ -142,10 +142,12 @@ export class VRMenu {
                 if (state.hasSave) items.push({ label: t('ui.restartCheckpoint'), select: () => session.continueGame() });
                 const toggleView = () => { vr.view = vr.view === 'chase' ? 'cockpit' : 'chase'; };
                 items.push({ label: t('ui.view'), value: t(`ui.view.${vr.view}`), left: toggleView, right: toggleView, select: toggleView });
-                const toggleDynamic = () => { vr.dynamicResolution = !vr.dynamicResolution; };
-                items.push({ label: t('ui.vr.dynamicResolution'), value: t(vr.dynamicResolution ? 'ui.on' : 'ui.off'), left: toggleDynamic, right: toggleDynamic, select: toggleDynamic });
-                // Development: measure in this headset what each part of the picture costs (xr/vrBenchmark.js).
+                // Development only. Dynamic resolution is unproven: the one headset it was tried
+                // in (a Pico) ignores the viewport scaling it relies on. The performance test
+                // measures in this headset what each part of the picture costs (xr/vrBenchmark.js).
                 if (stageOfENV !== 'prod') {
+                    const toggleDynamic = () => { vr.dynamicResolution = !vr.dynamicResolution; };
+                    items.push({ label: t('ui.vr.dynamicResolution'), value: t(vr.dynamicResolution ? 'ui.on' : 'ui.off'), left: toggleDynamic, right: toggleDynamic, select: toggleDynamic });
                     items.push({ label: t('ui.vr.benchmark'), select: () => { vrBenchmark.requested = true; session.resume(); } });
                 }
                 items.push(...this.commonSettings(settings, t));
@@ -353,7 +355,7 @@ function drawMenu(panel, menu, selected, t) {
 
     // Rows; on long menus they shrink so everything fits above the footer.
     const footer = height - 54;
-    const rowHeight = Math.max(40, Math.min(78, (footer - y) / Math.max(1, menu.items.length)));
+    const rowHeight = Math.max(33, Math.min(78, (footer - y) / Math.max(1, menu.items.length)));
     menu.items.forEach((item, index) => {
         const top = y + index * rowHeight;
         const isSelected = index === selected;

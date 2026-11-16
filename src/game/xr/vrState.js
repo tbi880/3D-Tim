@@ -19,10 +19,9 @@ import { vrPerformance } from './vrPerformance.js';
  *  - fixed foveated rendering at full strength: the edges of the lenses are blurry anyway;
  *  - each eye's buffer is left at the size the headset's browser recommends: a smaller one
  *    (framebufferScaleFactor 0.8) gave a session that ran with both eyes black in the Pico's
- *    browser. The resolution can instead follow the frame rate inside that buffer
- *    (DynamicResolution.js), which the pilot turns on in the VR pause menu: it relies on
- *    another part of WebXR (viewport scaling) that few pages use and that has not been seen
- *    working in a headset either, so it is off until asked for;
+ *    browser. Following the frame rate with the resolution inside that buffer
+ *    (DynamicResolution.js) is a development switch in the VR pause menu only: the Pico's
+ *    browser ignores the viewport scaling it relies on, and no other headset has tried it;
  *  - 4x multisampling (see `canvasAntialias`): on a headset's tile-based GPU it costs next
  *    to nothing, and without it every hull edge and light line shimmers as the head moves;
  *  - the headset's default refresh rate (72 Hz on a Quest) instead of the highest one.

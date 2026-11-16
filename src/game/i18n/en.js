@@ -438,7 +438,7 @@ export default {
     'ui.vr.report.notStarted': 'VR could not start.',
     'ui.vr.report.errors': '{count} frames failed:',
     'ui.vr.report.retry': 'Please reload the page and try again.',
-    'ui.vr.benchmark': 'Performance test (30 s, keep flying)',
+    'ui.vr.benchmark': 'Performance test (40 s, keep flying)',
     'ui.vr.benchmarkDone': 'Performance test finished: leave VR to read the results on the page.',
     'ui.vr.menuHint': 'Stick: choose · Trigger / A: select · B: back',
     'ui.vr.refitHint': 'Stick left / right adds or removes a level',

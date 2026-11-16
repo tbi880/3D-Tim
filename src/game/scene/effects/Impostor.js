@@ -42,6 +42,9 @@ const sheetGeometry = new THREE.PlaneGeometry(1, 1);
 const scratchColor = new THREE.Color();
 
 export class Impostor {
+    /** While true no impostor takes a new picture (for measuring what the pictures cost: xr/vrBenchmark.js). */
+    static frozen = false;
+
     /** @param {number} layer the three.js layer the model's meshes are on (see `hideFromMainCameras`) */
     constructor(layer) {
         this.layer = layer;
@@ -106,6 +109,7 @@ export class Impostor {
      * In a headset session it is taken a moment later, between this frame and the next.
      */
     refresh(gl, scene) {
+        if (Impostor.frozen && this.ready) return;
         if (!gl.xr.isPresenting) {
             this.#draw(gl, scene);
             return;

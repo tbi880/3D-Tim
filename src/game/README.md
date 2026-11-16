@@ -130,11 +130,17 @@ and react to `world.events` (explosions, hits...).
   multisampled buffer does not take kindly to render-target switches in mid-frame.
 * **The nebula** is layered noise, baked once into a cube map (`nebulaCloudsFor` in
   `SectorBackdrop.jsx`): evaluated per pixel it was the most expensive shader in the game.
-* **In a headset** the GPU is limited by the pixels it fills, but the eyes' buffers stay at
-  the size the browser recommends: a smaller one (`framebufferScaleFactor` 0.8) ran with both
-  eyes black in the Pico's browser. The resolution can follow the frame rate inside that
-  buffer instead (`xr/DynamicResolution.js`), switched on in the VR pause menu and off by
-  default, because it uses WebXR viewport scaling, which is not proven in a headset either. The VR pause menu shows the last flight's frame rate, resolution, draw calls and
+* **In a headset** nothing may interrupt the drawing of a frame. A headset's GPU draws both
+  eyes' multisampled buffer in one pass; anything that makes it turn to another buffer in
+  mid-frame (a canvas copied into a texture, a render target) forces it to write out all it
+  has drawn and read it back. In a Pico the HUD's canvases, uploaded by three.js at the
+  moment their panels were drawn (last), halved the frame rate: 16 frames a second, 35
+  without. They are now uploaded from the frame callbacks, before the frame's drawing starts
+  (`xr/canvasPanel.js`), and the distant bodies' pictures are taken between frames.
+* **Resolution in a headset** is whatever its browser recommends (1504 x 1504 an eye in a
+  Pico). A smaller buffer (`framebufferScaleFactor`) ran with both eyes black there, and
+  WebXR viewport scaling is ignored there (`xr/DynamicResolution.js`, a development switch).
+  The VR pause menu shows the last flight's frame rate, resolution, draw calls and
   triangles; `tools/game-perf` counts the same per object without a headset.
 * **When VR goes wrong** there is no console to read in a headset. An error in a frame would
   stop three.js asking for the next one, leaving the headset black, so the frame callback is

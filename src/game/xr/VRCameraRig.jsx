@@ -78,7 +78,7 @@ export default function VRCameraRig({ game }) {
     const menuTimer = useRef(0);
 
     const menu = useMemo(() => new VRMenu(game), [game]);
-    const menuPanel = useMemo(() => createCanvasPanel({ width: MENU_TEXTURE[0], height: MENU_TEXTURE[1], meters: MENU_METERS, renderOrder: 1003 }), []);
+    const menuPanel = useMemo(() => createCanvasPanel({ gl, width: MENU_TEXTURE[0], height: MENU_TEXTURE[1], meters: MENU_METERS, renderOrder: 1003 }), [gl]);
     useEffect(() => () => menuPanel.dispose(), [menuPanel]);
 
     const gamepads = useMemo(() => {

@@ -438,7 +438,7 @@ export default {
     'ui.vr.report.notStarted': 'VR 没能启动。',
     'ui.vr.report.errors': '有 {count} 帧出错：',
     'ui.vr.report.retry': '请刷新页面后重试。',
-    'ui.vr.benchmark': '性能测试（30 秒，请保持飞行）',
+    'ui.vr.benchmark': '性能测试（40 秒，请保持飞行）',
     'ui.vr.benchmarkDone': '性能测试完成：退出 VR 后在页面上查看结果。',
     'ui.vr.menuHint': '摇杆选择 · 扳机 / A 确认 · B 返回',
     'ui.vr.refitHint': '摇杆左右：减少 / 增加一级',

@@ -28,8 +28,6 @@ export const vrPerformance = {
     flight: null,
     /** How long the last frame's script took, in milliseconds (told by xr/frameGuard.js). */
     lastFrameJs: 0,
-    /** A viewport scale to use whatever the frame rate (xr/vrBenchmark.js), or null. */
-    forcedScale: null,
 
     /** A session starts: full resolution, an empty report. */
     begin() {
@@ -80,12 +78,10 @@ export const vrPerformance = {
      */
     update(gl, delta, frame, { flying, adapt }) {
         const xrSession = gl.xr.getSession();
-        const followed = resolution.update(delta, xrSession?.frameRate, adapt);
-        const scale = this.forcedScale ?? followed;
-        // The headset's own viewport scaling is only touched when the pilot has turned it on
-        // (or a benchmark is trying it): asked for on every frame's views, it is used from the
-        // next frame on.
-        if (adapt || this.forcedScale !== null) {
+        const scale = resolution.update(delta, xrSession?.frameRate, adapt);
+        // The headset's own viewport scaling is only touched when the pilot has turned it on:
+        // asked for on every frame's views, it is used from the next frame on.
+        if (adapt) {
             const views = frame?.getViewerPose?.(gl.xr.getReferenceSpace())?.views ?? [];
             for (const view of views) view.requestViewportScale?.(scale);
         }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { CHARACTERS } from '../config/characters.js';
 import { GAME_EVENTS } from '../core/EventBus.js';
@@ -363,9 +363,10 @@ const VEIL_FLASH_SECONDS = 1.4;
 
 export default function VRHud({ game, seatRef }) {
     const { session, input } = game;
-    const markerPane = useMemo(() => createCanvasPanel({ width: MARKER_TEXTURE[0], height: MARKER_TEXTURE[1], meters: paneSize(), renderOrder: 1001 }), []);
-    const textPane = useMemo(() => createCanvasPanel({ width: TEXT_TEXTURE[0], height: TEXT_TEXTURE[1], meters: paneSize(), renderOrder: 1001.5, uploadOnlyChanges: true }), []);
-    const panel = useMemo(() => createCanvasPanel({ width: PANEL_TEXTURE[0], height: PANEL_TEXTURE[1], meters: PANEL_METERS, renderOrder: 1002 }), []);
+    const gl = useThree((three) => three.gl);
+    const markerPane = useMemo(() => createCanvasPanel({ gl, width: MARKER_TEXTURE[0], height: MARKER_TEXTURE[1], meters: paneSize(), renderOrder: 1001 }), [gl]);
+    const textPane = useMemo(() => createCanvasPanel({ gl, width: TEXT_TEXTURE[0], height: TEXT_TEXTURE[1], meters: paneSize(), renderOrder: 1001.5, uploadOnlyChanges: true }), [gl]);
+    const panel = useMemo(() => createCanvasPanel({ gl, width: PANEL_TEXTURE[0], height: PANEL_TEXTURE[1], meters: PANEL_METERS, renderOrder: 1002 }), [gl]);
     const virtualCamera = useMemo(() => {
         const camera = new THREE.PerspectiveCamera(VIEW_FOV_Y, VIEW_ASPECT, 0.1, 3_000_000);
         camera.matrixAutoUpdate = false;

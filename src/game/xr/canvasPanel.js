@@ -8,8 +8,17 @@ import * as THREE from 'three';
  * match the flat HUD. No mipmaps: every panel is seen at roughly its own resolution, and
  * skipping them keeps each texture upload cheap. `uploadOnlyChanges` is for a panel that is
  * redrawn more often than its picture changes (see `commit`).
+ *
+ * When the canvas goes to the GPU matters more than how big it is. three.js uploads a
+ * changed texture at the moment a mesh using it is drawn, and these panels are drawn last:
+ * the upload would land in the middle of the headset's frame, after the whole scene. Copying
+ * a canvas into a texture makes the GPU turn away from the eyes' buffer and come back, and a
+ * headset's GPU can only do that by writing out everything drawn so far and reading it in
+ * again. Measured in a Pico: 16 frames a second with the uploads where three.js puts them,
+ * 35 without them. So `commit` uploads at once (`gl.initTexture`): it is called from frame
+ * callbacks, which run before anything of the frame has been drawn.
  */
-export function createCanvasPanel({ width, height, meters, renderOrder = 1000, uploadOnlyChanges = false }) {
+export function createCanvasPanel({ gl, width, height, meters, renderOrder = 1000, uploadOnlyChanges = false }) {
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
@@ -38,10 +47,10 @@ export function createCanvasPanel({ width, height, meters, renderOrder = 1000, u
         texture,
         mesh,
         /**
-         * Marks the canvas as changed; the texture is uploaded on the next render. With
-         * `uploadOnlyChanges`, only if what was drawn since the last commit differs from what
-         * was last uploaded: sending a large canvas to the GPU costs far more than drawing it,
-         * and a panel of text is the same picture for seconds on end.
+         * Sends the canvas to the GPU, now. Call it from a frame callback (before the frame is
+         * drawn), never while drawing. With `uploadOnlyChanges`, only if what was drawn since
+         * the last commit differs from what was last uploaded: a panel of text is the same
+         * picture for seconds on end.
          */
         commit() {
             if (pen) {
@@ -50,6 +59,7 @@ export function createCanvasPanel({ width, height, meters, renderOrder = 1000, u
                 uploaded = drawn;
             }
             texture.needsUpdate = true;
+            gl.initTexture(texture);
         },
         dispose() {
             texture.dispose();
