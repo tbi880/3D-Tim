@@ -126,15 +126,15 @@ and react to `world.events` (explosions, hits...).
   whole model (the black hole and the spiral star were 838 k triangles and 26 draw calls,
   twice over in a headset). The black hole, redrawn 30 times a second, also has a lighter
   copy of the site's model (`tools/game-models/backdrop/simplify.mjs`). In a headset the
-  pictures are taken between frames, never during one: switching render targets in the
-  middle of a headset frame left a Pico black.
+  pictures are taken between frames rather than during one, as a precaution: a headset's
+  multisampled buffer does not take kindly to render-target switches in mid-frame.
 * **The nebula** is layered noise, baked once into a cube map (`nebulaCloudsFor` in
   `SectorBackdrop.jsx`): evaluated per pixel it was the most expensive shader in the game.
-* **In a headset** the GPU is limited by the pixels it fills. Each eye's buffer is sized by
-  the graphics setting (`vrResolution` in `config/graphics.js`); the resolution can also
-  follow the frame rate (`xr/DynamicResolution.js`), switched on in the VR pause menu and off
-  by default, because it uses WebXR viewport scaling, which is not proven in every headset's
-  browser. The VR pause menu shows the last flight's frame rate, resolution, draw calls and
+* **In a headset** the GPU is limited by the pixels it fills, but the eyes' buffers stay at
+  the size the browser recommends: a smaller one (`framebufferScaleFactor` 0.8) ran with both
+  eyes black in the Pico's browser. The resolution can follow the frame rate inside that
+  buffer instead (`xr/DynamicResolution.js`), switched on in the VR pause menu and off by
+  default, because it uses WebXR viewport scaling, which is not proven in a headset either. The VR pause menu shows the last flight's frame rate, resolution, draw calls and
   triangles; `tools/game-perf` counts the same per object without a headset.
 * **When VR goes wrong** there is no console to read in a headset. An error in a frame would
   stop three.js asking for the next one, leaving the headset black, so the frame callback is

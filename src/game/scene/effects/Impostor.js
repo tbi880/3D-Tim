@@ -19,11 +19,12 @@ import * as THREE from 'three';
  * (`layer`) that only this impostor's camera sees. They stay in the main scene, so they are
  * lit by its lights (which must be on every layer) and its environment map.
  *
- * In a headset the picture is never taken while a frame is being drawn, but in a task of
- * its own between two frames. A headset's GPU draws the eyes' multisampled, foveated buffer
- * in one go; turning to another render target in the middle of a headset frame is what
- * three.js itself warns "doesn't work properly" there, and on a Pico it left both eyes black
- * while everything else ran on. Between frames the eyes' buffer is not in use at all.
+ * In a headset the picture is not taken while a frame is being drawn, but in a task of its
+ * own between two frames. A headset's GPU draws the eyes' multisampled, foveated buffer in
+ * one go, and three.js itself notes that such a buffer "doesn't work properly" with flushes
+ * in mid-frame, which turning to another render target is. This is a precaution: it has not
+ * been seen to fail in a headset, and the desktop emulator, whose "headset buffer" is the
+ * page's canvas, could not show it if it did.
  */
 
 /** Texture pixels per degree of sky: a little more than a headset's lenses resolve. */

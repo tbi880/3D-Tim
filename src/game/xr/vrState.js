@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createXRStore } from '@react-three/xr';
 import { useStore } from 'zustand';
-import { GRAPHICS } from '../config/graphics.js';
-import { useGameStore } from '../state/gameStore.js';
 import VRFlightStick from './VRFlightStick.jsx';
 import { vrPerformance } from './vrPerformance.js';
 
@@ -19,12 +17,12 @@ import { vrPerformance } from './vrPerformance.js';
  *    the sticks;
  *  - hand tracking is off (flying needs the sticks and triggers);
  *  - fixed foveated rendering at full strength: the edges of the lenses are blurry anyway;
- *  - each eye's buffer is sized by the graphics setting (config/graphics.js, `vrResolution`):
- *    a headset's GPU is limited by the number of pixels it has to fill, and a late frame is
- *    worse than a soft one. The resolution can also follow the frame rate
- *    (DynamicResolution.js), which the pilot turns on in the VR pause menu: it relies on a
- *    part of WebXR (viewport scaling) that few pages use and that has not been seen working
- *    in every headset's browser, so it is off until asked for;
+ *  - each eye's buffer is left at the size the headset's browser recommends: a smaller one
+ *    (framebufferScaleFactor 0.8) gave a session that ran with both eyes black in the Pico's
+ *    browser. The resolution can instead follow the frame rate inside that buffer
+ *    (DynamicResolution.js), which the pilot turns on in the VR pause menu: it relies on
+ *    another part of WebXR (viewport scaling) that few pages use and that has not been seen
+ *    working in a headset either, so it is off until asked for;
  *  - 4x multisampling (see `canvasAntialias`): on a headset's tile-based GPU it costs next
  *    to nothing, and without it every hull edge and light line shimmers as the head moves;
  *  - the headset's default refresh rate (72 Hz on a Quest) instead of the highest one.
@@ -63,8 +61,6 @@ export function getXRStore() {
             screenInput: false,
             transientPointer: false,
             foveation: 1,
-            // Asked each time a session starts, so the setting can be changed between sessions.
-            frameBufferScaling: () => GRAPHICS[useGameStore.getState().settings.graphics].vrResolution,
             frameRate: false,
             handTracking: false,
             layers: false,
