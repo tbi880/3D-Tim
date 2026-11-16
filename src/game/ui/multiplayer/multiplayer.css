@@ -18,7 +18,7 @@
 .eod-lan-field > span { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(225, 240, 255, 0.6); }
 .eod-lan-field strong { font-size: 13px; font-weight: 600; }
 .eod-lan-field small { font-size: 10px; line-height: 1.5; color: rgba(225, 240, 255, 0.5); }
-.eod-lan input { width: 100%; padding: 6px 8px; font: inherit; font-size: 14px; color: #fff; background: rgba(4, 12, 22, 0.8); border: 1px solid var(--eod-border); outline: none; }
+.eod-lan input { box-sizing: border-box; width: 100%; padding: 6px 8px; font: inherit; font-size: 14px; color: #fff; background: rgba(4, 12, 22, 0.8); border: 1px solid var(--eod-border); outline: none; }
 .eod-lan input:focus { border-color: var(--eod-cyan); }
 
 .eod-lan-browser, .eod-lan-room-view { display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 100%; }
@@ -72,12 +72,14 @@
 .eod-map { gap: 14px; }
 .eod-map-orbits { display: flex; align-items: stretch; justify-content: center; gap: 6px; width: min(1100px, 96vw); margin: 0; padding: 0; list-style: none; overflow-x: auto; }
 .eod-map-sun { display: flex; align-items: center; padding: 0 6px; font-size: 44px; color: #b06bff; text-shadow: 0 0 22px #7a2bd6; }
-.eod-map-planet { display: flex; flex: 1 1 0; flex-direction: column; align-items: center; gap: 4px; min-width: 128px; padding: 10px 8px; font-size: 11px; background: var(--eod-panel); border: 1px solid var(--eod-border); }
-.eod-map-planet strong { font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; }
+.eod-map-planet { display: flex; flex: 1 1 0; flex-direction: column; align-items: center; gap: 4px; min-width: 92px; padding: 10px 6px; font-size: 11px; text-align: center; background: var(--eod-panel); border: 1px solid var(--eod-border); }
+.eod-map-planet strong { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
 .eod-map-globe { font-size: 26px; line-height: 1; color: var(--eod-cyan); }
 .eod-map-status { font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--eod-green); }
 .eod-map-timer, .eod-map-forces, .eod-map-comrades { color: rgba(225, 240, 255, 0.7); }
-.eod-map-forces em { font-style: normal; color: var(--eod-red); }
+.eod-map-forces { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 10px; }
+.eod-map-forces b { font-weight: 700; }
+.eod-map-forces em { flex-basis: 100%; font-style: normal; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--eod-red); }
 .eod-map-here { font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--eod-cyan); }
 .eod-map-planet--here { border-color: var(--eod-cyan); box-shadow: 0 0 14px rgba(89, 208, 255, 0.35) inset; }
 .eod-map-planet--collapsing { border-color: var(--eod-amber); }
@@ -87,7 +89,8 @@
 .eod-map-planet--held-dawn .eod-map-globe { text-shadow: 0 0 12px var(--eod-cyan), 0 0 26px var(--eod-cyan); }
 .eod-map-planet--held-umbra .eod-map-globe { text-shadow: 0 0 12px var(--eod-violet), 0 0 26px var(--eod-violet); }
 .eod-map-planet--held-pirate .eod-map-globe { text-shadow: 0 0 12px var(--eod-amber), 0 0 26px var(--eod-amber); }
-.eod-map-jump { margin-top: auto; padding: 8px 10px; width: 100%; }
+.eod-map-planet { box-sizing: border-box; overflow: hidden; }
+.eod-map-jump { box-sizing: border-box; margin-top: auto; padding: 8px 4px; width: 100%; letter-spacing: 0.1em; }
 .eod-map-jump:disabled { opacity: 0.45; cursor: default; transform: none; }
 
 /* ---- Result ------------------------------------------------------------------------------ */

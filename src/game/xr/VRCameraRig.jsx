@@ -6,6 +6,7 @@ import { GAME_EVENTS } from '../core/EventBus.js';
 import { translate } from '../i18n/index.js';
 import { viewPose } from '../scene/viewPose.js';
 import { PHASE } from '../state/GameSession.js';
+import { MATCH_ACTION } from '../modes/battleRoyale/BattleRoyalePresenter.js';
 import { useGameStore } from '../state/gameStore.js';
 import { createCanvasPanel } from './canvasPanel.js';
 import VRHud, { vrComms } from './VRHud.jsx';
@@ -90,8 +91,10 @@ export default function VRCameraRig({ game }) {
                     case 'pause': session.togglePause(); break;
                     case 'toggleView': vr.view = vr.view === 'chase' ? 'cockpit' : 'chase'; break;
                     case 'skip':
+                        // A match has no comms lines: there the same button opens the star map.
+                        if (session.match) session.handleAction(MATCH_ACTION.MAP);
                         // First press shows the whole line, the second moves on (as tapping the flat panel does).
-                        if (vrComms.typing) vrComms.revealed = true;
+                        else if (vrComms.typing) vrComms.revealed = true;
                         else session.handleAction('skip');
                         break;
                     case 'gazeTarget':

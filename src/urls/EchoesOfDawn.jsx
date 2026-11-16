@@ -6,6 +6,7 @@ import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 import { SoundEngine } from '../game/audio/SoundEngine.js';
 import { graphicsDpr } from '../game/config/graphics.js';
 import { InputController } from '../game/input/InputController.js';
+import { startHostHeartbeat } from '../game/net/lobby/hostHeartbeat.js';
 import { createLanMultiplayer } from '../game/net/lobby/lanStore.js';
 import { isTouchDevice } from '../game/input/device.js';
 import GameScene from '../game/scene/GameScene.jsx';
@@ -88,7 +89,10 @@ function EchoesOfDawn() {
         setGame(created);
         // Development aid: inspect or drive the running game from the browser console.
         if (stageOfENV !== 'prod') window.__eod = created;
+        // When this device hosts a match, the match must not stop because this page is in the background.
+        const stopHeartbeat = startHostHeartbeat(created.session);
         return () => {
+            stopHeartbeat();
             created.lan.close();
             created.sound.dispose();
             created.session.dispose();

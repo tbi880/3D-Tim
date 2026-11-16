@@ -36,8 +36,10 @@ function PlanetCard({ planet, you, onJump }) {
             <strong>{t(`mp.planet.${planet.id}`)}</strong>
             <span className="eod-map-status">{gate && planet.status === PLANET_STATUS.SAFE ? t('mp.map.gate') : t(`mp.hud.status.${planet.status}`)}</span>
             {timer && <span className="eod-map-timer">{timer}</span>}
-            <span className="eod-map-forces">
-                {t('mp.map.forces', planet.forces)}{battle && <em> · {t('mp.map.battle')}</em>}
+            <span className="eod-map-forces" title={t('mp.map.forces', planet.forces)}>
+                <b className="eod-side--dawn">◆ {planet.forces.dawn}</b>
+                <b className="eod-side--umbra">◆ {planet.forces.umbra}</b>
+                {battle && <em>{t('mp.map.battle')}</em>}
             </span>
             {planet.owner && <span className={`eod-map-owner eod-side--${planet.owner}`}>{t('mp.hud.bubble', { faction: t(`mp.faction.${planet.owner}`) })}</span>}
             {planet.comrades.length > 0 && <span className="eod-map-comrades">{t('mp.map.comrades', { names: planet.comrades.join(', ') })}</span>}

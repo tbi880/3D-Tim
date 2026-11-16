@@ -22,6 +22,8 @@ import { SnapshotTimeline, applySnapshotSample } from './SnapshotTimeline.js';
 const SECONDARY_REPEATS = 3;
 /** A copied shot whose "gone" never arrived is dropped this long after its fuel ran out (seconds). */
 const PROJECTILE_GRACE = 1.5;
+/** Snapshots kept while nothing reads them; older ones are worthless anyway. */
+const MAX_UNREAD_SNAPSHOTS = 4;
 /** Calls the host may make on this device's stage. */
 const STAGE_CALLS = new Set(['showTitleCard', 'setHint', 'playMusic', 'playCue']);
 const FACTIONS = new Set(Object.values(FACTION));
@@ -97,7 +99,11 @@ export class ClientMatch {
         this.lastHeardAt = this.now();
         const { link, inbox } = this;
         link.onMessage = (text) => { inbox.messages.push(text); };
-        link.onState = (data) => { inbox.states.push(data); };
+        link.onState = (data) => {
+            inbox.states.push(data);
+            // A page that is not being drawn (in the background) is not reading these: keep the newest only.
+            if (inbox.states.length > MAX_UNREAD_SNAPSHOTS) inbox.states.shift();
+        };
         link.onClose = () => this.disconnect();
         link.sendMessage(JSON.stringify({ t: MSG.HELLO, v: NET.protocolVersion, m: this.info.matchId }));
     }

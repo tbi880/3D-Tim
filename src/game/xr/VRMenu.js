@@ -6,6 +6,7 @@ import { playerModelFile, requestShipModel } from '../scene/models/ShipModel.jsx
 import { PHASE } from '../state/GameSession.js';
 import { loadSave } from '../state/saveGame.js';
 import { roundRect, wrapText } from './canvasPanel.js';
+import { buildMatchMenu, isMatchMenuOpen } from './VRMatchMenu.js';
 import { exitVR, vr } from './vrState.js';
 
 /**
@@ -26,10 +27,12 @@ function savedShipClass(fallback) {
 }
 
 export class VRMenu {
-    /** @param {{ session: import('../state/GameSession.js').GameSession, sound: { unlock(): void } }} game */
+    /** @param {{ session: import('../state/GameSession.js').GameSession, sound: { unlock(): void }, lan: object }} game */
     constructor(game) {
         this.game = game;
         this.index = 0;
+        /** Title screen: the player has opened the LAN lobby (xr/VRMatchMenu.js). */
+        this.lobbyOpen = false;
         /** Title screen: the game being started while its ship model loads ({ classId, start }). */
         this.launch = null;
         this.confirmingNewGame = false;
@@ -42,7 +45,7 @@ export class VRMenu {
     /** True when a menu should be on screen (VR shows no flat menus). */
     isOpen(state) {
         const phase = this.game.session.phase;
-        return phase !== PHASE.PLAYING || Boolean(state.refit);
+        return phase !== PHASE.PLAYING || Boolean(state.refit) || isMatchMenuOpen(state);
     }
 
     /** Called every frame while open: starts a launched game once its ship is in. */
@@ -68,6 +71,10 @@ export class VRMenu {
 
         if (state.refit && session.phase === PHASE.PLAYING) return this.buildRefit(state, t);
         if (!state.refit) this.refitAdded = {};
+
+        // Multiplayer has menus of its own: the lobby, and in a match the map, the vote and the result.
+        const matchMenu = buildMatchMenu(this.game, state, t, { lobbyOpen: this.lobbyOpen, setLobbyOpen: (open) => { this.lobbyOpen = open; } });
+        if (matchMenu) return matchMenu;
 
         switch (session.phase) {
             case PHASE.TITLE: {
@@ -115,6 +122,14 @@ export class VRMenu {
                 items.push({ label: t('ui.vr.ship'), sub: t(`playerShip.${settings.playerShip}.role`), value: t(`ship.${settings.playerShip}`), left: shipRow(-1), right: shipRow(1), select: shipRow(1) });
                 const difficultyRow = (step) => () => session.updateSettings({ difficulty: cycle(DIFFICULTY_ORDER, settings.difficulty, step) });
                 items.push({ label: t('ui.difficulty'), value: t(`ui.difficulty.${settings.difficulty}`), left: difficultyRow(-1), right: difficultyRow(1), select: difficultyRow(1) });
+                items.push({
+                    label: t('mp.lan.open'),
+                    sub: t('mp.lan.openHint'),
+                    select: () => {
+                        this.lobbyOpen = true;
+                        this.game.lan.open();
+                    },
+                });
                 items.push(...this.commonSettings(settings, t));
                 items.push(exitItem);
                 return { key: 'title', title: t('ui.title'), lines: [t('ui.tagline')], items };
@@ -179,7 +194,7 @@ export class VRMenu {
 
     buildRefit(state, t) {
         const { session } = this.game;
-        const { points, classId, upgrades } = state.refit;
+        const { points, classId, upgrades, inFlight = false } = state.refit;
         const added = this.refitAdded;
         const owned = upgradedRatings(classId, upgrades) ?? {};
         const spent = Object.values(added).reduce((sum, levels) => sum + levels, 0);
@@ -196,15 +211,25 @@ export class VRMenu {
             const level = withAdded[rating] >= RATING_MAX ? t('ui.refit.max') : String(withAdded[rating]);
             return { label: t(`ui.rating.${rating}`), value: extra > 0 ? `${level}  (+${extra})` : level, left: change(rating, -1), right: change(rating, 1), select: change(rating, 1) };
         });
+        // In a match the window can be confirmed with points to spare, or closed again.
         items.push({
             label: t('ui.refit.confirm'),
-            sub: t('ui.refit.repairNote'),
-            disabled: !done,
+            sub: t(inFlight ? 'mp.refit.note' : 'ui.refit.repairNote'),
+            disabled: inFlight ? spent === 0 : !done,
             select: () => {
                 session.applyRefit({ ...added });
                 this.refitAdded = {};
             },
         });
+        if (inFlight) {
+            items.push({
+                label: t('mp.refit.close'),
+                select: () => {
+                    session.applyRefit({});
+                    this.refitAdded = {};
+                },
+            });
+        }
         return {
             key: 'refit',
             title: t('ui.refit.title'),
@@ -236,6 +261,8 @@ export class VRMenu {
             case 'pause':
                 if (this.game.session.phase === PHASE.PAUSED) this.game.session.resume();
                 else if (this.launch) this.launch = null;
+                // In a match: closes the star map (a vote has to be answered, or it runs out).
+                else if (state.matchPanel) this.game.session.match?.presenter?.setPanel(null);
                 break;
             default: break;
         }

@@ -25,6 +25,11 @@ export class HostSeat {
         server.attachLink(localPlayerId, serverEnd);
     }
 
+    /** True for the seat that carries the match for everybody (see lobby/hostHeartbeat.js). */
+    get isHost() {
+        return true;
+    }
+
     /** The game mode's presenter on this device (what the mode's menus and panels talk to). */
     get presenter() {
         return this.client.presenter;

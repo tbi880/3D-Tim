@@ -149,6 +149,28 @@ function drawPaneText(ctx, state, t, now) {
         ctx.globalAlpha = 1;
     }
 
+    // Multiplayer: side, planet and jump drive on one line under the alerts' place, and the collapse as an alert.
+    const you = state.match?.you;
+    if (you) {
+        const here = state.match.planets.find((planet) => planet.id === you.planet);
+        const jump = you.jump.to ? t('mp.hud.jumpSpooling', { planet: t(`mp.planet.${you.jump.to}`) })
+            : you.jump.trapped ? t('mp.hud.jumpTrapped')
+                : you.jump.cooldown > 0 ? t('mp.hud.jumpCharging', { seconds: you.jump.cooldown }) : t('mp.hud.jumpReady');
+        const place = here ? `${t(`mp.planet.${here.id}`)} · ${t(`mp.hud.status.${here.status}`)}${here.changesIn !== null ? ` ${here.changesIn}s` : ''}` : '';
+        ctx.textAlign = 'center';
+        ctx.font = `600 11px ${FONT}`;
+        drawShadowedText(ctx, `${t(`mp.faction.${you.faction}`)} · ${place} · ${t('mp.hud.jump')}: ${jump}`, centre, height / 2 + 56, '#cfe8ff');
+        const warnings = [];
+        if (you.alive && here && here.owner !== you.faction) {
+            if (here.status === 'collapsing') warnings.push(t('mp.alert.collapsing', { seconds: here.changesIn ?? 0 }));
+            if (here.status === 'swallowed') warnings.push(t('mp.alert.swallowed'));
+        }
+        if (you.loyalty === 'warned') warnings.push(t('mp.alert.warned'));
+        if (!you.alive) warnings.push(t('mp.hud.dead'));
+        ctx.font = `700 12px ${FONT}`;
+        warnings.slice(0, 2).forEach((text, index) => drawShadowedText(ctx, text, centre, height / 2 - 104 - index * 17, '#ffb648'));
+    }
+
     if (state.toast) {
         ctx.textAlign = 'center';
         ctx.font = `600 13px ${FONT}`;

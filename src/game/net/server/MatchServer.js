@@ -1,4 +1,5 @@
 import { Vector3 } from 'three';
+import { WORLD } from '../../config/gameConfig.js';
 import { applyPilotAction } from '../../core/systems/pilotActions.js';
 import { IDLE_CONTROLS } from '../../core/systems/playerFlight.js';
 import { ClientGuard } from '../ClientGuard.js';
@@ -93,7 +94,10 @@ export class MatchServer {
         this.mode.setup(this);
     }
 
-    update(dt) {
+    update(frameSeconds) {
+        // The same cap the worlds use: after a stall (the host's page was in the background) the
+        // match picks up where it was instead of leaping ahead of its own ships.
+        const dt = Math.min(frameSeconds, WORLD.maxStep);
         const now = this.now();
         for (const pilot of this.pilots.values()) {
             const ship = pilot.ship;

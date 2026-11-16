@@ -144,9 +144,12 @@ export class BattleRoyaleMode {
         scratchOffset.y *= 0.3;
         const position = new Vector3().fromArray(start.position).addScaledVector(scratchOffset, BATTLE_ROYALE.jump.scatter * (0.3 + this.rng() * 0.7));
         contestant.alive = true;
-        return this.server.spawnPilotShip(contestant.pilot, place.zone, {
+        const ship = this.server.spawnPilotShip(contestant.pilot, place.zone, {
             faction: contestant.faction, position, facing: start.facing, warpIn, hullFraction,
         });
+        // Engines idle: a pilot who is still reading the map does not drift into the garrison.
+        ship.throttle = 0;
+        return ship;
     }
 
     placeOf(contestant) {

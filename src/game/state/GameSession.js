@@ -115,6 +115,8 @@ export class GameSession {
         this.publishedSectorId = null;
         /** Seconds the visual effects should advance this frame (0 while paused). */
         this.effectsDelta = 0;
+        /** Counts calls of `update`, so a watchdog can tell whether frames are still being drawn. */
+        this.updates = 0;
 
         this.unsubscribe = [
             this.world.events.on(GAME_EVENTS.SHIP_SPAWNED, () => this.publishRoster()),
@@ -451,6 +453,7 @@ export class GameSession {
      * @param {object} controls held controls from the input layer
      */
     update(dt, controls) {
+        this.updates += 1;
         // A match cannot be frozen: "paused" there only means this player has the menu open.
         const frozen = this.phase === PHASE.PAUSED && !this.match;
         this.effectsDelta = frozen ? 0 : Math.min(dt, WORLD.maxStep);
