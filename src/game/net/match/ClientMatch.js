@@ -24,6 +24,8 @@ const SECONDARY_REPEATS = 3;
 const PROJECTILE_GRACE = 1.5;
 /** Snapshots kept while nothing reads them; older ones are worthless anyway. */
 const MAX_UNREAD_SNAPSHOTS = 4;
+/** Events that mean something even while this device has not been sent a zone yet. */
+const PLACELESS_EVENTS = new Set([WORLD_EVENT.MATCH, WORLD_EVENT.MODE, WORLD_EVENT.STAGE]);
 /** Calls the host may make on this device's stage. */
 const STAGE_CALLS = new Set(['showTitleCard', 'setHint', 'playMusic', 'playCue']);
 const FACTIONS = new Set(Object.values(FACTION));
@@ -224,8 +226,12 @@ export class ClientMatch {
                 this.onWelcome(message);
                 break;
             case MSG.BATCH:
-                if (!this.welcomed || !Array.isArray(message.e)) break;
-                for (const entry of message.e) this.applyEvent(entry);
+                if (!Array.isArray(message.e)) break;
+                for (const entry of message.e) {
+                    // Before the player is anywhere (a mode's introduction) there is no world to
+                    // change, but the match can already speak: its state, its cues.
+                    if (this.welcomed || (Array.isArray(entry) && PLACELESS_EVENTS.has(entry[0]))) this.applyEvent(entry);
+                }
                 break;
             case MSG.PONG:
                 if (Number.isFinite(message.n)) this.rtt = Math.max(0, Math.round((this.now() - message.n) * 1000));
@@ -404,9 +410,16 @@ export class ClientMatch {
     }
 
     setState(state) {
+        const wasOver = isMatchOver(this.state?.phase);
         this.state = state;
         this.session.ui.set({ match: { ...state, localId: this.localPlayerId, rtt: this.rtt } });
-        if (isMatchOver(state.phase)) this.session.showMatchResults();
+        if (!isMatchOver(state.phase)) return;
+        // The helm is nobody's once the match is decided.
+        this.world.controlsLocked = true;
+        const showResults = () => { if (this.session.match) this.session.showMatchResults(); };
+        // A lost link ends things at once; otherwise the mode may have an ending to play first.
+        if (state.phase === MATCH_PHASE.DISCONNECTED) showResults();
+        else if (!wasOver && !this.presenter?.onMatchOver?.(state, showResults)) showResults();
     }
 
     // ---- The parts of the world this device moves by itself ----------------------------------

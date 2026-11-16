@@ -26,6 +26,8 @@ import { BattleRoyalePresenter } from './battleRoyale/BattleRoyalePresenter.js';
  *   begin(client, session)
  *   onEvent(name, data)                 a WORLD_EVENT.MODE entry from the rules
  *   onZoneEntered?(zoneId)              the player has arrived somewhere (a whole new picture)
+ *   onMatchOver?(state, showResults)    the match is decided: return true to play an ending first
+ *                                       and call `showResults` when it is done
  *   handleAction?(action, params)       a key or button of the mode's own; return true if it was
  *   holdsAttention?()                   true while a window of the mode's has the pilot's eyes off the helm
  *   applyRefit?(added)                  the refit window was confirmed

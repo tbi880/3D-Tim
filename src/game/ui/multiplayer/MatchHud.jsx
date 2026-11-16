@@ -110,8 +110,9 @@ function VotePrompt({ session }) {
  * @param {import('../../state/GameSession.js').GameSession} props.session
  */
 export default function MatchHud({ session }) {
-    const inMatch = useGameStore((state) => Boolean(state.match));
-    if (!inMatch) return null;
+    // Nothing to fly, and so nothing to show, until the introduction is over and once the ending has begun.
+    const flying = useGameStore((state) => Boolean(state.match) && state.match.intro == null && !state.matchOutro);
+    if (!flying) return null;
     return (
         <>
             <MatchStatus session={session} />

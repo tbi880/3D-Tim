@@ -5,6 +5,7 @@ import { FACTION } from '../../src/game/config/gameConfig.js';
 import { applyDamage, areHostile, destroyShip } from '../../src/game/core/systems/damage.js';
 import { LOYALTY } from '../../src/game/modes/battleRoyale/allegiance.js';
 import { BR_REQUEST, VOTE } from '../../src/game/modes/battleRoyale/battleRoyaleProtocol.js';
+import { rosterBySide } from '../../src/game/modes/battleRoyale/battleRoyaleState.js';
 import { PLANET_STATUS } from '../../src/game/modes/battleRoyale/collapse.js';
 import { GATE_TAG } from '../../src/game/modes/battleRoyale/garrisons.js';
 import { MATCH_PHASE } from '../../src/game/net/match/matchState.js';
@@ -927,7 +928,7 @@ test('every device learns its side, the map and the result', () => {
     }
 
     mode.finish(DAWN);
-    match.run(0.5);
+    match.run(BATTLE_ROYALE.outro.seconds + 0.5);
     for (const device of match.devices) {
         assert.equal(device.ui.match.phase, MATCH_PHASE.OVER);
         assert.equal(device.ui.match.winner, DAWN);
@@ -960,4 +961,251 @@ test('a refit and a change of sides show on the other devices too', () => {
     assert.equal(annOnHost.faction, PIRATE);
     assert.equal(ann.world.player.faction, PIRATE);
     assert.equal(ann.ui.match.you.faction, PIRATE);
+});
+
+// ---- The introduction ------------------------------------------------------------------------
+
+const withIntro = { settings: { intro: 'play' } };
+
+test('during the introduction nobody is in the system, and nothing there moves', () => {
+    const { server, mode, run } = createTestServer(['a', 'b', 'c'], { start: withIntro });
+    run(BATTLE_ROYALE.intro.seconds - 1);
+
+    for (const pilot of server.pilots.values()) {
+        assert.equal(pilot.ship, null);
+        assert.equal(pilot.zone, null);
+    }
+    for (const zone of server.zones.values()) {
+        assert.equal(zone.world.ships.some((ship) => ship.isPlayer), false);
+        assert.equal(zone.world.time, 0, 'no zone is being simulated: nothing can happen to anybody');
+    }
+    const state = mode.describeState(server.pilots.get('a'));
+    assert.ok(state.intro >= 1 && state.intro <= 2, 'counting down in whole seconds');
+    assert.equal(state.phase, MATCH_PHASE.PLAYING);
+    assert.equal(state.you.planet, null);
+    assert.equal(state.you.alive, true);
+    assert.equal(state.players.length, 3, 'but everybody already knows who is on which side');
+    assert.ok(state.players.every((player) => [DAWN, UMBRA, PIRATE].includes(player.faction)));
+});
+
+test('when the introduction ends every ship drops out of warp, and only then do the clocks start', () => {
+    const { server, mode, run } = createTestServer(['a', 'b', 'c'], { start: withIntro });
+    run(BATTLE_ROYALE.intro.seconds + 0.2);
+
+    for (const contestant of mode.contestants.values()) {
+        const { pilot } = contestant;
+        assert.ok(pilot.ship?.alive, `${pilot.id} has a ship`);
+        assert.equal(pilot.zone.id, contestant.start.planet.id);
+        assert.equal(pilot.ship.faction, contestant.faction);
+        // The jump drive charges from arrival, not from the start of the story.
+        assert.ok(contestant.jumpReadyAt >= BATTLE_ROYALE.intro.seconds + BATTLE_ROYALE.jump.cooldown - 0.1);
+    }
+    assert.equal(mode.describeState(server.pilots.get('a')).intro, null);
+    assert.ok(Math.abs(mode.startedAt - BATTLE_ROYALE.intro.seconds) < 0.1);
+
+    // The first planet starts to fall in `firstAfter` seconds after the ships arrived.
+    const first = mode.clock.schedule[0].startsAt;
+    server.time = mode.startedAt + first - 1;
+    run(0.1);
+    assert.equal(mode.places.get(INNERMOST).status, PLANET_STATUS.SAFE);
+    server.time = mode.startedAt + first + 1;
+    run(0.1);
+    assert.equal(mode.places.get(INNERMOST).status, PLANET_STATUS.COLLAPSING);
+});
+
+test('ships arrive out of warp, which nothing can hit', () => {
+    const { server, run } = createTestServer(['a', 'b'], { start: withIntro });
+    run(BATTLE_ROYALE.intro.seconds + 0.1);
+
+    for (const pilot of server.pilots.values()) assert.equal(pilot.ship.arriving, true);
+});
+
+test('nothing can be asked for during the introduction', () => {
+    const { server, mode, run } = createTestServer(['a', 'b'], { start: withIntro });
+    run(1);
+    const pilot = server.pilots.get('a');
+    mode.contestants.get('a').points = 3;
+
+    mode.onRequest(pilot, BR_REQUEST.JUMP, { to: SECOND });
+    mode.onRequest(pilot, BR_REQUEST.REFIT, { added: { hull: 1 } });
+    mode.onRequest(pilot, BR_REQUEST.SUMMON, {});
+
+    assert.equal(mode.contestants.get('a').jump, null);
+    assert.equal(mode.contestants.get('a').points, 3);
+    assert.equal(pilot.ship, null);
+});
+
+test('a player who leaves during the introduction never enters the system', () => {
+    const { server, mode, run } = createTestServer(['a', 'b', 'c'], { start: withIntro });
+    run(2);
+    server.removePlayer('b');
+    run(BATTLE_ROYALE.intro.seconds);
+
+    assert.equal(server.pilots.get('b').ship, null);
+    assert.ok(server.pilots.get('a').ship?.alive);
+    assert.deepEqual(mode.describeState(server.pilots.get('a')).players.map((player) => player.id).sort(), ['a', 'c']);
+});
+
+test('the introduction is not shortened by a quick match', () => {
+    const { mode } = createTestServer(['a'], { start: { settings: { intro: 'play', pace: 'quick' } } });
+    assert.equal(mode.introLeft, BATTLE_ROYALE.intro.seconds);
+    assert.equal(BATTLE_ROYALE.intro.seconds, 10);
+});
+
+test('on each device the introduction shows the sides and their pilots before any ship exists', () => {
+    const match = createTestMatch(['host', 'ann', 'bo', 'cy'], { start: withIntro });
+    const cues = [];
+    const music = [];
+    match.clients[0].session.events.on('cue', ({ id }) => cues.push(id));
+    match.clients[0].session.events.on('music', ({ id }) => music.push(id));
+    match.run(2);
+
+    for (const device of match.devices) {
+        const state = device.ui.match;
+        assert.ok(state.intro >= 8 && state.intro <= 9, `${device.id} is counting down`);
+        assert.equal(device.world.player, null, 'not in the system');
+        assert.equal(device.world.ships.length, 0);
+        assert.equal(device.world.sectorId, BATTLE_ROYALE.intro.sectorId, 'looking at the dying sun');
+        assert.equal(device.session.phase, 'playing');
+        const roster = rosterBySide(state);
+        assert.deepEqual(roster.map((side) => side.faction), [DAWN, UMBRA, PIRATE]);
+        assert.equal(roster.reduce((sum, side) => sum + side.players.length, 0), 4, 'every pilot is listed under a side');
+        assert.ok(roster.every((side) => side.players.length >= 1));
+        const own = roster.find((side) => side.faction === state.you.faction);
+        assert.ok(own.players.some((player) => player.id === device.id), 'each under their own');
+    }
+    assert.deepEqual(cues, ['matchIntro']);
+    assert.deepEqual(music, ['calm']);
+
+    match.run(BATTLE_ROYALE.intro.seconds - 2 + 0.5);
+    for (const device of match.devices) {
+        assert.equal(device.ui.match.intro, null);
+        assert.equal(device.world.player?.pilotId, device.id, `${device.id} is in a ship now`);
+        assert.equal(device.ui.match.you.planet, match.server.pilots.get(device.id).zone.id);
+    }
+    assert.deepEqual(music, ['calm', 'battle']);
+});
+
+test('the map and the refit window do not open over the introduction', () => {
+    const match = createTestMatch(['host', 'ann'], { start: withIntro });
+    match.run(1);
+    const [ann] = match.clients;
+
+    ann.session.handleAction('match:map');
+    ann.session.handleAction('match:refit');
+    match.run(0.2);
+
+    assert.equal(ann.ui.matchPanel ?? null, null);
+    assert.equal(ann.ui.refit ?? null, null);
+    assert.equal(match.server.pilots.get('ann').guard.strikes, 0, 'and nothing was sent to the host about it');
+});
+
+// ---- The ending ------------------------------------------------------------------------------
+
+/** A three-player match that has just been won by the side of `winnerId`. */
+function decided(winnerId = 'host') {
+    const match = createTestMatch(['host', 'ann', 'bo']);
+    match.run(0.5);
+    const mode = match.server.mode;
+    const winner = mode.contestants.get(winnerId).faction;
+    mode.finish(winner);
+    return { match, mode, winner, winners: match.devices.filter((device) => mode.contestants.get(device.id).faction === winner), losers: match.devices.filter((device) => mode.contestants.get(device.id).faction !== winner) };
+}
+
+test('a decided match plays its ending before the result', () => {
+    const { match, winner } = decided();
+    match.run(1);
+
+    for (const device of match.devices) {
+        assert.equal(device.ui.match.phase, MATCH_PHASE.OVER);
+        assert.equal(device.session.phase, 'playing', 'the result screen is not up yet');
+        assert.deepEqual(device.ui.matchOutro, { winner, won: device.ui.match.you.faction === winner });
+        assert.equal(device.world.controlsLocked, true, 'nobody flies during it');
+    }
+
+    match.run(BATTLE_ROYALE.outro.seconds);
+    for (const device of match.devices) {
+        assert.equal(device.session.phase, 'matchover');
+        assert.equal(device.ui.matchOutro, null);
+    }
+});
+
+test('the winners jump through the gate; everybody else is left to the dark', () => {
+    const { match, winners, losers } = decided();
+    assert.ok(winners.length >= 1 && losers.length >= 1);
+    const heard = new Map(match.devices.map((device) => [device, { cues: [], music: [], warps: [] }]));
+    for (const [device, log] of heard) {
+        device.session.events.on('cue', ({ id }) => log.cues.push(id));
+        device.session.events.on('music', ({ id }) => log.music.push(id));
+        device.session.events.on('warp', ({ stage }) => log.warps.push(stage));
+    }
+    match.run(BATTLE_ROYALE.outro.seconds / 2);
+
+    for (const device of winners) {
+        assert.ok(device.world.warpFactor > 0.1, 'the jump is building');
+        assert.equal(device.world.screenFade, 0);
+        assert.deepEqual(heard.get(device).cues, ['victory']);
+        assert.deepEqual(heard.get(device).music, ['finale']);
+    }
+    for (const device of losers) {
+        assert.ok(device.world.screenFade > 0.2, 'the dark is closing in');
+        assert.equal(device.world.warpFactor, 0);
+        assert.deepEqual(heard.get(device).cues, ['defeat']);
+    }
+
+    match.run(BATTLE_ROYALE.outro.seconds / 2 + 0.3);
+    for (const device of winners) assert.deepEqual(heard.get(device).warps, ['arrive'], 'and they are through');
+    for (const device of losers) assert.deepEqual(heard.get(device).warps, []);
+});
+
+test('a match nobody won ends in the dark for everyone', () => {
+    const match = createTestMatch(['host', 'ann']);
+    match.run(0.5);
+    match.server.mode.finish(null);
+    match.run(1);
+
+    for (const device of match.devices) {
+        assert.deepEqual(device.ui.matchOutro, { winner: null, won: false });
+        assert.ok(device.world.screenFade > 0);
+    }
+});
+
+test('the ending closes whatever window was open', () => {
+    const match = createTestMatch(['host', 'ann']);
+    match.run(0.5);
+    const [ann] = match.clients;
+    ann.session.handleAction('match:map');
+    assert.equal(ann.ui.matchPanel, 'map');
+
+    match.server.mode.finish(DAWN);
+    match.run(0.5);
+    ann.session.handleAction('match:map');
+
+    assert.equal(ann.ui.matchPanel, null);
+});
+
+test('losing the link skips the ending: there is nothing to celebrate or mourn', () => {
+    const match = createTestMatch(['host', 'ann']);
+    match.run(0.5);
+    const [ann] = match.clients;
+
+    ann.link.close();
+    match.run(0.2);
+
+    assert.equal(ann.ui.match.phase, MATCH_PHASE.DISCONNECTED);
+    assert.equal(ann.session.phase, 'matchover');
+    assert.equal(ann.ui.matchOutro ?? null, null);
+});
+
+test('leaving during the ending leaves nothing of it behind', () => {
+    const { match, losers } = decided();
+    match.run(2);
+    const device = losers[0];
+
+    device.session.enterTitle();
+
+    assert.equal(device.world.screenFade, 0);
+    assert.equal(device.world.warpFactor, 0);
+    assert.equal(device.ui.matchOutro, null);
+    assert.equal(device.session.phase, 'title');
 });

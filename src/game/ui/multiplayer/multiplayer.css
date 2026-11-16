@@ -112,3 +112,44 @@
     .eod-lan-player { grid-template-columns: 1.3fr 1.3fr 0.8fr 0.8fr; padding: 6px 8px; }
     .eod-lan-code-banner strong { font-size: 22px; }
 }
+
+/* ---- The introduction and the ending ----------------------------------------------------- */
+.eod-cinematic { position: absolute; inset: 0; z-index: 22; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; pointer-events: auto; }
+.eod-cinematic-title { margin: 0; font-size: clamp(24px, 4.4vw, 54px); font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; text-shadow: 0 0 24px rgba(0, 0, 0, 0.9); animation: eod-cine-in 0.9s ease-out both; }
+.eod-cinematic-footnote { margin: 6px 0 0; font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase; color: rgba(225, 240, 255, 0.65); }
+@keyframes eod-cine-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+.eod-intro { background: radial-gradient(ellipse at center, rgba(3, 8, 16, 0.35) 0%, rgba(3, 8, 16, 0.86) 100%); }
+.eod-intro-line { margin: 0; max-width: 720px; font-size: clamp(13px, 1.7vw, 17px); line-height: 1.55; color: rgba(232, 244, 255, 0.92); text-shadow: 0 0 10px #000; animation: eod-cine-in 0.8s ease-out both; }
+.eod-intro-line--1 { animation-delay: 0.6s; }
+.eod-intro-line--2 { animation-delay: 2s; }
+.eod-intro-line--3 { animation-delay: 3.4s; color: var(--eod-amber); font-weight: 700; }
+.eod-intro-sides { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: min(900px, 96vw); margin: 10px 0 0; padding: 0; list-style: none; }
+.eod-intro-side { position: relative; display: flex; flex: 1 1 200px; flex-direction: column; align-items: center; gap: 4px; max-width: 290px; padding: 14px 12px 10px; background: var(--eod-panel); border: 1px solid var(--eod-border); animation: eod-cine-in 0.7s ease-out both; }
+.eod-intro-side--dawn { animation-delay: 4.3s; }
+.eod-intro-side--umbra { animation-delay: 4.8s; }
+.eod-intro-side--pirate { animation-delay: 5.3s; }
+.eod-intro-side--yours { border-color: var(--eod-amber); box-shadow: 0 0 18px rgba(255, 182, 72, 0.3) inset; }
+.eod-intro-side strong { font-size: 17px; letter-spacing: 0.14em; text-transform: uppercase; }
+.eod-intro-side small { font-size: 10px; color: rgba(225, 240, 255, 0.6); }
+.eod-intro-yours { position: absolute; top: -9px; padding: 1px 10px; font-size: 9px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #05101c; background: var(--eod-amber); }
+.eod-intro-count { margin-top: 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(225, 240, 255, 0.75); }
+.eod-intro-side ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 12px; margin: 2px 0 0; padding: 0; list-style: none; font-size: 13px; }
+.eod-intro-me { color: var(--eod-amber); font-weight: 700; }
+
+.eod-outro-text { margin: 0; max-width: 640px; font-size: clamp(14px, 1.9vw, 19px); line-height: 1.6; text-shadow: 0 0 12px #000; animation: eod-cine-in 0.9s ease-out 0.7s both; }
+.eod-outro--won .eod-cinematic-title { color: #ffe9a8; text-shadow: 0 0 18px #ffb648, 0 0 60px #ff8a1f; animation: eod-outro-rise 5s ease-out both; }
+.eod-outro--lost, .eod-outro--none { background: radial-gradient(ellipse at center, rgba(20, 0, 6, 0.2) 0%, rgba(10, 0, 4, 0.75) 100%); }
+.eod-outro--lost .eod-cinematic-title, .eod-outro--none .eod-cinematic-title { color: var(--eod-red); }
+.eod-outro--lost .eod-outro-text, .eod-outro--none .eod-outro-text { color: rgba(255, 215, 220, 0.9); }
+/* Rays turning behind the winners' title, and a wash of gold that swells until the jump. */
+.eod-outro-burst { position: absolute; inset: -40%; z-index: -1; background: repeating-conic-gradient(from 0deg, rgba(255, 200, 110, 0.2) 0deg 6deg, transparent 6deg 18deg); mask-image: radial-gradient(circle, #000 0%, transparent 62%); -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 62%); animation: eod-outro-rays 5s linear both; }
+@keyframes eod-outro-rays { from { opacity: 0; transform: rotate(0deg) scale(0.6); } 20% { opacity: 1; } to { opacity: 1; transform: rotate(70deg) scale(1.5); } }
+@keyframes eod-outro-rise { from { opacity: 0; transform: scale(0.8); letter-spacing: 0.05em; } 18% { opacity: 1; transform: scale(1); } to { opacity: 1; transform: scale(1.08); letter-spacing: 0.26em; } }
+
+@media (pointer: coarse) {
+    .eod-cinematic { gap: 6px; padding: 10px; }
+    .eod-intro-line { font-size: 12px; line-height: 1.35; }
+    .eod-intro-side { padding: 10px 8px 6px; }
+    .eod-intro-side strong { font-size: 13px; }
+}

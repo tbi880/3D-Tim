@@ -30,6 +30,8 @@ export const useGameStore = create(() => ({
     match: null,
     /** The match's own window that is open over the flight view ('map'), or null. */
     matchPanel: null,
+    /** The ending a match is playing before its result screen ({ winner, won }), or null. */
+    matchOutro: null,
 
     // Menus
     gameOverReason: null,

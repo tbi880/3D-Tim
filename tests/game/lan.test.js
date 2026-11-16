@@ -178,7 +178,7 @@ async function gathered(names) {
     const party = lanParty(names);
     const [host, ...guests] = party.devices;
     for (const each of party.devices) await each.lan.open();
-    await host.lan.createRoom({ mode: 'battleRoyale', settings: { pace: 'quick' } });
+    await host.lan.createRoom({ mode: 'battleRoyale', settings: { pace: 'quick', intro: 'skip' } });
     for (const guest of guests) await guest.lan.joinRoom(host.state.room.code);
     await party.settle();
     return { ...party, host, guests };

@@ -265,7 +265,7 @@ export class GameSession {
         match.dispose();
         this.world.setDifficulty(this.settings.difficulty);
         this.world.autoFire = Boolean(this.settings.autoFire);
-        this.ui.set({ match: null, matchPanel: null, refit: null });
+        this.ui.set({ match: null, matchPanel: null, matchOutro: null, refit: null });
     }
 
     resetPresentation() {

@@ -17,6 +17,7 @@ import { bucketURL } from '../../Settings';
 import { MATCH_PANEL } from '../modes/battleRoyale/BattleRoyalePresenter.js';
 import { useLanStore } from '../net/lobby/lanStore.js';
 import LanLobby from './multiplayer/LanLobby.jsx';
+import MatchCinematic from './multiplayer/MatchCinematic.jsx';
 import MatchResults from './multiplayer/MatchResults.jsx';
 import StarMapPanel from './multiplayer/StarMapPanel.jsx';
 import RefitPanel from './RefitPanel.jsx';
@@ -420,11 +421,12 @@ function MatchMenu({ session, lan, onStart }) {
     );
 }
 
-/** The windows a match opens over the flight view: the refit window and the star map. */
+/** What a match puts over the flight view: its introduction and ending, the refit window and the star map. */
 function MatchPanels({ session }) {
     const panel = useGameStore((state) => state.matchPanel);
     return (
         <>
+            <MatchCinematic />
             <RefitPanel session={session} />
             {panel === MATCH_PANEL.MAP && <StarMapPanel session={session} />}
         </>

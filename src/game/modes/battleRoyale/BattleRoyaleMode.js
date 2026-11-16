@@ -35,6 +35,8 @@ class Contestant {
         this.jumpReadyAt = 0;
         /** The jump being spooled up: { to, left }, or null. */
         this.jump = null;
+        /** The planet they enter the system at, once the introduction is over. */
+        this.start = null;
         this.loyalty = new LoyaltyRecord(BATTLE_ROYALE.betrayal);
     }
 }
@@ -67,10 +69,17 @@ class Place {
  * (what falls in when), allegiance (sides and treason), garrisons (the computer-flown ships).
  */
 export class BattleRoyaleMode {
-    /** @param {object} info the match as normalizeMatchInfo returns it; `settings.pace` picks its length */
+    /**
+     * @param {object} info the match as normalizeMatchInfo returns it. `settings.pace` picks its
+     *        length; `settings.intro = 'skip'` starts without the introduction (tests, mostly).
+     */
     constructor(info) {
         this.info = info;
         this.pace = BATTLE_ROYALE.paces[info.settings.pace] ?? BATTLE_ROYALE.paces[BATTLE_ROYALE.defaultPace];
+        /** Seconds of introduction left; nobody is in the system until it reaches zero. */
+        this.introLeft = info.settings.intro === 'skip' ? 0 : BATTLE_ROYALE.intro.seconds;
+        /** Server time at which the ships entered the system: the collapse counts from there. */
+        this.startedAt = 0;
         this.rng = createRng(info.seed);
         this.map = new StarMap(STAR_SYSTEM);
         /** @type {Map<string, Contestant>} by player id */
@@ -114,14 +123,26 @@ export class BattleRoyaleMode {
         for (const pilot of server.pilots.values()) {
             const faction = sides.get(pilot.id);
             const contestant = new Contestant(pilot, faction);
-            contestant.jumpReadyAt = this.jumpCooldown;
             this.contestants.set(pilot.id, contestant);
             this.sidesAtStart.add(faction);
             // A side starts together - except the pirates, who are no side at all.
             const together = isPirate(faction) ? pilot.id : faction;
             if (!startOf.has(together)) startOf.set(together, this.pickStart(faction, garrisons, new Set(startOf.values())));
-            this.launch(contestant, startOf.get(together), { warpIn: false });
+            contestant.start = startOf.get(together);
         }
+        if (this.introLeft <= 0) this.enterSystem({ warpIn: false });
+    }
+
+    /** The introduction is over: every pilot's ship arrives at its side's planet, and the clocks start. */
+    enterSystem({ warpIn = true } = {}) {
+        this.introLeft = 0;
+        this.startedAt = this.server.time;
+        for (const contestant of this.contestants.values()) {
+            if (contestant.pilot.gone) continue;
+            contestant.jumpReadyAt = this.server.time + this.jumpCooldown;
+            this.launch(contestant, contestant.start, { warpIn });
+        }
+        this.server.publishState();
     }
 
     /**
@@ -164,8 +185,13 @@ export class BattleRoyaleMode {
 
     update(dt) {
         if (this.result) return;
+        if (this.introLeft > 0) {
+            this.introLeft -= dt;
+            if (this.introLeft <= 0) this.enterSystem();
+            return;
+        }
         const { time } = this.server;
-        this.clock.advanceTo(time);
+        this.clock.advanceTo(time - this.startedAt);
 
         for (const place of this.places.values()) this.updateCollapse(place, dt);
         for (const contestant of this.contestants.values()) {
@@ -369,7 +395,7 @@ export class BattleRoyaleMode {
     /** `data` comes straight from a player's device: every field is checked before it is used. */
     onRequest(pilot, name, data) {
         const contestant = this.contestants.get(pilot.id);
-        if (!contestant || this.result) return;
+        if (!contestant || this.result || this.introLeft > 0) return;
         switch (name) {
             case BR_REQUEST.JUMP: this.requestJump(contestant, data.to); break;
             case BR_REQUEST.REFIT: this.spendPoints(contestant, data.added); break;
@@ -519,6 +545,7 @@ export class BattleRoyaleMode {
             phase: this.result ? MATCH_PHASE.OVER : MATCH_PHASE.PLAYING,
             winner: this.result?.winner ?? null,
             time: Math.round(time),
+            intro: this.introLeft > 0 ? Math.ceil(this.introLeft) : null,
             finalStand: this.clock.finalStandLeft === null ? null : Math.ceil(this.clock.finalStandLeft),
             you: you && {
                 faction: you.faction,

@@ -251,6 +251,27 @@ export class SoundEngine {
             case 'power':
                 this.tone({ from: 500, to: 900, duration: 0.12, gain: 0.1, type: 'triangle' });
                 break;
+            // Multiplayer: the story before a match, and its two endings.
+            case 'matchIntro':
+                // A low swell under the opening lines.
+                this.tone({ from: 55, to: 82, duration: 6, gain: 0.22, type: 'sawtooth' });
+                this.noise({ duration: 5, frequency: 300, gain: 0.18 });
+                break;
+            case 'victory': {
+                // A rising fanfare, then the drive winding up for the jump through the gate.
+                const fanfare = [392, 523, 659, 784, 1047];
+                fanfare.forEach((pitch, index) => {
+                    this.tone({ from: pitch, to: pitch, duration: index === fanfare.length - 1 ? 1.4 : 0.32, gain: 0.2, type: 'triangle', delay: index * 0.24 });
+                    this.tone({ from: pitch / 2, to: pitch / 2, duration: 0.4, gain: 0.12, type: 'sine', delay: index * 0.24 });
+                });
+                this.tone({ from: 70, to: 1600, duration: 3.2, gain: 0.2, type: 'sawtooth', delay: 1.6 });
+                break;
+            }
+            case 'defeat':
+                // The star going out: a long fall and a rumble.
+                this.tone({ from: 220, to: 36, duration: 4.5, gain: 0.3, type: 'sawtooth' });
+                this.noise({ duration: 4.8, frequency: 180, gain: 0.45, delay: 0.3 });
+                break;
             case 'dawnCannon':
                 this.tone({ from: 90, to: 1800, duration: 0.9, gain: 0.3, type: 'sawtooth' });
                 this.noise({ duration: 3.4, frequency: 2600, gain: 0.7, delay: 0.3 });

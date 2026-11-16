@@ -1,4 +1,6 @@
+import { BATTLE_ROYALE } from '../../config/battleRoyale.js';
 import { t } from '../../i18n/index.js';
+import { MATCH_PHASE } from '../../net/match/matchState.js';
 import { sanitizeBattleRoyaleState } from './battleRoyaleState.js';
 import { BR_EVENT, BR_REQUEST } from './battleRoyaleProtocol.js';
 import { PLANET_STATUS } from './collapse.js';
@@ -6,6 +8,9 @@ import { PLANET_STATUS } from './collapse.js';
 /** The mode's own keys and buttons (bound in input/InputController.js, shown by ui/multiplayer). */
 export const MATCH_ACTION = Object.freeze({ MAP: 'match:map', REFIT: 'match:refit', SUMMON: 'match:summon' });
 export const MATCH_PANEL = Object.freeze({ MAP: 'map' });
+
+/** Sounds of the match's ceremonies (audio/SoundEngine.js playCue). */
+export const CUE = Object.freeze({ INTRO: 'matchIntro', VICTORY: 'victory', DEFEAT: 'defeat' });
 
 /** Names as the player reads them (the ids come from the host: an unknown one is shown as it came). */
 export const planetName = (planetId) => t(`mp.planet.${String(planetId)}`);
@@ -29,15 +34,66 @@ export class BattleRoyalePresenter {
         /** The mode's window that is open (MATCH_PANEL), or null; and whether the refit window is. */
         this.openPanel = null;
         this.refitOpen = false;
+        /** Whether the introduction is on screen (null before the first state has said). */
+        this.introShowing = null;
+        /** The ending being played: { elapsed, seconds, won, showResults }, or null. */
+        this.outro = null;
     }
 
     sanitizeState(raw) {
-        return sanitizeBattleRoyaleState(raw);
+        const state = sanitizeBattleRoyaleState(raw);
+        if (state) this.followIntro(state);
+        return state;
     }
 
     begin(client, session) {
         this.client = client;
         this.session = session;
+        // Until the introduction is over the player is nowhere: the view is the dying sun, from outside.
+        session.world.setSector(BATTLE_ROYALE.intro.sectorId);
+    }
+
+    // ---- The introduction and the ending -------------------------------------------------------
+
+    /** Music and a cue as the introduction starts, and again as the ships enter the system. */
+    followIntro(state) {
+        const showing = state.intro !== null && state.phase === MATCH_PHASE.PLAYING;
+        if (showing === this.introShowing) return;
+        this.introShowing = showing;
+        this.session.playMusic(showing ? 'calm' : 'battle');
+        if (showing) this.session.playCue(CUE.INTRO);
+    }
+
+    /**
+     * The match is decided. Plays the ending - the winners go through the stargate, everybody
+     * else is left to the black hole - and only then lets the result screen up.
+     */
+    onMatchOver(state, showResults) {
+        if (this.outro) return true;
+        const { session } = this;
+        const won = Boolean(state.winner) && state.you?.faction === state.winner;
+        this.setPanel(null);
+        this.refitOpen = false;
+        session.ui.set({ refit: null, matchOutro: { winner: state.winner, won } });
+        this.outro = { elapsed: 0, seconds: BATTLE_ROYALE.outro.seconds, won, showResults };
+        this.warp = null;
+        session.playCue(won ? CUE.VICTORY : CUE.DEFEAT);
+        if (won) session.playMusic('finale');
+        return true;
+    }
+
+    updateOutro(dt) {
+        const { outro, session } = this;
+        outro.elapsed += dt;
+        const progress = Math.min(1, outro.elapsed / outro.seconds);
+        // Winners: the jump through the gate builds for the whole ending. Losers: the dark closes in.
+        if (outro.won) session.world.warpFactor = progress * progress;
+        else session.world.screenFade = 0.85 * progress;
+        if (progress < 1) return;
+        this.outro = null;
+        if (outro.won) session.onWarp('arrive');
+        session.ui.set({ matchOutro: null });
+        outro.showResults();
     }
 
     onEvent(name, data) {
@@ -84,6 +140,8 @@ export class BattleRoyalePresenter {
     /** Keys and buttons that belong to this mode (input/InputController.js MATCH_KEYS). */
     handleAction(action) {
         const state = this.client.state;
+        // Nothing to open while the story is being told.
+        if (this.outro || state?.intro != null) return Object.values(MATCH_ACTION).includes(action);
         switch (action) {
             case MATCH_ACTION.MAP:
                 this.setPanel(this.panel === MATCH_PANEL.MAP ? null : MATCH_PANEL.MAP);
@@ -125,7 +183,7 @@ export class BattleRoyalePresenter {
 
     /** With the map or the refit window open the pilot is not flying: the ship holds its course. */
     holdsAttention() {
-        return this.openPanel !== null || this.refitOpen;
+        return this.openPanel !== null || this.refitOpen || this.outro !== null;
     }
 
     jumpTo(planetId) {
@@ -145,6 +203,10 @@ export class BattleRoyalePresenter {
     }
 
     update(dt) {
+        if (this.outro) {
+            this.updateOutro(dt);
+            return;
+        }
         const { warp } = this;
         const world = this.session?.world;
         if (!warp || !world) return;
@@ -171,8 +233,12 @@ export class BattleRoyalePresenter {
     }
 
     dispose() {
-        if (this.session) this.session.world.warpFactor = 0;
+        if (this.session) {
+            this.session.world.warpFactor = 0;
+            this.session.world.screenFade = 0;
+        }
         this.warp = null;
+        this.outro = null;
         this.openPanel = null;
         this.refitOpen = false;
     }

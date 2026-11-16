@@ -28,9 +28,10 @@ export function matchStart(names, overrides = {}) {
         seed: 7,
         hostPlayerId: names[0],
         mode: 'battleRoyale',
-        settings: {},
         players: names.map((name) => ({ playerId: name, displayName: name, shipClassId: 'kestrel', loadout: { upgrades: {}, equipment: [] } })),
         ...overrides,
+        // Straight into the system: the introduction has tests of its own (settings.intro = 'play').
+        settings: { intro: 'skip', ...overrides.settings },
     };
 }
 

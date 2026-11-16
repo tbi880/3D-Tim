@@ -34,6 +34,15 @@ export const BATTLE_ROYALE = Object.freeze({
     /** Players can hurt their own side's computer-flown ships (and be branded pirates for it). */
     friendlyFire: true,
 
+    /**
+     * Before anybody flies: the story so far and who is on which side. For these seconds the
+     * players are not in the system at all - nothing can touch them - and watch the dying
+     * sun (`sectorId`'s sky) from outside. When it ends every ship drops out of warp at once.
+     */
+    intro: Object.freeze({ seconds: 10, sectorId: 'collapse' }),
+    /** After the match is decided: seconds of ending shown before the result screen. */
+    outro: Object.freeze({ seconds: 5 }),
+
     jump: Object.freeze({
         /** Seconds the drive needs after arriving anywhere before it can jump again. */
         cooldown: 60,

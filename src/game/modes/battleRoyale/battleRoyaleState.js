@@ -14,6 +14,7 @@ import { PLANET_STATUS } from './collapse.js';
  *   phase,                MATCH_PHASE
  *   winner,               the winning side once the match is over, or null (nobody won)
  *   time,                 seconds played
+ *   intro,                seconds of introduction left (nobody is in the system yet), or null once it is over
  *   finalStand,           seconds left of the last planet's stand, or null before it
  *   you: {
  *     faction,            the side this player is on now (it changes if they turn pirate)
@@ -76,6 +77,7 @@ export function sanitizeBattleRoyaleState(raw) {
         phase: raw.phase,
         winner: sideOrNull(raw.winner),
         time: count(raw.time),
+        intro: seconds(raw.intro),
         finalStand: seconds(raw.finalStand),
         you: cleanYou(raw.you),
         planets: raw.planets.slice(0, 16).filter((planet) => PLANET_IDS.has(planet?.id)).map((planet) => ({
@@ -97,6 +99,11 @@ export function sanitizeBattleRoyaleState(raw) {
             deaths: count(player?.deaths),
         })),
     };
+}
+
+/** The sides with their players, in the order sides are always shown: `[{ faction, players }]`. */
+export function rosterBySide(state) {
+    return PLAYER_FACTIONS.map((faction) => ({ faction, players: state.players.filter((player) => player.faction === faction) }));
 }
 
 /** The winning side's players, best score first: the order of the result screen. */
