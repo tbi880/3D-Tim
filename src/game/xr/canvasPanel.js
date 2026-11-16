@@ -6,13 +6,16 @@ import * as THREE from 'three';
  *
  * The panel is drawn over everything (no depth test) and is never tone mapped, so its colours
  * match the flat HUD. No mipmaps: every panel is seen at roughly its own resolution, and
- * skipping them keeps each texture upload cheap.
+ * skipping them keeps each texture upload cheap. `uploadOnlyChanges` is for a panel that is
+ * redrawn more often than its picture changes (see `commit`).
  */
-export function createCanvasPanel({ width, height, meters, renderOrder = 1000 }) {
+export function createCanvasPanel({ width, height, meters, renderOrder = 1000, uploadOnlyChanges = false }) {
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
-    const ctx = canvas.getContext('2d');
+    const pen = uploadOnlyChanges ? fingerprinted(canvas.getContext('2d')) : null;
+    const ctx = pen ? pen.ctx : canvas.getContext('2d');
+    let uploaded = null;
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.generateMipmaps = false;
@@ -34,14 +37,72 @@ export function createCanvasPanel({ width, height, meters, renderOrder = 1000 })
         ctx,
         texture,
         mesh,
-        /** Marks the canvas as changed; the texture is uploaded on the next render. */
+        /**
+         * Marks the canvas as changed; the texture is uploaded on the next render. With
+         * `uploadOnlyChanges`, only if what was drawn since the last commit differs from what
+         * was last uploaded: sending a large canvas to the GPU costs far more than drawing it,
+         * and a panel of text is the same picture for seconds on end.
+         */
         commit() {
+            if (pen) {
+                const drawn = pen.take();
+                if (drawn === uploaded) return;
+                uploaded = drawn;
+            }
             texture.needsUpdate = true;
         },
         dispose() {
             texture.dispose();
             material.dispose();
             geometry.dispose();
+        },
+    };
+}
+
+/**
+ * Wraps a 2D context so that everything drawn through it leaves a fingerprint: a hash of
+ * every call's name and arguments and every property set. Two frames with the same
+ * fingerprint drew the same picture. `take()` returns the fingerprint and starts a new one.
+ *
+ * Something other than a number or a string as an argument (another canvas given to
+ * drawImage) cannot be read this way, so it counts as a change every time.
+ */
+function fingerprinted(target) {
+    let hash = 0;
+    let unknowns = 0;
+    const mixInt = (value) => { hash = Math.imul(hash ^ value, 16777619); };
+    const mix = (value) => {
+        if (typeof value === 'number') mixInt(Math.round(value * 1000));
+        else if (typeof value === 'string') for (let index = 0; index < value.length; index++) mixInt(value.charCodeAt(index));
+        else if (value != null) mixInt(++unknowns);
+    };
+    const methods = new Map();
+    const ctx = new Proxy(target, {
+        get(_, name) {
+            const value = target[name];
+            if (typeof value !== 'function') return value;
+            if (!methods.has(name)) {
+                methods.set(name, (...args) => {
+                    mix(name);
+                    args.forEach(mix);
+                    return value.apply(target, args);
+                });
+            }
+            return methods.get(name);
+        },
+        set(_, name, value) {
+            mix(name);
+            mix(value);
+            target[name] = value;
+            return true;
+        },
+    });
+    return {
+        ctx,
+        take() {
+            const taken = hash;
+            hash = 0;
+            return taken;
         },
     };
 }

@@ -24,7 +24,8 @@ import layout from './cockpitLayout.json';
  *        slower and the brackets trail behind their ships in a turn.
  *      - text: objective, alerts, title cards and the comms line. Text is what shows a soft
  *        texture first, so this pane has the headset's own angular resolution; it only changes
- *        slowly, so it is redrawn (and uploaded to the GPU) TEXT_RATE times a second.
+ *        slowly, so it is redrawn TEXT_RATE times a second, and uploaded to the GPU (1.8
+ *        million pixels) only when the redrawn picture differs from the last one.
  *  - Instrument panel below the line of sight: shields, hull, beam energy, afterburner,
  *    radar, speed, torpedoes, power mode and the current target. Redrawn ten times a second.
  *    A hit on the bare hull (shield down) scrambles its picture for a moment: it tears,
@@ -363,7 +364,7 @@ const VEIL_FLASH_SECONDS = 1.4;
 export default function VRHud({ game, seatRef }) {
     const { session, input } = game;
     const markerPane = useMemo(() => createCanvasPanel({ width: MARKER_TEXTURE[0], height: MARKER_TEXTURE[1], meters: paneSize(), renderOrder: 1001 }), []);
-    const textPane = useMemo(() => createCanvasPanel({ width: TEXT_TEXTURE[0], height: TEXT_TEXTURE[1], meters: paneSize(), renderOrder: 1001.5 }), []);
+    const textPane = useMemo(() => createCanvasPanel({ width: TEXT_TEXTURE[0], height: TEXT_TEXTURE[1], meters: paneSize(), renderOrder: 1001.5, uploadOnlyChanges: true }), []);
     const panel = useMemo(() => createCanvasPanel({ width: PANEL_TEXTURE[0], height: PANEL_TEXTURE[1], meters: PANEL_METERS, renderOrder: 1002 }), []);
     const virtualCamera = useMemo(() => {
         const camera = new THREE.PerspectiveCamera(VIEW_FOV_Y, VIEW_ASPECT, 0.1, 3_000_000);
