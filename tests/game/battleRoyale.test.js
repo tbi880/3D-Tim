@@ -130,7 +130,8 @@ test('a charged drive jumps to the next orbit after spooling up', () => {
     assert.equal(first.alive, false, 'the ship left the old zone');
     assert.equal(game.world(THIRD).ships.includes(first), false);
     assert.ok(Math.abs(arrived.hullFraction - 0.5) < 0.01, 'damage travels with the ship');
-    assert.ok(Math.abs(arrived.shieldFraction - 0.25) < 0.01, 'and so does the state of the shield');
+    // (It has been recharging for the half second since the ship arrived.)
+    assert.ok(arrived.shieldFraction >= 0.25 && arrived.shieldFraction < 0.4, 'and so does the state of the shield');
     assert.equal(arrived.powerMode, 'defense');
     assert.equal(arrived.faction, DAWN);
     assert.equal(game.state('ann').you.planet, SECOND);
