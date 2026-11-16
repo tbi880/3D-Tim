@@ -785,7 +785,8 @@ export class BattleRoyaleMode {
     /**
      * A planet as the map shows it. How the collapse stands is known to all. What is there - ships,
      * the station's holder, a docking in progress - is known only to a side that has eyes on
-     * it: a pilot there, the station itself, or a beacon.
+     * it: a pilot there, or a beacon. Holding its station is not eyes: all a side knows of a
+     * planet it has left is that the station is still its own (it would have heard it fall).
      */
     describePlace(place, you) {
         const wait = this.clock.secondsToChange(place.orbit);
@@ -793,14 +794,14 @@ export class BattleRoyaleMode {
             ? this.membersAt(place, you.faction).filter((member) => member !== you).map((member) => member.pilot.name)
             : [];
         const beacon = Boolean(you) && place.scouts.has(you.intelKey);
-        const known = Boolean(you) && (this.placeOf(you) === place || comrades.length > 0 || place.owner === you.faction || beacon);
+        const known = Boolean(you) && (this.placeOf(you) === place || comrades.length > 0 || beacon);
         const description = {
             id: place.planet.id,
             status: place.status,
             changesIn: wait === null ? null : Math.ceil(wait),
             known,
             beacon,
-            owner: null,
+            owner: you && place.owner === you.faction ? place.owner : null,
             forces: null,
             docking: null,
             comrades,

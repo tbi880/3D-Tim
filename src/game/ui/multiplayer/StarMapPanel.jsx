@@ -7,8 +7,8 @@ import { EQUIPMENT_ICONS } from './EquipmentPanel.jsx';
 
 /**
  * The star map (battle royale): every planet from the collapsing sun outwards, how the
- * collapse stands at each, and - where the player's side has eyes - what is there and who
- * holds its station. The planets within the drive's reach have a button to jump there; the
+ * collapse stands at each, and - where the player's side has eyes (a pilot of theirs, or a
+ * beacon) - what is there and who holds its station. The planets within the drive's reach have a button to jump there; the
  * ones next door, while the player carries a beacon, one to launch it.
  * Opened with G or the HUD's map button; the ship holds its course while it is open.
  */
@@ -61,6 +61,8 @@ function PlanetCard({ planet, you, presenter }) {
             <span className="eod-map-status">{gate && planet.status === PLANET_STATUS.SAFE ? t('mp.map.gate') : t(`mp.hud.status.${planet.status}`)}</span>
             {timer && <span className="eod-map-timer">{timer}</span>}
             {planet.known ? <Intel planet={planet} /> : <span className="eod-map-unknown">{t('mp.map.unknown')}</span>}
+            {/* A station the side holds but has no eyes on: that much it knows. */}
+            {!planet.known && planet.owner && <span className={`eod-map-owner eod-side--${planet.owner}`}>{t('mp.map.station', { faction: t(`mp.faction.${planet.owner}`) })}</span>}
             {planet.beacon && <span className="eod-map-watched">{EQUIPMENT_ICONS[EQUIPMENT.BEACON]} {t('mp.map.watched')}</span>}
             {planet.comrades.length > 0 && <span className="eod-map-comrades">{t('mp.map.comrades', { names: planet.comrades.join(', ') })}</span>}
             {here && <span className="eod-map-here">{t('mp.map.here')}</span>}

@@ -562,7 +562,7 @@ export default {
     'mp.alert.swallowed': '已被吞没 —— 无法离开',
     'mp.alert.warned': '停止攻击友军',
     'mp.map.title': '星图',
-    'mp.map.hint': '每次只能跃迁到相邻轨道的行星。只有己方有眼线的行星才显示情报：有己方飞行员、己方占领的空间站，或通讯信标。',
+    'mp.map.hint': '每次只能跃迁到相邻轨道的行星。其他行星的情况默认未知：除非有同阵营飞行员在那里，或已向那里发射通讯信标。',
     'mp.map.here': '当前位置',
     'mp.map.jump': '跃迁',
     'mp.map.gate': '星门',

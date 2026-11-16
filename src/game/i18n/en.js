@@ -562,7 +562,7 @@ export default {
     'mp.alert.swallowed': 'SWALLOWED — NO WAY OUT',
     'mp.alert.warned': 'CEASE FIRE ON YOUR OWN SIDE',
     'mp.map.title': 'Star map',
-    'mp.map.hint': 'A jump reaches the next orbit in or out. What is at a planet shows only where your side has eyes: a pilot, a station it holds, or a beacon.',
+    'mp.map.hint': 'A jump reaches the next orbit in or out. What is at another planet is unknown unless a pilot of your side is there, or a beacon is watching it.',
     'mp.map.here': 'You are here',
     'mp.map.jump': 'Jump',
     'mp.map.gate': 'Stargate',

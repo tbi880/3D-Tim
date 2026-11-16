@@ -192,8 +192,9 @@ const MAP_HEIGHT = 196;
 /**
  * Draws the star map the flat page shows as cards (ui/multiplayer/StarMapPanel.jsx): the
  * collapsing sun, then every planet in orbit order with its state and countdown, and where
- * the player is. Where their side has eyes: who holds the station (a ring in that side's
- * colour), the ships there by side, a docking in progress, comrades. Elsewhere: a question mark.
+ * the player is. Where their side has eyes (a pilot, or a beacon): who holds the station (a
+ * ring in that side's colour), the ships there by side, a docking in progress, comrades.
+ * Elsewhere: a question mark, and the ring only if the station is their own side's.
  * @returns {number} the height it took
  */
 function drawStarMap(ctx, x, y, width, match, t) {
@@ -300,8 +301,8 @@ function drawStarMap(ctx, x, y, width, match, t) {
 function planetLine(planet, t) {
     const timer = planet.changesIn === null ? ''
         : ` · ${t(planet.status === PLANET_STATUS.SAFE ? 'mp.hud.fallsIn' : 'mp.hud.goneIn', { seconds: planet.changesIn })}`;
-    const intel = !planet.known ? t('mp.map.unknown')
-        : `${t('mp.map.forces', planet.forces)} · ${planet.owner ? t('mp.map.station', { faction: t(`mp.faction.${planet.owner}`) }) : t('mp.map.stationFree')}`;
+    const station = planet.owner ? t('mp.map.station', { faction: t(`mp.faction.${planet.owner}`) }) : t('mp.map.stationFree');
+    const intel = planet.known ? `${t('mp.map.forces', planet.forces)} · ${station}` : planet.owner ? `${t('mp.map.unknown')} · ${station}` : t('mp.map.unknown');
     return `${t(`mp.hud.status.${planet.status}`)}${timer} · ${intel}`;
 }
 

@@ -277,6 +277,7 @@ test('odd values are replaced by safe ones, never passed on', () => {
     raw.planets[0].docking = 'everyone';
     raw.planets[0].forces = { dawn: -4, umbra: 'many', pirate: 9, admin: 3 };
     raw.planets[1].known = false;
+    raw.planets[1].owner = 'dawn';
     raw.planets[0].comrades = [{ toString: () => 'x'.repeat(500) }];
     raw.planets.push({ id: 'pluto', status: 'safe' });
     raw.players[0].score = Infinity;
@@ -302,8 +303,8 @@ test('odd values are replaced by safe ones, never passed on', () => {
     assert.equal(clean.planets[0].owner, null);
     assert.equal(clean.planets[0].docking, null);
     assert.deepEqual(clean.planets[0].forces, { dawn: 0, umbra: 0, pirate: 9 });
-    assert.deepEqual([clean.planets[1].owner, clean.planets[1].forces, clean.planets[1].docking], [null, null, null],
-        'a planet the host says is unknown tells nothing, whatever else it sent');
+    assert.deepEqual([clean.planets[1].owner, clean.planets[1].forces, clean.planets[1].docking], ['dawn', null, null],
+        'a planet the host says is unknown shows no ships and no docking, whatever else it sent');
     assert.equal(clean.planets[0].comrades[0].length, 40);
     assert.equal(clean.planets.some((planet) => planet.id === 'pluto'), false);
     assert.equal(clean.players[0].score, 0);

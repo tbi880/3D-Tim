@@ -1107,10 +1107,12 @@ test('what is at a planet is known only to a side with eyes on it; the collapse 
     const withComrade = seen('ann', SECOND);
     assert.equal(withComrade.known, true, 'where a comrade is');
     assert.equal(withComrade.forces[UMBRA], game.npcs(SECOND, UMBRA).length + 1, 'Bo\'s ship among them');
-    assert.deepEqual([seen('ann', GATE).known, seen('ann', GATE).owner], [true, DAWN], 'a station her side holds reports in');
+    const held = seen('ann', GATE);
+    assert.deepEqual([held.known, held.owner, held.forces, held.docking], [false, DAWN, null, null],
+        'a station her side holds is not eyes: she knows it is still theirs, and nothing else');
 
     const dark = seen('ann', FOURTH);
-    assert.deepEqual([dark.known, dark.owner, dark.forces, dark.docking], [false, null, null, null], 'the Umbra\'s station does not');
+    assert.deepEqual([dark.known, dark.owner, dark.forces, dark.docking], [false, null, null, null], 'of the Umbra\'s station she knows nothing');
     assert.equal(seen('pip', SECOND).known, false);
     assert.equal(seen('bo', FOURTH).owner, UMBRA);
     for (const viewer of ['ann', 'bo', 'pip']) {
