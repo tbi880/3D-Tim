@@ -4,6 +4,7 @@ import { useStore } from 'zustand';
 import { GRAPHICS } from '../config/graphics.js';
 import { useGameStore } from '../state/gameStore.js';
 import VRFlightStick from './VRFlightStick.jsx';
+import { vrPerformance } from './vrPerformance.js';
 
 /**
  * WebXR (VR headset) mode of the game.
@@ -18,10 +19,12 @@ import VRFlightStick from './VRFlightStick.jsx';
  *    the sticks;
  *  - hand tracking is off (flying needs the sticks and triggers);
  *  - fixed foveated rendering at full strength: the edges of the lenses are blurry anyway;
- *  - each eye's buffer is sized by the graphics setting (config/graphics.js, `vrResolution`),
- *    and the resolution then follows the frame rate (DynamicResolution.js): a headset's GPU
- *    is limited by the number of pixels it has to fill, and a late frame is worse than a
- *    soft one;
+ *  - each eye's buffer is sized by the graphics setting (config/graphics.js, `vrResolution`):
+ *    a headset's GPU is limited by the number of pixels it has to fill, and a late frame is
+ *    worse than a soft one. The resolution can also follow the frame rate
+ *    (DynamicResolution.js), which the pilot turns on in the VR pause menu: it relies on a
+ *    part of WebXR (viewport scaling) that few pages use and that has not been seen working
+ *    in every headset's browser, so it is off until asked for;
  *  - 4x multisampling (see `canvasAntialias`): on a headset's tile-based GPU it costs next
  *    to nothing, and without it every hull edge and light line shimmers as the head moves;
  *  - the headset's default refresh rate (72 Hz on a Quest) instead of the highest one.
@@ -87,6 +90,8 @@ export const vr = {
     active: false,
     /** 'cockpit' | 'chase' */
     view: 'cockpit',
+    /** Whether the resolution follows the frame rate (the VR pause menu's switch; not saved). */
+    dynamicResolution: false,
 };
 
 /** The camera mode the scene should use right now. */
@@ -117,6 +122,8 @@ export function enterVR() {
     vr.view = 'cockpit';
     return getXRStore().enterVR().catch((error) => {
         console.warn('[Echoes of Dawn] Could not start VR:', error);
+        // No console in a headset: say so on the page.
+        vrPerformance.couldNotStart(error);
         return undefined;
     });
 }

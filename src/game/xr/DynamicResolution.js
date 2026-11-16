@@ -61,9 +61,10 @@ export class DynamicResolution {
      * Call once a frame.
      * @param {number} interval seconds since the previous frame
      * @param {number} [displayRate] the display's refresh rate (Hz) when the session knows it
+     * @param {boolean} [adapt] false only measures the frame rate: the scale stays at 1
      * @returns {number} the scale to draw the next frame at
      */
-    update(interval, displayRate) {
+    update(interval, displayRate, adapt = true) {
         if (!(interval > 0) || interval > HITCH) return this.scale;
         this.intervals.push(interval);
         this.elapsed += interval;
@@ -71,6 +72,12 @@ export class DynamicResolution {
 
         const intervals = this.intervals;
         this.fps = intervals.length / this.elapsed;
+        if (!adapt) {
+            const { fps } = this;
+            this.reset();
+            this.fps = fps;
+            return this.scale;
+        }
         const rate = displayRate > 0 ? displayRate : this.#recogniseRate(intervals);
         const late = intervals.filter((value) => value > LATE_FACTOR / rate).length / intervals.length;
         this.intervals = [];

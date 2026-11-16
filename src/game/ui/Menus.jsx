@@ -70,10 +70,32 @@ function VRButton({ onStart }) {
         enterVR();
     };
     return (
-        <button type="button" className="eod-button" data-skip-fullscreen="" disabled={active} onClick={start}>
-            {t('ui.vr.enter')}
-            <small>{t('ui.vr.enterHint')}</small>
-        </button>
+        <>
+            <button type="button" className="eod-button" data-skip-fullscreen="" disabled={active} onClick={start}>
+                {t('ui.vr.enter')}
+                <small>{t('ui.vr.enterHint')}</small>
+            </button>
+            {!active && <VRReport />}
+        </>
+    );
+}
+
+/**
+ * How the last VR session went, under the button that started it: a headset has no console,
+ * so a session that showed nothing has to say here what happened.
+ */
+function VRReport() {
+    const report = useGameStore((state) => state.vrReport);
+    const t = useT();
+    if (!report) return null;
+    const summary = report.notStarted
+        ? t('ui.vr.report.notStarted')
+        : t('ui.vr.report.summary', { ...report, scale: Math.round(report.lowestScale * 100) });
+    return (
+        <p className={`eod-vr-report${report.errors ? ' eod-vr-report-failed' : ''}`}>
+            {summary}
+            {report.errors > 0 && <><br />{t('ui.vr.report.errors', { count: report.errors })} {report.firstError}</>}
+        </p>
     );
 }
 

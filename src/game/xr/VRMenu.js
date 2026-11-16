@@ -140,6 +140,8 @@ export class VRMenu {
                 if (state.hasSave) items.push({ label: t('ui.restartCheckpoint'), select: () => session.continueGame() });
                 const toggleView = () => { vr.view = vr.view === 'chase' ? 'cockpit' : 'chase'; };
                 items.push({ label: t('ui.view'), value: t(`ui.view.${vr.view}`), left: toggleView, right: toggleView, select: toggleView });
+                const toggleDynamic = () => { vr.dynamicResolution = !vr.dynamicResolution; };
+                items.push({ label: t('ui.vr.dynamicResolution'), value: t(vr.dynamicResolution ? 'ui.on' : 'ui.off'), left: toggleDynamic, right: toggleDynamic, select: toggleDynamic });
                 items.push(...this.commonSettings(settings, t));
                 items.push({ label: t('ui.quitToTitle'), select: () => session.enterTitle() });
                 items.push(exitItem);

@@ -38,6 +38,8 @@ export const useGameStore = create(() => ({
     finalScore: null,
     hasSave: false,
     saveCheckpointId: null,
+    /** How the last VR session went, or why it did not start (xr/vrPerformance.js), or null. */
+    vrReport: null,
 
     // Scene bookkeeping
     /** True once the 3D assets are loaded and the loading screen has gone. */

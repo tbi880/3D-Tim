@@ -129,10 +129,17 @@ and react to `world.events` (explosions, hits...).
 * **The nebula** is layered noise, baked once into a cube map (`bakeNebulaClouds` in
   `SectorBackdrop.jsx`): evaluated per pixel it was the most expensive shader in the game.
 * **In a headset** the GPU is limited by the pixels it fills. Each eye's buffer is sized by
-  the graphics setting (`vrResolution` in `config/graphics.js`), and while flying the
-  resolution follows the frame rate (`xr/DynamicResolution.js`). The VR pause menu shows the
-  last flight's frame rate, resolution, draw calls and triangles; `tools/game-perf` counts
-  the same per object without a headset.
+  the graphics setting (`vrResolution` in `config/graphics.js`); the resolution can also
+  follow the frame rate (`xr/DynamicResolution.js`), switched on in the VR pause menu and off
+  by default, because it uses WebXR viewport scaling, which is not proven in every headset's
+  browser. The VR pause menu shows the last flight's frame rate, resolution, draw calls and
+  triangles; `tools/game-perf` counts the same per object without a headset.
+* **When VR goes wrong** there is no console to read in a headset. An error in a frame would
+  stop three.js asking for the next one, leaving the headset black, so the frame callback is
+  guarded (`xr/frameGuard.js`): the frame is lost, the session goes on. Each session's report
+  (frames drawn, eye size, the first error) appears under the page's "Enter VR" button when
+  it ends (`xr/vrPerformance.js`, `vrReport` in the game store). The desktop emulator is laxer
+  than a real browser: it does not object to one session's spaces being used in another.
 * **Explosions** (`ExplosionsLayer.jsx`, `scene/effects/`) are built from pooled, instanced
   parts: fire-and-smoke puffs (`FireballSystem`), sparks (`ParticleSystem`), wreckage
   (`DebrisSystem`, shapes in `wreckageShapes.js`: torn plating, hull sections, frame and

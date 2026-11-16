@@ -57,3 +57,11 @@ test('the display rate is recognised from the frames when the session does not t
     const struggling = new DynamicResolution();
     assert.equal(run(struggling, 25, 5) < 1, true);
 });
+
+test('switched off, it only measures: late frames leave the resolution alone', () => {
+    const resolution = new DynamicResolution();
+    for (let frame = 0; frame < 320; frame++) assert.equal(resolution.update(1 / 32, 64, false), 1);
+    assert.equal(Math.round(resolution.fps), 32);
+    // Switched on later, it starts from full resolution.
+    assert.equal(resolution.update(1 / 64, 64, true), 1);
+});

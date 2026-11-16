@@ -519,3 +519,7 @@
     15%, 80% { opacity: 1; letter-spacing: normal; }
     100% { opacity: 0; }
 }
+
+/* How the last VR session went, under the "Enter VR" button. */
+.eod-vr-report { margin: 2px 0 0; font-size: 11px; line-height: 1.5; color: rgba(190, 215, 235, 0.75); text-align: center; overflow-wrap: anywhere; }
+.eod-vr-report-failed { color: #ff9aa8; }

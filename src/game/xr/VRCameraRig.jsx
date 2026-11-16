@@ -13,6 +13,7 @@ import VRHud, { vrComms } from './VRHud.jsx';
 import { VRMenu } from './VRMenu.js';
 import { XRGamepadInput } from './XRGamepadInput.js';
 import { ambientLight } from './cabinLighting.js';
+import { guardXRFrames } from './frameGuard.js';
 import { vrPerformance } from './vrPerformance.js';
 import { getXRStore, useVRActive, vr } from './vrState.js';
 
@@ -117,6 +118,9 @@ export default function VRCameraRig({ game }) {
         return () => { vrRig.origin = null; };
     }, []);
 
+    // An error in one frame must not stop the headset's frames for good (see frameGuard.js).
+    useEffect(() => guardXRFrames(gl, (error) => vrPerformance.failed(error)), [gl]);
+
     // Leaving the headset's view (system menu, headset taken off) pauses the fight; leaving VR
     // drops every held control so the ship does not keep turning on the flat page.
     useEffect(() => getXRStore().subscribe((state, previous) => {
@@ -134,7 +138,8 @@ export default function VRCameraRig({ game }) {
                 flatAutoClear.current = null;
             }
             frameCount.current = 0;
-            vrPerformance.reset();
+            if (state.session) vrPerformance.begin();
+            else vrPerformance.end();
             recenterAt.current = [...AUTO_RECENTER];
             gamepads.release();
             if (!state.session) game.input.setXRControls(null);
@@ -171,7 +176,7 @@ export default function VRCameraRig({ game }) {
     useFrame((state, delta, frame) => {
         if (!vr.active) return;
         // First, while the renderer still holds last frame's counts.
-        vrPerformance.update(gl, delta, frame, game.session.phase === PHASE.PLAYING);
+        vrPerformance.update(gl, delta, frame, { flying: game.session.phase === PHASE.PLAYING, adapt: vr.dynamicResolution });
         // In VR the scene must be drawn with the headset's camera (@react-three/xr switches to
         // it when the session starts). PlayerCamera's <PerspectiveCamera makeDefault> takes the
         // default back whenever its effects run again - e.g. when part of the scene suspends

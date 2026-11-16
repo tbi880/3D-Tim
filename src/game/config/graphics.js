@@ -13,8 +13,8 @@
  *
  * In a VR headset the lever is `vrResolution`: the width and height of each eye's buffer as
  * a fraction of what the headset recommends (0.8 is 64 % of the pixels), read when a session
- * starts. On top of it the resolution follows the frame rate while flying (xr/
- * DynamicResolution.js).
+ * starts. On top of it the resolution can follow the frame rate while flying (xr/
+ * DynamicResolution.js, switched on in the VR pause menu).
  */
 export const GRAPHICS = Object.freeze({
     performance: { maxDpr: 1, multisampling: 0, vrResolution: 0.8 },
