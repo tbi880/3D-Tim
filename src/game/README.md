@@ -130,13 +130,15 @@ and react to `world.events` (explosions, hits...).
   multisampled buffer does not take kindly to render-target switches in mid-frame.
 * **The nebula** is layered noise, baked once into a cube map (`nebulaCloudsFor` in
   `SectorBackdrop.jsx`): evaluated per pixel it was the most expensive shader in the game.
-* **In a headset** the HUD is the expensive thing. In a Pico the game ran at 16 to 20 frames
-  a second, at 32 to 35 with the HUD's canvas textures not uploaded, and at 28 with nothing
-  drawn at all but the uploads still made (90, the display's rate, without them). The
-  panels (`xr/canvasPanel.js`) upload from their frame callbacks, before the frame's
-  drawing, which helped a little; the distant bodies' pictures are taken between frames as
-  a precaution. What a cheaper way of getting the HUD into a texture is, `xr/vrUploadTest.js`
-  measures in the headset.
+* **In a headset** the HUD's canvases were the expensive thing: in a Pico the game ran at
+  16 to 20 frames a second, and at 32 to 35 with the HUD's textures not uploaded. The cause
+  was the textures' format. A browser copies a canvas into a plain RGBA texture on the GPU,
+  quickly, and into an sRGB texture (what three.js makes of a canvas holding sRGB colours)
+  the slow way; the same picture uploaded every frame into a plain texture left the Pico at
+  its full 90. So the panels are plain textures whose colours the shader decodes
+  (`xr/canvasPanel.js`), uploaded from their frame callbacks. `xr/vrUploadTest.js` holds
+  the measurements of the other ways tried (CPU canvases, raw pixels, several small
+  canvases, parts of a large one).
 * **Resolution in a headset** is whatever its browser recommends (1504 x 1504 an eye in a
   Pico). A smaller buffer (`framebufferScaleFactor`) ran with both eyes black there, and
   WebXR viewport scaling is ignored there (`xr/DynamicResolution.js`, a development switch).

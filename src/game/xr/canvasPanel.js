@@ -9,11 +9,18 @@ import * as THREE from 'three';
  * skipping them keeps each texture upload cheap. `uploadOnlyChanges` is for a panel that is
  * redrawn more often than its picture changes (see `commit`).
  *
+ * The texture is plain RGBA, and its sRGB colours are decoded in the shader (`DECODED_MAP`)
+ * rather than by the GPU, which is what three.js would arrange by default (an sRGB texture).
+ * A browser has a fast, GPU-to-GPU way of copying a canvas into a plain texture and falls
+ * back to a slow one for an sRGB texture (three.js works round the same thing for video,
+ * its issue 26516). Measured in a Pico: a 1024 x 768 canvas redrawn and uploaded every frame
+ * into a plain texture leaves the headset at its 90 frames a second; the HUD's panels, which
+ * were sRGB textures, cost more than the whole scene (20 frames a second, 32 without their
+ * uploads). See xr/vrUploadTest.js.
+ *
  * `commit` sends the canvas to the GPU at once (`gl.initTexture`) instead of leaving it to
  * three.js, which uploads a changed texture at the moment a mesh using it is drawn - for
- * these panels, drawn last, in the middle of the headset's frame. Measured in a Pico, that
- * moved the game from 16 frames a second to 20; the upload itself, wherever it is made, is
- * what costs there (32 frames a second with no uploads at all). See xr/vrUploadTest.js.
+ * these panels, drawn last, in the middle of the headset's frame.
  */
 export function createCanvasPanel({ gl, width, height, meters, renderOrder = 1000, uploadOnlyChanges = false }) {
     const canvas = document.createElement('canvas');
@@ -23,7 +30,6 @@ export function createCanvasPanel({ gl, width, height, meters, renderOrder = 100
     const ctx = pen ? pen.ctx : canvas.getContext('2d');
     let uploaded = null;
     const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
     texture.generateMipmaps = false;
     texture.minFilter = THREE.LinearFilter;
     texture.anisotropy = 4;
@@ -34,6 +40,7 @@ export function createCanvasPanel({ gl, width, height, meters, renderOrder = 100
         depthWrite: false,
         toneMapped: false,
     });
+    material.onBeforeCompile = decodeMapInShader;
     const geometry = new THREE.PlaneGeometry(meters[0], meters[1]);
     const mesh = new THREE.Mesh(geometry, material);
     mesh.renderOrder = renderOrder;
@@ -64,6 +71,18 @@ export function createCanvasPanel({ gl, width, height, meters, renderOrder = 100
             geometry.dispose();
         },
     };
+}
+
+/** three.js's colour-texture lookup, with the texture's sRGB colours decoded here instead of by the GPU. */
+const DECODED_MAP = /* glsl */ `
+    #ifdef USE_MAP
+        diffuseColor *= sRGBTransferEOTF( texture2D( map, vMapUv ) );
+    #endif
+`;
+
+/** `onBeforeCompile` for a material whose `map` is a plain (not sRGB) texture holding sRGB colours. */
+function decodeMapInShader(shader) {
+    shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', DECODED_MAP);
 }
 
 /**

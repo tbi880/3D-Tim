@@ -11,6 +11,13 @@ import * as THREE from 'three';
  * (drawing the canvas, copying it, the size, the number of copies) decides what the HUD
  * should do instead. Each variant below does its work once a frame; the ones that still
  * reach the display's rate are the ways open to the HUD.
+ *
+ * What the Pico said, 2026-11 (frames a second, of the display's 90; script ms a frame):
+ * a 1024 x 768 canvas redrawn and uploaded into a plain texture 89 (3 ms) - so that is what
+ * the HUD's panels now are (canvasPanel.js: they were sRGB textures, the one way this test
+ * had not yet tried); a canvas drawn on the CPU (`willReadFrequently`) 54 (10 ms), and 43
+ * sent on as pixels; raw pixels with no canvas 87; one 256 x 256 canvas 89, four of them 75;
+ * a 256 x 256 part of a large canvas 72 to 87. So: few canvases, GPU ones, whole.
  */
 
 const WIDTH = 1024;
@@ -47,8 +54,9 @@ function makeCanvas(width, height, software = false) {
     return { canvas, ctx };
 }
 
-function canvasTexture(canvas) {
+function canvasTexture(canvas, colorSpace = THREE.NoColorSpace) {
     const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = colorSpace;
     texture.generateMipmaps = false;
     texture.minFilter = THREE.LinearFilter;
     return texture;
@@ -95,6 +103,16 @@ export function uploadVariants(gl) {
             const { canvas, ctx } = makeCanvas(WIDTH, HEIGHT);
             const texture = canvasTexture(canvas);
             return { textures: [texture], frame: (tick) => { drawMarkers(ctx, WIDTH, HEIGHT, tick); upload(gl, texture); } };
+        }),
+        variant('canvas 1024x768, redrawn, into an sRGB texture', () => {
+            const { canvas, ctx } = makeCanvas(WIDTH, HEIGHT);
+            const texture = canvasTexture(canvas, THREE.SRGBColorSpace);
+            return { textures: [texture], frame: (tick) => { drawMarkers(ctx, WIDTH, HEIGHT, tick); upload(gl, texture); } };
+        }),
+        variant('canvas 1536x1152, redrawn', () => {
+            const { canvas, ctx } = makeCanvas(1536, 1152);
+            const texture = canvasTexture(canvas);
+            return { textures: [texture], frame: (tick) => { drawMarkers(ctx, 1536, 1152, tick); upload(gl, texture); } };
         }),
         variant('CPU canvas 1024x768, redrawn', () => {
             const { canvas, ctx } = makeCanvas(WIDTH, HEIGHT, true);
