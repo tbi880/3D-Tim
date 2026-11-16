@@ -126,6 +126,13 @@ and react to `world.events` (explosions, hits...).
   whole model (the black hole and the spiral star were 838 k triangles and 26 draw calls,
   twice over in a headset). The black hole, redrawn 30 times a second, also has a lighter
   copy of the site's model (`tools/game-models/backdrop/simplify.mjs`).
+* **The nebula** is layered noise, baked once into a cube map (`bakeNebulaClouds` in
+  `SectorBackdrop.jsx`): evaluated per pixel it was the most expensive shader in the game.
+* **In a headset** the GPU is limited by the pixels it fills. Each eye's buffer is sized by
+  the graphics setting (`vrResolution` in `config/graphics.js`), and while flying the
+  resolution follows the frame rate (`xr/DynamicResolution.js`). The VR pause menu shows the
+  last flight's frame rate, resolution, draw calls and triangles; `tools/game-perf` counts
+  the same per object without a headset.
 * **Explosions** (`ExplosionsLayer.jsx`, `scene/effects/`) are built from pooled, instanced
   parts: fire-and-smoke puffs (`FireballSystem`), sparks (`ParticleSystem`), wreckage
   (`DebrisSystem`, shapes in `wreckageShapes.js`: torn plating, hull sections, frame and
