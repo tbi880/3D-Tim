@@ -951,7 +951,7 @@ test('everybody dead is nobody\'s win', () => {
     assert.equal(game.state('ann').winner, null);
 });
 
-test('taking the stargate once it is the last planet wins the match for the whole side', () => {
+test('holding the stargate when the last stand runs out wins the match for the whole side - taking it does not end it early', () => {
     const game = arrange({ ann: [DAWN, GATE], cy: [DAWN, NEXT_TO_GATE], bo: [UMBRA, NEXT_TO_GATE] });
     game.place(NEXT_TO_GATE).owner = UMBRA;
     game.clear(NEXT_TO_GATE, DAWN);
@@ -959,7 +959,12 @@ test('taking the stargate once it is the last planet wins the match for the whol
     assert.ok(game.state('ann').finalStand > 0);
     game.empty(GATE);
     game.take('ann');
+    assert.equal(game.place(GATE).owner, DAWN);
+    assert.equal(game.state('bo').phase, MATCH_PHASE.PLAYING, 'the countdown still has to run out');
+    assert.equal(game.who('ann').points, BATTLE_ROYALE.capture.points, 'it pays like any other station');
 
+    game.server.time = game.mode.clock.finalStandEndsAt - 0.05;
+    game.run(0.3);
     assert.equal(game.state('bo').phase, MATCH_PHASE.OVER);
     assert.equal(game.state('bo').winner, DAWN);
     const cy = game.state('cy').players.find((player) => player.id === 'cy');
@@ -976,17 +981,35 @@ test('taking the stargate before the final stand is only a capture', () => {
     assert.equal(game.who('ann').points, 3);
 });
 
-test('a stargate held when the last stand begins can still be taken from its holder - in fifteen seconds', () => {
+test('the stargate can change hands during the last stand; whoever holds it at the end goes through', () => {
     const game = arrange({ ann: [DAWN, GATE], bo: [UMBRA, GATE] });
     game.empty(GATE);
     game.place(GATE).owner = UMBRA;
     game.skipTo(goneAt(game, PLANETS.length - 2) + 1);
-    game.dock('ann');
-    game.run(STATION.seconds + 1);
-    assert.equal(game.state('ann').phase, MATCH_PHASE.PLAYING);
-    game.run(STATION.heldSeconds - STATION.seconds);
+    game.take('ann');
+    assert.equal(game.place(GATE).owner, DAWN);
+    game.take('bo');
+    assert.equal(game.place(GATE).owner, UMBRA);
+    assert.equal(game.state('ann').phase, MATCH_PHASE.PLAYING, 'nobody has won by taking it');
 
-    assert.equal(game.state('bo').winner, DAWN);
+    game.server.time = game.mode.clock.finalStandEndsAt - 0.05;
+    game.run(0.3);
+    assert.equal(game.state('ann').winner, UMBRA);
+});
+
+test('the last stand ends early only when every enemy is dead', () => {
+    const game = arrange({ ann: [DAWN, GATE], bo: [UMBRA, GATE], pip: [PIRATE, GATE] });
+    game.empty(GATE);
+    game.skipTo(goneAt(game, PLANETS.length - 2) + 1);
+    game.take('ann');
+    destroyShip(game.world(GATE), game.ship('bo'), game.ship('ann'));
+    game.run(0.2);
+    assert.equal(game.state('ann').phase, MATCH_PHASE.PLAYING, 'the pirate is still flying');
+
+    destroyShip(game.world(GATE), game.ship('pip'), game.ship('ann'));
+    game.run(0.2);
+    assert.equal(game.state('ann').phase, MATCH_PHASE.OVER);
+    assert.equal(game.state('ann').winner, DAWN);
 });
 
 test('when the last stand runs out, the side that holds the stargate goes through, however few they are', () => {
@@ -1082,14 +1105,15 @@ test('a ship lost to the collapse or to a computer-flown ship is nobody\'s kill'
 
 // ---- What each player is told ----------------------------------------------------------------
 
-test('the map names comrades only to their own side', () => {
+test('the map names comrades only to their own side - the pirates being a side too', () => {
     const game = arrange({ ann: [DAWN, THIRD], cy: [DAWN, SECOND], bo: [UMBRA, SECOND], pip: [PIRATE, THIRD], pat: [PIRATE, THIRD] });
     const comradesAt = (viewer, planet) => game.state(viewer).planets.find((entry) => entry.id === planet).comrades;
 
     assert.deepEqual(comradesAt('ann', SECOND), ['cy']);
     assert.deepEqual(comradesAt('ann', THIRD), [], 'not herself, and not the pirates beside her');
     assert.deepEqual(comradesAt('bo', SECOND), [], 'the Umbra pilot is not told where the Federation\'s are');
-    assert.deepEqual(comradesAt('pip', THIRD), [], 'pirates have no comrades');
+    assert.deepEqual(comradesAt('pip', THIRD), ['pat'], 'pirates are told where pirates are');
+    assert.deepEqual(comradesAt('pat', THIRD), ['pip']);
     assert.equal(game.state('ann').you.planet, THIRD);
     assert.equal(JSON.stringify(game.state('bo')).includes('"planet":"' + THIRD + '"'), false, 'nothing in an enemy\'s state says where Ann is');
 });
@@ -1108,8 +1132,8 @@ test('what is at a planet is known only to a side with eyes on it; the collapse 
     assert.equal(withComrade.known, true, 'where a comrade is');
     assert.equal(withComrade.forces[UMBRA], game.npcs(SECOND, UMBRA).length + 1, 'Bo\'s ship among them');
     const held = seen('ann', GATE);
-    assert.deepEqual([held.known, held.owner, held.forces, held.docking], [false, DAWN, null, null],
-        'a station her side holds is not eyes: she knows it is still theirs, and nothing else');
+    assert.deepEqual([held.known, held.owner], [true, DAWN], 'a station her side holds reports in');
+    assert.equal(held.forces[DAWN] + held.forces[UMBRA], game.npcs(GATE, DAWN).length + game.npcs(GATE, UMBRA).length);
 
     const dark = seen('ann', FOURTH);
     assert.deepEqual([dark.known, dark.owner, dark.forces, dark.docking], [false, null, null, null], 'of the Umbra\'s station she knows nothing');
@@ -1181,19 +1205,20 @@ test('a beacon launched at a neighbouring planet shows it to the pilot\'s side f
     assert.equal(fourth('ann').known, true, 'it goes on watching after she has left');
 });
 
-test('a pirate\'s beacon is nobody else\'s, and a traitor loses sight of their old side\'s', () => {
-    const game = arrange({ pip: [PIRATE, THIRD], pat: [PIRATE, THIRD], ann: [DAWN, THIRD], cy: [DAWN, THIRD] });
+test('the pirates share what their beacons see like any side, and a traitor trades their old side\'s eyes for the pirates\'', () => {
+    const game = arrange({ pip: [PIRATE, THIRD], pat: [PIRATE, GATE], ann: [DAWN, THIRD], cy: [DAWN, THIRD] });
     game.empty(THIRD);
     game.equip('pip', EQUIPMENT.BEACON);
     game.equip('cy', EQUIPMENT.BEACON);
-    const fourth = (viewer) => game.state(viewer).planets.find((entry) => entry.id === FOURTH);
+    const seen = (viewer, planet) => game.state(viewer).planets.find((entry) => entry.id === planet).known;
     game.ask('pip', BR_REQUEST.BEACON, { to: FOURTH });
-    assert.deepEqual([fourth('pip').known, fourth('pat').known, fourth('ann').known], [true, false, false]);
+    assert.deepEqual([seen('pip', FOURTH), seen('pat', FOURTH), seen('ann', FOURTH)], [true, true, false]);
+    assert.equal(seen('pat', THIRD), true, 'and where one pirate is, the others see');
 
-    game.ask('cy', BR_REQUEST.BEACON, { to: FOURTH });
-    assert.equal(fourth('ann').known, true);
+    game.ask('cy', BR_REQUEST.BEACON, { to: SECOND });
+    assert.deepEqual([seen('ann', SECOND), seen('pip', SECOND)], [true, false]);
     game.mode.brandPirate(game.who('ann'), game.place(THIRD).zone);
-    assert.equal(fourth('ann').known, false);
+    assert.deepEqual([seen('ann', SECOND), seen('ann', FOURTH)], [false, true]);
 });
 
 test('the gravity shield comes on by itself and keeps the black hole off for thirty seconds - but not the guns', () => {

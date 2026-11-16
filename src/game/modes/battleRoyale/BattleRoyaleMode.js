@@ -50,14 +50,6 @@ class Contestant {
         /** When their ship was last hurt, as of the last look (see updateEmergencyShield). */
         this.seenDamageAt = -Infinity;
     }
-
-    /**
-     * Whose eyes this pilot's are: what one of a side learns about a planet, the side knows.
-     * Pirates are no side, and keep what they learn to themselves.
-     */
-    get intelKey() {
-        return isPirate(this.faction) ? this.pilot.id : this.faction;
-    }
 }
 
 /** What the rules know about one planet. */
@@ -70,7 +62,7 @@ class Place {
         this.station = station;
         /** The side that holds the station - its anti-gravity bubble covers the planet - or null. */
         this.owner = null;
-        /** Whose beacons watch the planet (Contestant.intelKey). */
+        /** The sides whose beacons watch the planet: what one pilot's beacon sees, their whole side sees. */
         this.scouts = new Set();
         /** The choice a side is making after taking the planet: { faction, endsAt, ballots: Map<pilotId, choice | null> }. */
         this.vote = null;
@@ -149,7 +141,7 @@ export class BattleRoyaleMode {
             const contestant = new Contestant(pilot, faction);
             this.contestants.set(pilot.id, contestant);
             this.sidesAtStart.add(faction);
-            // A side starts together - except the pirates, who are no side at all.
+            // A side starts together - except the pirates, who are free to shoot each other and do.
             const together = isPirate(faction) ? pilot.id : faction;
             if (!startOf.has(together)) startOf.set(together, this.pickStart(faction, garrisons, new Set(startOf.values())));
             contestant.start = startOf.get(together);
@@ -451,11 +443,6 @@ export class BattleRoyaleMode {
             this.tellMode(member.pilot, BR_EVENT.PICKS, { picks: member.inventory.picks });
         }
 
-        // The stargate, once it is the only planet left, is the match.
-        if (place.planet.gate && this.clock.finalStand) {
-            this.finish(faction);
-            return;
-        }
         const fallen = [...this.contestants.values()].some((contestant) => !contestant.alive && !contestant.pilot.gone && contestant.faction === faction);
         if (fallen) {
             place.vote = {
@@ -544,7 +531,7 @@ export class BattleRoyaleMode {
 
     /**
      * Sends a beacon to a planet next to the one the contestant is at. From then on their side
-     * (see Contestant.intelKey) is shown what stands there and who holds it.
+     * - the pirates are one too - is shown what stands there and who holds it.
      */
     launchBeacon(contestant, to) {
         const here = this.placeOf(contestant);
@@ -552,8 +539,8 @@ export class BattleRoyaleMode {
         if (typeof to !== 'string' || !this.map.areNeighbours(here.planet.id, to)) return;
         const target = this.places.get(to);
         // Nothing is spent on a planet that is watched already.
-        if (target.scouts.has(contestant.intelKey) || !contestant.inventory.use(EQUIPMENT.BEACON)) return;
-        target.scouts.add(contestant.intelKey);
+        if (target.scouts.has(contestant.faction) || !contestant.inventory.use(EQUIPMENT.BEACON)) return;
+        target.scouts.add(contestant.faction);
         this.tellMode(contestant.pilot, BR_EVENT.BEACON_SET, { planet: to });
         this.server.publishState();
     }
@@ -785,23 +772,21 @@ export class BattleRoyaleMode {
     /**
      * A planet as the map shows it. How the collapse stands is known to all. What is there - ships,
      * the station's holder, a docking in progress - is known only to a side that has eyes on
-     * it: a pilot there, or a beacon. Holding its station is not eyes: all a side knows of a
-     * planet it has left is that the station is still its own (it would have heard it fall).
+     * it: a pilot there, the station if the side holds it, or a beacon.
      */
     describePlace(place, you) {
         const wait = this.clock.secondsToChange(place.orbit);
-        const comrades = you && !isPirate(you.faction)
-            ? this.membersAt(place, you.faction).filter((member) => member !== you).map((member) => member.pilot.name)
-            : [];
-        const beacon = Boolean(you) && place.scouts.has(you.intelKey);
-        const known = Boolean(you) && (this.placeOf(you) === place || comrades.length > 0 || beacon);
+        // The pirates are a side like the others in this: they only differ in being free to shoot each other.
+        const comrades = you ? this.membersAt(place, you.faction).filter((member) => member !== you).map((member) => member.pilot.name) : [];
+        const beacon = Boolean(you) && place.scouts.has(you.faction);
+        const known = Boolean(you) && (this.placeOf(you) === place || comrades.length > 0 || place.owner === you.faction || beacon);
         const description = {
             id: place.planet.id,
             status: place.status,
             changesIn: wait === null ? null : Math.ceil(wait),
             known,
             beacon,
-            owner: you && place.owner === you.faction ? place.owner : null,
+            owner: null,
             forces: null,
             docking: null,
             comrades,

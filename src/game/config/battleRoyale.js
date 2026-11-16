@@ -69,8 +69,10 @@ export const BATTLE_ROYALE = Object.freeze({
          */
         swallowedSeconds: 20,
         /**
-         * Seconds the last planet stands once every other one is gone. If no side has taken the
-         * stargate by then, the side with the most ships at it goes through.
+         * Seconds the last planet stands once every other one is gone. Taking the stargate's
+         * station does not end the match: the side that holds it when this runs out goes
+         * through (if nobody does, the side with the most ships at it). Only the death of
+         * every other side ends it sooner.
          */
         finalStand: 300,
     }),

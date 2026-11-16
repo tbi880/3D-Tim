@@ -13,12 +13,13 @@ import { PHASE } from '../state/GameSession.js';
 import { exitVR } from './vrState.js';
 
 /**
- * Multiplayer inside the headset: the LAN lobby, and in a match the star map (with docking
- * and the beacon on it), the equipment, the vote after a capture, the menu and the result. The flat page's screens for these (ui/
+ * Multiplayer inside the headset: the LAN lobby, and in a match the star map (with the
+ * beacon on it), the equipment, the vote after a capture, the menu and the result. The flat page's screens for these (ui/
  * multiplayer) cannot be seen in VR; these are the same choices as rows for VRMenu, which
  * draws them and moves the selection (see there for what a row is).
  *
- * In flight the B button opens the star map (there are no comms lines to skip in a match).
+ * In flight the B button opens the star map (there are no comms lines to skip in a match),
+ * and holding the right grip docks at a station or lets go of it.
  */
 
 const cycle = (list, current, step) => list[(list.indexOf(current) + step + list.length) % list.length];
@@ -192,9 +193,9 @@ const MAP_HEIGHT = 196;
 /**
  * Draws the star map the flat page shows as cards (ui/multiplayer/StarMapPanel.jsx): the
  * collapsing sun, then every planet in orbit order with its state and countdown, and where
- * the player is. Where their side has eyes (a pilot, or a beacon): who holds the station (a
- * ring in that side's colour), the ships there by side, a docking in progress, comrades.
- * Elsewhere: a question mark, and the ring only if the station is their own side's.
+ * the player is. Where their side has eyes (a pilot, a station it holds, or a beacon): who
+ * holds the station (a ring in that side's colour), the ships there by side, a docking in
+ * progress, comrades. Elsewhere: a question mark.
  * @returns {number} the height it took
  */
 function drawStarMap(ctx, x, y, width, match, t) {
@@ -302,7 +303,7 @@ function planetLine(planet, t) {
     const timer = planet.changesIn === null ? ''
         : ` · ${t(planet.status === PLANET_STATUS.SAFE ? 'mp.hud.fallsIn' : 'mp.hud.goneIn', { seconds: planet.changesIn })}`;
     const station = planet.owner ? t('mp.map.station', { faction: t(`mp.faction.${planet.owner}`) }) : t('mp.map.stationFree');
-    const intel = planet.known ? `${t('mp.map.forces', planet.forces)} · ${station}` : planet.owner ? `${t('mp.map.unknown')} · ${station}` : t('mp.map.unknown');
+    const intel = planet.known ? `${t('mp.map.forces', planet.forces)} · ${station}` : t('mp.map.unknown');
     return `${t(`mp.hud.status.${planet.status}`)}${timer} · ${intel}`;
 }
 
@@ -316,15 +317,7 @@ function starMap(session, presenter, match, t) {
     const orbitsTo = (planet) => Math.abs(ORBITS.indexOf(planet.id) - ORBITS.indexOf(you.planet));
     const close = () => presenter.setPanel(null);
     const items = [];
-    // The station's dock comes first while the ship is in it: this is what the pilot opened the map for.
-    const docked = you.dock?.left != null;
-    if (you.alive && you.dock && (docked || you.dock.ready)) {
-        items.push({
-            label: docked ? t('mp.hud.undock') : t('mp.vr.dock'),
-            value: docked ? t('mp.dock.progress', { seconds: Math.ceil(you.dock.left) }) : `${you.dock.seconds}s`,
-            select: () => { close(); session.handleAction(MATCH_ACTION.DOCK); },
-        });
-    }
+    // (Docking is not here: in the headset it is the right grip, held - see XRGamepadInput.js.)
     // (What is at each planet is on the map above; the rows only say where a jump - or a beacon - can go.)
     for (const planet of match.planets) {
         const orbits = orbitsTo(planet);

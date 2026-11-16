@@ -102,6 +102,10 @@ export default function VRCameraRig({ game }) {
                         else if (vrComms.typing) vrComms.revealed = true;
                         else session.handleAction('skip');
                         break;
+                    case 'gripHeld':
+                        // In a match: clamp on to the station whose dock the ship is in, or let go of it.
+                        if (session.match) session.handleAction(MATCH_ACTION.DOCK);
+                        break;
                     case 'gazeTarget':
                         if (session.phase === PHASE.PLAYING && session.world.player?.alive && !session.world.controlsLocked) {
                             scratchForward.set(0, 0, -1).applyQuaternion(viewPose.quaternion);

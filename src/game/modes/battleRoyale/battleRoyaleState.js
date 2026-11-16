@@ -35,8 +35,8 @@ import { EQUIPMENT_ORDER } from './equipment.js';
  *   },
  *   planets: [{           innermost first
  *     id, status, changesIn,
- *     known,              whether their side has eyes on the planet (a pilot there, or a beacon); if
- *                         not, `forces` and `docking` are null and `owner` only ever names their own side
+ *     known,              whether their side has eyes on the planet (a pilot there, its station, or a
+ *                         beacon); if not, the next three are null
  *     owner,              the side that holds its station
  *     forces,             { dawn, umbra, pirate }: ships there, players' included
  *     docking,            a side whose ship is docked at the station right now
@@ -109,7 +109,7 @@ export function sanitizeBattleRoyaleState(raw) {
             changesIn: seconds(planet.changesIn),
             known: Boolean(planet.known),
             beacon: Boolean(planet.beacon),
-            owner: sideOrNull(planet.owner),
+            owner: planet.known ? sideOrNull(planet.owner) : null,
             forces: planet.known ? Object.fromEntries(PLAYER_FACTIONS.map((faction) => [faction, count(planet.forces?.[faction])])) : null,
             docking: planet.known ? sideOrNull(planet.docking) : null,
             comrades: Array.isArray(planet.comrades) ? planet.comrades.slice(0, 16).map((name) => String(name).slice(0, 40)) : [],

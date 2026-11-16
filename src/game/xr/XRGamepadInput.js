@@ -7,7 +7,8 @@
  *   right stick        pitch / yaw (like the mouse stick; "invert pitch" applies)
  *   left stick         up / down = throttle, left / right = roll
  *   right trigger      beam arrays (hold)        left trigger    torpedo
- *   left grip          afterburner (hold)        right grip      lock the target you look at
+ *   left grip          afterburner (hold)        right grip      lock the target you look at;
+ *                                                                held: dock at a station / let go (multiplayer)
  *   A                  next target               B               skip comms line
  *   X                  power mode                Y               cockpit / chase view
  *   left stick click   re-centre the seat        right stick click  pause
@@ -24,6 +25,8 @@ const PRESS = 0.55;
 const MENU_FLICK = 0.65;
 const MENU_REARM = 0.35;
 const MENU_REPEAT_SECONDS = 0.38;
+/** Seconds the right grip must stay squeezed to count as held (docking), not as a press. */
+export const GRIP_HOLD_SECONDS = 0.8;
 
 function deadZone(value) {
     const magnitude = Math.abs(value);
@@ -48,7 +51,7 @@ export class XRGamepadInput {
     /**
      * @param {object} params
      * @param {import('../input/InputController.js').InputController} params.input
-     * @param {(event: string) => void} params.onFlightAction 'cycleTarget' | 'skip' | 'power:cycle' | 'toggleView' | 'gazeTarget' | 'recenter' | 'pause'
+     * @param {(event: string) => void} params.onFlightAction 'cycleTarget' | 'skip' | 'power:cycle' | 'toggleView' | 'gazeTarget' | 'gripHeld' | 'recenter' | 'pause'
      * @param {(event: string) => void} params.onMenuAction 'up' | 'down' | 'left' | 'right' | 'select' | 'back' | 'pause'
      * @param {() => boolean} params.isMenuOpen
      * @param {() => boolean} params.getInvertY
@@ -62,6 +65,8 @@ export class XRGamepadInput {
         /** Button states from the previous frame, keyed by `${hand}:${index}`. */
         this.previous = new Map();
         this.menuStick = { armed: true, direction: null, repeat: 0 };
+        /** Seconds the right grip has been squeezed in flight, and whether that squeeze has already counted as held. */
+        this.gripHold = { seconds: 0, fired: false };
         this.controls = { yaw: 0, pitch: 0, roll: 0, throttle: 0, boost: false, firePrimary: false, fireSecondary: false };
         this.gamepads = { left: null, right: null };
     }
@@ -116,6 +121,7 @@ export class XRGamepadInput {
 
         if (menuOpen) {
             this.release();
+            this.gripHold.seconds = 0;
             this.updateMenu(stick(left), stick(right), dt);
             if (edges.rightTrigger || edges.leftTrigger || edges.a || edges.x) this.onMenuAction('select');
             else if (edges.b || edges.y) this.onMenuAction('back');
@@ -138,10 +144,25 @@ export class XRGamepadInput {
         this.input.setXRControls(controls);
 
         if (edges.rightSqueeze) this.onFlightAction('gazeTarget');
+        this.updateGripHold(pressed(right, BUTTON.squeeze), dt);
         if (edges.a) this.onFlightAction('cycleTarget');
         if (edges.b) this.onFlightAction('skip');
         if (edges.x) this.onFlightAction('power:cycle');
         if (edges.y) this.onFlightAction('toggleView');
+    }
+
+    /** A right grip kept squeezed for GRIP_HOLD_SECONDS is 'gripHeld', once per squeeze. */
+    updateGripHold(squeezed, dt) {
+        const hold = this.gripHold;
+        if (!squeezed) {
+            hold.seconds = 0;
+            hold.fired = false;
+            return;
+        }
+        hold.seconds += dt;
+        if (hold.fired || hold.seconds < GRIP_HOLD_SECONDS) return;
+        hold.fired = true;
+        this.onFlightAction('gripHeld');
     }
 
     /** One menu step per flick of either stick; holding it repeats slowly. */

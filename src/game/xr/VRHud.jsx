@@ -241,9 +241,9 @@ function drawPaneText(ctx, state, t, now, scoreFeed) {
         // Something to do or spend: say so, and where (the flat HUD has buttons for it; here it is in the map menu).
         // The station's dock comes before everything else: it is why the pilot flew here.
         if (you.alive && you.dock?.left != null) {
-            drawShadowedText(ctx, `${t('mp.dock.progress', { seconds: Math.ceil(you.dock.left) })} · ${t('mp.dock.locked')}`, centre, height / 2 + 40, '#ffb648');
+            drawShadowedText(ctx, `${t('mp.dock.progress', { seconds: Math.ceil(you.dock.left) })} · ${t('mp.vr.undockHint')}`, centre, height / 2 + 40, '#ffb648');
         } else if (you.alive && you.dock?.ready) {
-            drawShadowedText(ctx, `${t('mp.dock.prompt', { seconds: you.dock.seconds })} · ${t('mp.vr.mapHint')}`, centre, height / 2 + 40, '#ffb648');
+            drawShadowedText(ctx, `${t('mp.dock.prompt', { seconds: you.dock.seconds })} · ${t('mp.vr.dockHint')}`, centre, height / 2 + 40, '#ffb648');
         } else if (you.alive && (you.points > 0 || you.summons > 0 || you.picks > 0)) {
             const gear = you.picks > 0 ? ` · ${t('mp.vr.gear')} ${you.picks}` : '';
             drawShadowedText(ctx, `${t('mp.vr.spend', { points: you.points, summons: you.summons })}${gear} · ${t('mp.vr.mapHint')}`, centre, height / 2 + 40, '#ffb648');
