@@ -8,6 +8,7 @@ import { useGameStore } from '../state/gameStore.js';
 import { drawMarkers, drawRadar } from '../ui/markerRenderer.js';
 import { CABIN_SCALE } from './VRCockpitShell.jsx';
 import { createCanvasPanel, drawMeter, roundRect, wrapText } from './canvasPanel.js';
+import layout from './cockpitLayout.json';
 
 /**
  * The flight HUD inside the headset. Everything hangs off the pilot's seat (the player
@@ -40,10 +41,14 @@ const TEXT_TEXTURE = [1536, 1152];
 const TEXT_RATE = 15;
 
 const PANEL_TEXTURE = [1024, 384];
-const PANEL_METERS = [0.72, 0.27];
-/** Low on the dashboard (about 35 degrees below the line of sight), tilted up towards the eye. */
-const PANEL_POSITION = [0, -0.5, -0.72];
-const PANEL_TILT = -0.6;
+/**
+ * Low on the dashboard (about 35 degrees below the line of sight), tilted up towards the eye.
+ * Its size, place and tilt are in cockpitLayout.json, which the cabin model is built from too
+ * (tools/game-models/vr-cockpit), so the picture always sits on the model's display glass.
+ */
+const PANEL_METERS = layout.display.meters;
+const PANEL_POSITION = layout.display.position;
+const PANEL_TILT = layout.display.tilt;
 /** The comms box ends here (logical px), above the instrument panel's top edge. */
 const PANE_TEXT_BOTTOM = 392;
 const PANEL_INTERVAL = 0.1;

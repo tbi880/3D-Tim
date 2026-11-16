@@ -1,7 +1,7 @@
-import { Suspense, useRef } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useVRActive, vr } from '../xr/vrState.js';
-import VRCockpitShell from '../xr/VRCockpitShell.jsx';
+import { useVRActive, useVRSupported, vr } from '../xr/vrState.js';
+import VRCockpitShell, { preloadVRCockpit } from '../xr/VRCockpitShell.jsx';
 import GltfModel from './models/GltfModel.jsx';
 import { ModelErrorBoundary, getModelInfo, useShipMaterials } from './models/ShipModel.jsx';
 
@@ -22,6 +22,12 @@ function CockpitModel() {
 
 export default function Cockpit({ baseFov }) {
     const groupRef = useRef(null);
+    const inVR = useVRActive();
+    // Where VR can be entered, fetch the VR cabin ahead of time so it is there on entering.
+    const vrSupported = useVRSupported();
+    useEffect(() => {
+        if (vrSupported) preloadVRCockpit();
+    }, [vrSupported]);
     const baseTangent = Math.tan((baseFov * Math.PI) / 360);
 
     useFrame(({ camera }) => {
@@ -39,8 +45,9 @@ export default function Cockpit({ baseFov }) {
                     <CockpitModel />
                 </Suspense>
             </ModelErrorBoundary>
-            {/* Soft instrument glow so the interior never goes pitch black. */}
-            <pointLight position={[0, -0.3, -0.6]} intensity={0.5} distance={4} decay={1.2} color="#8fc4ff" />
+            {/* Soft instrument glow so the interior never goes pitch black. The VR cabin has its
+                glow baked in, and every light costs each lit surface in the scene, so not in VR. */}
+            {!inVR && <pointLight position={[0, -0.3, -0.6]} intensity={0.5} distance={4} decay={1.2} color="#8fc4ff" />}
         </group>
     );
 }
