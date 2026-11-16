@@ -63,6 +63,7 @@ export default function VRCameraRig({ game }) {
     const originRef = useRef(null);
     const seatRef = useRef(null);
     const gl = useThree((state) => state.gl);
+    const setThree = useThree((state) => state.set);
     const xrCamera = gl.xr.getCamera();
     // autoClear as it was before VR (see the session subscription below).
     const flatAutoClear = useRef(null);
@@ -161,8 +162,15 @@ export default function VRCameraRig({ game }) {
         return () => referenceSpace.removeEventListener('reset', onReset);
     }, [referenceSpace]);
 
-    useFrame((_, delta) => {
+    useFrame((state, delta) => {
         if (!vr.active) return;
+        // In VR the scene must be drawn with the headset's camera (@react-three/xr switches to
+        // it when the session starts). PlayerCamera's <PerspectiveCamera makeDefault> takes the
+        // default back whenever its effects run again - e.g. when part of the scene suspends
+        // while a ship model loads and then shows again. three then draws with the seat camera:
+        // the head's pose is applied from the world origin and copied onto the seat, so the
+        // cockpit, HUD and menus all ride along with the head. Hand the headset its camera back.
+        if (state.camera !== xrCamera) setThree({ camera: xrCamera });
         if (!gl.autoClear) gl.autoClear = true;
         if (xrCamera.near !== XR_NEAR || xrCamera.far !== XR_FAR) {
             xrCamera.near = XR_NEAR;
