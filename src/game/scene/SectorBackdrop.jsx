@@ -1,10 +1,11 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Environment } from '@react-three/drei';
 import * as THREE from 'three';
 import { SECTORS } from '../config/sectors.js';
 import { createRng } from '../core/math.js';
 import { useGameStore } from '../state/gameStore.js';
+import { Impostor, localBoundingSphere, sphereToWorld } from './effects/Impostor.js';
 import { viewPose } from './viewPose.js';
 import GltfModel from './models/GltfModel.jsx';
 
@@ -138,41 +139,99 @@ const KM = 1000;
 const scratchOffset = new THREE.Vector3();
 
 /**
+ * Runs after the camera (-1) and before the views (0), so the distant bodies, which hang
+ * under the sky group, are placed and pictured from this frame's eye.
+ */
+const SKY_PRIORITY = -0.5;
+/** The distant bodies' own layers (see effects/Impostor.js): one per body of a sector. Layers 0-2 are the main cameras'. */
+const FIRST_BODY_LAYER = 5;
+/** Sheets are drawn after the stars and nebula and before everything else that blends; the farthest first. */
+const BODY_RENDER_ORDER = -8;
+/**
+ * How often a body's picture is retaken. One that animates: this many times a second unless
+ * its config says otherwise (`pictureRate`). A still one: only when the ship has travelled far
+ * enough to see it from a different angle (radians). Never more than one picture a frame
+ * (`pictures`).
+ */
+const ANIMATED_PICTURE_RATE = 8;
+const STILL_PICTURE_ANGLE = 5e-4;
+const pictures = { frame: 0, takenAt: -1 };
+
+/**
  * One of the site's GLB models as a distant body (planet, black hole...).
  *
  * The body has a true position and radius (tens of thousands of kilometres away, thousands
- * across). Numbers that large cannot go to the GPU as they are, so the body is drawn the
+ * across). Numbers that large cannot go to the GPU as they are, so the body is placed the
  * way a painter would: on the line from the eye to its real position, at a fixed 400 km,
  * shrunk by the same ratio. What reaches the screen is identical to drawing it full size at
  * full distance - same apparent size, same tiny shift as the ship crosses the sector -
  * without the precision problems.
+ *
+ * The model itself is never drawn into the game's picture: an impostor (effects/Impostor.js)
+ * photographs it a few times a second and shows the photograph on one sheet, so a body costs
+ * one draw call however detailed its model is. `active` is whether its sector is the current one.
  */
-function BackdropObject({ config }) {
+function BackdropObject({ config, layer, active }) {
     const groupRef = useRef(null);
     const truePosition = useMemo(
         () => new THREE.Vector3().fromArray(config.direction).normalize().multiplyScalar(config.distanceKm * KM),
         [config],
     );
+    const impostor = useMemo(() => new Impostor(layer), [layer]);
+    const local = useRef({ bounds: null, nextPicture: 0, pictureEye: new THREE.Vector3() });
+    useEffect(() => () => impostor.dispose(), [impostor]);
+    // Before the first frame is drawn, or the full model would flash up once.
+    useLayoutEffect(() => {
+        impostor.hideFromMainCameras(groupRef.current);
+        impostor.mesh.renderOrder = BODY_RENDER_ORDER - config.distanceKm * 1e-8;
+    }, [impostor, config]);
+    // Another sector's bodies keep no texture.
+    useEffect(() => {
+        if (!active) impostor.release();
+    }, [active, impostor]);
 
-    useFrame(() => {
+    useFrame(({ gl, scene, clock }) => {
+        if (!active) return;
         const group = groupRef.current;
         const offset = scratchOffset.copy(truePosition).sub(viewPose.position);
         const shrink = SKY_DISTANCE / offset.length();
         // The parent group already sits on the camera, so this is a camera-relative position.
         group.position.copy(offset).multiplyScalar(shrink);
         group.scale.setScalar((2 * config.radiusKm * KM * shrink) / config.modelSize);
+        group.updateWorldMatrix(true, false);
+
+        const state = local.current;
+        state.bounds ??= localBoundingSphere(group);
+        const sphere = sphereToWorld(state.bounds, group);
+        impostor.aim(viewPose.position, sphere.center, sphere.radius, group.parent);
+
+        // Retake the picture when it is due - straight away the first time, otherwise only
+        // while the sheet is in view, and never two bodies in one frame.
+        const stale = config.animation
+            ? clock.elapsedTime >= state.nextPicture
+            : state.pictureEye.distanceTo(viewPose.position) > STILL_PICTURE_ANGLE * offset.length();
+        const due = !impostor.ready || (stale && impostor.seen);
+        if (due && pictures.takenAt !== pictures.frame) {
+            pictures.takenAt = pictures.frame;
+            state.nextPicture = clock.elapsedTime + 1 / (config.pictureRate ?? ANIMATED_PICTURE_RATE);
+            state.pictureEye.copy(viewPose.position);
+            impostor.refresh(gl, scene);
+        }
     });
 
     return (
-        <group ref={groupRef} rotation={config.rotation ?? [0, 0, 0]}>
-            <GltfModel
-                url={config.model}
-                animation={config.animation ?? null}
-                animationSpeed={config.animationSpeed ?? 1}
-                brightness={config.brightness ?? 1}
-                distant
-            />
-        </group>
+        <>
+            <group ref={groupRef} rotation={config.rotation ?? [0, 0, 0]}>
+                <GltfModel
+                    url={config.model}
+                    animation={config.animation ?? null}
+                    animationSpeed={config.animationSpeed ?? 1}
+                    brightness={config.brightness ?? 1}
+                    distant
+                />
+            </group>
+            <primitive object={impostor.mesh} />
+        </>
     );
 }
 
@@ -197,6 +256,9 @@ const ENVIRONMENT_FRAGMENT_SHADER = /* glsl */ `
         gl_FragColor = vec4( ( mix( colorA, colorB, blend ) * clouds + 0.012 ) * gain, 1.0 );
     }
 `;
+
+const ALL_LAYERS = new THREE.Layers();
+ALL_LAYERS.enableAll();
 
 /** How strongly the nebula colours light the ships, and how bright the sun's reflection is. */
 const SKY_FILL = 1.6;
@@ -231,8 +293,9 @@ function SectorEnvironment({ sector }) {
 
 /**
  * Everything beyond the battlefield: stars and nebula (infinitely far, so they simply follow
- * the camera), distant bodies, plus the sector's lighting. All sectors' models stay mounted (only the current one is visible) so a warp
- * jump never has to wait for a download.
+ * the camera), distant bodies, plus the sector's lighting. All sectors' models stay mounted
+ * (only the current sector's are pictured and shown) so a warp jump never has to wait for a
+ * download.
  */
 export default function SectorBackdrop() {
     const sectorId = useGameStore((state) => state.sectorId) ?? DEFAULT_SECTOR;
@@ -240,20 +303,27 @@ export default function SectorBackdrop() {
     const skyRef = useRef(null);
 
     useFrame(() => {
-        skyRef.current?.position.copy(viewPose.position);
-    });
+        pictures.frame += 1;
+        const sky = skyRef.current;
+        if (!sky) return;
+        sky.position.copy(viewPose.position);
+        sky.updateMatrixWorld();
+    }, SKY_PRIORITY);
 
     return (
         <>
-            <ambientLight intensity={sector.light.ambient} />
-            <directionalLight position={sector.light.sunDirection} color={sector.light.sunColor} intensity={sector.light.sunIntensity} />
+            {/* On every layer: the distant bodies are lit on layers of their own (see BackdropObject). */}
+            <ambientLight intensity={sector.light.ambient} layers={ALL_LAYERS} />
+            <directionalLight position={sector.light.sunDirection} color={sector.light.sunColor} intensity={sector.light.sunIntensity} layers={ALL_LAYERS} />
             <SectorEnvironment key={sector.id} sector={sector} />
             <group ref={skyRef}>
                 <StarField />
                 <NebulaDome sky={sector.sky} />
                 {Object.values(SECTORS).map((other) => (
                     <group key={other.id} visible={other.id === sectorId}>
-                        {other.backdrop.map((config) => <BackdropObject key={config.model} config={config} />)}
+                        {other.backdrop.map((config, index) => (
+                            <BackdropObject key={config.model} config={config} layer={FIRST_BODY_LAYER + index} active={other.id === sectorId} />
+                        ))}
                     </group>
                 ))}
             </group>

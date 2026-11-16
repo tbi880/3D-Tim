@@ -117,7 +117,15 @@ and react to `world.events` (explosions, hits...).
 * **Planets** have true sizes and distances (`radiusKm`, `distanceKm` in
   `config/sectors.js`). Each frame they are drawn on the line from the camera to their real
   position, 400 km out and shrunk by the same ratio, which looks identical to the real
-  thing but keeps the numbers inside what a GPU can represent.
+  thing but keeps the numbers inside what a GPU can represent. What is drawn there is not
+  the model but a picture of it on one flat sheet (`effects/Impostor.js`): the model is
+  drawn into a texture from the viewer's eye, a few times a second if it animates
+  (`pictureRate`) and otherwise only when the ship has travelled far enough to see it from
+  a new angle. From one spot a far-away thing looks the same whichever way you turn, so the
+  picture is exact, and a body costs one draw call and two triangles a frame instead of its
+  whole model (the black hole and the spiral star were 838 k triangles and 26 draw calls,
+  twice over in a headset). The black hole, redrawn 30 times a second, also has a lighter
+  copy of the site's model (`tools/game-models/backdrop/simplify.mjs`).
 * **Explosions** (`ExplosionsLayer.jsx`, `scene/effects/`) are built from pooled, instanced
   parts: fire-and-smoke puffs (`FireballSystem`), sparks (`ParticleSystem`), wreckage
   (`DebrisSystem`, shapes in `wreckageShapes.js`: torn plating, hull sections, frame and

@@ -13,6 +13,12 @@
  *   brightness  - optional, dims a model whose colours wash out at this size (1 = as authored)
  *   animationSpeed - playback rate of the model's own animation; a planet's clouds should
  *                 take minutes to move visibly, so these are small
+ *   pictureRate - a body is not drawn as a model but as a picture of it that is retaken now
+ *                 and then (SectorBackdrop, effects/Impostor.js). An animated body's picture
+ *                 is retaken this many times a second (default 8): enough that each step is
+ *                 under a pixel. A body without `animation` is a still, retaken only as the
+ *                 ship's travel changes the view of it, so its model can be as heavy as it
+ *                 likes: the spiral star (606 k triangles) is one for that reason.
  *
  * light.ambient is deliberately small: most fill light is the sky itself, reflected off the
  * hulls (SectorBackdrop renders the nebula colours and the sun into an environment map).
@@ -29,12 +35,12 @@ export const SECTORS = Object.freeze({
         light: { sunDirection: [-0.4, 0.5, -0.8], sunColor: '#cfd9ff', sunIntensity: 3.0, ambient: 0.2 },
         backdrop: [
             {
-                model: 'blackhole-transformed.glb', modelSize: 6.1, direction: [-0.25, 0.14, -1], radiusKm: 40_000, distanceKm: 137_000,
-                rotation: [0.35, 0, 0.2], animation: 'Take 001', animationSpeed: 0.12,
+                model: 'game/backdrop/blackhole-transformed.glb', modelSize: 6.1, direction: [-0.25, 0.14, -1], radiusKm: 40_000, distanceKm: 137_000,
+                rotation: [0.35, 0, 0.2], animation: 'Take 001', animationSpeed: 0.12, pictureRate: 30,
             },
             {
                 model: 'strangest_star-transformed.glb', modelSize: 43, direction: [-0.25, 0.14, -1], radiusKm: 600_000, distanceKm: 1_165_000,
-                rotation: [0.35, 0, 0.2], animation: 'Animation', animationSpeed: 0.08,
+                rotation: [0.35, 0, 0.2],
             },
         ],
         asteroids: {
@@ -138,7 +144,7 @@ export const SECTORS = Object.freeze({
         backdrop: [
             {
                 model: 'strangest_star-transformed.glb', modelSize: 43, direction: [-0.35, 0.3, -0.9], radiusKm: 300_000, distanceKm: 2_400_000,
-                rotation: [0.2, 0.4, 0], animation: 'Animation', animationSpeed: 0.05,
+                rotation: [0.2, 0.4, 0],
             },
             {
                 model: 'planets/purplePlanet-transformed.glb', modelSize: 2.07, direction: [0.8, -0.45, -0.5], radiusKm: 6_000, distanceKm: 26_000, brightness: 0.4,
