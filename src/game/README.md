@@ -125,8 +125,10 @@ and react to `world.events` (explosions, hits...).
   picture is exact, and a body costs one draw call and two triangles a frame instead of its
   whole model (the black hole and the spiral star were 838 k triangles and 26 draw calls,
   twice over in a headset). The black hole, redrawn 30 times a second, also has a lighter
-  copy of the site's model (`tools/game-models/backdrop/simplify.mjs`).
-* **The nebula** is layered noise, baked once into a cube map (`bakeNebulaClouds` in
+  copy of the site's model (`tools/game-models/backdrop/simplify.mjs`). In a headset the
+  pictures are taken between frames, never during one: switching render targets in the
+  middle of a headset frame left a Pico black.
+* **The nebula** is layered noise, baked once into a cube map (`nebulaCloudsFor` in
   `SectorBackdrop.jsx`): evaluated per pixel it was the most expensive shader in the game.
 * **In a headset** the GPU is limited by the pixels it fills. Each eye's buffer is sized by
   the graphics setting (`vrResolution` in `config/graphics.js`); the resolution can also

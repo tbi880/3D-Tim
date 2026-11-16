@@ -18,6 +18,12 @@ import * as THREE from 'three';
  * How the model is kept out of the normal picture: its meshes sit on a layer of their own
  * (`layer`) that only this impostor's camera sees. They stay in the main scene, so they are
  * lit by its lights (which must be on every layer) and its environment map.
+ *
+ * In a headset the picture is never taken while a frame is being drawn, but in a task of
+ * its own between two frames. A headset's GPU draws the eyes' multisampled, foveated buffer
+ * in one go; turning to another render target in the middle of a headset frame is what
+ * three.js itself warns "doesn't work properly" there, and on a Pico it left both eyes black
+ * while everything else ran on. Between frames the eyes' buffer is not in use at all.
  */
 
 /** Texture pixels per degree of sky: a little more than a headset's lenses resolve. */
@@ -57,6 +63,8 @@ export class Impostor {
         this.mesh.visible = false;
         /** Set whenever the sheet was drawn: lets the owner skip refreshes while it is out of view. */
         this.seen = false;
+        /** The timer of a picture waiting to be taken between two headset frames, or null. */
+        this.pending = null;
         this.mesh.onBeforeRender = () => { this.seen = true; };
     }
 
@@ -92,25 +100,47 @@ export class Impostor {
         this.halfAngle = halfAngle;
     }
 
-    /** Takes the picture: draws the model's layer of `scene` into the texture. Call after `aim`. */
+    /**
+     * Takes the picture: draws the model's layer of `scene` into the texture. Call after `aim`.
+     * In a headset session it is taken a moment later, between this frame and the next.
+     */
     refresh(gl, scene) {
+        if (!gl.xr.isPresenting) {
+            this.#draw(gl, scene);
+            return;
+        }
+        if (this.pending) return;
+        const pending = setTimeout(() => {
+            if (this.pending !== pending) return;
+            this.pending = null;
+            this.#draw(gl, scene);
+        }, 0);
+        this.pending = pending;
+    }
+
+    #draw(gl, scene) {
         const size = THREE.MathUtils.clamp(Math.round(THREE.MathUtils.radToDeg(2 * this.halfAngle) * PIXELS_PER_DEGREE), MIN_SIZE, MAX_SIZE);
         const target = this.#targetOfSize(gl, size);
 
-        // Drawn with this impostor's own camera even inside a headset session, and without
-        // disturbing what the renderer was set up to draw next.
+        // Drawn with this impostor's own camera, and without disturbing what the renderer was
+        // set up to draw next, or its count of what the last frame drew.
+        const presenting = gl.xr.isPresenting;
         const xrEnabled = gl.xr.enabled;
         const previousTarget = gl.getRenderTarget();
         const previousAlpha = gl.getClearAlpha();
+        const { calls, triangles, points, lines } = gl.info.render;
         gl.getClearColor(scratchColor);
         gl.xr.enabled = false;
         gl.setRenderTarget(target);
         gl.setClearColor(0x000000, 0);
         gl.clear();
         gl.render(scene, this.camera);
-        gl.setRenderTarget(previousTarget);
+        // Between a headset's frames its buffer must be left alone, even to bind it: three.js
+        // sets it up again at the start of the next frame.
+        if (!presenting) gl.setRenderTarget(previousTarget);
         gl.setClearColor(scratchColor, previousAlpha);
         gl.xr.enabled = xrEnabled;
+        Object.assign(gl.info.render, { calls, triangles, points, lines });
 
         this.mesh.visible = true;
         this.seen = false;
@@ -123,6 +153,7 @@ export class Impostor {
 
     /** Frees the texture (the next refresh makes a new one). */
     release() {
+        this.pending = null;
         this.target?.dispose();
         this.target = null;
         this.material.map = null;

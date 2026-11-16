@@ -91,8 +91,10 @@ function VRReport() {
     const summary = report.notStarted
         ? t('ui.vr.report.notStarted')
         : t('ui.vr.report.summary', { ...report, scale: Math.round(report.lowestScale * 100) });
+    // A frame or two lost as a session starts is nothing; a session that drew nothing, or kept failing, is.
+    const failed = report.notStarted || report.frames === 0 || report.errors > report.frames / 10;
     return (
-        <p className={`eod-vr-report${report.errors ? ' eod-vr-report-failed' : ''}`}>
+        <p className={`eod-vr-report${failed ? ' eod-vr-report-failed' : ''}`}>
             {summary}
             {report.errors > 0 && <><br />{t('ui.vr.report.errors', { count: report.errors })} {report.firstError}</>}
         </p>

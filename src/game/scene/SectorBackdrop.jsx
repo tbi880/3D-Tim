@@ -45,7 +45,7 @@ const NEBULA_VERTEX_SHADER = /* glsl */ `
  * evaluations for one pixel. Worked out for every pixel of the sky every frame, that was
  * the most expensive shader in the game on the pixels that matter least. The clouds are the
  * same in every sector (only their colours differ), so they are worked out once, into a cube
- * map (`bakeNebulaClouds`), and the sky's own shader reads them back with one texture fetch.
+ * map (`nebulaCloudsFor`), and the sky's own shader reads them back with one texture fetch.
  */
 const NEBULA_NOISE = /* glsl */ `
     float hash(vec3 p) {
@@ -108,7 +108,18 @@ const NEBULA_FRAGMENT_SHADER = /* glsl */ `
 /** Pixels along one face of the clouds' cube map: about six to a degree, several to the finest wisp. */
 const NEBULA_CUBE_SIZE = 512;
 
-/** Draws the nebula's clouds into a cube map. The caller disposes the returned render target. */
+/**
+ * The clouds' cube map, one per renderer, made when first asked for. It is kept for as long
+ * as the renderer lives (its WebGL context goes with the page's canvas): a component that
+ * disposed it on unmount would lose it whenever React hides and shows the scene again.
+ */
+const nebulaClouds = new WeakMap();
+function nebulaCloudsFor(gl) {
+    if (!nebulaClouds.has(gl)) nebulaClouds.set(gl, bakeNebulaClouds(gl));
+    return nebulaClouds.get(gl);
+}
+
+/** Draws the nebula's clouds into a cube map. */
 function bakeNebulaClouds(gl) {
     const target = new THREE.WebGLCubeRenderTarget(NEBULA_CUBE_SIZE, { generateMipmaps: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
     const material = new THREE.ShaderMaterial({ vertexShader: NEBULA_BAKE_VERTEX_SHADER, fragmentShader: NEBULA_BAKE_FRAGMENT_SHADER, side: THREE.BackSide });
@@ -153,8 +164,7 @@ function StarField() {
 /** A sphere painted with clouds in the sector's colours. */
 function NebulaDome({ sky }) {
     const gl = useThree((state) => state.gl);
-    const clouds = useMemo(() => bakeNebulaClouds(gl), [gl]);
-    useEffect(() => () => clouds.dispose(), [clouds]);
+    const clouds = nebulaCloudsFor(gl);
     const material = useMemo(() => new THREE.ShaderMaterial({
         vertexShader: NEBULA_VERTEX_SHADER,
         fragmentShader: NEBULA_FRAGMENT_SHADER,

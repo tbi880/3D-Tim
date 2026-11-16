@@ -13,12 +13,11 @@
  *
  * `guardXRFrames` wraps whatever callback is given to `renderer.xr.setAnimationLoop` (React
  * Three Fiber sets it when a session starts) so that an error ends that frame only. The error
- * is passed to `onError` and thrown again outside the frame, where the browser reports it as
- * usual (console, and in development the on-page error notice).
+ * goes to the console and to `onError` (the session's report on the page, vrPerformance.js).
  */
 
-/** Errors thrown again per session: after that they are only counted, or a per-frame error would flood the console. */
-const RETHROWN_PER_SESSION = 3;
+/** Errors written to the console per session: after that they are only counted, or a per-frame error would flood it. */
+const LOGGED_PER_SESSION = 5;
 
 /**
  * @param {THREE.WebGLRenderer} gl
@@ -30,13 +29,13 @@ export function guardXRFrames(gl, onError) {
     const setAnimationLoop = xr.setAnimationLoop;
     xr.setAnimationLoop = function guardedSetAnimationLoop(callback) {
         if (!callback) return setAnimationLoop.call(this, callback);
-        let rethrown = 0;
+        let logged = 0;
         return setAnimationLoop.call(this, (time, frame) => {
             try {
                 callback(time, frame);
             } catch (error) {
                 onError(error);
-                if (rethrown++ < RETHROWN_PER_SESSION) setTimeout(() => { throw error; }, 0);
+                if (logged++ < LOGGED_PER_SESSION) console.error('[Echoes of Dawn] A VR frame failed:', error);
             }
         });
     };

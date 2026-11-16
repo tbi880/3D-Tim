@@ -74,8 +74,15 @@ export function getXRStore() {
             meshDetection: false,
             domOverlay: false,
         });
-        store.subscribe((state) => {
+        store.subscribe((state, previous) => {
             vr.active = state.session != null && state.mode === 'immersive-vr';
+            // three.js keeps a finished session's reference space, and the store goes on
+            // offering it until the new session's first frame: long enough for the controllers
+            // to be asked for their pose in it, which a real browser refuses (a space belongs
+            // to its session). Forget it the moment a new session starts.
+            if (state.session && state.session !== previous.session && state.originReferenceSpace) {
+                store.setState({ originReferenceSpace: undefined });
+            }
         });
     }
     return store;
