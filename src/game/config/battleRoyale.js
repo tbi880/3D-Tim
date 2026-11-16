@@ -59,15 +59,44 @@ export const BATTLE_ROYALE = Object.freeze({
         interval: Object.freeze([180, 300]),
         /** Seconds a planet takes to fall in: ships there bleed, but can still jump away. */
         collapsing: 30,
-        /** Share of a ship's shield + hull lost per second while its planet is falling in... */
+        /** Share of a ship's shield + hull lost per second while its planet is falling in. */
         collapsingDrain: 0.022,
-        /** ...and once it has been swallowed: nothing lives long, and nothing jumps out. */
-        swallowedDrain: 0.3,
+        /**
+         * Seconds an undamaged ship lasts at a planet that has been swallowed: the black hole takes
+         * shield and hull at a steady rate that nothing softens, and nothing jumps out. It is
+         * shorter than taking a held station needs (`station.heldSeconds` plus the flight to
+         * its dock), so jumping into a swallowed planet to steal its bubble cannot work.
+         */
+        swallowedSeconds: 20,
         /**
          * Seconds the last planet stands once every other one is gone. If no side has taken the
          * stargate by then, the side with the most ships at it goes through.
          */
         finalStand: 300,
+    }),
+
+    /**
+     * Every planet has a station, and whoever holds the station holds the planet. It is taken
+     * by docking: fly into the mouth of its dock, clamp on, and stay clamped until the locks
+     * give. A docked ship cannot fly or fire - but can let go at any moment.
+     * Positions are in the station's own axes (the model of config/shipClasses.js
+     * `lanternStation`: its dock opens towards -z, and ships fly into it along +z).
+     */
+    station: Object.freeze({
+        classId: 'lanternStation',
+        /** Metres from the middle of the station back down its approach lane to where ships drop out of warp. */
+        arrival: 3400,
+        /** The mouth of the dock: a ship within `range` metres of it can clamp on. */
+        mouth: Object.freeze([0, -120, 1643]),
+        range: 320,
+        /** Where a docked ship is held, nose to the door, and how fast it is drawn there (1/s). */
+        berth: Object.freeze([0, -120, 1560]),
+        pull: 2.5,
+        /** Seconds docked to take a station nobody holds, and one another side holds. */
+        seconds: 10,
+        heldSeconds: 15,
+        /** Rocks closer than this to the hull or the approach lane are cleared away (metres). */
+        clearance: 160,
     }),
 
     capture: Object.freeze({
@@ -76,9 +105,29 @@ export const BATTLE_ROYALE = Object.freeze({
         piratePoints: 9,
         /** Calls for reinforcements earned with it (never by pirates). */
         summons: 1,
+        /** Pieces of equipment each of them may choose (config `equipment`), whatever the side decides. */
+        picks: 1,
         /** Seconds the side has to choose between the reward and bringing its fallen back. */
         voteSeconds: 12,
         score: 400,
+    }),
+
+    /**
+     * Equipment (the quartermaster's stores): single-use pieces a pilot carries. Everybody may
+     * choose `startingPicks` before the match, and one more for every station their side takes
+     * while they are there. The pieces themselves are in modes/battleRoyale/equipment.js.
+     */
+    equipment: Object.freeze({
+        startingPicks: 1,
+        /** Most of one piece a pilot can carry. */
+        stack: 9,
+        /** Seconds the gravity shield keeps the black hole off once it has come on. */
+        gravityShieldSeconds: 30,
+        /** Seconds the emergency shield holds the hull, and the share of the hull it holds it at. */
+        emergencyShieldSeconds: 10,
+        emergencyHull: 0.01,
+        /** Orbits an overdrive chip lets one jump cross (an ordinary jump crosses 1). */
+        overdriveReach: 2,
     }),
 
     /** Ships that answer a call for reinforcements, and how far behind the caller they arrive. */
@@ -113,15 +162,18 @@ export const BATTLE_ROYALE = Object.freeze({
             [FACTION.DAWN]: Object.freeze([['harrier', 2], ['dart', 5]]),
             [FACTION.UMBRA]: Object.freeze([['warden', 1], ['corvette', 2], ['raider', 4]]),
         }),
-        /** Where each side holds station, relative to the sector's start point, and how spread out. */
-        offsets: Object.freeze({ [FACTION.DAWN]: [-2600, 300, -3200], [FACTION.UMBRA]: [2600, -200, -3600] }),
-        spacing: 220,
+        /**
+         * Where each side holds station - inside the station's ring, either side of the lane to
+         * its dock (the station's own axes) - and how spread out.
+         */
+        offsets: Object.freeze({ [FACTION.DAWN]: [-1100, 300, 400], [FACTION.UMBRA]: [1100, -200, 250] }),
+        spacing: 200,
         /**
          * A garrison with nobody to fight stays on guard: it only goes for ships that come
          * this close (or that shoot at it). Arriving ships drop out of warp further away than
          * that, so a pilot can look before they leap. Two garrisons at war hunt freely.
          */
-        guardRange: 3000,
+        guardRange: 2800,
     }),
 
     /**

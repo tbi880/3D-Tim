@@ -33,6 +33,7 @@ export class Zone {
         this.viewers = new Set();
         /** This frame's events for everybody here (already JSON). */
         this.frameEvents = [];
+        /** Serials of the sector's rocks that are no longer there (shot, rammed, or cleared away). */
         this.destroyedRocks = [];
         this.encoder = new SnapshotEncoder();
         this.captured = false;
@@ -46,6 +47,13 @@ export class Zone {
     /** Records an event for everybody in the zone. */
     share(...entry) {
         this.frameEvents.push(JSON.stringify(entry));
+    }
+
+    /** Takes a rock out of the zone without a bang: something is being built where it was. */
+    clearRock(rock) {
+        if (!rock.alive) return;
+        rock.alive = false;
+        this.destroyedRocks.push(rock.serial);
     }
 
     /**

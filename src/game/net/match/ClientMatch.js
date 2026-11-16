@@ -258,7 +258,13 @@ export class ClientMatch {
         this.timeline.reset();
         this.predictor.reset();
 
-        if (Array.isArray(message.rocks)) for (const serial of message.rocks) this.destroyRock(serial);
+        // Rocks that were gone before this device arrived are simply not there: no blast to show.
+        if (Array.isArray(message.rocks)) {
+            const gone = new Set(message.rocks);
+            for (const rock of world.obstacles) {
+                if (gone.has(rock.serial)) rock.alive = false;
+            }
+        }
         // Parents before the turrets and generators that ride on them.
         const ships = Array.isArray(message.ships) ? [...message.ships] : [];
         ships.sort((a, b) => Number(a?.parentId != null) - Number(b?.parentId != null));

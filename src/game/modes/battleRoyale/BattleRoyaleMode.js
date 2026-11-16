@@ -5,15 +5,17 @@ import { RATING_ORDER } from '../../config/playerShips.js';
 import { SECTORS } from '../../config/sectors.js';
 import { createRng, randomUnitVector } from '../../core/math.js';
 import { mergeUpgrades } from '../../core/refit.js';
-import { applyDamage } from '../../core/systems/damage.js';
+import { drainShip } from '../../core/systems/damage.js';
 import { cleanUpgrades } from '../../net/match/matchInfo.js';
 import { MATCH_PHASE } from '../../net/match/matchState.js';
 import { WORLD_EVENT } from '../../net/protocol.js';
 import { LOYALTY, LoyaltyRecord, dealFactions, isPirate } from './allegiance.js';
-import { BR_EVENT, BR_REQUEST, JUMP_REFUSAL, VOTE } from './battleRoyaleProtocol.js';
+import { BR_EVENT, BR_REQUEST, DOCK_END, DOCK_REFUSAL, JUMP_REFUSAL, VOTE } from './battleRoyaleProtocol.js';
 import { CollapseClock, PLANET_STATUS } from './collapse.js';
-import { buildStargate, callReinforcements, planGarrisons, stationGarrison } from './garrisons.js';
+import { EQUIPMENT, Inventory } from './equipment.js';
+import { callReinforcements, planGarrisons, stationGarrison } from './garrisons.js';
 import { StarMap } from './starMap.js';
+import { buildStation } from './station.js';
 
 const scratchOffset = new Vector3();
 const sumLevels = (upgrades) => Object.values(upgrades).reduce((sum, levels) => sum + levels, 0);
@@ -38,19 +40,38 @@ class Contestant {
         /** The planet they enter the system at, once the introduction is over. */
         this.start = null;
         this.loyalty = new LoyaltyRecord(BATTLE_ROYALE.betrayal);
+        /** The station they are clamped on to: { place, left, seconds }, or null. */
+        this.dock = null;
+        /** The equipment they carry and may still choose. */
+        this.inventory = new Inventory({ picks: BATTLE_ROYALE.equipment.startingPicks, stack: BATTLE_ROYALE.equipment.stack });
+        /** Match times until which their gravity shield and their emergency shield are on (0: off). */
+        this.gravityShieldUntil = 0;
+        this.emergencyShieldUntil = 0;
+        /** When their ship was last hurt, as of the last look (see updateEmergencyShield). */
+        this.seenDamageAt = -Infinity;
+    }
+
+    /**
+     * Whose eyes this pilot's are: what one of a side learns about a planet, the side knows.
+     * Pirates are no side, and keep what they learn to themselves.
+     */
+    get intelKey() {
+        return isPirate(this.faction) ? this.pilot.id : this.faction;
     }
 }
 
 /** What the rules know about one planet. */
 class Place {
-    constructor(planet, orbit, zone) {
+    constructor(planet, orbit, zone, station) {
         this.planet = planet;
         this.orbit = orbit;
         this.zone = zone;
-        /** The side whose anti-gravity bubble covers the planet, or null. */
+        /** The planet's station (station.js): who docks at it long enough holds the planet. */
+        this.station = station;
+        /** The side that holds the station - its anti-gravity bubble covers the planet - or null. */
         this.owner = null;
-        /** Sides that have destroyed something hostile here since they last arrived: only they can take the planet. */
-        this.earned = new Set();
+        /** Whose beacons watch the planet (Contestant.intelKey). */
+        this.scouts = new Set();
         /** The choice a side is making after taking the planet: { faction, endsAt, ballots: Map<pilotId, choice | null> }. */
         this.vote = null;
         this.status = PLANET_STATUS.SAFE;
@@ -62,11 +83,14 @@ class Place {
  *
  * A star system whose sun is collapsing: planets are swallowed one by one from the inside,
  * and three sides - the Federation, the Umbra and the pirates - fight their way outwards to
- * the stargate on the last one. Players are dealt into the sides at random; planets are held
- * by the Federation's and the Umbra's computer-flown garrisons, some of them already at war.
+ * the stargate on the last one. Players are dealt into the sides at random; every planet has
+ * a station, guarded by the Federation's or the Umbra's computer-flown garrison or fought
+ * over by both. A side takes a planet by docking a ship at its station - and loses it the
+ * same way.
  *
  * Tuning is in config/battleRoyale.js. The pieces: StarMap (who can jump where), CollapseClock
- * (what falls in when), allegiance (sides and treason), garrisons (the computer-flown ships).
+ * (what falls in when), allegiance (sides and treason), station (the docks), garrisons (the
+ * computer-flown ships), equipment (what pilots carry).
  */
 export class BattleRoyaleMode {
     /**
@@ -109,12 +133,12 @@ export class BattleRoyaleMode {
             const zone = server.addZone(planet.id, planet.sectorId, {
                 seed: Math.floor(rng() * 0xffffffff), difficulty: BATTLE_ROYALE.difficulty, friendlyFire: BATTLE_ROYALE.friendlyFire,
             });
-            this.places.set(planet.id, new Place(planet, orbit, zone));
-            if (planet.gate) buildStargate(zone);
+            const station = buildStation(zone, BATTLE_ROYALE.station, Boolean(planet.gate));
+            this.places.set(planet.id, new Place(planet, orbit, zone, station));
             const sidesHere = garrisons.get(planet.id);
             for (const faction of sidesHere) {
                 const ships = planet.gate ? BATTLE_ROYALE.garrisons.gate[faction] : BATTLE_ROYALE.garrisons[faction];
-                stationGarrison(zone, faction, ships, BATTLE_ROYALE.garrisons, sidesHere.length === 1);
+                stationGarrison(zone, station, faction, ships, BATTLE_ROYALE.garrisons, sidesHere.length === 1);
             }
         });
 
@@ -158,7 +182,7 @@ export class BattleRoyaleMode {
         return this.places.get(choices[Math.floor(this.rng() * choices.length)].id);
     }
 
-    /** Puts a contestant in a (new) ship at a planet, scattered around its zone's start point. */
+    /** Puts a contestant in a (new) ship at a planet, scattered around the far end of its station's approach lane. */
     launch(contestant, place, { warpIn = true, hullFraction = 1 } = {}) {
         const start = SECTORS[place.zone.sectorId].playerStart;
         randomUnitVector(this.rng, scratchOffset);
@@ -170,6 +194,8 @@ export class BattleRoyaleMode {
         });
         // Engines idle: a pilot who is still reading the map does not drift into the garrison.
         ship.throttle = 0;
+        contestant.seenDamageAt = ship.lastDamagedAt;
+        this.armEmergencyShield(contestant);
         return ship;
     }
 
@@ -197,11 +223,11 @@ export class BattleRoyaleMode {
         for (const contestant of this.contestants.values()) {
             contestant.loyalty.update(dt);
             this.updateJump(contestant, dt);
+            this.updateDock(contestant, dt);
+            this.updateEmergencyShield(contestant);
         }
         for (const place of this.places.values()) {
-            if (!place.zone.active) continue;
             if (place.vote && time >= place.vote.endsAt) this.resolveVote(place);
-            this.checkCapture(place);
         }
         this.checkVictory();
     }
@@ -219,17 +245,34 @@ export class BattleRoyaleMode {
         }
         if (status === PLANET_STATUS.SAFE || !place.zone.active) return;
 
-        const drain = status === PLANET_STATUS.COLLAPSING ? BATTLE_ROYALE.collapse.collapsingDrain : BATTLE_ROYALE.collapse.swallowedDrain;
+        // The black hole's pull is the same for everybody: a share of the whole ship every second.
+        const share = status === PLANET_STATUS.COLLAPSING ? BATTLE_ROYALE.collapse.collapsingDrain : 1 / BATTLE_ROYALE.collapse.swallowedSeconds;
         const { world } = place.zone;
         for (const ship of world.ships) {
-            if (!ship.alive || this.isShielded(place, ship)) continue;
-            applyDamage(world, ship, drain * (ship.maxHull + ship.maxShield) * dt, { continuous: true });
+            if (!ship.alive || ship.arriving || this.isShielded(place, ship) || this.gravityShieldHolds(ship)) continue;
+            drainShip(world, ship, share * (ship.maxHull + ship.maxShield) * dt);
         }
     }
 
     /** True for ships the black hole cannot touch here: scenery, and the side whose bubble covers the planet. */
     isShielded(place, ship) {
         return ship.invulnerable || ship.faction === FACTION.NEUTRAL || ship.faction === place.owner;
+    }
+
+    /**
+     * True while a pilot's gravity shield keeps the pull off their ship. One they carry comes on
+     * here, the moment the pull would first have hurt.
+     */
+    gravityShieldHolds(ship) {
+        const contestant = ship.isPlayer ? this.contestants.get(ship.pilotId) : null;
+        if (!contestant || contestant.pilot.ship !== ship) return false;
+        const { time } = this.server;
+        if (time < contestant.gravityShieldUntil) return true;
+        if (!contestant.inventory.use(EQUIPMENT.GRAVITY_SHIELD)) return false;
+        contestant.gravityShieldUntil = time + BATTLE_ROYALE.equipment.gravityShieldSeconds;
+        this.tellMode(contestant.pilot, BR_EVENT.EQUIPMENT_USED, { item: EQUIPMENT.GRAVITY_SHIELD });
+        this.server.publishState();
+        return true;
     }
 
     sweep(place) {
@@ -246,11 +289,17 @@ export class BattleRoyaleMode {
         const here = this.placeOf(contestant);
         if (!contestant.alive || !contestant.pilot.ship?.alive || !here) return JUMP_REFUSAL.NO_SHIP;
         if (contestant.jump) return JUMP_REFUSAL.SPOOLING;
-        if (!this.map.areNeighbours(here.planet.id, to)) return JUMP_REFUSAL.NOT_ADJACENT;
+        const orbits = this.map.distance(here.planet.id, to);
+        if (orbits < 1 || orbits > this.jumpReach(contestant)) return JUMP_REFUSAL.NOT_ADJACENT;
         if (this.server.time < contestant.jumpReadyAt) return JUMP_REFUSAL.CHARGING;
         // A swallowed planet lets nothing go - except the side whose bubble holds the gravity off.
         if (here.status === PLANET_STATUS.SWALLOWED && here.owner !== contestant.faction) return JUMP_REFUSAL.TRAPPED;
         return null;
+    }
+
+    /** Orbits a contestant's next jump can cross: one, or more with an overdrive chip aboard. */
+    jumpReach(contestant) {
+        return contestant.inventory.has(EQUIPMENT.OVERDRIVE) ? BATTLE_ROYALE.equipment.overdriveReach : 1;
     }
 
     requestJump(contestant, to) {
@@ -259,7 +308,11 @@ export class BattleRoyaleMode {
             this.tellMode(contestant.pilot, BR_EVENT.JUMP_REFUSED, { reason: refusal });
             return;
         }
-        contestant.jump = { to, left: BATTLE_ROYALE.jump.spool };
+        // Leaving is letting go of the station.
+        this.undock(contestant, DOCK_END.RELEASED);
+        // Only a jump further than the next orbit burns the overdrive chip.
+        const overdrive = this.map.distance(this.placeOf(contestant).planet.id, to) > 1;
+        contestant.jump = { to, left: BATTLE_ROYALE.jump.spool, overdrive };
         this.tellMode(contestant.pilot, BR_EVENT.JUMP_SPOOL, { to, seconds: BATTLE_ROYALE.jump.spool });
         this.server.publishState();
     }
@@ -288,6 +341,9 @@ export class BattleRoyaleMode {
         pilot.zone.world.removeShip(ship, { flash: true });
         contestant.jump = null;
         contestant.jumpReadyAt = this.server.time + this.jumpCooldown;
+        if (jump.overdrive && contestant.inventory.use(EQUIPMENT.OVERDRIVE)) {
+            this.tellMode(pilot, BR_EVENT.EQUIPMENT_USED, { item: EQUIPMENT.OVERDRIVE });
+        }
 
         const arrived = this.launch(contestant, this.places.get(jump.to), { hullFraction: carried.hullFraction });
         arrived.shield = arrived.maxShield * carried.shieldFraction;
@@ -308,29 +364,92 @@ export class BattleRoyaleMode {
             && contestant.faction === faction && contestant.pilot.zone === place.zone && contestant.pilot.ship?.alive);
     }
 
+    /** Why a contestant cannot clamp on to the station where they are (DOCK_REFUSAL), or null if they can. */
+    dockRefusal(contestant) {
+        const here = this.placeOf(contestant);
+        const ship = contestant.pilot.ship;
+        if (!contestant.alive || !ship?.alive || ship.arriving || !here) return DOCK_REFUSAL.NO_SHIP;
+        if (contestant.jump) return DOCK_REFUSAL.JUMPING;
+        if (here.owner === contestant.faction) return DOCK_REFUSAL.HELD;
+        if (!here.station.inRange(ship.position)) return DOCK_REFUSAL.TOO_FAR;
+        return null;
+    }
+
+    /** Seconds a ship must stay docked to take a planet's station: longer if another side holds it. */
+    dockSeconds(place) {
+        return place.owner ? BATTLE_ROYALE.station.heldSeconds : BATTLE_ROYALE.station.seconds;
+    }
+
     /**
-     * A side takes a planet when it has a pilot there, has destroyed something hostile there,
-     * and nothing hostile to it is left: no ship of another side, computer-flown or not.
+     * Clamps a contestant's ship on to the station. From here until the locks give - or the
+     * pilot lets go - the ship neither flies nor fires; it can still be shot.
      */
-    checkCapture(place) {
-        const { ships } = place.zone.world;
-        for (const faction of PLAYER_FACTIONS) {
-            if (this.membersAt(place, faction).length === 0) {
-                place.earned.delete(faction);
-                continue;
-            }
-            if (place.owner === faction || !place.earned.has(faction) || place.vote) continue;
-            const contested = ships.some((ship) => ship.alive && ship.faction !== faction && ship.faction !== FACTION.NEUTRAL);
-            if (!contested) this.capture(place, faction);
+    requestDock(contestant) {
+        if (contestant.dock) return;
+        const refusal = this.dockRefusal(contestant);
+        if (refusal) {
+            this.tellMode(contestant.pilot, BR_EVENT.DOCK_REFUSED, { reason: refusal });
+            return;
+        }
+        const place = this.placeOf(contestant);
+        const seconds = this.dockSeconds(place);
+        contestant.dock = { place, left: seconds, seconds };
+        contestant.pilot.helmHeld = true;
+        this.tellMode(contestant.pilot, BR_EVENT.DOCKED, { seconds });
+        // The side that holds the station hears its alarm wherever its pilots are.
+        if (place.owner) this.tellSide(place.owner, BR_EVENT.STATION_ALARM, { planet: place.planet.id, faction: contestant.faction });
+        this.server.publishState();
+    }
+
+    /** Lets a contestant's ship go from the station. `reason` (DOCK_END) is told to the pilot; null says nothing. */
+    undock(contestant, reason = null) {
+        if (!contestant.dock) return;
+        contestant.dock = null;
+        contestant.pilot.helmHeld = false;
+        if (reason) this.tellMode(contestant.pilot, BR_EVENT.UNDOCKED, { reason });
+        this.server.publishState();
+    }
+
+    updateDock(contestant, dt) {
+        const { dock, pilot } = contestant;
+        if (!dock) return;
+        // Shot down at the dock: the locks have nothing left to hold.
+        if (!pilot.ship?.alive) {
+            this.undock(contestant);
+            return;
+        }
+        dock.place.station.hold(pilot.ship, BATTLE_ROYALE.station.pull, dt);
+        dock.left -= dt;
+        if (dock.left <= 0) this.capture(dock.place, contestant.faction);
+    }
+
+    /** Tells every pilot of a side, wherever they are. */
+    tellSide(faction, name, data) {
+        for (const contestant of this.contestants.values()) {
+            if (contestant.faction === faction && !contestant.pilot.gone) this.tellMode(contestant.pilot, name, data);
         }
     }
 
+    /** A side's ship has stayed docked long enough: the station, and the planet with it, is that side's. */
     capture(place, faction) {
+        const former = place.owner;
+        // A choice the last holder had not finished making is made for them now.
+        if (place.vote) this.resolveVote(place);
         place.owner = faction;
-        place.earned.clear();
+        // The station has changed hands: every clamp lets go, the winners' and the too-late alike.
+        for (const contestant of this.contestants.values()) {
+            if (contestant.dock?.place === place) this.undock(contestant, contestant.faction === faction ? null : DOCK_END.TAKEN);
+        }
         place.zone.share(WORLD_EVENT.MODE, BR_EVENT.CAPTURED, { planet: place.planet.id, faction });
+        if (former) this.tellSide(former, BR_EVENT.STATION_LOST, { planet: place.planet.id, faction });
+
         const members = this.membersAt(place, faction);
-        for (const member of members) member.score += BATTLE_ROYALE.capture.score;
+        for (const member of members) {
+            member.score += BATTLE_ROYALE.capture.score;
+            // Equipment is theirs whatever the side decides about the reward.
+            member.inventory.grant(BATTLE_ROYALE.capture.picks);
+            this.tellMode(member.pilot, BR_EVENT.PICKS, { picks: member.inventory.picks });
+        }
 
         // The stargate, once it is the only planet left, is the match.
         if (place.planet.gate && this.clock.finalStand) {
@@ -395,14 +514,80 @@ export class BattleRoyaleMode {
     /** `data` comes straight from a player's device: every field is checked before it is used. */
     onRequest(pilot, name, data) {
         const contestant = this.contestants.get(pilot.id);
-        if (!contestant || this.result || this.introLeft > 0) return;
+        if (!contestant || this.result) return;
+        // Equipment can be chosen at any time - before the ships are even in the system.
+        if (name === BR_REQUEST.PICK) {
+            this.pickEquipment(contestant, data.item);
+            return;
+        }
+        if (this.introLeft > 0) return;
         switch (name) {
             case BR_REQUEST.JUMP: this.requestJump(contestant, data.to); break;
             case BR_REQUEST.REFIT: this.spendPoints(contestant, data.added); break;
             case BR_REQUEST.SUMMON: this.summon(contestant); break;
             case BR_REQUEST.VOTE: this.castVote(contestant, data.choice); break;
+            case BR_REQUEST.DOCK: this.requestDock(contestant); break;
+            case BR_REQUEST.UNDOCK: this.undock(contestant, DOCK_END.RELEASED); break;
+            case BR_REQUEST.BEACON: this.launchBeacon(contestant, data.to); break;
             default:
         }
+    }
+
+    // ---- Equipment ---------------------------------------------------------------------------
+
+    /** Spends one of a contestant's choices on a piece of equipment. */
+    pickEquipment(contestant, item) {
+        if (!contestant.inventory.pick(item)) return;
+        this.armEmergencyShield(contestant);
+        this.server.publishState();
+    }
+
+    /**
+     * Sends a beacon to a planet next to the one the contestant is at. From then on their side
+     * (see Contestant.intelKey) is shown what stands there and who holds it.
+     */
+    launchBeacon(contestant, to) {
+        const here = this.placeOf(contestant);
+        if (!contestant.alive || !contestant.pilot.ship?.alive || !here) return;
+        if (typeof to !== 'string' || !this.map.areNeighbours(here.planet.id, to)) return;
+        const target = this.places.get(to);
+        // Nothing is spent on a planet that is watched already.
+        if (target.scouts.has(contestant.intelKey) || !contestant.inventory.use(EQUIPMENT.BEACON)) return;
+        target.scouts.add(contestant.intelKey);
+        this.tellMode(contestant.pilot, BR_EVENT.BEACON_SET, { planet: to });
+        this.server.publishState();
+    }
+
+    /**
+     * The emergency shield is a floor under the hull: while a pilot carries one, or one is
+     * on, no hit takes their ship below a sliver.
+     */
+    armEmergencyShield(contestant) {
+        const ship = contestant.pilot.ship;
+        if (!ship?.alive) return;
+        const armed = this.server.time < contestant.emergencyShieldUntil || contestant.inventory.has(EQUIPMENT.EMERGENCY_SHIELD);
+        ship.minHull = armed ? ship.maxHull * BATTLE_ROYALE.equipment.emergencyHull : 0;
+    }
+
+    /**
+     * A hit that has just put the hull on that floor would have killed: the shield a pilot
+     * carries comes on. While it is on the hull holds, and nothing mends.
+     */
+    updateEmergencyShield(contestant) {
+        const { pilot } = contestant;
+        const ship = pilot.ship;
+        if (!ship?.alive) return;
+        const { time } = this.server;
+        const hurt = ship.lastDamagedAt !== contestant.seenDamageAt;
+        contestant.seenDamageAt = ship.lastDamagedAt;
+        if (time >= contestant.emergencyShieldUntil && ship.minHull > 0 && ship.hull <= ship.minHull && hurt
+            && contestant.inventory.use(EQUIPMENT.EMERGENCY_SHIELD)) {
+            contestant.emergencyShieldUntil = time + BATTLE_ROYALE.equipment.emergencyShieldSeconds;
+            this.tellMode(pilot, BR_EVENT.EQUIPMENT_USED, { item: EQUIPMENT.EMERGENCY_SHIELD });
+            this.server.publishState();
+        }
+        if (time < contestant.emergencyShieldUntil) ship.shieldCooldown = Math.max(ship.shieldCooldown, 1);
+        this.armEmergencyShield(contestant);
     }
 
     /** Spends refit points on the ship's ratings: never more than the pilot has, never past a rating's cap. */
@@ -461,20 +646,15 @@ export class BattleRoyaleMode {
     }
 
     onShipDestroyed(zone, ship, killer) {
-        const place = this.places.get(zone.id);
-        // Whoever is here and was hostile to that ship has done some of the fighting for this planet.
-        if (ship.faction !== FACTION.NEUTRAL) {
-            for (const faction of PLAYER_FACTIONS) {
-                if (faction !== ship.faction && this.membersAt(place, faction).length > 0) place.earned.add(faction);
-            }
-        }
-
         const scorer = killer?.isPlayer ? this.contestants.get(killer.pilotId) : null;
         const victim = ship.isPlayer ? this.contestants.get(ship.pilotId) : null;
         if (victim) {
             victim.alive = false;
             victim.deaths += 1;
             victim.jump = null;
+            victim.gravityShieldUntil = 0;
+            victim.emergencyShieldUntil = 0;
+            this.undock(victim);
         }
         if (scorer && scorer !== victim) {
             const points = victim ? BATTLE_ROYALE.score.playerKill : BATTLE_ROYALE.score.ships[ship.classId] ?? 0;
@@ -490,6 +670,7 @@ export class BattleRoyaleMode {
         if (!contestant) return;
         contestant.alive = false;
         contestant.jump = null;
+        this.undock(contestant);
         for (const place of this.places.values()) place.vote?.ballots.delete(pilot.id);
     }
 
@@ -510,10 +691,16 @@ export class BattleRoyaleMode {
         // A dead side cannot be brought back by anyone but itself.
         if (standing.size === 0) this.finish(null);
         else if (standing.size === 1 && this.sidesAtStart.size > 1) this.finish([...standing][0]);
-        else if (this.clock.finalStandLeft === 0) this.finish(this.strongestAtGate());
+        else if (this.clock.finalStandLeft === 0) this.finish(this.holderOfGate() ?? this.strongestAtGate());
     }
 
-    /** When the last stand runs out: the side with the most ships at the stargate, then the best score. */
+    /** The side that holds the stargate's station, if it still has a pilot flying. */
+    holderOfGate() {
+        const { owner } = this.places.get(this.map.gate.id);
+        return owner && this.standingSides().has(owner) ? owner : null;
+    }
+
+    /** When the last stand runs out and nobody holds the stargate: the side with the most ships at it, then the best score. */
     strongestAtGate() {
         const gate = this.places.get(this.map.gate.id);
         let best = null;
@@ -560,6 +747,14 @@ export class BattleRoyaleMode {
                     to: you.jump?.to ?? null,
                     spool: you.jump ? Math.max(0, you.jump.left) : null,
                     trapped: Boolean(here) && here.status === PLANET_STATUS.SWALLOWED && here.owner !== you.faction,
+                    reach: this.jumpReach(you),
+                },
+                dock: this.describeDock(you, here),
+                picks: you.inventory.picks,
+                equipment: you.inventory.describe(),
+                effects: {
+                    gravityShield: Math.max(0, Math.ceil(you.gravityShieldUntil - time)),
+                    emergencyShield: Math.max(0, Math.ceil(you.emergencyShieldUntil - time)),
                 },
                 vote: vote && { planet: here.planet.id, endsIn: Math.max(0, Math.ceil(vote.endsAt - time)), choice: vote.ballots.get(pilot.id) },
             },
@@ -577,24 +772,46 @@ export class BattleRoyaleMode {
         };
     }
 
-    /** A planet as the map shows it. Garrisons are public knowledge; where other sides' pilots are is not. */
+    /** The station where a contestant is, as their HUD shows it: can they clamp on, and how far along they are. */
+    describeDock(you, here) {
+        if (!here || !you.alive) return null;
+        return {
+            ready: !you.dock && this.dockRefusal(you) === null,
+            left: you.dock ? Math.max(0, you.dock.left) : null,
+            seconds: you.dock ? you.dock.seconds : this.dockSeconds(here),
+        };
+    }
+
+    /**
+     * A planet as the map shows it. How the collapse stands is known to all. What is there - ships,
+     * the station's holder, a docking in progress - is known only to a side that has eyes on
+     * it: a pilot there, the station itself, or a beacon.
+     */
     describePlace(place, you) {
-        const forces = {};
-        for (const faction of NPC_FACTIONS) forces[faction] = 0;
-        for (const ship of place.zone.world.ships) {
-            if (ship.alive && !ship.isPlayer && ship.faction in forces) forces[ship.faction] += 1;
-        }
         const wait = this.clock.secondsToChange(place.orbit);
         const comrades = you && !isPirate(you.faction)
             ? this.membersAt(place, you.faction).filter((member) => member !== you).map((member) => member.pilot.name)
             : [];
-        return {
+        const beacon = Boolean(you) && place.scouts.has(you.intelKey);
+        const known = Boolean(you) && (this.placeOf(you) === place || comrades.length > 0 || place.owner === you.faction || beacon);
+        const description = {
             id: place.planet.id,
             status: place.status,
             changesIn: wait === null ? null : Math.ceil(wait),
-            owner: place.owner,
-            forces,
+            known,
+            beacon,
+            owner: null,
+            forces: null,
+            docking: null,
             comrades,
         };
+        if (!known) return description;
+
+        const forces = Object.fromEntries(PLAYER_FACTIONS.map((faction) => [faction, 0]));
+        for (const ship of place.zone.world.ships) {
+            if (ship.alive && ship.faction in forces) forces[ship.faction] += 1;
+        }
+        const docked = [...this.contestants.values()].find((contestant) => contestant.dock?.place === place);
+        return { ...description, owner: place.owner, forces, docking: docked?.faction ?? null };
     }
 }

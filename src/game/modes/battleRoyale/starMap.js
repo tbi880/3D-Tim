@@ -1,6 +1,6 @@
 /**
  * The planets of a star system in orbit order, and the one rule of travel between them:
- * a jump reaches the next orbit in or out, never further.
+ * a jump reaches the next orbit in or out, never further (unless the rules allow one that does).
  */
 export class StarMap {
     /** @param {{ id: string, planets: { id: string, sectorId: string, gate?: boolean }[] }} system innermost planet first */
@@ -27,10 +27,15 @@ export class StarMap {
         return this.planets[this.planets.length - 1];
     }
 
+    /** Orbits between two planets (0 for the same one), or Infinity if either is not on the map. */
+    distance(from, to) {
+        if (!this.has(from) || !this.has(to)) return Infinity;
+        return Math.abs(this.orbitOf.get(from) - this.orbitOf.get(to));
+    }
+
     /** True when `to` is on the orbit next to `from`'s. */
     areNeighbours(from, to) {
-        if (!this.has(from) || !this.has(to)) return false;
-        return Math.abs(this.orbitOf.get(from) - this.orbitOf.get(to)) === 1;
+        return this.distance(from, to) === 1;
     }
 
     /** Ids of the planets a ship at `planetId` can jump to (one or two). */

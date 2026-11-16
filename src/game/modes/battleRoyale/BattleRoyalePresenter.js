@@ -1,13 +1,18 @@
+import { Vector3 } from 'three';
 import { BATTLE_ROYALE } from '../../config/battleRoyale.js';
 import { t } from '../../i18n/index.js';
 import { MATCH_PHASE } from '../../net/match/matchState.js';
 import { sanitizeBattleRoyaleState } from './battleRoyaleState.js';
 import { BR_EVENT, BR_REQUEST } from './battleRoyaleProtocol.js';
 import { PLANET_STATUS } from './collapse.js';
+import { isEquipment } from './equipment.js';
+import { STATION_TAG } from './station.js';
 
 /** The mode's own keys and buttons (bound in input/InputController.js, shown by ui/multiplayer). */
-export const MATCH_ACTION = Object.freeze({ MAP: 'match:map', REFIT: 'match:refit', SUMMON: 'match:summon' });
-export const MATCH_PANEL = Object.freeze({ MAP: 'map' });
+export const MATCH_ACTION = Object.freeze({
+    MAP: 'match:map', REFIT: 'match:refit', SUMMON: 'match:summon', DOCK: 'match:dock', EQUIPMENT: 'match:equipment',
+});
+export const MATCH_PANEL = Object.freeze({ MAP: 'map', EQUIPMENT: 'equipment' });
 
 /** Sounds of the match's ceremonies (audio/SoundEngine.js playCue). */
 export const CUE = Object.freeze({ INTRO: 'matchIntro', VICTORY: 'victory', DEFEAT: 'defeat' });
@@ -15,6 +20,9 @@ export const CUE = Object.freeze({ INTRO: 'matchIntro', VICTORY: 'victory', DEFE
 /** Names as the player reads them (the ids come from the host: an unknown one is shown as it came). */
 export const planetName = (planetId) => t(`mp.planet.${String(planetId)}`);
 export const factionName = (faction) => t(`mp.faction.${String(faction)}`);
+export const equipmentName = (item) => t(`mp.equipment.${String(item)}.name`);
+
+const scratchOffset = new Vector3();
 
 /** Seconds the warp streaks take to fade once the ship has arrived. */
 const WARP_EXIT_SECONDS = 1.4;
@@ -26,9 +34,15 @@ const WARP_EXIT_SECONDS = 1.4;
  * handles the moments - a jump, a planet falling in, a warning.
  */
 export class BattleRoyalePresenter {
-    constructor() {
+    /**
+     * @param {object} [options]
+     * @param {string | null} [options.startingEquipment] the piece the player chose in the lobby (EQUIPMENT), if any
+     */
+    constructor({ startingEquipment = null } = {}) {
         this.client = null;
         this.session = null;
+        /** The lobby's choice of equipment, until the host has been asked for it. */
+        this.startingEquipment = isEquipment(startingEquipment) ? startingEquipment : null;
         /** The jump in progress on screen: { phase: 'spool' | 'exit', elapsed, seconds }, or null. */
         this.warp = null;
         /** The mode's window that is open (MATCH_PANEL), or null; and whether the refit window is. */
@@ -42,7 +56,13 @@ export class BattleRoyalePresenter {
 
     sanitizeState(raw) {
         const state = sanitizeBattleRoyaleState(raw);
-        if (state) this.followIntro(state);
+        if (!state) return null;
+        this.followIntro(state);
+        // The host is listening now: ask for what was chosen in the lobby, once.
+        if (this.startingEquipment && state.you?.picks > 0) {
+            this.pickEquipment(this.startingEquipment);
+            this.startingEquipment = null;
+        }
         return state;
     }
 
@@ -135,6 +155,34 @@ export class BattleRoyalePresenter {
                 session.showToast('mp.loyalty.branded');
                 session.playCue('alarm');
                 break;
+            case BR_EVENT.DOCKED:
+                session.showToast('mp.dock.docked', { seconds: Number(data?.seconds) || 0 });
+                session.playCue('power');
+                break;
+            case BR_EVENT.UNDOCKED:
+                session.showToast(`mp.dock.ended.${String(data?.reason)}`);
+                break;
+            case BR_EVENT.DOCK_REFUSED:
+                session.showToast(`mp.dock.refused.${String(data?.reason)}`);
+                break;
+            case BR_EVENT.STATION_ALARM:
+                session.showToast('mp.station.alarm', { planet: planetName(data?.planet), faction: factionName(data?.faction) });
+                session.playCue('alarm');
+                break;
+            case BR_EVENT.STATION_LOST:
+                session.showToast('mp.station.lost', { planet: planetName(data?.planet), faction: factionName(data?.faction) });
+                session.playCue('alarm');
+                break;
+            case BR_EVENT.PICKS:
+                session.showToast('mp.equipment.earned');
+                break;
+            case BR_EVENT.EQUIPMENT_USED:
+                session.showToast(`mp.equipment.${String(data?.item)}.used`);
+                session.playCue('power');
+                break;
+            case BR_EVENT.BEACON_SET:
+                session.showToast('mp.equipment.beaconSet', { planet: planetName(data?.planet) });
+                break;
             default:
         }
     }
@@ -155,6 +203,13 @@ export class BattleRoyalePresenter {
                 return true;
             case MATCH_ACTION.SUMMON:
                 if (state?.you?.alive && state.you.summons > 0) this.client.request(BR_REQUEST.SUMMON);
+                return true;
+            case MATCH_ACTION.DOCK:
+                // One key clamps on and lets go; if the ship cannot dock here the host says why.
+                if (state?.you?.alive) this.client.request(this.docked ? BR_REQUEST.UNDOCK : BR_REQUEST.DOCK);
+                return true;
+            case MATCH_ACTION.EQUIPMENT:
+                this.setPanel(this.panel === MATCH_PANEL.EQUIPMENT ? null : MATCH_PANEL.EQUIPMENT);
                 return true;
             default:
                 return false;
@@ -185,9 +240,27 @@ export class BattleRoyalePresenter {
         if (added && Object.values(added).some((levels) => levels > 0)) this.client.request(BR_REQUEST.REFIT, { added });
     }
 
-    /** With the map or the refit window open the pilot is not flying: the ship holds its course. */
+    /** True while the player's ship is clamped on to a station. */
+    get docked() {
+        return this.client?.state?.you?.dock?.left != null;
+    }
+
+    /**
+     * With a window of the mode's open the pilot is not flying: the ship holds its course. Nor
+     * are they while the ship is docked: the station has it.
+     */
     holdsAttention() {
-        return this.openPanel !== null || this.refitOpen || this.outro !== null;
+        return this.openPanel !== null || this.refitOpen || this.outro !== null || this.docked;
+    }
+
+    /** Spends one of the player's choices of equipment (EQUIPMENT). */
+    pickEquipment(item) {
+        this.client.request(BR_REQUEST.PICK, { item });
+    }
+
+    /** Sends a beacon to a planet next to the player's. */
+    launchBeacon(planetId) {
+        this.client.request(BR_REQUEST.BEACON, { to: planetId });
     }
 
     jumpTo(planetId) {
@@ -206,11 +279,30 @@ export class BattleRoyalePresenter {
         this.session.onWarp('arrive');
     }
 
+    /**
+     * Keeps the marker on the dock of the station here for as long as it is worth flying
+     * to: until the player's own side holds it.
+     */
+    markDock() {
+        const { session } = this;
+        const state = this.client?.state;
+        const here = state?.planets?.find((planet) => planet.id === state.you?.planet);
+        const station = state?.you?.alive && here && here.owner !== state.you.faction && !this.docked
+            ? session.world.findByTag(STATION_TAG) : null;
+        if (!station) {
+            if (session.waypoint?.placement.anchor === STATION_TAG) session.setWaypoint(null);
+        } else if (!session.waypoint) {
+            const offset = scratchOffset.fromArray(BATTLE_ROYALE.station.mouth).applyQuaternion(station.quaternion).toArray();
+            session.setWaypoint({ placement: { anchor: STATION_TAG, offset }, labelKey: 'mp.waypoint.dock' });
+        }
+    }
+
     update(dt) {
         if (this.outro) {
             this.updateOutro(dt);
             return;
         }
+        if (this.session) this.markDock();
         const { warp } = this;
         const world = this.session?.world;
         if (!warp || !world) return;
@@ -228,10 +320,12 @@ export class BattleRoyalePresenter {
         const here = state?.planets?.find((planet) => planet.id === state.you?.planet);
         let objective = null;
         if (state?.you?.alive && here) {
-            if (state.finalStand !== null && here.status === PLANET_STATUS.SAFE) objective = { key: 'mp.objective.gate', params: { seconds: state.finalStand } };
+            const mine = here.owner === state.you.faction;
+            if (this.docked) objective = { key: 'mp.objective.docking', params: { seconds: Math.ceil(state.you.dock.left) } };
+            else if (state.finalStand !== null && here.status === PLANET_STATUS.SAFE) objective = { key: 'mp.objective.gate', params: { seconds: state.finalStand } };
             else if (here.status === PLANET_STATUS.COLLAPSING) objective = { key: 'mp.objective.flee', params: { seconds: here.changesIn ?? 0 } };
-            else if (here.status === PLANET_STATUS.SWALLOWED) objective = { key: here.owner === state.you.faction ? 'mp.objective.sheltered' : 'mp.objective.doomed', params: null };
-            else objective = { key: 'mp.objective.outward', params: null };
+            else if (here.status === PLANET_STATUS.SWALLOWED) objective = { key: mine ? 'mp.objective.sheltered' : 'mp.objective.doomed', params: null };
+            else objective = { key: mine ? 'mp.objective.outward' : 'mp.objective.station', params: null };
         }
         return { escort: null, boss: null, progress: null, objective };
     }
@@ -240,6 +334,7 @@ export class BattleRoyalePresenter {
         if (this.session) {
             this.session.world.warpFactor = 0;
             this.session.world.screenFade = 0;
+            this.session.setWaypoint(null);
         }
         this.warp = null;
         this.outro = null;

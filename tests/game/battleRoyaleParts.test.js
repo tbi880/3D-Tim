@@ -4,12 +4,18 @@ import { BATTLE_ROYALE, NPC_FACTIONS, PLAYER_FACTIONS, STAR_SYSTEM } from '../..
 import { FACTION } from '../../src/game/config/gameConfig.js';
 import { SECTORS } from '../../src/game/config/sectors.js';
 import { SHIP_CLASSES } from '../../src/game/config/shipClasses.js';
-import { createRng } from '../../src/game/core/math.js';
+import { Vector3 } from 'three';
+import { createRng, forwardOf } from '../../src/game/core/math.js';
+import { drainShip } from '../../src/game/core/systems/damage.js';
+import { World } from '../../src/game/core/World.js';
 import { LOYALTY, LoyaltyRecord, dealFactions } from '../../src/game/modes/battleRoyale/allegiance.js';
-import { rankPlayers, rankWinners, sanitizeBattleRoyaleState } from '../../src/game/modes/battleRoyale/battleRoyaleState.js';
+import { isBattle, rankPlayers, rankWinners, sanitizeBattleRoyaleState } from '../../src/game/modes/battleRoyale/battleRoyaleState.js';
 import { CollapseClock, PLANET_STATUS } from '../../src/game/modes/battleRoyale/collapse.js';
-import { planGarrisons } from '../../src/game/modes/battleRoyale/garrisons.js';
+import { EQUIPMENT, EQUIPMENT_ORDER, Inventory, isEquipment } from '../../src/game/modes/battleRoyale/equipment.js';
+import { planGarrisons, stationGarrison } from '../../src/game/modes/battleRoyale/garrisons.js';
 import { StarMap } from '../../src/game/modes/battleRoyale/starMap.js';
+import { STATION_TAG, buildStation } from '../../src/game/modes/battleRoyale/station.js';
+import { Zone } from '../../src/game/net/server/Zone.js';
 
 // ---- Configuration ---------------------------------------------------------------------------
 
@@ -64,6 +70,8 @@ test('unknown planets are nowhere', () => {
     assert.deepEqual(sol.neighbours('pluto'), []);
     assert.equal(sol.areNeighbours('earth', 'pluto'), false);
     assert.equal(sol.areNeighbours(undefined, 'earth'), false);
+    assert.deepEqual([sol.distance('venus', 'venus'), sol.distance('venus', 'earth'), sol.distance('mars', 'mercury')], [0, 1, 3]);
+    assert.equal(sol.distance('earth', 'pluto'), Infinity);
     assert.equal(sol.has('pluto'), false);
     assert.equal(sol.planet('pluto'), null);
 });
@@ -217,9 +225,12 @@ const goodState = () => ({
     mode: 'battleRoyale', matchId: 'm', phase: 'playing', winner: null, time: 12, finalStand: null,
     you: {
         faction: 'umbra', planet: 'rust', alive: true, points: 3, summons: 1, upgrades: { hull: 2 }, loyalty: 'warned',
-        jump: { cooldown: 14, to: null, spool: null, trapped: false }, vote: { planet: 'rust', endsIn: 7, choice: null },
+        jump: { cooldown: 14, to: null, spool: null, trapped: false, reach: 2 }, vote: { planet: 'rust', endsIn: 7, choice: null },
+        dock: { ready: false, left: 6.5, seconds: 15 }, picks: 1, equipment: { beacon: 2, overdrive: 1 }, effects: { gravityShield: 12, emergencyShield: 0 },
     },
-    planets: STAR_SYSTEM.planets.map((planet) => ({ id: planet.id, status: 'safe', changesIn: 100, owner: null, forces: { dawn: 4, umbra: 0 }, comrades: ['Bo'] })),
+    planets: STAR_SYSTEM.planets.map((planet) => ({
+        id: planet.id, status: 'safe', changesIn: 100, known: true, beacon: true, owner: 'umbra', forces: { dawn: 4, umbra: 0, pirate: 1 }, docking: 'pirate', comrades: ['Bo'],
+    })),
     players: [{ id: 'a', name: 'Ann', classId: 'kestrel', faction: 'umbra', alive: true, score: 500, kills: 1, deaths: 0 }],
 });
 
@@ -231,7 +242,13 @@ test('a well-formed state comes through unchanged in substance', () => {
     assert.equal(clean.you.loyalty, 'warned');
     assert.deepEqual(clean.you.vote, { planet: 'rust', endsIn: 7, choice: null });
     assert.equal(clean.planets.length, STAR_SYSTEM.planets.length);
-    assert.deepEqual(clean.planets[0].forces, { dawn: 4, umbra: 0 });
+    assert.deepEqual(clean.planets[0].forces, { dawn: 4, umbra: 0, pirate: 1 });
+    assert.deepEqual([clean.planets[0].known, clean.planets[0].beacon, clean.planets[0].owner, clean.planets[0].docking], [true, true, 'umbra', 'pirate']);
+    assert.equal(clean.you.jump.reach, 2);
+    assert.deepEqual(clean.you.dock, { ready: false, left: 6.5, seconds: 15 });
+    assert.equal(clean.you.picks, 1);
+    assert.deepEqual(clean.you.equipment, { beacon: 2, gravityShield: 0, emergencyShield: 0, overdrive: 1 }, 'every piece is present');
+    assert.deepEqual(clean.you.effects, { gravityShield: 12, emergencyShield: 0 });
     assert.deepEqual(clean.players[0], { id: 'a', name: 'Ann', classId: 'kestrel', faction: 'umbra', alive: true, score: 500, kills: 1, deaths: 0 });
 });
 
@@ -251,9 +268,15 @@ test('odd values are replaced by safe ones, never passed on', () => {
     raw.you.upgrades = { hull: 1e9, evil: 3, speed: -2 };
     raw.you.jump = { cooldown: NaN, to: 'pluto', spool: -3, trapped: 'yes' };
     raw.you.vote.choice = 'both';
+    raw.you.dock = { ready: 'yes', left: -2, seconds: 'soon' };
+    raw.you.picks = -1;
+    raw.you.equipment = { beacon: 'all', nuke: 5, overdrive: 2.9 };
+    raw.you.effects = null;
     raw.planets[0].status = 'exploding';
     raw.planets[0].owner = 'me';
-    raw.planets[0].forces = { dawn: -4, umbra: 'many', pirate: 9 };
+    raw.planets[0].docking = 'everyone';
+    raw.planets[0].forces = { dawn: -4, umbra: 'many', pirate: 9, admin: 3 };
+    raw.planets[1].known = false;
     raw.planets[0].comrades = [{ toString: () => 'x'.repeat(500) }];
     raw.planets.push({ id: 'pluto', status: 'safe' });
     raw.players[0].score = Infinity;
@@ -269,16 +292,31 @@ test('odd values are replaced by safe ones, never passed on', () => {
     assert.equal(clean.you.points, 0);
     assert.equal(clean.you.upgrades.evil, undefined);
     assert.equal(clean.you.upgrades.speed, 0);
-    assert.deepEqual(clean.you.jump, { cooldown: 0, to: null, spool: 0, trapped: true });
+    assert.deepEqual(clean.you.jump, { cooldown: 0, to: null, spool: 0, trapped: true, reach: 1 });
     assert.equal(clean.you.vote.choice, null);
+    assert.deepEqual(clean.you.dock, { ready: true, left: 0, seconds: 1 });
+    assert.equal(clean.you.picks, 0);
+    assert.deepEqual(clean.you.equipment, { beacon: 0, gravityShield: 0, emergencyShield: 0, overdrive: 2 });
+    assert.deepEqual(clean.you.effects, { gravityShield: 0, emergencyShield: 0 });
     assert.equal(clean.planets[0].status, 'safe');
     assert.equal(clean.planets[0].owner, null);
-    assert.deepEqual(clean.planets[0].forces, { dawn: 0, umbra: 0 });
+    assert.equal(clean.planets[0].docking, null);
+    assert.deepEqual(clean.planets[0].forces, { dawn: 0, umbra: 0, pirate: 9 });
+    assert.deepEqual([clean.planets[1].owner, clean.planets[1].forces, clean.planets[1].docking], [null, null, null],
+        'a planet the host says is unknown tells nothing, whatever else it sent');
     assert.equal(clean.planets[0].comrades[0].length, 40);
     assert.equal(clean.planets.some((planet) => planet.id === 'pluto'), false);
     assert.equal(clean.players[0].score, 0);
     assert.equal(clean.players[0].name.length, 40);
     assert.equal(clean.players[0].faction, 'dawn');
+});
+
+test('a planet is a battle when more than one side has ships there', () => {
+    assert.equal(isBattle({ dawn: 3, umbra: 2, pirate: 0 }), true);
+    assert.equal(isBattle({ dawn: 0, umbra: 2, pirate: 1 }), true);
+    assert.equal(isBattle({ dawn: 3, umbra: 0, pirate: 0 }), false);
+    assert.equal(isBattle({ dawn: 0, umbra: 0, pirate: 0 }), false);
+    assert.equal(isBattle(null), false, 'nothing is known of it');
 });
 
 test('the winners are ranked by score, and listed before everybody else', () => {
@@ -296,4 +334,113 @@ test('the winners are ranked by score, and listed before everybody else', () => 
 
     assert.deepEqual(rankWinners(state).map((player) => player.name), ['Cy', 'Ann']);
     assert.deepEqual(rankPlayers(state).map((player) => player.name), ['Cy', 'Ann', 'Bo', 'Di']);
+});
+
+// ---- Equipment -------------------------------------------------------------------------------
+
+test('a pilot\'s hold: a choice buys one piece, a piece is used once', () => {
+    const hold = new Inventory({ picks: 1, stack: 2 });
+    assert.equal(hold.pick('nonsense'), false);
+    assert.equal(hold.pick(EQUIPMENT.BEACON), true);
+    assert.equal(hold.pick(EQUIPMENT.BEACON), false, 'no choice left');
+    assert.deepEqual([hold.picks, hold.has(EQUIPMENT.BEACON), hold.has(EQUIPMENT.OVERDRIVE)], [0, true, false]);
+
+    hold.grant(3);
+    assert.equal(hold.pick(EQUIPMENT.BEACON), true);
+    assert.equal(hold.pick(EQUIPMENT.BEACON), false, 'the hold takes two of a kind');
+    assert.equal(hold.picks, 2, 'and a choice that bought nothing is not spent');
+
+    assert.equal(hold.use(EQUIPMENT.BEACON), true);
+    assert.equal(hold.use(EQUIPMENT.BEACON), true);
+    assert.equal(hold.use(EQUIPMENT.BEACON), false);
+    assert.equal(hold.use(EQUIPMENT.OVERDRIVE), false);
+    assert.deepEqual(Object.keys(hold.describe()), [...EQUIPMENT_ORDER]);
+});
+
+test('only the four pieces are equipment', () => {
+    assert.equal(EQUIPMENT_ORDER.length, 4);
+    assert.ok(EQUIPMENT_ORDER.every(isEquipment));
+    for (const junk of [null, undefined, '', 'toString', 'constructor', 3, {}, ['beacon']]) assert.equal(isEquipment(junk), false);
+});
+
+// ---- Stations --------------------------------------------------------------------------------
+
+const zoneAt = (sectorId) => new Zone(sectorId, sectorId, { seed: 3 });
+
+test('in every sector the station stands straight ahead of where ships arrive, its dock at the end of a clear lane', () => {
+    const layout = BATTLE_ROYALE.station;
+    for (const planet of STAR_SYSTEM.planets) {
+        const zone = zoneAt(planet.sectorId);
+        const station = buildStation(zone, layout, Boolean(planet.gate));
+        const start = SECTORS[planet.sectorId].playerStart;
+        const arrival = new Vector3().fromArray(start.position);
+        const lane = new Vector3().fromArray(start.facing).normalize();
+        const toMouth = station.mouth.clone().sub(arrival);
+
+        assert.ok(toMouth.clone().normalize().dot(lane) > 0.9999, `${planet.id}: the dock is dead ahead`);
+        assert.ok(Math.abs(toMouth.length() - (layout.arrival + layout.mouth[2])) < 1, `${planet.id}: ${toMouth.length().toFixed(0)} m away`);
+        assert.ok(station.berth.clone().sub(arrival).dot(lane) < toMouth.length(), 'the berth is short of the door');
+        assert.ok(forwardOf(station.berthQuaternion, new Vector3()).dot(lane) > 0.9999, 'a docked ship faces the door');
+        assert.ok(new Vector3(0, 1, 0).applyQuaternion(station.ship.quaternion).y > 0.99, `${planet.id}: the station stands upright`);
+        assert.ok(station.ship.position.length() + station.ship.boundingRadius < 12000, `${planet.id}: inside the sector`);
+        assert.equal(station.ship.tags.has(STATION_TAG), true);
+
+        // Nothing solid in the lane: not the station's own hull, not a rock.
+        for (let along = 0; along <= toMouth.length(); along += 40) {
+            const point = arrival.clone().addScaledVector(lane, along);
+            assert.ok(station.ship.distanceToPoint(point) > 60, `${planet.id}: hull in the lane ${along} m in`);
+        }
+        const rocks = zone.world.obstacles.filter((rock) => rock.alive);
+        for (const rock of rocks) {
+            assert.ok(station.ship.distanceToPoint(rock.position) >= rock.radius + layout.clearance, `${planet.id}: a rock in the hull`);
+        }
+        assert.equal(zone.destroyedRocks.length, zone.world.obstacles.length - rocks.length, 'what was cleared is on the list devices are sent');
+        assert.equal(station.inRange(station.mouth), true);
+        assert.equal(station.inRange(arrival), false);
+    }
+});
+
+test('a garrison waits inside the ring, out of the hull, and far enough from the arrival point to be left alone', () => {
+    const layout = BATTLE_ROYALE.garrisons;
+    for (const planet of STAR_SYSTEM.planets) {
+        const zone = zoneAt(planet.sectorId);
+        const station = buildStation(zone, BATTLE_ROYALE.station, false);
+        const arrival = new Vector3().fromArray(SECTORS[planet.sectorId].playerStart.position);
+        for (const faction of NPC_FACTIONS) {
+            for (const ship of stationGarrison(zone, station, faction, BATTLE_ROYALE.garrisons.gate[faction], layout, true)) {
+                assert.equal(ship.faction, faction);
+                assert.equal(ship.ai.engageRange, layout.guardRange);
+                assert.ok(station.ship.distanceToPoint(ship.position) > 30, `${planet.id}: ${ship.classId} in the hull`);
+                const clear = ship.position.distanceTo(arrival) - BATTLE_ROYALE.jump.scatter;
+                assert.ok(clear > layout.guardRange, `${planet.id}: ${ship.classId} ${clear.toFixed(0)} m from the nearest arrival`);
+            }
+        }
+    }
+});
+
+test('a drain takes shield then hull at face value, and stops at the hull\'s floor', () => {
+    const world = new World({ seed: 1 });
+    world.setSector('cinder');
+    const ship = world.spawnShip('kestrel', { position: [0, 0, 0], local: false });
+    ship.powerMode = 'defense';
+    const whole = ship.maxHull + ship.maxShield;
+
+    drainShip(world, ship, 50);
+    assert.equal(ship.shield, ship.maxShield - 50);
+    assert.ok(ship.shieldCooldown > 0, 'the shield does not mend under it');
+    drainShip(world, ship, ship.maxShield);
+    assert.equal(ship.shield, 0);
+    assert.equal(ship.hull + ship.shield, whole - 50 - ship.maxShield, 'what the shield could not take, the hull did');
+
+    ship.minHull = 5;
+    drainShip(world, ship, 1e6);
+    assert.deepEqual([ship.hull, ship.alive], [5, true]);
+    ship.minHull = 0;
+    drainShip(world, ship, 1);
+    drainShip(world, ship, 1e6);
+    assert.equal(ship.alive, false);
+
+    const station = world.spawnShip('lanternStation', { position: [0, 0, 9000] });
+    drainShip(world, station, 1e6);
+    assert.equal(station.alive, true, 'what cannot be hurt is not');
 });

@@ -26,6 +26,8 @@ class Pilot {
         this.zone = null;
         /** True once they have left the match (left the room, lost the link, or were dropped). */
         this.gone = false;
+        /** Set by the game mode while it has their ship in hand (docked, say): their controls are ignored. */
+        this.helmHeld = false;
 
         this.link = null;
         this.guard = null;
@@ -103,9 +105,10 @@ export class MatchServer {
             const ship = pilot.ship;
             if (!ship?.alive) continue;
             // A player we have not heard from flies straight on: nobody is holding the stick.
-            const silent = now - pilot.lastInputAt > NET.inputTimeout;
-            ship.controls = silent ? IDLE_CONTROLS : pilot.controls;
-            ship.autoFire = pilot.autoFire && !silent;
+            // Nor is anybody while the game mode has the ship in hand.
+            const handsOff = pilot.helmHeld || now - pilot.lastInputAt > NET.inputTimeout;
+            ship.controls = handsOff ? IDLE_CONTROLS : pilot.controls;
+            ship.autoFire = pilot.autoFire && !handsOff;
         }
 
         this.time += dt;

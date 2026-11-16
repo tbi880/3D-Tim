@@ -35,13 +35,16 @@ import { BattleRoyalePresenter } from './battleRoyale/BattleRoyalePresenter.js';
  *   update(dt)
  *   dispose()
  *
+ * `createPresenter(loadout)` is given what the player chose in the lobby before the match
+ * (LanMultiplayer's `loadout`): a mode takes from it what it knows.
+ *
  * To add a mode: write the two classes, add an entry here, and offer it in the lobby.
  */
 export const GAME_MODES = Object.freeze({
     battleRoyale: {
         id: 'battleRoyale',
         createRules: (info) => new BattleRoyaleMode(info),
-        createPresenter: () => new BattleRoyalePresenter(),
+        createPresenter: (loadout) => new BattleRoyalePresenter({ startingEquipment: loadout?.equipment ?? null }),
     },
 });
 

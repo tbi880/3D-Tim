@@ -1,9 +1,10 @@
-import { NPC_FACTIONS, PLAYER_FACTIONS, STAR_SYSTEM } from '../../config/battleRoyale.js';
+import { PLAYER_FACTIONS, STAR_SYSTEM } from '../../config/battleRoyale.js';
 import { RATING_ORDER } from '../../config/playerShips.js';
 import { MATCH_PHASE } from '../../net/match/matchState.js';
 import { LOYALTY } from './allegiance.js';
 import { VOTE } from './battleRoyaleProtocol.js';
 import { PLANET_STATUS } from './collapse.js';
+import { EQUIPMENT_ORDER } from './equipment.js';
 
 /**
  * The battle royale's match state, as each player's device receives it (built by
@@ -23,10 +24,24 @@ import { PLANET_STATUS } from './collapse.js';
  *     points, summons,    refit points and calls for reinforcements not yet used
  *     upgrades,           { rating: levels } installed on their ship
  *     loyalty,            LOYALTY
- *     jump: { cooldown, to, spool, trapped },   seconds until the drive is charged; the jump in progress; stuck on a swallowed planet
+ *     jump: { cooldown, to, spool, trapped, reach },   seconds until the drive is charged; the jump in progress;
+ *                         stuck on a swallowed planet; orbits the next jump can cross
+ *     dock,               the station where they are: { ready, left, seconds } - can they clamp on; seconds
+ *                         left of a docking in progress (else null) out of `seconds`; null while they have no ship
+ *     picks,              pieces of equipment they may still choose
+ *     equipment,          { item: count } they carry (equipment.js)
+ *     effects,            { gravityShield, emergencyShield }: seconds each is still on (0: off)
  *     vote,               { planet, endsIn, choice } while their side is choosing after taking a planet, else null
  *   },
- *   planets: [{ id, status, changesIn, owner, forces: { dawn, umbra }, comrades: [name] }],   innermost first
+ *   planets: [{           innermost first
+ *     id, status, changesIn,
+ *     known,              whether their side has eyes on the planet; if not, the next three are null
+ *     owner,              the side that holds its station
+ *     forces,             { dawn, umbra, pirate }: ships there, players' included
+ *     docking,            a side whose ship is docked at the station right now
+ *     beacon,             whether a beacon of theirs watches it
+ *     comrades: [name],
+ *   }],
  *   players: [{ id, name, classId, faction, alive, score, kills, deaths }],
  * }
  */
@@ -58,7 +73,14 @@ function cleanYou(raw) {
             to: planetId(raw.jump?.to),
             spool: seconds(raw.jump?.spool),
             trapped: Boolean(raw.jump?.trapped),
+            reach: Math.max(1, count(raw.jump?.reach)),
         },
+        dock: raw.dock && typeof raw.dock === 'object'
+            ? { ready: Boolean(raw.dock.ready), left: seconds(raw.dock.left), seconds: Math.max(1, seconds(raw.dock.seconds) ?? 1) }
+            : null,
+        picks: count(raw.picks),
+        equipment: Object.fromEntries(EQUIPMENT_ORDER.map((item) => [item, count(raw.equipment?.[item])])),
+        effects: { gravityShield: count(raw.effects?.gravityShield), emergencyShield: count(raw.effects?.emergencyShield) },
         vote,
     };
 }
@@ -84,8 +106,11 @@ export function sanitizeBattleRoyaleState(raw) {
             id: planet.id,
             status: oneOf(Object.values(PLANET_STATUS), planet.status, PLANET_STATUS.SAFE),
             changesIn: seconds(planet.changesIn),
-            owner: sideOrNull(planet.owner),
-            forces: Object.fromEntries(NPC_FACTIONS.map((faction) => [faction, count(planet.forces?.[faction])])),
+            known: Boolean(planet.known),
+            beacon: Boolean(planet.beacon),
+            owner: planet.known ? sideOrNull(planet.owner) : null,
+            forces: planet.known ? Object.fromEntries(PLAYER_FACTIONS.map((faction) => [faction, count(planet.forces?.[faction])])) : null,
+            docking: planet.known ? sideOrNull(planet.docking) : null,
             comrades: Array.isArray(planet.comrades) ? planet.comrades.slice(0, 16).map((name) => String(name).slice(0, 40)) : [],
         })),
         players: raw.players.slice(0, 32).map((player) => ({
@@ -104,6 +129,11 @@ export function sanitizeBattleRoyaleState(raw) {
 /** The sides with their players, in the order sides are always shown: `[{ faction, players }]`. */
 export function rosterBySide(state) {
     return PLAYER_FACTIONS.map((faction) => ({ faction, players: state.players.filter((player) => player.faction === faction) }));
+}
+
+/** True when ships of more than one side are at a planet (`forces` of a planet in the match state). */
+export function isBattle(forces) {
+    return Boolean(forces) && Object.values(forces).filter((ships) => ships > 0).length > 1;
 }
 
 /** The winning side's players, best score first: the order of the result screen. */

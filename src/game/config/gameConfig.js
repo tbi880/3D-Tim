@@ -131,6 +131,7 @@ export const STORAGE_KEYS = Object.freeze({
     bestScore: 'echoesOfDawn.bestScore.v1',
     /** The name the player goes by in multiplayer. */
     pilotName: 'echoesOfDawn.pilotName.v1',
+    loadout: 'echoesOfDawn.loadout.v1',
 });
 
 /** Music tracks reuse the site's existing soundtrack (served from the asset bucket). */

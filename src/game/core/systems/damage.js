@@ -130,6 +130,23 @@ export function applyDamage(world, target, amount, options = {}) {
     if (target.hull <= 0) destroyShip(world, target, source);
 }
 
+/**
+ * Takes `amount` off a ship's shield and then its hull as it stands: nothing softens it - no
+ * difficulty, no power mode, no shield multiplier - and nobody dealt it (a black hole's pull).
+ * The hull's floor (`minHull`) still holds.
+ */
+export function drainShip(world, ship, amount) {
+    if (!ship.alive || ship.arriving || ship.invulnerable || amount <= 0) return;
+    const absorbed = Math.min(ship.shield, amount);
+    ship.shield -= absorbed;
+    ship.hull = Math.max(ship.minHull, ship.hull - (amount - absorbed));
+    ship.shieldCooldown = ship.cls.shieldDelay;
+    ship.lastDamagedAt = world.time;
+    if (absorbed > 0) ship.lastShieldHitAt = world.time;
+    emitHit(world, ship, ship.position, absorbed > 0, amount, { continuous: true, source: null, weapon: null });
+    if (ship.hull <= 0) destroyShip(world, ship, null);
+}
+
 export function regenerateShield(world, ship, dt) {
     if (!ship.alive || ship.maxShield <= 0) return;
     if (ship.shieldCooldown > 0) {

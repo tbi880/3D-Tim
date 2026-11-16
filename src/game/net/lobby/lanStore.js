@@ -50,6 +50,23 @@ const nameStore = {
     },
 };
 
+const loadoutStore = {
+    load() {
+        try {
+            return JSON.parse(localStorage.getItem(STORAGE_KEYS.loadout) ?? 'null');
+        } catch {
+            return null;
+        }
+    },
+    save(loadout) {
+        try {
+            localStorage.setItem(STORAGE_KEYS.loadout, JSON.stringify(loadout));
+        } catch {
+            // Private mode: the choice lasts as long as the page.
+        }
+    },
+};
+
 /** Builds LAN multiplayer for one visit to the game. */
 export function createLanMultiplayer(session) {
     useLanStore.setState(initialLanState());
@@ -60,5 +77,6 @@ export function createLanMultiplayer(session) {
         createLink: (options) => new PeerLink(options),
         device: describeDevice(navigator.userAgent, isTouchDevice()),
         nameStore,
+        loadoutStore,
     });
 }

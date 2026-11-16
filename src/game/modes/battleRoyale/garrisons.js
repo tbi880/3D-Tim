@@ -1,13 +1,7 @@
 import { Vector3 } from 'three';
-import { FACTION } from '../../config/gameConfig.js';
-import { SECTORS } from '../../config/sectors.js';
 import { randomUnitVector } from '../../core/math.js';
 
 const scratchOffset = new Vector3();
-
-/** Tag on the stargate itself (scenery: it cannot be hurt, locked or owned). */
-export const GATE_TAG = 'stargate';
-const GATE_CLASS = 'lanternStation';
 
 /**
  * Decides what stands at each planet when the match starts: one side's garrison, or both
@@ -31,17 +25,18 @@ export function planGarrisons(planets, factions, rng) {
 }
 
 /**
- * Puts one side's ships on station in a zone.
+ * Puts one side's ships on guard at a zone's station, inside its ring.
  * @param {import('../../net/server/Zone.js').Zone} zone
+ * @param {import('./station.js').Station} station
  * @param {string} faction
  * @param {[string, number][]} ships `[classId, count]`
  * @param {object} layout BATTLE_ROYALE.garrisons (offsets and spacing)
  * @param {boolean} onGuard true when it has the planet to itself (see `guardRange`)
  */
-export function stationGarrison(zone, faction, ships, layout, onGuard) {
+export function stationGarrison(zone, station, faction, ships, layout, onGuard) {
     const { world } = zone;
-    const start = SECTORS[zone.sectorId].playerStart;
-    const centre = new Vector3().fromArray(start.position).add(scratchOffset.fromArray(layout.offsets[faction]));
+    const centre = station.toWorld(layout.offsets[faction], new Vector3());
+    const quaternion = station.berthQuaternion.toArray();
     const spawned = [];
     for (const [classId, count] of ships) {
         for (let i = 0; i < count; i++) {
@@ -49,7 +44,7 @@ export function stationGarrison(zone, faction, ships, layout, onGuard) {
             scratchOffset.y *= 0.4;
             const position = centre.clone().addScaledVector(scratchOffset, layout.spacing * (1 + world.rng() * 2));
             spawned.push(world.spawnShip(classId, {
-                faction, position, facing: start.facing, group: garrisonGroup(faction), engageRange: onGuard ? layout.guardRange : Infinity,
+                faction, position, quaternion, group: garrisonGroup(faction), engageRange: onGuard ? layout.guardRange : Infinity,
             }));
         }
     }
@@ -57,13 +52,6 @@ export function stationGarrison(zone, faction, ships, layout, onGuard) {
 }
 
 export const garrisonGroup = (faction) => `garrison:${faction}`;
-
-/** The stargate: a ring station at the middle of the last planet's zone, belonging to nobody. */
-export function buildStargate(zone) {
-    return zone.world.spawnShip(GATE_CLASS, {
-        faction: FACTION.NEUTRAL, position: [0, 0, 0], tags: [GATE_TAG], invulnerable: true, targetable: false,
-    });
-}
 
 /**
  * Brings reinforcements out of warp behind `ship`, on its side.

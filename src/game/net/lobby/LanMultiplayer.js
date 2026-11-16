@@ -34,6 +34,8 @@ export const initialLanState = () => ({
     links: {},
     /** The name this player goes by. */
     pilotName: '',
+    /** What the player takes into the next match: { equipment } - a piece of the mode's equipment, or null. */
+    loadout: { equipment: null },
 });
 
 /**
@@ -58,14 +60,16 @@ export class LanMultiplayer {
      * @param {(options: object) => object} params.createLink builds a PeerLink ({ initiator, sendSignal, onStatus })
      * @param {{ name: string, kind: string }} params.device from describeDevice
      * @param {{ load: () => string, save: (name: string) => void }} params.nameStore remembers the player's name
+     * @param {{ load: () => object, save: (loadout: object) => void }} [params.loadoutStore] remembers the player's loadout
      * @param {object} [params.timers] { setTimeout, clearTimeout }
      */
-    constructor({ session, store, createLobby, createLink, device, nameStore, timers = globalThis }) {
+    constructor({ session, store, createLobby, createLink, device, nameStore, loadoutStore = null, timers = globalThis }) {
         this.session = session;
         this.store = store;
         this.createLink = createLink;
         this.device = device;
         this.nameStore = nameStore;
+        this.loadoutStore = loadoutStore;
         this.timers = timers;
         /** @type {Map<string, object>} player id -> link */
         this.links = new Map();
@@ -80,7 +84,7 @@ export class LanMultiplayer {
             onSignal: (signal) => this.onSignal(signal),
             onDisconnected: () => this.onDisconnected(),
         });
-        store.set({ pilotName: cleanName(nameStore.load()) });
+        store.set({ pilotName: cleanName(nameStore.load()), loadout: cleanLoadout(loadoutStore?.load()) });
     }
 
     get state() {
@@ -115,7 +119,7 @@ export class LanMultiplayer {
     async close() {
         this.dropLinks();
         await this.lobby.disconnect();
-        this.store.set({ ...initialLanState(), pilotName: this.state.pilotName });
+        this.store.set({ ...initialLanState(), pilotName: this.state.pilotName, loadout: this.state.loadout });
     }
 
     /** Connects again as whoever is signed in now (after the player signed in or out). */
@@ -186,6 +190,16 @@ export class LanMultiplayer {
         return this.pushProfile();
     }
 
+    /**
+     * Changes what the player takes into the next match. It stays on this device: nobody in
+     * the room is told, and the game mode asks the host for it when the match begins.
+     */
+    setLoadout(changes) {
+        const loadout = cleanLoadout({ ...this.state.loadout, ...changes });
+        this.loadoutStore?.save(loadout);
+        this.store.set({ loadout });
+    }
+
     /** Tells the room about a change to the player's name or ship (the ship is the session's `playerShip` setting). */
     pushProfile() {
         if (!this.state.room || this.state.room.state !== ROOM_STATE.LOBBY) return Promise.resolve(null);
@@ -242,7 +256,7 @@ export class LanMultiplayer {
         const info = normalizeMatchInfo(start);
         const mode = gameModeOf(info);
         const localPlayerId = this.state.me.playerId;
-        const createClient = (link) => new ClientMatch({ info, localPlayerId, link, presenter: mode.createPresenter() });
+        const createClient = (link) => new ClientMatch({ info, localPlayerId, link, presenter: mode.createPresenter(this.state.loadout) });
 
         if (info.hostPlayerId === localPlayerId) {
             this.server = new MatchServer({ info, mode: mode.createRules(info) });
@@ -367,4 +381,10 @@ function codeOf(error) {
 /** The name as it will be shown (the lobby server cleans it again; this is so the input shows the same). */
 export function cleanName(name) {
     return String(name ?? '').replace(/\s+/g, ' ').trim().slice(0, MAX_NAME_LENGTH).trim();
+}
+
+/** A loadout as the controller keeps it. What a piece of equipment is, is the game mode's to check. */
+export function cleanLoadout(loadout) {
+    const equipment = loadout?.equipment;
+    return { equipment: typeof equipment === 'string' && equipment.length <= 32 ? equipment : null };
 }
