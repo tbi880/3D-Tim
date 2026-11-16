@@ -141,19 +141,23 @@ and react to `world.events` (explosions, hits...).
   canvases, parts of a large one).
 * **Resolution in a headset** is whatever its browser recommends (1504 x 1504 an eye in a
   Pico). A smaller buffer (`framebufferScaleFactor`) ran with both eyes black there, and
-  WebXR viewport scaling is ignored there (`xr/DynamicResolution.js`, a development switch).
-  The VR pause menu shows the last flight's frame rate, resolution, draw calls and
-  triangles; `tools/game-perf` counts the same per object without a headset.
+  WebXR viewport scaling is ignored there (`xr/DynamicResolution.js`, a `?vrtest` switch).
+  `tools/game-perf` counts draw calls and triangles per object without a headset.
 * **When VR goes wrong** there is no console to read in a headset. An error in a frame would
   stop three.js asking for the next one, leaving the headset black, so the frame callback is
   guarded (`xr/frameGuard.js`): the frame is lost, the session goes on. Each session's report
   (frames drawn, eye size, the first error) appears under the page's "Enter VR" button when
   it ends (`xr/vrPerformance.js`, `vrReport` in the game store). The desktop emulator is laxer
   than a real browser: it does not object to one session's spaces being used in another.
-* **What a frame costs in a headset** can only be measured in the headset. In development
-  builds the VR pause menu has a performance test (`xr/vrBenchmark.js`): it flies on for half
-  a minute, takes away the HUD, the cabin, the asteroids, the sky and so on one at a time,
-  and lists the frame rate and the script time of each under the page's "Enter VR" button.
+* **What a frame costs in a headset** can only be measured in the headset: three guesses
+  made from desktop measurements were wrong before the Pico's own numbers found the cause.
+  Opening the page with `?vrtest` in its address (`/echoes_of_dawn?vrtest`) shows the tools:
+  the VR pause menu gains the last flight's frame rate, resolution, draw calls and triangles
+  and two tests (`xr/vrBenchmark.js`: the frame rate with each part of the picture taken
+  away; `xr/vrUploadTest.js`: ways of getting a drawn picture into a texture), and the page
+  lists the last session's figures and the tests' results under its "Enter VR" button.
+  Without `?vrtest` a player sees only a session that failed, in red, with "reload and try
+  again".
 * **Explosions** (`ExplosionsLayer.jsx`, `scene/effects/`) are built from pooled, instanced
   parts: fire-and-smoke puffs (`FireballSystem`), sparks (`ParticleSystem`), wreckage
   (`DebrisSystem`, shapes in `wreckageShapes.js`: torn plating, hull sections, frame and

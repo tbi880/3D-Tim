@@ -3,7 +3,7 @@
  *
  * A headset's GPU and browser are nothing like a desktop's, and what is cheap on one is not
  * on the other, so the only measurement that counts is one taken in the headset. Started from
- * the VR pause menu (development builds), this flies on for a little over half a minute and
+ * the VR pause menu (when the page is opened with `?vrtest`), this flies on for 40 seconds and
  * takes one thing away at a time - the HUD, the cabin, the asteroids, each part of the sky,
  * everything - measuring the frame rate with each. What a frame gains when a thing is gone
  * is what that thing costs. The results go to the game store (`vrBenchmark`: { test, results })
@@ -14,12 +14,15 @@
  * and uploading textures; what is left of the frame's time is the GPU's), and one eye's
  * picture in pixels.
  *
- * What the Pico (1504 x 1504 an eye, 90 Hz) has said so far, 2026-11: 16 to 20 frames a
- * second; 32 to 35 with the HUD's canvas textures not uploaded; 90 with nothing drawn and no
- * uploads, but 28 with nothing drawn and the uploads still made. So the uploads cost more
- * than the scene, wherever in the frame they are made (vrUploadTest.js looks for a cheaper
- * way). Turning foveation off changed nothing, and neither did asking for a smaller
- * viewport, which that browser ignores. The cabin costs the same unlit as lit.
+ * What the Pico (1504 x 1504 an eye, 90 Hz) said, 2026-11, in frames a second:
+ *  - at first 16 to 20; 32 to 35 with the HUD's canvas textures not uploaded; 90 with nothing
+ *    drawn and no uploads, but 28 with nothing drawn and the uploads still made. The uploads
+ *    cost more than the scene, because the textures were sRGB (see canvasPanel.js).
+ *  - with that fixed, 34 to 44, and the uploads no longer show. What is left is the cabin:
+ *    66 without it and 59 with it unlit. Asteroids, nebula, stars, distant bodies and
+ *    particles are each within the noise of a run (a few frames a second).
+ *  - turning foveation off changed nothing, and neither did asking for a smaller viewport,
+ *    which that browser ignores.
  */
 import * as THREE from 'three';
 import { Impostor } from '../scene/effects/Impostor.js';

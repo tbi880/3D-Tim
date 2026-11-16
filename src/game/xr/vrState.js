@@ -20,8 +20,8 @@ import { vrPerformance } from './vrPerformance.js';
  *  - each eye's buffer is left at the size the headset's browser recommends: a smaller one
  *    (framebufferScaleFactor 0.8) gave a session that ran with both eyes black in the Pico's
  *    browser. Following the frame rate with the resolution inside that buffer
- *    (DynamicResolution.js) is a development switch in the VR pause menu only: the Pico's
- *    browser ignores the viewport scaling it relies on, and no other headset has tried it;
+ *    (DynamicResolution.js) is one of the `?vrtest` tools only: the Pico's browser ignores
+ *    the viewport scaling it relies on, and no other headset has tried it;
  *  - 4x multisampling (see `canvasAntialias`): on a headset's tile-based GPU it costs next
  *    to nothing, and without it every hull edge and light line shimmers as the head moves;
  *  - the headset's default refresh rate (72 Hz on a Quest) instead of the highest one.
@@ -92,6 +92,15 @@ export function getXRStore() {
     }
     return store;
 }
+
+/**
+ * Whether the page was opened with `?vrtest` in its address. That, and only that, shows the
+ * tools for looking into how VR runs in a headset: in the VR pause menu the last flight's
+ * frame rate and the tests (xr/vrBenchmark.js, xr/vrUploadTest.js, dynamic resolution), and
+ * on the page the last session's figures and the tests' results. A player sees none of it,
+ * except a session that failed, which says so under the "Enter VR" button.
+ */
+export const VR_DIAGNOSTICS = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('vrtest');
 
 /**
  * Plain, per-frame readable VR state (no React): whether a headset session is running, and

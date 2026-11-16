@@ -7,10 +7,9 @@ import { PHASE } from '../state/GameSession.js';
 import { loadSave } from '../state/saveGame.js';
 import { roundRect, wrapText } from './canvasPanel.js';
 import { buildMatchMenu, isMatchMenuOpen } from './VRMatchMenu.js';
-import { stageOfENV } from '../../Settings';
 import { vrBenchmark } from './vrBenchmark.js';
 import { vrPerformance } from './vrPerformance.js';
-import { exitVR, vr } from './vrState.js';
+import { VR_DIAGNOSTICS, exitVR, vr } from './vrState.js';
 
 /**
  * The menus inside the headset: title, pause, game over, ending and the refit window, as one
@@ -142,10 +141,10 @@ export class VRMenu {
                 if (state.hasSave) items.push({ label: t('ui.restartCheckpoint'), select: () => session.continueGame() });
                 const toggleView = () => { vr.view = vr.view === 'chase' ? 'cockpit' : 'chase'; };
                 items.push({ label: t('ui.view'), value: t(`ui.view.${vr.view}`), left: toggleView, right: toggleView, select: toggleView });
-                // Development only. Dynamic resolution is unproven: the one headset it was tried
-                // in (a Pico) ignores the viewport scaling it relies on. The performance test
-                // measures in this headset what each part of the picture costs (xr/vrBenchmark.js).
-                if (stageOfENV !== 'prod') {
+                // With `?vrtest`: dynamic resolution (unproven: the one headset it was tried in, a
+                // Pico, ignores the viewport scaling it relies on) and the tests that measure in
+                // this headset what the picture costs (xr/vrBenchmark.js).
+                if (VR_DIAGNOSTICS) {
                     const toggleDynamic = () => { vr.dynamicResolution = !vr.dynamicResolution; };
                     items.push({ label: t('ui.vr.dynamicResolution'), value: t(vr.dynamicResolution ? 'ui.on' : 'ui.off'), left: toggleDynamic, right: toggleDynamic, select: toggleDynamic });
                     items.push({ label: t('ui.vr.benchmark'), select: () => { vrBenchmark.requested = 'scene'; session.resume(); } });
@@ -154,10 +153,13 @@ export class VRMenu {
                 items.push(...this.commonSettings(settings, t));
                 items.push({ label: t('ui.quitToTitle'), select: () => session.enterTitle() });
                 items.push(exitItem);
-                // How the headset was coping just before the pause: the only place to see it from inside.
-                const flight = vrPerformance.flight;
-                const lines = flight ? [t('ui.vr.performance', { ...flight, scale: Math.round(flight.scale * 100), triangles: Math.round(flight.triangles / 1000) })] : [];
-                if (state.vrBenchmark) lines.push(t('ui.vr.benchmarkDone'));
+                const lines = [];
+                if (VR_DIAGNOSTICS) {
+                    // How the headset was coping just before the pause: the only place to see it from inside.
+                    const flight = vrPerformance.flight;
+                    if (flight) lines.push(t('ui.vr.performance', { ...flight, scale: Math.round(flight.scale * 100), triangles: Math.round(flight.triangles / 1000) }));
+                    if (state.vrBenchmark) lines.push(t('ui.vr.benchmarkDone'));
+                }
                 return { key: 'paused', title: t('ui.paused'), lines, columns: t('ui.vr.controls').split(' · '), items };
             }
             case PHASE.GAME_OVER: {

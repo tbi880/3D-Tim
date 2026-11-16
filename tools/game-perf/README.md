@@ -2,8 +2,11 @@
 
 What the game draws in a headset, counted on this Mac: draw calls and triangles per object,
 and frame time at a headset's resolution. No headset needed, and none of it tells you the
-frame rate a headset will reach: for that, pause the game inside the headset, where the
-pause menu shows the last flight's frame rate, resolution, draw calls and triangles.
+frame rate a headset will reach, or even what is slow there (in a Pico it was the HUD's sRGB
+canvas textures, which cost nothing on this Mac). For that, open the game in the headset with
+`?vrtest` in the address: the VR pause menu then shows the last flight's frame rate and has
+two tests that measure, in the headset, what each part of the picture costs
+(`src/game/xr/vrBenchmark.js`).
 
 With the dev server running (`npm run dev`), from this folder:
 

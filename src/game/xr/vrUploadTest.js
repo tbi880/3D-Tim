@@ -17,7 +17,9 @@ import * as THREE from 'three';
  * the HUD's panels now are (canvasPanel.js: they were sRGB textures, the one way this test
  * had not yet tried); a canvas drawn on the CPU (`willReadFrequently`) 54 (10 ms), and 43
  * sent on as pixels; raw pixels with no canvas 87; one 256 x 256 canvas 89, four of them 75;
- * a 256 x 256 part of a large canvas 72 to 87. So: few canvases, GPU ones, whole.
+ * a 256 x 256 part of a large canvas 72 to 87. So: few canvases, GPU ones, whole. With the
+ * panels made plain textures the game went from 20 frames a second to 34-44, the same as
+ * with their uploads switched off.
  */
 
 const WIDTH = 1024;

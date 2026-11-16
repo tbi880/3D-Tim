@@ -12,7 +12,7 @@ import { useGameStore, useT } from '../state/gameStore.js';
 import {
     enterFullscreen, exitFullscreen, FULLSCREEN_CHANGE_EVENTS, getFullscreenElement, isFullscreenSupported, setAutoFullscreenOff,
 } from '../../utils/fullscreen.js';
-import { enterVR, useVRActive, useVRSupported } from '../xr/vrState.js';
+import { VR_DIAGNOSTICS, enterVR, useVRActive, useVRSupported } from '../xr/vrState.js';
 import { bucketURL } from '../../Settings';
 import { MATCH_PANEL } from '../modes/battleRoyale/BattleRoyalePresenter.js';
 import { useLanStore } from '../net/lobby/lanStore.js';
@@ -76,15 +76,16 @@ function VRButton({ onStart }) {
                 <small>{t('ui.vr.enterHint')}</small>
             </button>
             {!active && <VRReport />}
-            {!active && <VRBenchmarkResults />}
+            {!active && VR_DIAGNOSTICS && <VRBenchmarkResults />}
         </>
     );
 }
 
 /**
  * How the last VR session went, under the button that started it: a headset has no console,
- * so a session that showed nothing has to say here what happened. One that failed (in red)
- * also tells the player what to do about it: reload the page and try again.
+ * so a session that showed nothing has to say here what happened. A player only sees one
+ * that failed (in red), with what to do about it: reload the page and try again. A session
+ * that went well is reported only with `?vrtest`.
  */
 function VRReport() {
     const report = useGameStore((state) => state.vrReport);
@@ -95,6 +96,7 @@ function VRReport() {
         : t('ui.vr.report.summary', { ...report, scale: Math.round(report.lowestScale * 100) });
     // A frame or two lost as a session starts is nothing; a session that drew nothing, or kept failing, is.
     const failed = report.notStarted || report.frames === 0 || report.errors > report.frames / 10;
+    if (!failed && !VR_DIAGNOSTICS) return null;
     return (
         <p className={`eod-vr-report${failed ? ' eod-vr-report-failed' : ''}`}>
             {summary}
@@ -104,7 +106,7 @@ function VRReport() {
     );
 }
 
-/** The last in-headset benchmark (xr/vrBenchmark.js, development builds): what each part of the picture cost there. */
+/** The last in-headset test (xr/vrBenchmark.js, shown with `?vrtest`): what each variant cost there. */
 function VRBenchmarkResults() {
     const benchmark = useGameStore((state) => state.vrBenchmark);
     if (!benchmark) return null;
