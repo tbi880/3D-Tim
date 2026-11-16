@@ -2,6 +2,7 @@ import { Suspense, useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useVRActive, useVRSupported, vr } from '../xr/vrState.js';
 import VRCockpitShell, { preloadVRCockpit } from '../xr/VRCockpitShell.jsx';
+import { preloadVRFlightStick } from '../xr/VRFlightStick.jsx';
 import GltfModel from './models/GltfModel.jsx';
 import { ModelErrorBoundary, getModelInfo, useShipMaterials } from './models/ShipModel.jsx';
 
@@ -23,10 +24,13 @@ function CockpitModel() {
 export default function Cockpit({ baseFov }) {
     const groupRef = useRef(null);
     const inVR = useVRActive();
-    // Where VR can be entered, fetch the VR cabin ahead of time so it is there on entering.
+    // Where VR can be entered, fetch the VR cabin and flight stick ahead of time so they are
+    // there on entering.
     const vrSupported = useVRSupported();
     useEffect(() => {
-        if (vrSupported) preloadVRCockpit();
+        if (!vrSupported) return;
+        preloadVRCockpit();
+        preloadVRFlightStick();
     }, [vrSupported]);
     const baseTangent = Math.tan((baseFov * Math.PI) / 360);
 

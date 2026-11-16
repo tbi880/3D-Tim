@@ -12,6 +12,7 @@ import { createCanvasPanel } from './canvasPanel.js';
 import VRHud, { vrComms } from './VRHud.jsx';
 import { VRMenu } from './VRMenu.js';
 import { XRGamepadInput } from './XRGamepadInput.js';
+import { ambientLight } from './cabinLighting.js';
 import { getXRStore, useVRActive, vr } from './vrState.js';
 
 /** Runs before the simulation (-2), so this frame's stick positions are used this frame. */
@@ -177,6 +178,7 @@ export default function VRCameraRig({ game }) {
             xrCamera.far = XR_FAR;
         }
         gamepads.update(gl.xr.getSession(), delta);
+        ambientLight.update(useGameStore.getState().hud, delta);
         const origin = originRef.current;
         frameCount.current += 1;
         const pending = recenterAt.current;

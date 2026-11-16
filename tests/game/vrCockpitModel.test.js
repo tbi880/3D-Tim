@@ -3,12 +3,13 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 /**
- * The VR cabin's model file (tools/game-models/vr-cockpit) against what the game's component
- * (xr/VRCockpitShell.jsx) and the HUD (xr/VRHud.jsx) rely on. Web optimisation rewrites the
- * file, so this is where a dropped mesh, material or UV set shows up.
+ * The VR model files (tools/game-models/vr-cockpit) against what the game's components
+ * (xr/VRCockpitShell.jsx, xr/VRFlightStick.jsx) and the HUD (xr/VRHud.jsx) rely on. Web
+ * optimisation rewrites the files, so this is where a dropped mesh, material or UV set shows up.
  */
 
 const MODEL = new URL('../../public/assets/game/vr-cockpit-transformed.glb', import.meta.url);
+const STICK = new URL('../../public/assets/game/vr-stick-transformed.glb', import.meta.url);
 const LAYOUT = new URL('../../src/game/xr/cockpitLayout.json', import.meta.url);
 
 /** The JSON part of a binary glTF file. */
@@ -21,8 +22,8 @@ function readGlbJson(url) {
 }
 
 const gltf = readGlbJson(MODEL);
-const meshNamed = (name) => gltf.meshes[gltf.nodes.find((node) => node.name === name)?.mesh];
-const materialOf = (mesh) => gltf.materials[mesh.primitives[0].material];
+const meshNamed = (name, file = gltf) => file.meshes[file.nodes.find((node) => node.name === name)?.mesh];
+const materialOf = (mesh, file = gltf) => file.materials[mesh.primitives[0].material];
 const attributesOf = (primitive) => primitive.extensions?.KHR_draco_mesh_compression?.attributes ?? primitive.attributes;
 
 test('the cabin is three meshes, one draw call each', () => {
@@ -52,6 +53,18 @@ test('the light strips keep their UVs (metres along the strip, for the travellin
 
 test('the glass roof is blended', () => {
     assert.equal(materialOf(meshNamed('glass')).alphaMode, 'BLEND');
+});
+
+test('the flight stick is one mesh whose lights shine through its emissive map', () => {
+    const stick = readGlbJson(STICK);
+    assert.equal(stick.meshes.length, 1);
+    const mesh = meshNamed('stick', stick);
+    assert.ok(mesh, 'mesh "stick"');
+    assert.equal(mesh.primitives.length, 1);
+    const material = materialOf(mesh, stick);
+    assert.equal(material.name, 'stick');
+    assert.ok(material.pbrMetallicRoughness.baseColorTexture);
+    assert.ok(material.emissiveTexture);
 });
 
 test('the layout file gives the flight display a place, a tilt and a size', () => {

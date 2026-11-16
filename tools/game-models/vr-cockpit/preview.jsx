@@ -4,13 +4,16 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, Lightformer, Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import VRCockpitShell, { CABIN_SCALE } from '../../../src/game/xr/VRCockpitShell.jsx';
+import { FlightStickModel } from '../../../src/game/xr/VRFlightStick.jsx';
+import { ambientLight } from '../../../src/game/xr/cabinLighting.js';
 import layout from '../../../src/game/xr/cockpitLayout.json';
 import { useGameStore } from '../../../src/game/state/gameStore.js';
 
 /**
  * Shows the VR cabin from the pilot's eye without a headset, lit roughly like a sector of the
  * game (one sun, a little ambient light, a dim sky to reflect), with a test card where the
- * game draws the flight display. `?yaw=..&pitch=..&mode=..&x=..&y=..&z=..` set the view.
+ * game draws the flight display and a flight stick where each hand would hold one.
+ * `?yaw=..&pitch=..&mode=..&x=..&y=..&z=..` set the view; `?stick=1` shows a stick close up.
  */
 const query = new URLSearchParams(location.search);
 const view = {
@@ -18,6 +21,9 @@ const view = {
     head: ['x', 'y', 'z'].map((axis) => Number(query.get(axis) ?? 0)),
 };
 const hud = { alive: true, hull: 1, powerMode: query.get('mode') ?? 'balanced', boosting: false };
+/** Each hand's grip, as a controller held upright and tipped a little forward. */
+const HANDS = [[-0.24, -0.33, -0.42], [0.24, -0.33, -0.42]];
+const GRIP_ROTATION = [Math.PI / 2 - 0.45, 0, 0];
 const publish = () => useGameStore.setState({ hud: { ...hud } });
 window.__preview = { view, hud, publish };
 
@@ -41,7 +47,8 @@ function Eye() {
         window.addEventListener('keydown', key);
         return () => { canvas.removeEventListener('pointermove', drag); window.removeEventListener('keydown', key); };
     }, [gl]);
-    useFrame(() => {
+    useFrame((_, delta) => {
+        ambientLight.update(hud, delta);
         camera.position.fromArray(view.head).multiplyScalar(CABIN_SCALE);
         camera.rotation.set(THREE.MathUtils.degToRad(view.pitch), THREE.MathUtils.degToRad(view.yaw), 0, 'YXZ');
     });
@@ -91,6 +98,16 @@ function Preview() {
             <Eye />
             <Suspense fallback={null}>
                 <VRCockpitShell />
+                {HANDS.map((position, index) => (
+                    <group key={index} position={position} rotation={GRIP_ROTATION}>
+                        <FlightStickModel getTrigger={() => view.trigger ?? 0} />
+                    </group>
+                ))}
+                {query.get('stick') && (
+                    <group position={[0, -0.02, -0.3]} rotation={[Math.PI / 2 - 0.3, Number(query.get('stick')) || 0, 0]}>
+                        <FlightStickModel getTrigger={() => view.trigger ?? 0} />
+                    </group>
+                )}
             </Suspense>
             {query.get('card') !== '0' && <DisplayCard />}
         </Canvas>

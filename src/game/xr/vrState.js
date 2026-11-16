@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createXRStore } from '@react-three/xr';
 import { useStore } from 'zustand';
+import VRFlightStick from './VRFlightStick.jsx';
 
 /**
  * WebXR (VR headset) mode of the game.
@@ -9,8 +10,10 @@ import { useStore } from 'zustand';
  * page and the 3D scene import this module, never the simulation.
  *
  * Choices made for comfort and frame rate (VR has to hold 72-90 fps in stereo):
- *  - controllers are drawn, but without ray / grab / teleport pointers: the game reads the
- *    sticks and buttons itself (xr/XRGamepadInput.js) and its menus are driven by the sticks;
+ *  - each controller is drawn as a flight stick (xr/VRFlightStick.jsx) instead of the
+ *    headset's own controller model, and without ray / grab / teleport pointers: the game
+ *    reads the sticks and buttons itself (xr/XRGamepadInput.js) and its menus are driven by
+ *    the sticks;
  *  - hand tracking is off (flying needs the sticks and triggers);
  *  - fixed foveated rendering at full strength: the edges of the lenses are blurry anyway;
  *  - 4x multisampling (see `canvasAntialias`): on a headset's tile-based GPU it costs next
@@ -20,8 +23,6 @@ import { useStore } from 'zustand';
  * Without a headset, VR can be tried on a desktop browser with Meta's "Immersive Web
  * Emulator" browser extension.
  */
-
-const CONTROLLER = { rayPointer: false, grabPointer: false, teleportPointer: false };
 
 let store = null;
 
@@ -47,7 +48,7 @@ export function getXRStore() {
             emulate: false,
             offerSession: false,
             enterGrantedSession: false,
-            controller: CONTROLLER,
+            controller: VRFlightStick,
             hand: false,
             gaze: false,
             screenInput: false,
