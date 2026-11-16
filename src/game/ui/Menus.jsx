@@ -106,13 +106,13 @@ function VRReport() {
 
 /** The last in-headset benchmark (xr/vrBenchmark.js, development builds): what each part of the picture cost there. */
 function VRBenchmarkResults() {
-    const results = useGameStore((state) => state.vrBenchmark);
-    if (!results) return null;
+    const benchmark = useGameStore((state) => state.vrBenchmark);
+    if (!benchmark) return null;
     return (
         <table className="eod-vr-benchmark">
-            <thead><tr><th>VR benchmark</th><th>fps</th><th>script ms</th><th>eye</th></tr></thead>
+            <thead><tr><th>VR test: {benchmark.test}</th><th>fps</th><th>script ms</th></tr></thead>
             <tbody>
-                {results.map(({ name, fps, js, eye }) => <tr key={name}><td>{name}</td><td>{fps}</td><td>{js}</td><td>{eye}</td></tr>)}
+                {benchmark.results.map(({ name, fps, js }) => <tr key={name}><td>{name}</td><td>{fps}</td><td>{js}</td></tr>)}
             </tbody>
         </table>
     );

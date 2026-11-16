@@ -440,6 +440,7 @@ export default {
     'ui.vr.report.retry': 'Please reload the page and try again.',
     'ui.vr.benchmark': 'Performance test (40 s, keep flying)',
     'ui.vr.benchmarkDone': 'Performance test finished: leave VR to read the results on the page.',
+    'ui.vr.uploadTest': 'Texture upload test (35 s, the picture goes dark)',
     'ui.vr.menuHint': 'Stick: choose · Trigger / A: select · B: back',
     'ui.vr.refitHint': 'Stick left / right adds or removes a level',
     'ui.vr.controls': 'Right stick steer · Left stick throttle / roll · Right trigger beams · Left trigger torpedo · Left grip afterburner · Right grip lock what you look at · A next target · B skip comms · X power · Y view · Left stick click re-centre seat · Right stick click pause',

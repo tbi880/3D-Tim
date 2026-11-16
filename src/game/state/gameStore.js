@@ -40,7 +40,7 @@ export const useGameStore = create(() => ({
     saveCheckpointId: null,
     /** How the last VR session went, or why it did not start (xr/vrPerformance.js), or null. */
     vrReport: null,
-    /** The last in-headset benchmark's results (xr/vrBenchmark.js): [{ name, fps, js, eye }], or null. */
+    /** The last in-headset test (xr/vrBenchmark.js): { test, results: [{ name, fps, js, eye }] }, or null. */
     vrBenchmark: null,
 
     // Scene bookkeeping

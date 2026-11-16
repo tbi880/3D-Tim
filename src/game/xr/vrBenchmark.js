@@ -6,23 +6,26 @@
  * the VR pause menu (development builds), this flies on for a little over half a minute and
  * takes one thing away at a time - the HUD, the cabin, the asteroids, each part of the sky,
  * everything - measuring the frame rate with each. What a frame gains when a thing is gone
- * is what that thing costs. The results go to the game store (`vrBenchmark`) and are listed
- * under the page's "Enter VR" button, where they can be read after leaving VR.
+ * is what that thing costs. The results go to the game store (`vrBenchmark`: { test, results })
+ * and are listed under the page's "Enter VR" button, where they can be read after leaving VR.
  *
  * Each result is { name, fps, js, eye }: frames per second, milliseconds of script per frame
  * (everything the page does in a frame, including handing the frame's drawing to the GPU
  * and uploading textures; what is left of the frame's time is the GPU's), and one eye's
  * picture in pixels.
  *
- * What the Pico (1504 x 1504 an eye, 90 Hz) said the first time, 2026-11: 16 frames a second;
- * 35 with the HUD's canvases not uploaded in mid-frame (now fixed, see canvasPanel.js); 90
- * with nothing drawn. Turning foveation off changed nothing, and neither did asking for a
- * smaller viewport, which that browser ignores.
+ * What the Pico (1504 x 1504 an eye, 90 Hz) has said so far, 2026-11: 16 to 20 frames a
+ * second; 32 to 35 with the HUD's canvas textures not uploaded; 90 with nothing drawn and no
+ * uploads, but 28 with nothing drawn and the uploads still made. So the uploads cost more
+ * than the scene, wherever in the frame they are made (vrUploadTest.js looks for a cheaper
+ * way). Turning foveation off changed nothing, and neither did asking for a smaller
+ * viewport, which that browser ignores. The cabin costs the same unlit as lit.
  */
 import * as THREE from 'three';
 import { Impostor } from '../scene/effects/Impostor.js';
 import { useGameStore } from '../state/gameStore.js';
 import { vrPerformance } from './vrPerformance.js';
+import { uploadVariants } from './vrUploadTest.js';
 
 /** Seconds to let a change settle (shaders, the browser's own pacing), then to measure it. */
 const SETTLE = 0.7;
@@ -104,28 +107,56 @@ function variants(scene) {
     ];
 }
 
+/**
+ * The tests. Each lists its variants; a variant's `apply` returns its undo, or { undo, frame }
+ * when it has something to do every frame. `around` holds for the whole test.
+ */
+const TESTS = {
+    /** What each part of the picture costs. */
+    scene: { variants: (gl, scene) => variants(scene), around: () => () => {} },
+    /** What each way of getting a drawn picture into a texture costs (vrUploadTest.js), with nothing else going on. */
+    uploads: {
+        variants: (gl) => uploadVariants(gl),
+        around(gl, scene) {
+            const all = drawn(scene);
+            const showAgain = hide(all);
+            const uploadAgain = freezeUploads(all.filter((object) => object.material?.map?.isCanvasTexture));
+            return () => { showAgain(); uploadAgain(); };
+        },
+    },
+};
+
 let run = null;
 
+function start(variant) {
+    const applied = variant.apply();
+    return typeof applied === 'function' ? { undo: applied, frame: null } : applied;
+}
+
 export const vrBenchmark = {
-    /** Asked for from the menu; begins on the next frame of flight. */
-    requested: false,
+    /** The test asked for from the menu ('scene' | 'uploads'), or null; it begins on the next frame of flight. */
+    requested: null,
     /** True from the request until the last result is in. */
     get running() {
-        return this.requested || run !== null;
+        return this.requested !== null || run !== null;
     },
 
     /**
-     * Call once a frame during a VR session.
+     * Call once a frame during a VR session, before the frame is drawn.
      * @param {() => void} onDone called when the last variant has been measured
      */
     update(gl, scene, delta, onDone) {
         if (this.requested && !run) {
-            this.requested = false;
-            const list = variants(scene);
-            run = { list, index: 0, undo: list[0].apply(), time: 0, frames: 0, elapsed: 0, js: 0, results: [] };
+            const test = TESTS[this.requested];
+            run = { name: this.requested, list: null, index: 0, current: null, restore: test.around(gl, scene), time: 0, frames: 0, elapsed: 0, js: 0, results: [] };
+            run.list = test.variants(gl, scene);
+            run.current = start(run.list[0]);
+            this.requested = null;
             return;
         }
-        if (!run || !(delta > 0) || delta > HITCH) return;
+        if (!run) return;
+        run.current.frame?.();
+        if (!(delta > 0) || delta > HITCH) return;
         run.time += delta;
         if (run.time < SETTLE) return;
         run.frames += 1;
@@ -140,21 +171,23 @@ export const vrBenchmark = {
             js: Math.round((run.js / run.frames) * 10) / 10,
             eye: `${Math.round(eye?.z ?? 0)}x${Math.round(eye?.w ?? 0)}`,
         });
-        run.undo();
+        run.current.undo();
         run.index += 1;
         if (run.index < run.list.length) {
-            Object.assign(run, { undo: run.list[run.index].apply(), time: 0, frames: 0, elapsed: 0, js: 0 });
+            Object.assign(run, { current: start(run.list[run.index]), time: 0, frames: 0, elapsed: 0, js: 0 });
             return;
         }
-        useGameStore.setState({ vrBenchmark: run.results });
+        run.restore();
+        useGameStore.setState({ vrBenchmark: { test: run.name, results: run.results } });
         run = null;
         onDone();
     },
 
     /** The session ended: put back whatever was taken away. */
     cancel() {
-        this.requested = false;
-        run?.undo();
+        this.requested = null;
+        run?.current.undo();
+        run?.restore();
         run = null;
     },
 };

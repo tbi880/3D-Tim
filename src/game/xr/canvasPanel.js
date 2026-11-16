@@ -9,14 +9,11 @@ import * as THREE from 'three';
  * skipping them keeps each texture upload cheap. `uploadOnlyChanges` is for a panel that is
  * redrawn more often than its picture changes (see `commit`).
  *
- * When the canvas goes to the GPU matters more than how big it is. three.js uploads a
- * changed texture at the moment a mesh using it is drawn, and these panels are drawn last:
- * the upload would land in the middle of the headset's frame, after the whole scene. Copying
- * a canvas into a texture makes the GPU turn away from the eyes' buffer and come back, and a
- * headset's GPU can only do that by writing out everything drawn so far and reading it in
- * again. Measured in a Pico: 16 frames a second with the uploads where three.js puts them,
- * 35 without them. So `commit` uploads at once (`gl.initTexture`): it is called from frame
- * callbacks, which run before anything of the frame has been drawn.
+ * `commit` sends the canvas to the GPU at once (`gl.initTexture`) instead of leaving it to
+ * three.js, which uploads a changed texture at the moment a mesh using it is drawn - for
+ * these panels, drawn last, in the middle of the headset's frame. Measured in a Pico, that
+ * moved the game from 16 frames a second to 20; the upload itself, wherever it is made, is
+ * what costs there (32 frames a second with no uploads at all). See xr/vrUploadTest.js.
  */
 export function createCanvasPanel({ gl, width, height, meters, renderOrder = 1000, uploadOnlyChanges = false }) {
     const canvas = document.createElement('canvas');

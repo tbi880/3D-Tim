@@ -148,7 +148,8 @@ export class VRMenu {
                 if (stageOfENV !== 'prod') {
                     const toggleDynamic = () => { vr.dynamicResolution = !vr.dynamicResolution; };
                     items.push({ label: t('ui.vr.dynamicResolution'), value: t(vr.dynamicResolution ? 'ui.on' : 'ui.off'), left: toggleDynamic, right: toggleDynamic, select: toggleDynamic });
-                    items.push({ label: t('ui.vr.benchmark'), select: () => { vrBenchmark.requested = true; session.resume(); } });
+                    items.push({ label: t('ui.vr.benchmark'), select: () => { vrBenchmark.requested = 'scene'; session.resume(); } });
+                    items.push({ label: t('ui.vr.uploadTest'), select: () => { vrBenchmark.requested = 'uploads'; session.resume(); } });
                 }
                 items.push(...this.commonSettings(settings, t));
                 items.push({ label: t('ui.quitToTitle'), select: () => session.enterTitle() });
@@ -355,7 +356,7 @@ function drawMenu(panel, menu, selected, t) {
 
     // Rows; on long menus they shrink so everything fits above the footer.
     const footer = height - 54;
-    const rowHeight = Math.max(33, Math.min(78, (footer - y) / Math.max(1, menu.items.length)));
+    const rowHeight = Math.max(30, Math.min(78, (footer - y) / Math.max(1, menu.items.length)));
     menu.items.forEach((item, index) => {
         const top = y + index * rowHeight;
         const isSelected = index === selected;
