@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { Environment } from '@react-three/drei';
 import * as THREE from 'three';
 import { SECTORS } from '../config/sectors.js';
@@ -19,6 +19,14 @@ const NEBULA_RADIUS = 1_400_000;
 const STAR_COUNT = 2800;
 const DEFAULT_SECTOR = 'collapse';
 
+const NEBULA_BAKE_VERTEX_SHADER = /* glsl */ `
+    varying vec3 vDirection;
+    void main() {
+        vDirection = normalize(position);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+`;
+
 const NEBULA_VERTEX_SHADER = /* glsl */ `
     varying vec3 vDirection;
     void main() {
@@ -32,13 +40,14 @@ const NEBULA_VERTEX_SHADER = /* glsl */ `
     }
 `;
 
-/** Layered value noise: soft clouds in two colours, fading to black between them. */
-const NEBULA_FRAGMENT_SHADER = /* glsl */ `
-    uniform vec3 colorA;
-    uniform vec3 colorB;
-    uniform float intensity;
-    varying vec3 vDirection;
-
+/**
+ * The nebula's clouds are layered value noise: two sums of four octaves, some sixty hash
+ * evaluations for one pixel. Worked out for every pixel of the sky every frame, that was
+ * the most expensive shader in the game on the pixels that matter least. The clouds are the
+ * same in every sector (only their colours differ), so they are worked out once, into a cube
+ * map (`bakeNebulaClouds`), and the sky's own shader reads them back with one texture fetch.
+ */
+const NEBULA_NOISE = /* glsl */ `
     float hash(vec3 p) {
         p = fract(p * 0.3183099 + 0.1);
         p *= 17.0;
@@ -63,15 +72,54 @@ const NEBULA_FRAGMENT_SHADER = /* glsl */ `
         }
         return value;
     }
+`;
+
+/**
+ * What the cube map holds, per direction: red = how dense the cloud is, green = which of the
+ * sector's two colours it has. The density is stored as its square root: the clouds are dim,
+ * and eight bits spread evenly over brightness would show as bands in them.
+ */
+const NEBULA_BAKE_FRAGMENT_SHADER = /* glsl */ `
+    varying vec3 vDirection;
+    ${NEBULA_NOISE}
     void main() {
         vec3 dir = normalize(vDirection);
         float clouds = fbm(dir * 2.2 + 3.0);
         float wisps = fbm(dir * 5.5 - 7.0);
         float density = smoothstep(0.42, 0.85, clouds) * (0.55 + 0.45 * wisps);
-        vec3 color = mix(colorA, colorB, smoothstep(0.3, 0.75, wisps)) * density * intensity;
+        gl_FragColor = vec4(sqrt(density), smoothstep(0.3, 0.75, wisps), 0.0, 1.0);
+    }
+`;
+
+/** Soft clouds in two colours, fading to black between them. */
+const NEBULA_FRAGMENT_SHADER = /* glsl */ `
+    uniform samplerCube clouds;
+    uniform vec3 colorA;
+    uniform vec3 colorB;
+    uniform float intensity;
+    varying vec3 vDirection;
+    void main() {
+        vec2 cloud = textureCube(clouds, vDirection).rg;
+        vec3 color = mix(colorA, colorB, cloud.g) * (cloud.r * cloud.r) * intensity;
         gl_FragColor = vec4(color, 1.0);
     }
 `;
+
+/** Pixels along one face of the clouds' cube map: about six to a degree, several to the finest wisp. */
+const NEBULA_CUBE_SIZE = 512;
+
+/** Draws the nebula's clouds into a cube map. The caller disposes the returned render target. */
+function bakeNebulaClouds(gl) {
+    const target = new THREE.WebGLCubeRenderTarget(NEBULA_CUBE_SIZE, { generateMipmaps: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
+    const material = new THREE.ShaderMaterial({ vertexShader: NEBULA_BAKE_VERTEX_SHADER, fragmentShader: NEBULA_BAKE_FRAGMENT_SHADER, side: THREE.BackSide });
+    const sphere = new THREE.Mesh(new THREE.SphereGeometry(10, 32, 16), material);
+    const scene = new THREE.Scene();
+    scene.add(sphere);
+    new THREE.CubeCamera(1, 100, target).update(gl, scene);
+    sphere.geometry.dispose();
+    material.dispose();
+    return target;
+}
 
 /** Thousands of pin-point stars at a fixed pixel size. */
 function StarField() {
@@ -102,12 +150,16 @@ function StarField() {
     );
 }
 
-/** A sphere painted with procedural clouds in the sector's colours. */
+/** A sphere painted with clouds in the sector's colours. */
 function NebulaDome({ sky }) {
+    const gl = useThree((state) => state.gl);
+    const clouds = useMemo(() => bakeNebulaClouds(gl), [gl]);
+    useEffect(() => () => clouds.dispose(), [clouds]);
     const material = useMemo(() => new THREE.ShaderMaterial({
         vertexShader: NEBULA_VERTEX_SHADER,
         fragmentShader: NEBULA_FRAGMENT_SHADER,
         uniforms: {
+            clouds: { value: clouds.texture },
             colorA: { value: new THREE.Color(sky.nebulaA) },
             colorB: { value: new THREE.Color(sky.nebulaB) },
             intensity: { value: sky.intensity },
@@ -116,7 +168,8 @@ function NebulaDome({ sky }) {
         // Drawn first (renderOrder below) as a pure background: it neither tests nor writes depth.
         depthWrite: false,
         depthTest: false,
-    }), []); // eslint-disable-line react-hooks/exhaustive-deps -- created once, then eased towards `sky` below
+    }), [clouds]); // eslint-disable-line react-hooks/exhaustive-deps -- the colours are eased towards `sky` below
+    useEffect(() => () => material.dispose(), [material]);
 
     const target = useMemo(() => ({ a: new THREE.Color(sky.nebulaA), b: new THREE.Color(sky.nebulaB), intensity: sky.intensity }), [sky]);
 
