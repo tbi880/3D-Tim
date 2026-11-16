@@ -71,8 +71,11 @@ function refreshTarget(world, ship, dt) {
     ai.retargetTimer = randomRange(world.rng, 2, 4);
 }
 
-/** Bends `desired` away from capital hulls and asteroids that are too close. */
-function avoidObstacles(world, ship, desired) {
+/**
+ * Bends `desired` away from capital hulls and asteroids that are too close. (The push is
+ * about one unit long: give it a `desired` of about that length for it to matter.)
+ */
+export function avoidObstacles(world, ship, desired) {
     for (const other of world.ships) {
         if (other === ship || !other.alive || other.arriving || !SOLID_KINDS.has(other.cls.kind)) continue;
         const margin = AVOID_MARGIN + ship.boundingRadius;

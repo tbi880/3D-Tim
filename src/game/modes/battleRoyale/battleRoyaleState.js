@@ -43,7 +43,7 @@ import { EQUIPMENT_ORDER } from './equipment.js';
  *     beacon,             whether a beacon of theirs watches it
  *     comrades: [name],
  *   }],
- *   players: [{ id, name, classId, faction, alive, score, kills, deaths }],
+ *   players: [{ id, name, classId, bot, faction, alive, score, kills, deaths }],   `bot`: computer-flown
  * }
  */
 
@@ -118,6 +118,7 @@ export function sanitizeBattleRoyaleState(raw) {
             id: String(player?.id ?? ''),
             name: String(player?.name ?? '').slice(0, 40),
             classId: String(player?.classId ?? ''),
+            bot: Boolean(player?.bot),
             faction: oneOf(PLAYER_FACTIONS, player?.faction, PLAYER_FACTIONS[0]),
             alive: Boolean(player?.alive),
             score: count(player?.score),

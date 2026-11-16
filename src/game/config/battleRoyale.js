@@ -183,6 +183,51 @@ export const BATTLE_ROYALE = Object.freeze({
     }),
 
     /**
+     * Computer-flown players ("bots"). When a match starts with fewer than `fillTo` players the
+     * empty seats are taken by bots, unless the room's `bots` setting says "none". A bot is a
+     * player in everything the rules know: it is dealt a side, flies one of the players' ships
+     * with the players' own flight model and weapons, scores, docks, votes and wins or loses
+     * with its side. Only its decisions are a program's (modes/battleRoyale/bots.js), and they
+     * run on the host's device.
+     */
+    bots: Object.freeze({
+        fillTo: 6,
+        defaultSetting: 'fill',
+        /** Shown as "AI·Vega": everybody can tell who is not a person. */
+        namePrefix: 'AI·',
+        names: Object.freeze(['Vega', 'Orion', 'Lyra', 'Altair', 'Rigel', 'Deneb', 'Sirius', 'Castor']),
+        /** Seconds between a bot's decisions (what to do); it steers every frame. */
+        thinkInterval: 0.4,
+        /** A bot goes for hostiles within this many metres - or for whoever shot it last. */
+        engageRange: 3200,
+        /** Closer than this to its target it breaks away, for [least, most] seconds, and comes round again. */
+        breakDistance: 240,
+        breakSeconds: Object.freeze([1.4, 2.8]),
+        /** Beams are fired in bursts: [seconds firing, seconds holding fire]. */
+        burst: Object.freeze([2.4, 1.2]),
+        /** Seconds between torpedoes: [least, most]. */
+        torpedoPause: Object.freeze([2, 4]),
+        /** A bot docks at a station only with no hostile ship this near it (metres)... */
+        dockClearRange: 2400,
+        /** ...and lets go if it is shot down to this share of its shield while docked. */
+        undockShield: 0.35,
+        /** It jumps outwards this many seconds before its planet starts to fall in, if the drive is charged... */
+        fleeAhead: 45,
+        /**
+         * ...and, from a planet its side holds, after this many quiet seconds - but never
+         * further than `maxAhead` orbits ahead of the innermost planet still standing: bots
+         * fight over the planets the collapse is coming for, and reach the gate when it does.
+         */
+        restSeconds: 20,
+        maxAhead: 2,
+        /** With its shield down to this share a bot runs - afterburner, away from whoever is nearest - until it is back to `recoverShield`. */
+        retreatShield: 0.2,
+        recoverShield: 0.6,
+        /** Big ships are only attacked when no small one is within this many metres. */
+        fighterFirstRange: 2000,
+    }),
+
+    /**
      * Match lengths a host can choose. `timeScale` multiplies every waiting time above (the
      * collapse schedule and the jump cooldown); "quick" is for a short game or a test.
      */

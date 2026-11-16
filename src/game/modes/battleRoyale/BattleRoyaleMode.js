@@ -11,6 +11,7 @@ import { MATCH_PHASE } from '../../net/match/matchState.js';
 import { WORLD_EVENT } from '../../net/protocol.js';
 import { LOYALTY, LoyaltyRecord, dealFactions, isPirate } from './allegiance.js';
 import { BR_EVENT, BR_REQUEST, DOCK_END, DOCK_REFUSAL, JUMP_REFUSAL, VOTE } from './battleRoyaleProtocol.js';
+import { BotPilot, seatBots } from './bots.js';
 import { CollapseClock, PLANET_STATUS } from './collapse.js';
 import { EQUIPMENT, Inventory } from './equipment.js';
 import { callReinforcements, planGarrisons, stationGarrison } from './garrisons.js';
@@ -107,6 +108,8 @@ export class BattleRoyaleMode {
         /** `{ winner: faction | null }` once the match is decided. */
         this.result = null;
         this.sidesAtStart = new Set();
+        /** The computer-flown players' hands and heads (bots.js), one per bot. */
+        this.bots = [];
     }
 
     get jumpCooldown() {
@@ -134,12 +137,15 @@ export class BattleRoyaleMode {
             }
         });
 
+        // A match short of players is made up with computer-flown ones, dealt in like everybody else.
+        seatBots(server, this.info.settings, rng);
         const sides = dealFactions([...server.pilots.keys()], PLAYER_FACTIONS, rng);
         const startOf = new Map();
         for (const pilot of server.pilots.values()) {
             const faction = sides.get(pilot.id);
             const contestant = new Contestant(pilot, faction);
             this.contestants.set(pilot.id, contestant);
+            if (pilot.bot) this.bots.push(new BotPilot(this, contestant, rng));
             this.sidesAtStart.add(faction);
             // A side starts together, the pirates like the rest.
             if (!startOf.has(faction)) startOf.set(faction, this.pickStart(faction, garrisons, new Set(startOf.values())));
@@ -217,6 +223,7 @@ export class BattleRoyaleMode {
             this.updateDock(contestant, dt);
             this.updateEmergencyShield(contestant);
         }
+        for (const bot of this.bots) bot.update(dt);
         for (const place of this.places.values()) {
             if (place.vote && time >= place.vote.endsAt) this.resolveVote(place);
         }
@@ -641,6 +648,9 @@ export class BattleRoyaleMode {
             victim.gravityShieldUntil = 0;
             victim.emergencyShieldUntil = 0;
             this.undock(victim);
+            // A person stays to watch their wreck; a bot has nothing to watch with, and the
+            // place need not be kept running for it.
+            if (victim.pilot.bot) this.server.leaveZone(victim.pilot);
         }
         if (scorer && scorer !== victim) {
             const points = victim ? BATTLE_ROYALE.score.playerKill : BATTLE_ROYALE.score.ships[ship.classId] ?? 0;
@@ -749,6 +759,7 @@ export class BattleRoyaleMode {
                 id: contestant.pilot.id,
                 name: contestant.pilot.name,
                 classId: contestant.pilot.classId,
+                bot: contestant.pilot.bot,
                 faction: contestant.faction,
                 alive: contestant.alive,
                 score: contestant.score,

@@ -249,7 +249,7 @@ test('a well-formed state comes through unchanged in substance', () => {
     assert.equal(clean.you.picks, 1);
     assert.deepEqual(clean.you.equipment, { beacon: 2, gravityShield: 0, emergencyShield: 0, overdrive: 1 }, 'every piece is present');
     assert.deepEqual(clean.you.effects, { gravityShield: 12, emergencyShield: 0 });
-    assert.deepEqual(clean.players[0], { id: 'a', name: 'Ann', classId: 'kestrel', faction: 'umbra', alive: true, score: 500, kills: 1, deaths: 0 });
+    assert.deepEqual(clean.players[0], { id: 'a', name: 'Ann', classId: 'kestrel', bot: false, faction: 'umbra', alive: true, score: 500, kills: 1, deaths: 0 });
 });
 
 test('what is not a battle royale state is refused', () => {

@@ -187,7 +187,8 @@ async function gathered(names) {
     const party = lanParty(names);
     const [host, ...guests] = party.devices;
     for (const each of party.devices) await each.lan.open();
-    await host.lan.createRoom({ mode: 'battleRoyale', settings: { pace: 'quick', intro: 'skip' } });
+    // Only the people: what the computer-flown players do is tested with the rules (battleRoyale.test.js).
+    await host.lan.createRoom({ mode: 'battleRoyale', settings: { pace: 'quick', intro: 'skip', bots: 'none' } });
     for (const guest of guests) await guest.lan.joinRoom(host.state.room.code);
     await party.settle();
     return { ...party, host, guests };
@@ -553,7 +554,8 @@ test('quick match opens a public room for the first player and puts the next one
         assert.equal(each.session.phase, PHASE.PLAYING);
         assert.equal(each.state.matching, false, 'matched');
         assert.equal(each.state.startsAt, null);
-        assert.equal(each.ui.match.players.length, 3);
+        assert.equal(each.ui.match.players.filter((player) => !player.bot).length, 3);
+        assert.equal(each.ui.match.players.length, 6, 'a public match short of players is made up with computer-flown ones');
     }
 });
 

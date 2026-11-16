@@ -81,6 +81,16 @@ Not there yet: a match does not survive its host leaving, and a public room's ho
 cheat like any host (see "Cheating"). Both need the match to run on a server instead; the
 `MatchServer` was written so that it can.
 
+### Computer-flown players
+
+A match that starts short of players is made up with bots (`modes/battleRoyale/bots.js`,
+`BATTLE_ROYALE.bots`; a room's `bots: 'none'` setting leaves the seats empty). A bot has a
+pilot's seat on the match server like a person's (`MatchServer.addBot`): the same ships, the
+same flight model and weapons, the same rules, a side dealt with everybody's. The only
+difference is where its controls come from - a small program on the host's device writes
+them every frame instead of a packet from a player's device - so the other devices carry
+nothing extra but one more ship in their snapshots.
+
 ## What travels
 
 | | Channel | From | Content |

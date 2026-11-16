@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { BATTLE_ROYALE, NPC_FACTIONS, STAR_SYSTEM } from '../../src/game/config/battleRoyale.js';
 import { FACTION } from '../../src/game/config/gameConfig.js';
+import { PLAYER_SHIPS } from '../../src/game/config/playerShips.js';
+import { SHIP_CLASSES } from '../../src/game/config/shipClasses.js';
 import { applyDamage, areHostile, destroyShip, mayAttack } from '../../src/game/core/systems/damage.js';
 import { LOYALTY } from '../../src/game/modes/battleRoyale/allegiance.js';
 import { BR_EVENT, BR_REQUEST, DOCK_END, DOCK_REFUSAL, JUMP_REFUSAL, VOTE } from '../../src/game/modes/battleRoyale/battleRoyaleProtocol.js';
@@ -1453,6 +1455,261 @@ test('a player who leaves is out of the match and off the board', () => {
     assert.equal(game.state('ann').winner, DAWN, 'the last side left wins');
 });
 
+// ---- Computer-flown players ------------------------------------------------------------------
+
+const BOTS = BATTLE_ROYALE.bots;
+
+/**
+ * A match made up with bots: `game.bots` are their seats in the rules. `game.alone(bot, planet)`
+ * puts one at a planet with nothing else there but the station, everybody else out of the way.
+ */
+function withBots(names = ['ann'], settings = {}) {
+    const game = createTestServer(names, { start: { settings: { bots: 'fill', ...settings } } });
+    const { mode, server } = game;
+    game.bots = [...mode.contestants.values()].filter((contestant) => contestant.pilot.bot);
+    game.people = [...mode.contestants.values()].filter((contestant) => !contestant.pilot.bot);
+    const moveTo = (contestant, planet) => {
+        if (contestant.pilot.ship?.alive) contestant.pilot.zone.world.removeShip(contestant.pilot.ship);
+        return mode.launch(contestant, mode.places.get(planet), { warpIn: false });
+    };
+    game.alone = (bot, planet, parking = GATE) => {
+        for (const other of mode.contestants.values()) {
+            if (other !== bot) moveTo(other, parking);
+        }
+        const ship = moveTo(bot, planet);
+        const { world } = mode.places.get(planet).zone;
+        for (const other of [...world.ships]) {
+            if (other !== ship && other.faction !== FACTION.NEUTRAL) world.removeShip(other);
+        }
+        // The people's ships are parked: nobody is at their controls in these tests.
+        for (const person of game.people) server.pilots.get(person.pilot.id).lastInputAt = -Infinity;
+        return ship;
+    };
+    game.place = (planet) => mode.places.get(planet);
+    game.skipTo = (time) => { server.time = time; game.run(0.1); };
+    return game;
+}
+
+test('a match short of players is made up with computer-flown ones, dealt into the sides like everybody else', () => {
+    for (let seed = 1; seed <= 6; seed++) {
+        const { server, mode } = createTestServer(['ann', 'bo'], { start: { seed, settings: { bots: 'fill' } } });
+        const pilots = [...server.pilots.values()];
+        assert.equal(pilots.length, BOTS.fillTo);
+        assert.deepEqual(pilots.map((pilot) => pilot.bot), [false, false, true, true, true, true]);
+
+        const sides = [...mode.contestants.values()].map((contestant) => contestant.faction);
+        assert.deepEqual([DAWN, UMBRA, PIRATE].map((faction) => sides.filter((side) => side === faction).length), [2, 2, 2], 'two to a side, bots included');
+        const names = pilots.filter((pilot) => pilot.bot).map((pilot) => pilot.name);
+        assert.equal(new Set(names).size, names.length, 'each under its own name');
+        assert.ok(names.every((name) => name.startsWith(BOTS.namePrefix)), 'which says what it is');
+
+        const listed = mode.describeState(server.pilots.get('ann')).players;
+        assert.deepEqual(listed.map((player) => player.bot), pilots.map((pilot) => pilot.bot), 'and every player is told who is a bot');
+    }
+});
+
+test('no bots where the room wants none, or where every seat is taken', () => {
+    assert.equal(createTestServer(['ann'], { start: { settings: { bots: 'none' } } }).server.pilots.size, 1);
+    const names = Array.from({ length: BOTS.fillTo }, (_, index) => `p${index}`);
+    assert.equal(createTestServer(names, { start: { settings: { bots: 'fill' } } }).server.pilots.size, BOTS.fillTo);
+    assert.equal(createTestServer([...names, 'one-more'], { start: { settings: { bots: 'fill' } } }).server.pilots.size, BOTS.fillTo + 1, 'never fewer players than there are people');
+    assert.equal(createTestServer(['ann'], { start: { settings: {} } }).server.pilots.size, 1, '(these tests\' own default is none)');
+});
+
+test('a bot flies one of the players\' ships, exactly as a player\'s is', () => {
+    const game = withBots(['ann']);
+    const offered = PLAYER_SHIPS.map((ship) => ship.classId);
+    for (const bot of game.bots) {
+        const ship = bot.pilot.ship;
+        const cls = SHIP_CLASSES[bot.pilot.classId];
+        assert.ok(offered.includes(bot.pilot.classId), bot.pilot.classId);
+        assert.equal(ship.isPlayer, true);
+        assert.equal(ship.pilotId, bot.pilot.id);
+        assert.equal(ship.callsign, bot.pilot.name);
+        assert.deepEqual([ship.maxHull, ship.maxShield, ship.cls.maxSpeed], [cls.hull, cls.shield, cls.maxSpeed], 'the class\'s own numbers, nothing added');
+        assert.deepEqual(ship.weapons.map((weapon) => weapon.id), cls.weapons);
+        assert.equal(bot.inventory.picks + Object.values(bot.inventory.counts).reduce((sum, count) => sum + count, 0), BATTLE_ROYALE.equipment.startingPicks,
+            'one piece of equipment, like everybody');
+    }
+    const classes = new Set();
+    for (let seed = 1; seed <= 12; seed++) {
+        for (const pilot of createTestServer(['ann'], { start: { seed, settings: { bots: 'fill' } } }).server.pilots.values()) {
+            if (pilot.bot) classes.add(pilot.classId);
+        }
+    }
+    assert.ok(classes.size >= 3, `bots fly different ships: ${[...classes]}`);
+});
+
+test('a bot\'s ship is flown through a pilot\'s controls: it is never left drifting like a player who stopped sending', () => {
+    const game = withBots(['ann']);
+    const [bot] = game.bots;
+    const ship = game.alone(bot, THIRD);
+    game.place(THIRD).owner = bot.faction;
+    const enemy = game.place(THIRD).zone.world.spawnShip('drone', { faction: bot.faction === UMBRA ? DAWN : UMBRA, position: ship.position.clone().add({ x: 0, y: 0, z: -1500 }), aiMode: 'hold' });
+    game.run(1);
+    assert.equal(ship.target, enemy, 'locked like a player locks');
+    assert.ok(ship.controls === bot.pilot.controls, 'the helm is the bot\'s own controls, not the idle ones');
+
+    game.run(3);
+    assert.ok(ship.speed > 20, `under way at ${ship.speed.toFixed(0)} m/s`);
+});
+
+test('a bot fights what is hostile to it and scores like any pilot', () => {
+    const game = withBots(['ann']);
+    const [bot] = game.bots;
+    const ship = game.alone(bot, THIRD);
+    game.place(THIRD).owner = bot.faction;
+    const world = game.place(THIRD).zone.world;
+    const enemyFaction = bot.faction === UMBRA ? DAWN : UMBRA;
+    const drone = world.spawnShip('drone', { faction: enemyFaction, position: ship.position.clone().add({ x: 200, y: 0, z: -1200 }) });
+    let fired = false;
+    for (let second = 0; second < 60 && drone.alive; second++) {
+        game.run(1);
+        fired ||= ship.beamFiring;
+    }
+
+    assert.equal(drone.alive, false, 'shot down');
+    assert.equal(fired, true, 'with the ship\'s own beams');
+    assert.equal(bot.kills, 1);
+    assert.equal(bot.score, BATTLE_ROYALE.score.ships.drone);
+});
+
+test('a bot never fires on its own side, and is never branded for it', () => {
+    const game = withBots(['ann']);
+    const bot = game.bots.find((contestant) => contestant.faction !== PIRATE);
+    const ship = game.alone(bot, THIRD);
+    game.place(THIRD).owner = bot.faction;
+    const world = game.place(THIRD).zone.world;
+    const friend = world.spawnShip(bot.faction === DAWN ? 'dart' : 'raider', { faction: bot.faction, position: ship.position.clone().add({ x: 0, y: 0, z: -400 }), aiMode: 'hold' });
+    const before = friend.hull + friend.shield;
+    game.run(20);
+
+    assert.equal(friend.hull + friend.shield, before);
+    assert.equal(bot.loyalty.status, LOYALTY.TRUSTED);
+    assert.equal(bot.faction, ship.faction);
+});
+
+test('a bot flies to an unguarded station, docks, and takes the planet for its side', () => {
+    const game = withBots(['ann']);
+    const [bot] = game.bots;
+    game.alone(bot, THIRD);
+    let docked = false;
+    for (let second = 0; second < 150 && game.place(THIRD).owner === null; second++) {
+        game.run(1);
+        docked ||= Boolean(bot.dock);
+    }
+
+    assert.equal(docked, true, 'it clamped on, as a player has to');
+    assert.equal(game.place(THIRD).owner, bot.faction);
+    assert.ok(bot.score >= BATTLE_ROYALE.capture.score);
+    assert.equal(bot.pilot.ship.alive, true, 'without flying into the station on the way');
+});
+
+test('a bot spends what it is given: equipment, refit points, and its vote for fallen comrades', () => {
+    const game = withBots(['ann', 'bo']);
+    const bot = game.bots[0];
+    const comrade = [...game.mode.contestants.values()].find((other) => other !== bot && other.faction === bot.faction);
+    game.alone(bot, THIRD, THIRD);
+    const world = game.place(THIRD).zone.world;
+    destroyShip(world, comrade.pilot.ship, null);
+    bot.points = 2;
+    game.run(0.5);
+    assert.equal(bot.inventory.picks, 0, 'its piece of equipment is chosen');
+    assert.equal(bot.points, 0);
+    assert.equal(Object.values(bot.pilot.upgrades).reduce((sum, levels) => sum + levels, 0), 2, 'its points are in its ship');
+
+    for (const other of game.mode.contestants.values()) {
+        if (other !== bot && other.pilot.ship?.alive) world.removeShip(other.pilot.ship);
+    }
+    game.mode.capture(game.place(THIRD), bot.faction);
+    game.run(0.5);
+    assert.equal(comrade.alive, true, 'it voted to bring its comrade back');
+});
+
+test('a bot jumps outwards before its planet falls in', () => {
+    const game = withBots(['ann']);
+    const [bot] = game.bots;
+    game.alone(bot, INNERMOST);
+    bot.jumpReadyAt = 0;
+    game.skipTo(game.mode.clock.schedule[0].startsAt - BOTS.fleeAhead + 2);
+    game.run(BATTLE_ROYALE.jump.spool + 2);
+
+    assert.equal(bot.pilot.zone.id, SECOND);
+    assert.equal(bot.alive, true);
+});
+
+test('bots do not race ahead of the collapse: from a planet their side holds they move on only so far', () => {
+    const game = withBots(['ann']);
+    const [bot] = game.bots;
+    game.alone(bot, INNERMOST, INNERMOST);
+    for (const other of game.mode.contestants.values()) {
+        if (other !== bot && other.pilot.ship?.alive) other.pilot.zone.world.removeShip(other.pilot.ship);
+    }
+    for (const planet of PLANETS) {
+        const place = game.place(planet);
+        place.owner = bot.faction;
+        for (const ship of [...place.zone.world.ships]) if (ship.faction !== FACTION.NEUTRAL && !ship.isPlayer) place.zone.world.removeShip(ship);
+    }
+    for (let minute = 0; minute < 3; minute++) {
+        bot.jumpReadyAt = 0;
+        game.run(BOTS.restSeconds + BATTLE_ROYALE.jump.spool + 3);
+    }
+
+    assert.equal(bot.pilot.zone.id, PLANETS[BOTS.maxAhead], 'two orbits ahead of the innermost planet still standing, and no further');
+});
+
+test('a place is kept running for a living bot, and no longer for one that has been shot down', () => {
+    const game = withBots(['ann']);
+    const [bot] = game.bots;
+    game.alone(bot, THIRD);
+    const { zone } = game.place(THIRD);
+    assert.equal(zone.active, true, 'nobody but the bot is here, and the place is alive');
+
+    destroyShip(zone.world, bot.pilot.ship, null);
+    assert.equal(zone.active, false);
+    assert.equal(bot.alive, false);
+    game.run(1);
+    assert.equal(game.mode.describeState(game.server.pilots.get('ann')).players.find((player) => player.id === bot.pilot.id).alive, false);
+});
+
+test('bots count for their side: it is not beaten while one of them flies, and they win with it', () => {
+    const game = withBots(['ann']);
+    const ann = game.people[0];
+    const comrade = game.bots.find((bot) => bot.faction === ann.faction);
+    game.alone(comrade, THIRD);
+    destroyShip(ann.pilot.zone.world, ann.pilot.ship, null);
+    game.run(0.3);
+    assert.equal(game.mode.result, null, 'Ann is down, but her side is not out');
+
+    for (const other of game.bots) {
+        if (other !== comrade && other.pilot.ship?.alive) destroyShip(other.pilot.zone.world, other.pilot.ship, comrade.pilot.ship);
+    }
+    game.run(0.3);
+    assert.deepEqual(game.mode.result, { winner: ann.faction });
+    assert.ok(comrade.score >= 4 * BATTLE_ROYALE.score.playerKill, 'and a bot shot down is a player\'s kill');
+});
+
+test('a bot cannot be given a link, and a second pilot cannot take its name', () => {
+    const { server } = createTestServer(['ann'], { start: { settings: { bots: 'fill' } } });
+    assert.equal(server.attachLink('bot:1', { isOpen: true }), false);
+    assert.throws(() => server.addBot({ id: 'bot:1', name: 'x', classId: 'kestrel' }));
+    assert.throws(() => server.addBot({ id: 'ann', name: 'x', classId: 'kestrel' }));
+});
+
+test('whole matches of bots play to a decision without anybody at a keyboard', () => {
+    for (const seed of [2, 5]) {
+        const { server, mode, run } = createTestServer(['ann'], { start: { seed, settings: { bots: 'fill', pace: 'quick' } } });
+        const captures = [];
+        const capture = mode.capture.bind(mode);
+        mode.capture = (place, faction) => { captures.push(place.planet.id); capture(place, faction); };
+        for (let minute = 0; minute < 12 && !mode.result; minute++) run(60);
+
+        assert.ok(mode.result, `seed ${seed}: decided within ${Math.round(server.time)} s`);
+        assert.ok(captures.length > 0, `seed ${seed}: stations were taken`);
+        assert.ok([...mode.contestants.values()].some((contestant) => contestant.pilot.bot && contestant.score > 0), 'and bots scored');
+    }
+});
+
 // ---- With real clients -----------------------------------------------------------------------
 
 test('on a player\'s device a jump is a new sky, a warp, and the same ship', () => {
@@ -1569,6 +1826,24 @@ test('equipment is chosen and used from the pilot\'s own windows', () => {
     match.run(0.5);
     assert.deepEqual([unseen().known, unseen().beacon, ann.ui.match.you.equipment.beacon], [true, true, 0]);
     assert.ok(unseen().owner);
+});
+
+test('on every device a bot is one more player: listed, named, and flying a player\'s ship', () => {
+    const match = createTestMatch(['host', 'ann'], { start: { settings: { bots: 'fill' } } });
+    match.run(1);
+    const [ann] = match.clients;
+
+    const listed = ann.ui.match.players;
+    assert.equal(listed.length, BATTLE_ROYALE.bots.fillTo);
+    assert.equal(listed.filter((player) => player.bot).length, BATTLE_ROYALE.bots.fillTo - 2);
+    assert.ok(listed.filter((player) => player.bot).every((player) => player.name.startsWith(BATTLE_ROYALE.bots.namePrefix)));
+
+    const botsHere = ann.world.ships.filter((ship) => ship.alive && String(ship.pilotId).startsWith('bot:'));
+    for (const ship of botsHere) {
+        assert.equal(ship.isPlayer, true);
+        assert.notEqual(ship, ann.world.player, 'never this device\'s own ship');
+    }
+    assert.equal(ann.world.player.pilotId, 'ann');
 });
 
 test('every device learns its side, the map and the result', () => {

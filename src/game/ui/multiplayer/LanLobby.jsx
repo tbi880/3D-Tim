@@ -20,6 +20,8 @@ import './multiplayer.css';
  */
 
 const PACES = Object.keys(BATTLE_ROYALE.paces);
+/** The room's `bots` setting: fill the empty seats with computer-flown players, or leave them empty. */
+const BOT_SETTINGS = ['fill', 'none'];
 const SEATS = [2, 3, 4, 5, 6, 7, 8];
 const next = (list, current) => list[(list.indexOf(current) + 1) % list.length];
 const DEVICE_ICONS = { Desktop: '🖥', Mobile: '📱', VR: '🥽' };
@@ -201,6 +203,8 @@ function RoomOptions({ lan, room }) {
     const editable = lan.isHost;
     const setPace = () => lan.setOptions({ settings: { ...room.settings, pace: next(PACES, pace) } });
     const setSeats = () => lan.setOptions({ maxPlayers: next(SEATS.filter((seats) => seats >= room.players.length), room.maxPlayers) });
+    const bots = room.settings?.bots ?? BATTLE_ROYALE.bots.defaultSetting;
+    const setBots = () => lan.setOptions({ settings: { ...room.settings, bots: next(BOT_SETTINGS, bots) } });
     return (
         <div className="eod-settings eod-lan-options">
             <button type="button" className="eod-setting" disabled={!editable} title={t(`mp.lan.paceHint.${pace}`)} onClick={setPace}>
@@ -208,6 +212,9 @@ function RoomOptions({ lan, room }) {
             </button>
             <button type="button" className="eod-setting" disabled={!editable} onClick={setSeats}>
                 <span>{t('mp.lan.maxPlayers')}</span><strong>{room.maxPlayers}</strong>
+            </button>
+            <button type="button" className="eod-setting" disabled={!editable} title={t('mp.lan.botsHint', { count: BATTLE_ROYALE.bots.fillTo })} onClick={setBots}>
+                <span>{t('mp.lan.bots')}</span><strong>{t(`mp.lan.bots.${bots}`, { count: BATTLE_ROYALE.bots.fillTo })}</strong>
             </button>
             <p className="eod-setting-hint">{t(`mp.lan.paceHint.${pace}`)}</p>
         </div>
@@ -284,6 +291,7 @@ function Room({ lan, session, onStart }) {
                         : !lan.isHost && hostLink !== LINK_STATUS.OPEN ? t('mp.global.linking')
                             : t('mp.global.waiting', { count: room.players.length, max: room.maxPlayers })}
                     {lan.isHost && <small>{t('mp.global.hostNote')}</small>}
+                    {room.players.length < BATTLE_ROYALE.bots.fillTo && <small>{t('mp.global.botsNote', { count: BATTLE_ROYALE.bots.fillTo })}</small>}
                 </p>
             )}
             <ul className="eod-lan-players">

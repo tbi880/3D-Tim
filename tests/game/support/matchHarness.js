@@ -31,7 +31,8 @@ export function matchStart(names, overrides = {}) {
         players: names.map((name) => ({ playerId: name, displayName: name, shipClassId: 'kestrel', loadout: { upgrades: {}, equipment: [] } })),
         ...overrides,
         // Straight into the system: the introduction has tests of its own (settings.intro = 'play').
-        settings: { intro: 'skip', ...overrides.settings },
+        // Only the named players: the computer-flown ones have tests of their own (settings.bots = 'fill').
+        settings: { intro: 'skip', bots: 'none', ...overrides.settings },
     };
 }
 

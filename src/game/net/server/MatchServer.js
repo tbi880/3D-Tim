@@ -28,6 +28,11 @@ class Pilot {
         this.gone = false;
         /** Set by the game mode while it has their ship in hand (docked, say): their controls are ignored. */
         this.helmHeld = false;
+        /**
+         * True for a computer-flown player (see MatchServer.addBot): a pilot with nobody's device
+         * behind it. Whoever added it writes `controls`, as a device's packets would.
+         */
+        this.bot = false;
 
         this.link = null;
         this.guard = null;
@@ -105,8 +110,9 @@ export class MatchServer {
             const ship = pilot.ship;
             if (!ship?.alive) continue;
             // A player we have not heard from flies straight on: nobody is holding the stick.
-            // Nor is anybody while the game mode has the ship in hand.
-            const handsOff = pilot.helmHeld || now - pilot.lastInputAt > NET.inputTimeout;
+            // Nor is anybody while the game mode has the ship in hand. (A bot's controls are
+            // written here on the server every frame: there is nothing to hear from.)
+            const handsOff = pilot.helmHeld || (!pilot.bot && now - pilot.lastInputAt > NET.inputTimeout);
             ship.controls = handsOff ? IDLE_CONTROLS : pilot.controls;
             ship.autoFire = pilot.autoFire && !handsOff;
         }
@@ -134,7 +140,7 @@ export class MatchServer {
     /** Gives the match the link to a player's device. Links of players who are not in this match are refused. */
     attachLink(playerId, link) {
         const pilot = this.pilots.get(playerId);
-        if (!pilot || pilot.gone) return false;
+        if (!pilot || pilot.gone || pilot.bot) return false;
         this.releaseLink(pilot);
         pilot.link = link;
         pilot.guard = new ClientGuard(this.now);
@@ -270,6 +276,21 @@ export class MatchServer {
 
     // ---- Services for the game mode ----------------------------------------------------------
 
+    /**
+     * Adds a computer-flown player to the match: a pilot like the others - the same ships, the
+     * same flight model, the same rules - whose controls the game mode writes instead of a
+     * device. It runs here, on the host, and costs the other devices nothing but one more ship.
+     * @param {{ id: string, name: string, classId: string }} player `id` must not be a real player's
+     * @returns {Pilot}
+     */
+    addBot({ id, name, classId }) {
+        if (this.pilots.has(id)) throw new Error(`A pilot "${id}" is already in the match`);
+        const pilot = new Pilot({ id, name, classId, upgrades: {} });
+        pilot.bot = true;
+        this.pilots.set(id, pilot);
+        return pilot;
+    }
+
     /** Adds a place to the match. `options` are Zone's. */
     addZone(id, sectorId, options) {
         const zone = new Zone(id, sectorId, options);
@@ -293,6 +314,16 @@ export class MatchServer {
         pilot.zone = zone;
         zone.viewers.add(pilot);
         if (pilot.joined) pilot.needsWelcome = true;
+    }
+
+    /**
+     * Takes a pilot out of the place they are in: they are told nothing more about it, and it
+     * is no longer kept running for them. (A player whose ship is lost stays to watch the
+     * wreck; a bot has no eyes to watch with.)
+     */
+    leaveZone(pilot) {
+        pilot.zone?.viewers.delete(pilot);
+        pilot.zone = null;
     }
 
     /**

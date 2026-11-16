@@ -157,6 +157,12 @@ function lobbyRoom(game, state, lanState, t, exitItem) {
         const pace = room.settings?.pace ?? BATTLE_ROYALE.defaultPace;
         const paceRow = (step) => () => lan.setOptions({ settings: { ...room.settings, pace: cycle(paces, pace, step) } });
         items.push({ label: t('mp.lan.pace'), sub: t(`mp.lan.paceHint.${pace}`), value: t(`mp.lan.pace.${pace}`), left: paceRow(-1), right: paceRow(1), select: paceRow(1) });
+        // Empty seats: taken by computer-flown players, or left empty.
+        const botSettings = ['fill', 'none'];
+        const bots = room.settings?.bots ?? BATTLE_ROYALE.bots.defaultSetting;
+        const botsRow = (step) => () => lan.setOptions({ settings: { ...room.settings, bots: cycle(botSettings, bots, step) } });
+        const seats = { count: BATTLE_ROYALE.bots.fillTo };
+        items.push({ label: t('mp.lan.bots'), sub: t('mp.lan.botsHint', seats), value: t(`mp.lan.bots.${bots}`, seats), left: botsRow(-1), right: botsRow(1), select: botsRow(1) });
         items.push({
             label: t('mp.lan.start'),
             sub: lan.canStart ? null : t('mp.lan.startWaiting'),
