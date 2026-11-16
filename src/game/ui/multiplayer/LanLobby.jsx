@@ -8,11 +8,13 @@ import { useLanStore } from '../../net/lobby/lanStore.js';
 import { LINK_STATUS } from '../../net/transport/PeerLink.js';
 import { useGameStore, useT } from '../../state/gameStore.js';
 import { enterVR, useVRSupported } from '../../xr/vrState.js';
+import { EquipmentList } from './EquipmentPanel.jsx';
 import './multiplayer.css';
 
 /**
  * The LAN lobby, reached from the title screen: who you are, the rooms on this network,
- * and - once in a room - everybody in it with their device, ship and readiness.
+ * and - once in a room - everybody in it with their device, ship and readiness, and the
+ * quartermaster's stores.
  * It only shows the LAN store and calls LanMultiplayer; nothing is decided here.
  */
 
@@ -155,7 +157,36 @@ function RoomOptions({ lan, room }) {
     );
 }
 
-/** Inside a room: the roster, this player's ship and readiness, and the host's start button. */
+/**
+ * The piece of equipment this player takes into the match. Nobody else in the room is told;
+ * leaving it open is a choice too - it can be made at any time in the match.
+ */
+function Loadout({ lan, editable }) {
+    const chosen = useLanStore((state) => state.loadout.equipment);
+    const t = useT();
+    return (
+        <div className="eod-lan-loadout">
+            <h3 className="eod-lan-heading">{t('mp.lan.loadout')}</h3>
+            <EquipmentList
+                selected={chosen}
+                action={(item) => (
+                    <button
+                        type="button"
+                        className={`eod-button ${chosen === item ? 'eod-button--primary' : ''}`}
+                        disabled={!editable}
+                        aria-pressed={chosen === item}
+                        onClick={() => lan.setLoadout({ equipment: chosen === item ? null : item })}
+                    >
+                        {chosen === item ? t('mp.vote.chosen') : t('mp.equipment.take')}
+                    </button>
+                )}
+            />
+            {!chosen && <p className="eod-lan-empty">{t('mp.lan.loadoutLater')}</p>}
+        </div>
+    );
+}
+
+/** Inside a room: the roster, this player's ship, equipment and readiness, and the host's start button. */
 function Room({ lan, session, onStart }) {
     const room = useLanStore((state) => state.room);
     const me = useLanStore((state) => state.me);
@@ -191,6 +222,7 @@ function Room({ lan, session, onStart }) {
                 {room.players.map((player) => <PlayerRow key={player.playerId} player={player} isMe={player.playerId === me?.playerId} link={linkOf(player)} />)}
             </ul>
             <RoomOptions lan={lan} room={room} />
+            <Loadout lan={lan} editable={inLobby} />
             {!inLobby && <p className="eod-lan-empty">{t('mp.lan.matchRunning')}</p>}
             <div className="eod-lan-actions">
                 <button type="button" className="eod-button" disabled={!inLobby} onClick={changeShip}>

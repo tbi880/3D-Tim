@@ -148,13 +148,15 @@ function device(server, network, name, ship = 'kestrel') {
     let state = initialLanState();
     const store = { set: (partial) => { state = { ...state, ...partial }; }, get: () => state };
     let saved = name;
+    let savedLoadout = null;
     const lan = new LanMultiplayer({
         session, store, createLobby: server.createLobby, createLink: network.createLink,
         device: { name: `${name}'s device`, kind: DEVICE_KIND.DESKTOP },
         nameStore: { load: () => saved, save: (value) => { saved = value; } },
+        loadoutStore: { load: () => savedLoadout, save: (value) => { savedLoadout = value; } },
         timers: { setTimeout: (callback) => { network.timers.push(callback); return callback; }, clearTimeout: (callback) => { network.timers = network.timers.filter((timer) => timer !== callback); } },
     });
-    return { lan, session, ui, controls: idle(), get state() { return state; }, get savedName() { return saved; } };
+    return { lan, session, ui, controls: idle(), get state() { return state; }, get savedName() { return saved; }, get savedLoadout() { return savedLoadout; } };
 }
 
 function lanParty(names) {
@@ -274,6 +276,40 @@ test('starting the match puts every device in it, each flying its own ship', asy
     }
     assert.ok(host.lan.server, 'the host\'s device runs the server');
     assert.equal(guests[0].lan.server, null);
+});
+
+test('the equipment chosen in the lobby is this device\'s secret until the match, where it is in the pilot\'s hold', async () => {
+    const party = await gathered(['Tim', 'Ann', 'Bo']);
+    const { host, guests, devices, run } = party;
+    const [ann, bo] = guests;
+    assert.deepEqual(ann.state.loadout, { equipment: null });
+    ann.lan.setLoadout({ equipment: 'overdrive' });
+    host.lan.setLoadout({ equipment: 'beacon' });
+    bo.lan.setLoadout({ equipment: { toString: () => 'beacon' } });
+    assert.equal(ann.savedLoadout.equipment, 'overdrive', 'remembered for next time');
+    assert.equal(bo.state.loadout.equipment, null, 'only a name is a choice');
+    assert.equal(JSON.stringify(host.state.room).includes('overdrive'), false, 'the room is not told');
+
+    for (const guest of guests) await guest.lan.setReady(true);
+    await host.lan.startMatch();
+    run(1);
+
+    const carried = (each) => each.ui.match.you.equipment;
+    assert.deepEqual([carried(ann).overdrive, ann.ui.match.you.picks], [1, 0]);
+    assert.deepEqual([carried(host).beacon, host.ui.match.you.picks], [1, 0]);
+    assert.deepEqual([Object.values(carried(bo)).reduce((sum, count) => sum + count, 0), bo.ui.match.you.picks], [0, 1], 'Bo can still choose');
+    assert.equal(host.lan.server.mode.contestants.get(ann.state.me.playerId).inventory.counts.overdrive, 1);
+    for (const each of devices) assert.equal(each.session.phase, PHASE.PLAYING);
+});
+
+test('a choice of equipment this build does not know is simply not asked for', async () => {
+    const { host, guests, run } = await gathered(['Tim', 'Ann']);
+    guests[0].lan.setLoadout({ equipment: 'deathStar' });
+    await guests[0].lan.setReady(true);
+    await host.lan.startMatch();
+    run(1);
+
+    assert.equal(guests[0].ui.match.you.picks, 1);
 });
 
 test('when the host ends the match everybody is back in the lobby, not ready', async () => {

@@ -238,9 +238,19 @@ function drawPaneText(ctx, state, t, now, scoreFeed) {
         ctx.textAlign = 'center';
         ctx.font = `600 11px ${FONT}`;
         drawShadowedText(ctx, `${t(`mp.faction.${you.faction}`)} · ${place} · ${t('mp.hud.jump')}: ${jump}`, centre, height / 2 + 56, '#cfe8ff');
-        // Something to spend: say so, and where (the flat HUD has buttons for it; here it is in the map menu).
-        if (you.alive && (you.points > 0 || you.summons > 0)) {
-            drawShadowedText(ctx, `${t('mp.vr.spend', { points: you.points, summons: you.summons })} · ${t('mp.vr.mapHint')}`, centre, height / 2 + 40, '#ffb648');
+        // Something to do or spend: say so, and where (the flat HUD has buttons for it; here it is in the map menu).
+        // The station's dock comes before everything else: it is why the pilot flew here.
+        if (you.alive && you.dock?.left != null) {
+            drawShadowedText(ctx, `${t('mp.dock.progress', { seconds: Math.ceil(you.dock.left) })} · ${t('mp.dock.locked')}`, centre, height / 2 + 40, '#ffb648');
+        } else if (you.alive && you.dock?.ready) {
+            drawShadowedText(ctx, `${t('mp.dock.prompt', { seconds: you.dock.seconds })} · ${t('mp.vr.mapHint')}`, centre, height / 2 + 40, '#ffb648');
+        } else if (you.alive && (you.points > 0 || you.summons > 0 || you.picks > 0)) {
+            const gear = you.picks > 0 ? ` · ${t('mp.vr.gear')} ${you.picks}` : '';
+            drawShadowedText(ctx, `${t('mp.vr.spend', { points: you.points, summons: you.summons })}${gear} · ${t('mp.vr.mapHint')}`, centre, height / 2 + 40, '#ffb648');
+        }
+        const effects = Object.entries(you.effects).filter(([, seconds]) => seconds > 0);
+        if (effects.length > 0) {
+            drawShadowedText(ctx, effects.map(([item, seconds]) => t(`mp.equipment.effect.${item}`, { seconds })).join(' · '), centre, height / 2 + 26, '#7dffa8');
         }
         const warnings = [];
         if (you.alive && here && here.owner !== you.faction) {

@@ -46,6 +46,22 @@
 .eod-lan-link--connecting { color: var(--eod-amber) !important; }
 .eod-lan-link--closed { color: var(--eod-red) !important; }
 .eod-lan-options { width: 100%; }
+.eod-lan-loadout { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
+
+/* ---- Equipment (the quartermaster's stores: in the lobby and in the match) ----------------- */
+.eod-gear { gap: 12px; }
+.eod-gear-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; width: min(900px, 96vw); margin: 0; padding: 0; list-style: none; }
+.eod-lan-loadout .eod-gear-list { width: 100%; }
+.eod-gear-card { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px 8px; font-size: 11px; text-align: center; background: var(--eod-panel); border: 1px solid var(--eod-border); }
+.eod-gear-card--chosen { border-color: var(--eod-amber); box-shadow: 0 0 14px rgba(255, 182, 72, 0.3) inset; }
+.eod-gear-icon { font-size: 26px; line-height: 1; }
+.eod-gear-card strong { font-size: 12px; letter-spacing: 0.06em; }
+.eod-gear-card p { flex: 1; margin: 0; line-height: 1.5; color: rgba(225, 240, 255, 0.75); }
+.eod-gear-card small { color: rgba(225, 240, 255, 0.6); }
+.eod-gear-card .eod-button { box-sizing: border-box; width: 100%; padding: 7px 4px; }
+.eod-gear-card .eod-button:disabled { opacity: 0.4; cursor: default; transform: none; }
+.eod-gear-picks { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(225, 240, 255, 0.55); }
+.eod-gear-picks--some { color: var(--eod-amber); }
 
 /* ---- Match HUD --------------------------------------------------------------------------- */
 .eod-match-status { position: absolute; top: 150px; left: 22px; display: flex; flex-direction: column; gap: 5px; min-width: 210px; padding: 8px 12px; pointer-events: auto; }
@@ -55,8 +71,18 @@
 .eod-match-ready { color: var(--eod-green); }
 .eod-match-planet--collapsing { color: var(--eod-amber); animation: eod-blink 0.8s steps(2) infinite; }
 .eod-match-planet--swallowed { color: var(--eod-red); }
-.eod-match-buttons { display: flex; gap: 5px; margin-top: 3px; }
-.eod-match-button { display: flex; flex: 1; align-items: center; justify-content: center; gap: 5px; padding: 6px 6px; font: inherit; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: inherit; background: rgba(10, 30, 50, 0.7); border: 1px solid var(--eod-border); cursor: pointer; }
+.eod-match-buttons { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; }
+.eod-match-gear { flex-wrap: wrap; gap: 4px 10px; font-size: 14px; }
+.eod-match-gear b { margin-left: 2px; font-size: 10px; color: var(--eod-amber); }
+.eod-match-effect { font-size: 11px !important; color: var(--eod-green); }
+.eod-match-button--calling { border-color: var(--eod-amber); animation: eod-blink 1s steps(2) infinite; }
+.eod-match-dock { position: absolute; left: 50%; bottom: 21%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; width: min(420px, 90vw); padding: 10px 14px; font-size: 12px; text-align: center; pointer-events: auto; z-index: 5; border-color: var(--eod-amber); }
+.eod-match-dock strong { font-size: 14px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--eod-amber); }
+.eod-match-dock .eod-button { flex-direction: row; align-items: center; justify-content: center; padding: 7px 18px; }
+.eod-match-dock kbd { margin-right: 8px; padding: 0 5px; font: inherit; font-size: 10px; border: 1px solid currentColor; }
+.eod-match-dock-bar { width: 100%; height: 8px; background: rgba(4, 12, 22, 0.8); border: 1px solid var(--eod-border); }
+.eod-match-dock-bar i { display: block; height: 100%; background: var(--eod-amber); transition: width 0.25s linear; }
+.eod-match-button { display: flex; flex: 1 1 30%; align-items: center; justify-content: center; gap: 5px; padding: 6px 6px; font: inherit; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: inherit; background: rgba(10, 30, 50, 0.7); border: 1px solid var(--eod-border); cursor: pointer; }
 .eod-match-button:not(:disabled):hover { border-color: var(--eod-amber); color: var(--eod-amber); }
 .eod-match-button:disabled { opacity: 0.4; cursor: default; }
 .eod-match-button kbd { padding: 0 4px; font: inherit; font-size: 9px; border: 1px solid var(--eod-border); }
@@ -80,6 +106,12 @@
 .eod-map-forces { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 10px; }
 .eod-map-forces b { font-weight: 700; }
 .eod-map-forces em { flex-basis: 100%; font-style: normal; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--eod-red); }
+.eod-map-unknown { font-style: italic; color: rgba(225, 240, 255, 0.4); }
+.eod-map-owner { font-weight: 700; color: rgba(225, 240, 255, 0.6); }
+.eod-map-docking { font-weight: 700; animation: eod-blink 0.8s steps(2) infinite; }
+.eod-map-watched { color: var(--eod-green); }
+.eod-map-beacon { box-sizing: border-box; margin-top: auto; padding: 6px 4px; width: 100%; font-size: 10px; letter-spacing: 0.06em; }
+.eod-map-beacon + .eod-map-jump { margin-top: 0; }
 .eod-map-here { font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--eod-cyan); }
 .eod-map-planet--here { border-color: var(--eod-cyan); box-shadow: 0 0 14px rgba(89, 208, 255, 0.35) inset; }
 .eod-map-planet--collapsing { border-color: var(--eod-amber); }
@@ -109,6 +141,11 @@
     .eod-match-button kbd { display: none; }
     .eod-match-button { padding: 9px 4px; }
     .eod-map-planet { min-width: 104px; padding: 6px 4px; font-size: 10px; }
+    .eod-match-dock { bottom: 30%; padding: 6px 10px; }
+    .eod-match-dock kbd { display: none; }
+    .eod-gear-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .eod-gear-card { padding: 6px; font-size: 10px; }
+    .eod-gear-icon { font-size: 18px; }
     .eod-lan-player { grid-template-columns: 1.3fr 1.3fr 0.8fr 0.8fr; padding: 6px 8px; }
     .eod-lan-code-banner strong { font-size: 22px; }
 }

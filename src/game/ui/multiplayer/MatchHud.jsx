@@ -2,13 +2,32 @@ import { LOYALTY } from '../../modes/battleRoyale/allegiance.js';
 import { MATCH_ACTION } from '../../modes/battleRoyale/BattleRoyalePresenter.js';
 import { VOTE } from '../../modes/battleRoyale/battleRoyaleProtocol.js';
 import { PLANET_STATUS } from '../../modes/battleRoyale/collapse.js';
+import { EQUIPMENT_ORDER } from '../../modes/battleRoyale/equipment.js';
 import { useGameStore, useT } from '../../state/gameStore.js';
+import { EQUIPMENT_ICONS } from './EquipmentPanel.jsx';
 
 /**
  * The battle royale's part of the in-flight HUD: which side the pilot is on, where they
- * are and how long that will last, the jump drive, what they have to spend - and the
- * buttons for the map, the refit window and reinforcements (keys G, U and B).
+ * are and how long that will last, the jump drive, what they carry and have to spend, the
+ * station's dock when the ship is in it - and the buttons for the map, the refit window,
+ * reinforcements, docking and the equipment (keys G, U, B, E and I).
  */
+
+/** What the pilot carries, and which of it is on right now. */
+function EquipmentRow({ you }) {
+    const t = useT();
+    const carried = EQUIPMENT_ORDER.filter((item) => you.equipment[item] > 0);
+    const effects = Object.entries(you.effects).filter(([, seconds]) => seconds > 0);
+    if (carried.length === 0 && effects.length === 0) return null;
+    return (
+        <div className="eod-match-row eod-match-gear">
+            {carried.map((item) => (
+                <span key={item} title={t(`mp.equipment.${item}.name`)}>{EQUIPMENT_ICONS[item]}{you.equipment[item] > 1 && <b>×{you.equipment[item]}</b>}</span>
+            ))}
+            {effects.map(([item, seconds]) => <strong key={item} className="eod-match-effect">{t(`mp.equipment.effect.${item}`, { seconds })}</strong>)}
+        </div>
+    );
+}
 
 /** Side, planet, jump drive and rewards, with the mode's three buttons. */
 function MatchStatus({ session }) {
@@ -43,9 +62,13 @@ function MatchStatus({ session }) {
                 <span className="eod-meter-label">{t('mp.hud.jump')}</span>
                 <strong className={you.jump.cooldown === 0 && !you.jump.trapped ? 'eod-match-ready' : ''}>{jump}</strong>
             </div>
+            <EquipmentRow you={you} />
             <div className="eod-match-buttons">
                 <button type="button" className="eod-match-button" onClick={act(MATCH_ACTION.MAP)}>
                     <kbd>{t('mp.hud.keyMap')}</kbd>{t('mp.hud.map')}
+                </button>
+                <button type="button" className={`eod-match-button ${you.picks > 0 ? 'eod-match-button--calling' : ''}`} onClick={act(MATCH_ACTION.EQUIPMENT)}>
+                    <kbd>{t('mp.hud.keyEquipment')}</kbd>{t('mp.hud.equipment')}{you.picks > 0 && <b>{you.picks}</b>}
                 </button>
                 <button type="button" className="eod-match-button" disabled={!you.alive || you.points === 0} onClick={act(MATCH_ACTION.REFIT)}>
                     <kbd>{t('mp.hud.keyRefit')}</kbd>{t('mp.hud.refit')}<b>{you.points}</b>
@@ -54,6 +77,37 @@ function MatchStatus({ session }) {
                     <kbd>{t('mp.hud.keySummon')}</kbd>{t('mp.hud.summon')}<b>{you.summons}</b>
                 </button>
             </div>
+        </div>
+    );
+}
+
+/**
+ * The station's dock. In its mouth: the button that clamps the ship on. Clamped on: how long
+ * is left, and the button that lets go.
+ */
+function DockPrompt({ session }) {
+    const match = useGameStore((state) => state.match);
+    const t = useT();
+    const you = match?.you;
+    const dock = you?.dock;
+    if (!you?.alive || !dock || (!dock.ready && dock.left === null)) return null;
+    const toggle = () => session.handleAction(MATCH_ACTION.DOCK);
+    if (dock.left === null) {
+        const holder = match.planets.find((planet) => planet.id === you.planet)?.owner;
+        return (
+            <div className="eod-panel eod-match-dock">
+                <span>{holder ? t('mp.dock.promptHeld', { seconds: dock.seconds, faction: t(`mp.faction.${holder}`) }) : t('mp.dock.prompt', { seconds: dock.seconds })}</span>
+                <button type="button" className="eod-button eod-button--primary" onClick={toggle}><kbd>{t('mp.hud.keyDock')}</kbd>{t('mp.hud.dock')}</button>
+            </div>
+        );
+    }
+    const done = Math.min(1, Math.max(0, 1 - dock.left / dock.seconds));
+    return (
+        <div className="eod-panel eod-match-dock eod-match-dock--on">
+            <strong>{t('mp.dock.progress', { seconds: Math.ceil(dock.left) })}</strong>
+            <div className="eod-match-dock-bar"><i style={{ width: `${done * 100}%` }} /></div>
+            <span>{t('mp.dock.locked')}</span>
+            <button type="button" className="eod-button" onClick={toggle}><kbd>{t('mp.hud.keyDock')}</kbd>{t('mp.hud.undock')}</button>
         </div>
     );
 }
@@ -117,6 +171,7 @@ export default function MatchHud({ session }) {
         <>
             <MatchStatus session={session} />
             <MatchAlerts />
+            <DockPrompt session={session} />
             <VotePrompt session={session} />
         </>
     );

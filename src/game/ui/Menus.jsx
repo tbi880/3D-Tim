@@ -16,6 +16,7 @@ import { VR_DIAGNOSTICS, enterVR, useVRActive, useVRSupported } from '../xr/vrSt
 import { bucketURL } from '../../Settings';
 import { MATCH_PANEL } from '../modes/battleRoyale/BattleRoyalePresenter.js';
 import { useLanStore } from '../net/lobby/lanStore.js';
+import EquipmentPanel from './multiplayer/EquipmentPanel.jsx';
 import LanLobby from './multiplayer/LanLobby.jsx';
 import MatchCinematic from './multiplayer/MatchCinematic.jsx';
 import MatchResults from './multiplayer/MatchResults.jsx';
@@ -421,7 +422,7 @@ function MatchMenu({ session, lan, onStart }) {
     );
 }
 
-/** What a match puts over the flight view: its introduction and ending, the refit window and the star map. */
+/** What a match puts over the flight view: its introduction and ending, the refit window, the star map and the equipment. */
 function MatchPanels({ session }) {
     const panel = useGameStore((state) => state.matchPanel);
     return (
@@ -429,6 +430,7 @@ function MatchPanels({ session }) {
             <MatchCinematic />
             <RefitPanel session={session} />
             {panel === MATCH_PANEL.MAP && <StarMapPanel session={session} />}
+            {panel === MATCH_PANEL.EQUIPMENT && <EquipmentPanel session={session} />}
         </>
     );
 }

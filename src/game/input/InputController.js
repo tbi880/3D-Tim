@@ -44,6 +44,8 @@ const ACTION_KEYS = Object.freeze({
     KeyG: 'match:map',
     KeyU: 'match:refit',
     KeyB: 'match:summon',
+    KeyE: 'match:dock',
+    KeyI: 'match:equipment',
 });
 
 export class InputController {

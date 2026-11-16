@@ -5,6 +5,7 @@ import { FACTION } from '../../src/game/config/gameConfig.js';
 import { applyDamage, areHostile, destroyShip } from '../../src/game/core/systems/damage.js';
 import { LOYALTY } from '../../src/game/modes/battleRoyale/allegiance.js';
 import { BR_EVENT, BR_REQUEST, DOCK_END, DOCK_REFUSAL, JUMP_REFUSAL, VOTE } from '../../src/game/modes/battleRoyale/battleRoyaleProtocol.js';
+import { MATCH_ACTION, MATCH_PANEL } from '../../src/game/modes/battleRoyale/BattleRoyalePresenter.js';
 import { rosterBySide } from '../../src/game/modes/battleRoyale/battleRoyaleState.js';
 import { PLANET_STATUS } from '../../src/game/modes/battleRoyale/collapse.js';
 import { EQUIPMENT } from '../../src/game/modes/battleRoyale/equipment.js';
@@ -1397,6 +1398,95 @@ test('on a player\'s device a jump is a new sky, a warp, and the same ship', () 
     assert.deepEqual(warps, ['spool', 'arrive']);
     assert.ok(ann.world.warpFactor < 0.2, 'and lets go on arrival');
     assert.ok(ann.ui.match.you.jump.cooldown > 0);
+});
+
+test('on a player\'s device one key docks and lets go; while docked the helm is the station\'s', () => {
+    const match = createTestMatch(['host', 'ann'], { start: { settings: { pace: 'quick' } } });
+    match.run(0.5);
+    const [ann] = match.clients;
+    const mode = match.server.mode;
+    const contestant = mode.contestants.get('ann');
+    const place = mode.placeOf(contestant);
+    for (const ship of [...place.zone.world.ships]) if (!ship.isPlayer && ship.faction !== FACTION.NEUTRAL) place.zone.world.removeShip(ship);
+    const { presenter } = ann.match;
+    const toasts = [];
+    const showToast = ann.session.showToast.bind(ann.session);
+    ann.session.showToast = (key, params) => { toasts.push(key); showToast(key, params); };
+    match.run(0.3);
+    assert.equal(ann.session.waypoint?.labelKey, 'mp.waypoint.dock', 'the dock is marked');
+    assert.ok(ann.session.waypoint.position.distanceTo(place.station.mouth) < 1, 'where the host has it');
+    assert.equal(ann.session.missionHud().objective.key, 'mp.objective.station');
+
+    ann.session.handleAction(MATCH_ACTION.DOCK);
+    match.run(0.5);
+    assert.deepEqual(toasts, ['mp.dock.refused.tooFar'], 'too far away: the host says so');
+
+    const ship = match.server.pilots.get('ann').ship;
+    ship.position.copy(place.station.mouth);
+    ship.velocity.set(0, 0, 0);
+    match.run(0.5);
+    assert.equal(ann.ui.match.you.dock.ready, true);
+    ann.controls.firePrimary = true;
+    ann.controls.throttleTarget = 1;
+    ann.session.handleAction(MATCH_ACTION.DOCK);
+    match.run(2);
+
+    assert.ok(ann.ui.match.you.dock.left > 0);
+    assert.equal(presenter.holdsAttention(), true);
+    assert.equal(ann.session.waypoint, null, 'no marker while docked');
+    assert.equal(ann.session.missionHud().objective.key, 'mp.objective.docking');
+    assert.ok(ann.world.player.position.distanceTo(place.station.berth) < 5, 'the device shows the ship at its berth');
+    assert.equal(ann.world.player.beamFiring, false);
+    assert.equal(ship.beamFiring, false);
+
+    ann.session.handleAction(MATCH_ACTION.DOCK);
+    match.run(0.5);
+    assert.equal(ann.ui.match.you.dock.left, null, 'the same key lets go');
+    assert.equal(ship.beamFiring, true);
+    assert.ok(toasts.includes('mp.dock.ended.released'));
+
+    ann.controls.firePrimary = false;
+    ship.position.copy(place.station.mouth);
+    ann.session.handleAction(MATCH_ACTION.DOCK);
+    match.run(BATTLE_ROYALE.station.seconds + 1);
+    const here = ann.ui.match.planets.find((planet) => planet.id === ann.ui.match.you.planet);
+    assert.equal(here.owner, ann.ui.match.you.faction);
+    assert.equal(ann.ui.match.you.picks, 2, 'one from the start, one for the station');
+    assert.ok(toasts.includes('mp.captured') && toasts.includes('mp.equipment.earned'));
+    assert.equal(ann.session.waypoint, null, 'nothing more to fly to here');
+});
+
+test('equipment is chosen and used from the pilot\'s own windows', () => {
+    const match = createTestMatch(['host', 'ann']);
+    match.run(0.5);
+    const [ann] = match.clients;
+    const { presenter } = ann.match;
+    const mode = match.server.mode;
+
+    ann.session.handleAction(MATCH_ACTION.EQUIPMENT);
+    assert.equal(ann.ui.matchPanel, MATCH_PANEL.EQUIPMENT);
+    assert.equal(presenter.holdsAttention(), true);
+    presenter.pickEquipment(EQUIPMENT.BEACON);
+    match.run(0.5);
+    assert.deepEqual([ann.ui.match.you.equipment.beacon, ann.ui.match.you.picks], [1, 0]);
+    ann.session.handleAction(MATCH_ACTION.EQUIPMENT);
+    assert.equal(ann.ui.matchPanel, null, 'the same key closes it');
+
+    const here = ann.ui.match.you.planet;
+    const [next] = mode.map.neighbours(here);
+    const unseen = () => ann.ui.match.planets.find((planet) => planet.id === next);
+    mode.places.get(next).owner = FACTION.UMBRA;
+    for (const other of mode.contestants.values()) {
+        if (other.pilot.id !== 'ann' && other.pilot.zone.id === next) mode.launch(other, mode.places.get(GATE), { warpIn: false });
+    }
+    match.run(0.5);
+    if (ann.ui.match.you.faction === FACTION.UMBRA) mode.places.get(next).owner = FACTION.DAWN;
+    match.run(0.5);
+    assert.equal(unseen().known, false);
+    presenter.launchBeacon(next);
+    match.run(0.5);
+    assert.deepEqual([unseen().known, unseen().beacon, ann.ui.match.you.equipment.beacon], [true, true, 0]);
+    assert.ok(unseen().owner);
 });
 
 test('every device learns its side, the map and the result', () => {

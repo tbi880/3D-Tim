@@ -25,8 +25,10 @@ its older Penumbra-class sisters 3.4 km, and Lantern Station's ring 4.7 km. Figh
 big ones happen along their hulls, not at a point.
 
 There is also a multiplayer mode for devices on one Wi-Fi - a battle royale across a
-collapsing star system - described in `net/README.md` (the machinery) and
-`modes/battleRoyale/` (the rules; tuning in `config/battleRoyale.js`).
+collapsing star system, where sides take planets by docking at their stations - described
+in `net/README.md` (the machinery) and `modes/battleRoyale/` (the rules, starting at
+`BattleRoyaleMode.js`; tuning in `config/battleRoyale.js`). Its own keys: G star map,
+E dock / let go, I equipment, U refit, B reinforcements.
 
 ## Architecture
 
