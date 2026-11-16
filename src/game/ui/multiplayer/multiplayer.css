@@ -46,6 +46,10 @@
 .eod-lan-link--connecting { color: var(--eod-amber) !important; }
 .eod-lan-link--closed { color: var(--eod-red) !important; }
 .eod-lan-options { width: 100%; }
+.eod-lan-searching { margin: 6px 0; font-size: 14px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--eod-cyan); animation: eod-blink 1.2s steps(2) infinite; }
+.eod-lan-countdown { display: flex; flex-direction: column; align-items: center; gap: 3px; margin: 0; padding: 8px 12px; font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(225, 240, 255, 0.8); background: var(--eod-panel); border: 1px solid var(--eod-border); }
+.eod-lan-countdown--on { color: var(--eod-amber); border-color: var(--eod-amber); }
+.eod-lan-countdown small { font-size: 10px; font-weight: 400; letter-spacing: 0.06em; text-transform: none; color: rgba(225, 240, 255, 0.55); }
 .eod-lan-loadout { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
 
 /* ---- Equipment (the quartermaster's stores: in the lobby and in the match) ----------------- */

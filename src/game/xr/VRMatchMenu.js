@@ -5,7 +5,7 @@ import { VOTE } from '../modes/battleRoyale/battleRoyaleProtocol.js';
 import { isBattle, rankPlayers, rosterBySide } from '../modes/battleRoyale/battleRoyaleState.js';
 import { PLANET_STATUS } from '../modes/battleRoyale/collapse.js';
 import { EQUIPMENT, EQUIPMENT_ORDER } from '../modes/battleRoyale/equipment.js';
-import { LAN_STATUS, ROOM_STATE } from '../net/lobby/LanMultiplayer.js';
+import { LAN_STATUS, LOBBY_SCOPE, ROOM_STATE, ROOM_VISIBILITY } from '../net/lobby/LanMultiplayer.js';
 import { useLanStore } from '../net/lobby/lanStore.js';
 import { MATCH_PHASE } from '../net/match/matchState.js';
 import { LINK_STATUS } from '../net/transport/PeerLink.js';
@@ -50,7 +50,7 @@ export function buildMatchMenu(game, state, t, view) {
 
     if (session.phase === PHASE.TITLE) {
         if (lanState.room) return lobbyRoom(game, state, lanState, t, exitItem);
-        if (view.lobbyOpen) return lobbyBrowser(lan, lanState, t, view, exitItem);
+        if (view.lobbyOpen) return lobbyBrowser(game, lanState, t, view, exitItem);
         return null;
     }
     const match = state.match;
@@ -82,20 +82,32 @@ export function buildMatchMenu(game, state, t, view) {
 
 // ---- The lobby --------------------------------------------------------------------------------
 
-function lobbyBrowser(lan, lanState, t, view, exitItem) {
+function lobbyBrowser(game, lanState, t, view, exitItem) {
+    const { lan, sound } = game;
+    const global = lanState.scope === LOBBY_SCOPE.GLOBAL;
     const lines = [t('mp.lan.rules')];
     if (lanState.error) lines.push(t(lanState.error));
     if (lanState.status === LAN_STATUS.CONNECTING) lines.push(t('mp.lan.connecting'));
     const items = [];
     if (lanState.status === LAN_STATUS.OFFLINE) items.push({ label: t('mp.lan.retry'), select: () => lan.open() });
-    if (lanState.status === LAN_STATUS.ONLINE) {
+    if (lanState.status === LAN_STATUS.ONLINE && global) {
+        // Anywhere: quick match or a private room. (A friend's code needs a keyboard: that is on the flat page.)
+        if (lanState.matching) {
+            lines.push(t('mp.global.searching'));
+            items.push({ label: t('mp.global.cancel'), select: () => lan.leaveRoom() });
+        } else {
+            lines.push(t('mp.global.note'));
+            items.push({ label: t('mp.global.quickMatch'), sub: t('mp.global.quickMatchHint'), select: () => { sound.unlock(); lan.quickMatch(); } });
+            items.push({ label: t('mp.global.private'), sub: t('mp.global.privateHint'), select: () => { sound.unlock(); lan.createPrivateRoom(); } });
+        }
+    } else if (lanState.status === LAN_STATUS.ONLINE) {
         for (const room of lanState.rooms) {
             items.push({ label: `${t('mp.lan.join')} · ${room.hostName}`, sub: room.hostDeviceName, value: `${room.playerCount} / ${room.maxPlayers}`, select: () => lan.joinRoom(room.code) });
         }
         items.push({ label: t('mp.lan.create'), sub: lanState.rooms.length === 0 ? t('mp.lan.noRooms') : null, select: () => lan.createRoom() });
     }
     items.push({ label: t('ui.back'), select: () => { lan.close(); view.setLobbyOpen(false); } }, exitItem);
-    return { key: 'lan:browser', title: t('mp.lan.title'), lines, items };
+    return { key: `lan:browser:${lanState.scope}`, title: t(global ? 'mp.global.title' : 'mp.lan.title'), lines, items };
 }
 
 function lobbyRoom(game, state, lanState, t, exitItem) {
@@ -103,7 +115,16 @@ function lobbyRoom(game, state, lanState, t, exitItem) {
     const { room, me, links } = lanState;
     const self = room.players.find((player) => player.playerId === me?.playerId);
     const inLobby = room.state === ROOM_STATE.LOBBY;
-    const lines = [`${t('mp.lan.roomCode')}  ${room.code}`];
+    // A public room runs itself: no ready, no start, no options - only the countdown to watch.
+    const isPublic = room.visibility === ROOM_VISIBILITY.PUBLIC;
+    const lines = [`${t(`mp.room.${room.visibility ?? ROOM_VISIBILITY.NETWORK}`)} · ${t('mp.lan.roomCode')}  ${room.code}`];
+    if (isPublic && inLobby) {
+        const seconds = lanState.startsAt === null ? null : Math.max(0, Math.ceil((lanState.startsAt - Date.now()) / 1000));
+        lines.push(seconds !== null ? t('mp.global.startsIn', { seconds })
+            : !lan.isHost && links[room.hostPlayerId] !== LINK_STATUS.OPEN ? t('mp.global.linking')
+                : t('mp.global.waiting', { count: room.players.length, max: room.maxPlayers }));
+        if (lan.isHost) lines.push(t('mp.global.hostNote'));
+    }
     for (const player of room.players) {
         const ready = player.ready ? t('mp.lan.ready') : t('mp.lan.notReady');
         lines.push(`${player.displayName}${player.isHost ? ` (${t('mp.lan.host')})` : ''} · ${player.deviceName} · ${t(`ship.${player.shipClassId}`)} · ${ready}`);
@@ -129,7 +150,9 @@ function lobbyRoom(game, state, lanState, t, exitItem) {
         value: piece ? t(`mp.equipment.${piece}.name`) : '—',
         left: pieceRow(-1), right: pieceRow(1), select: pieceRow(1),
     });
-    if (lan.isHost) {
+    if (isPublic) {
+        // Nothing to press.
+    } else if (lan.isHost) {
         const paces = Object.keys(BATTLE_ROYALE.paces);
         const pace = room.settings?.pace ?? BATTLE_ROYALE.defaultPace;
         const paceRow = (step) => () => lan.setOptions({ settings: { ...room.settings, pace: cycle(paces, pace, step) } });
@@ -150,8 +173,8 @@ function lobbyRoom(game, state, lanState, t, exitItem) {
         });
         if (!linked) items.push({ label: t('mp.lan.linkRetry'), select: () => lan.retryLink() });
     }
-    items.push({ label: t('mp.lan.leave'), select: () => lan.leaveRoom() }, exitItem);
-    return { key: 'lan:room', title: t('mp.lan.title'), lines, items };
+    items.push({ label: isPublic && inLobby ? t('mp.global.cancel') : t('mp.lan.leave'), select: () => lan.leaveRoom() }, exitItem);
+    return { key: 'lan:room', title: t(lanState.scope === LOBBY_SCOPE.GLOBAL ? 'mp.global.title' : 'mp.lan.title'), lines, items };
 }
 
 // ---- The story before a match, and its ending -------------------------------------------------

@@ -7,6 +7,7 @@ import { playerModelFile, requestShipModel } from '../scene/models/ShipModel.jsx
 import { PHASE } from '../state/GameSession.js';
 import { loadSave } from '../state/saveGame.js';
 import { roundRect, wrapText } from './canvasPanel.js';
+import { LOBBY_SCOPE } from '../net/lobby/LanMultiplayer.js';
 import { buildMatchMenu, isMatchMenuOpen } from './VRMatchMenu.js';
 import { vrBenchmark } from './vrBenchmark.js';
 import { vrPerformance } from './vrPerformance.js';
@@ -34,7 +35,7 @@ export class VRMenu {
     constructor(game) {
         this.game = game;
         this.index = 0;
-        /** Title screen: the player has opened the LAN lobby (xr/VRMatchMenu.js). */
+        /** Title screen: the player has opened a multiplayer lobby (xr/VRMatchMenu.js). */
         this.lobbyOpen = false;
         /** Title screen: the game being started while its ship model loads ({ classId, start }). */
         this.launch = null;
@@ -125,14 +126,13 @@ export class VRMenu {
                 items.push({ label: t('ui.vr.ship'), sub: t(`playerShip.${settings.playerShip}.role`), value: t(`ship.${settings.playerShip}`), left: shipRow(-1), right: shipRow(1), select: shipRow(1) });
                 const difficultyRow = (step) => () => session.updateSettings({ difficulty: cycle(DIFFICULTY_ORDER, settings.difficulty, step) });
                 items.push({ label: t('ui.difficulty'), value: t(`ui.difficulty.${settings.difficulty}`), left: difficultyRow(-1), right: difficultyRow(1), select: difficultyRow(1) });
-                items.push({
-                    label: t('mp.lan.open'),
-                    sub: t('mp.lan.openHint'),
-                    select: () => {
-                        this.lobbyOpen = true;
-                        this.game.lan.open();
-                    },
-                });
+                // Multiplayer: with pilots anywhere, or with whoever is on this Wi-Fi (xr/VRMatchMenu.js draws the lobby).
+                const openLobby = (scope) => () => {
+                    this.lobbyOpen = true;
+                    this.game.lan.open(scope);
+                };
+                items.push({ label: t('mp.global.open'), sub: t('mp.global.openHint'), select: openLobby(LOBBY_SCOPE.GLOBAL) });
+                items.push({ label: t('mp.lan.open'), sub: t('mp.lan.openHint'), select: openLobby(LOBBY_SCOPE.LAN) });
                 items.push(...this.commonSettings(settings, t));
                 items.push(exitItem);
                 return { key: 'title', title: t('ui.title'), lines: [t('ui.tagline')], items };

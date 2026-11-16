@@ -15,6 +15,7 @@ import {
 import { VR_DIAGNOSTICS, enterVR, useVRActive, useVRSupported } from '../xr/vrState.js';
 import { bucketURL } from '../../Settings';
 import { MATCH_PANEL } from '../modes/battleRoyale/BattleRoyalePresenter.js';
+import { LOBBY_SCOPE } from '../net/lobby/LanMultiplayer.js';
 import { useLanStore } from '../net/lobby/lanStore.js';
 import EquipmentPanel from './multiplayer/EquipmentPanel.jsx';
 import LanLobby from './multiplayer/LanLobby.jsx';
@@ -333,10 +334,12 @@ function TitleScreen({ session, lan, onStart }) {
     const hasSave = useGameStore((state) => state.hasSave);
     const saveCheckpointId = useGameStore((state) => state.saveCheckpointId);
     const inRoom = useLanStore((state) => Boolean(state.room));
+    const lobbyScope = useLanStore((state) => state.scope);
     const t = useT();
     const [chosenView, setView] = useState('main');
-    // Back from a match the player is still in its room: that is where the title screen opens.
-    const view = inRoom ? 'lan' : chosenView;
+    // Back from a match the player is still in its room: that is where the title screen opens,
+    // in the lobby they went in by (one Wi-Fi, or anywhere).
+    const view = inRoom ? (lobbyScope === LOBBY_SCOPE.GLOBAL ? 'global' : 'lan') : chosenView;
     const [confirmingNewGame, setConfirmingNewGame] = useState(false);
     /** While the ship model loads: { classId, start, backTo } for the game about to begin. */
     const [launching, setLaunching] = useState(null);
@@ -360,7 +363,7 @@ function TitleScreen({ session, lan, onStart }) {
     const continueGame = () => beginLoading(savedShipClass(session.settings.playerShip), () => session.continueGame(), 'main');
 
     return (
-        <div className={`eod-screen eod-screen--title ${view === 'hangar' || view === 'loading' || view === 'lan' ? 'eod-screen--hangar' : ''}`}>
+        <div className={`eod-screen eod-screen--title ${view === 'hangar' || view === 'loading' || view === 'lan' || view === 'global' ? 'eod-screen--hangar' : ''}`}>
             <div className="eod-title-block">
                 <p className="eod-title-kicker">{t('ui.subtitle')}</p>
                 <h1 className="eod-title">{t('ui.title')}</h1>
@@ -370,6 +373,7 @@ function TitleScreen({ session, lan, onStart }) {
             </div>
             {view === 'hangar' && <Hangar session={session} onLaunch={launch} onBack={() => setView('main')} />}
             {view === 'lan' && <LanLobby lan={lan} session={session} onStart={onStart} onBack={() => setView('main')} />}
+            {view === 'global' && <LanLobby lan={lan} session={session} scope={LOBBY_SCOPE.GLOBAL} onStart={onStart} onBack={() => setView('main')} />}
             {view === 'loading' && launching && (
                 <ShipLoading classId={launching.classId} onReady={launching.start} onBack={() => setView(launching.backTo)} />
             )}
@@ -384,6 +388,10 @@ function TitleScreen({ session, lan, onStart }) {
                     <button type="button" className={`eod-button ${hasSave ? '' : 'eod-button--primary'}`} onClick={startNewGame}>
                         {t('ui.newGame')}
                         {confirmingNewGame && <small>{t('ui.confirmNewGame')}</small>}
+                    </button>
+                    <button type="button" className="eod-button" onClick={() => setView('global')}>
+                        {t('mp.global.open')}
+                        <small>{t('mp.global.openHint')}</small>
                     </button>
                     <button type="button" className="eod-button" onClick={() => setView('lan')}>
                         {t('mp.lan.open')}

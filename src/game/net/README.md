@@ -1,8 +1,12 @@
 # Multiplayer
 
-LAN multiplayer for Echoes of Dawn: several devices on one Wi-Fi - computers, phones, VR
-headsets - in one match. This folder is the machinery (who talks to whom, and what they
-say); what a match is *about* is a game mode in `../modes/` (today: the battle royale).
+Multiplayer for Echoes of Dawn: several devices - computers, phones, VR headsets - in one
+match, on one Wi-Fi ("LAN") or anywhere on the internet ("global"). This folder is the
+machinery (who talks to whom, and what they say); what a match is *about* is a game mode in
+`../modes/` (today: the battle royale).
+
+The two kinds differ only in how a room is found (see "Rooms" below). Names in the code say
+"Lan" throughout because LAN play came first.
 
 ## How a match is wired
 
@@ -15,13 +19,15 @@ say); what a match is *about* is a game mode in `../modes/` (today: the battle r
    + ClientMatch    ClientMatch     ClientMatch
 ```
 
-* **The lobby server** (`3D_Tim_backend`, `EchoesLanHub`) lists the rooms on the caller's
-  network, keeps the room (names, devices, ships, readiness), says who each connection is
-  (account or guest) and relays WebRTC offers / answers / candidates. It never sees match
-  traffic. `lobby/LobbyClient.js` is the game's end of it.
+* **The lobby server** (`3D_Tim_backend`, `EchoesLanHub`) finds players a room (the rooms on
+  the caller's network, quick match, or a code), keeps the room (names, devices, ships,
+  readiness), says who each connection is (account or guest) and relays WebRTC offers /
+  answers / candidates. It never sees match traffic. `lobby/LobbyClient.js` is the game's
+  end of it.
 * **The devices talk to each other directly** over WebRTC data channels
   (`transport/PeerLink.js`): on one Wi-Fi that is a few milliseconds, which a detour through
-  a server on the internet could never be. Two channels per link: `state` (unordered, never
+  a server on the internet could never be. Across the internet it is still direct wherever
+  the two networks allow it, and through a relay where they do not. Two channels per link: `state` (unordered, never
   retransmitted - snapshots and inputs, where late is worthless) and `events` (reliable).
 * **The host's device runs the one real simulation**: `server/MatchServer.js`, with one
   `World` per zone (`server/Zone.js`). It has no screen and no player of its own.
@@ -32,6 +38,48 @@ say); what a match is *about* is a game mode in `../modes/` (today: the battle r
 * `lobby/LanMultiplayer.js` is the conductor the menus talk to: lobby, links, starting and
   ending matches on the `GameSession` (`session.beginMatch`). `lobby/lanStore.js` is the only
   file that knows the browser (SignalR, WebRTC, the site's sign-in, the hub's address).
+
+## Rooms: one Wi-Fi, or anywhere
+
+A room is where players gather before a match and between matches. There are three kinds
+(`ROOM_VISIBILITY` in `lobby/LanMultiplayer.js`, `LanRoomVisibility` in the backend), and
+whatever its kind a room can be joined from anywhere by typing its five-letter code:
+
+* **Network** - listed to the devices that reach the lobby server from the same network (the
+  same public address). This is LAN play: open the lobby, see the room, join. The host sets
+  the options and presses start.
+* **Public** - found by **quick match** from the global lobby. The server picks the best
+  room that is gathering players: same match protocol version and mode, a host in the
+  player's country if there is one, else on their continent, else anywhere (the backend
+  reads the country from the reverse proxy's header, `Lan:CountryHeader`); the fullest room
+  first. If there is none it opens one and the player waits in it as host. Nobody readies up
+  or presses start: each device reports ready once its link to the host is open, and the
+  server starts the match 20 s after two players are in, 5 s once the room is full
+  (`LanAutoStartService`). A device that cannot reach a room's host leaves by itself and asks
+  for another room (`LanMultiplayer.tryAnotherRoom`); a room whose host leaves before the
+  start sends its players looking again.
+* **Private** - listed nowhere. For friends anywhere: one opens it and passes the code on.
+
+### Reaching each other across the internet
+
+On one Wi-Fi two devices find each other with their local addresses. Across the internet
+they need help, and the lobby server says which (`GetIceServers`, the backend's
+`IceServerProvider`, configuration section `Lan:Ice`):
+
+* **STUN** servers tell a device its public address. That is enough for most home networks.
+* A **TURN** relay carries the traffic where it is not: strict NATs, some mobile and office
+  networks. Without one, those players cannot reach a host outside their own network.
+  Configure one of: `Lan:Ice:Cloudflare` (`TurnKeyId`, `ApiToken` - Cloudflare Realtime TURN)
+  or `Lan:Ice:Turn` (`Urls`, `SharedSecret` - an own coturn with `use-auth-secret`). Both are
+  secrets: environment variables or user secrets, never the repository.
+
+The match still runs on the host's device, so everybody's delay is their distance to the
+host - which is why quick match looks for a near one - and other ships are drawn 100 ms
+behind the host's word instead of the LAN's 45 (`NET.internetInterpolationDelay`).
+
+Not there yet: a match does not survive its host leaving, and a public room's host can
+cheat like any host (see "Cheating"). Both need the match to run on a server instead; the
+`MatchServer` was written so that it can.
 
 ## What travels
 

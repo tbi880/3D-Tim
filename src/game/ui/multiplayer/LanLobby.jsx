@@ -3,7 +3,7 @@ import AuthPanel from '../../../Tools/AuthPanel';
 import { useAuthStore } from '../../../hooks/useAuthStore';
 import { BATTLE_ROYALE } from '../../config/battleRoyale.js';
 import { PLAYER_SHIPS } from '../../config/playerShips.js';
-import { LAN_ERROR, LAN_STATUS, ROOM_STATE } from '../../net/lobby/LanMultiplayer.js';
+import { LAN_ERROR, LAN_STATUS, LOBBY_SCOPE, ROOM_STATE, ROOM_VISIBILITY } from '../../net/lobby/LanMultiplayer.js';
 import { useLanStore } from '../../net/lobby/lanStore.js';
 import { LINK_STATUS } from '../../net/transport/PeerLink.js';
 import { useGameStore, useT } from '../../state/gameStore.js';
@@ -12,9 +12,10 @@ import { EquipmentList } from './EquipmentPanel.jsx';
 import './multiplayer.css';
 
 /**
- * The LAN lobby, reached from the title screen: who you are, the rooms on this network,
- * and - once in a room - everybody in it with their device, ship and readiness, and the
- * quartermaster's stores.
+ * The multiplayer lobby, reached from the title screen in one of two scopes: one Wi-Fi (the
+ * rooms on this network are listed) or anywhere (quick match, a private room, or a room's
+ * code). Then, once in a room: everybody in it with their device, ship and readiness, and
+ * the quartermaster's stores.
  * It only shows the LAN store and calls LanMultiplayer; nothing is decided here.
  */
 
@@ -76,11 +77,78 @@ function Identity({ lan }) {
     );
 }
 
+/** Seconds left until `startsAt` (`Date.now()` milliseconds), counted down on screen; null without one. */
+function useCountdown(startsAt) {
+    const [now, setNow] = useState(() => Date.now());
+    useEffect(() => {
+        if (startsAt === null) return undefined;
+        setNow(Date.now());
+        const timer = setInterval(() => setNow(Date.now()), 250);
+        return () => clearInterval(timer);
+    }, [startsAt]);
+    return startsAt === null ? null : Math.max(0, Math.ceil((startsAt - now) / 1000));
+}
+
+/** A room's code typed in: the way into any room from anywhere. */
+function JoinByCode({ lan }) {
+    const t = useT();
+    const [code, setCode] = useState('');
+    return (
+        <form className="eod-lan-code" onSubmit={(event) => { event.preventDefault(); lan.joinRoom(code); }}>
+            <input
+                type="text"
+                value={code}
+                maxLength={5}
+                placeholder={t('mp.lan.codePlaceholder')}
+                autoCapitalize="characters"
+                autoComplete="off"
+                onChange={(event) => setCode(event.target.value.toUpperCase())}
+            />
+            <button type="submit" className="eod-button" disabled={code.trim().length !== 5}>{t('mp.lan.joinByCode')}</button>
+        </form>
+    );
+}
+
+/** Playing with anybody anywhere: quick match, a private room for friends, or a friend's code. */
+function GlobalBrowser({ lan, onStart }) {
+    const matching = useLanStore((state) => state.matching);
+    const t = useT();
+    // Audio can only be unlocked inside a tap: a quick match goes into the game with no further one.
+    const quickMatch = () => { onStart(); lan.quickMatch(); };
+    if (matching) {
+        return (
+            <div className="eod-lan-browser">
+                <p className="eod-lan-searching">{t('mp.global.searching')}</p>
+                <div className="eod-lan-actions">
+                    <button type="button" className="eod-button" onClick={() => lan.leaveRoom()}>{t('mp.global.cancel')}</button>
+                </div>
+            </div>
+        );
+    }
+    return (
+        <div className="eod-lan-browser">
+            <div className="eod-lan-actions">
+                <button type="button" className="eod-button eod-button--primary" onClick={quickMatch}>
+                    {t('mp.global.quickMatch')}
+                    <small>{t('mp.global.quickMatchHint')}</small>
+                </button>
+                <button type="button" className="eod-button" onClick={() => { onStart(); lan.createPrivateRoom(); }}>
+                    {t('mp.global.private')}
+                    <small>{t('mp.global.privateHint')}</small>
+                </button>
+            </div>
+            <div className="eod-lan-actions">
+                <JoinByCode lan={lan} />
+            </div>
+            <p className="eod-lan-empty">{t('mp.global.note')}</p>
+        </div>
+    );
+}
+
 /** Rooms found on this network, and the two other ways into one. */
 function RoomBrowser({ lan }) {
     const rooms = useLanStore((state) => state.rooms);
     const t = useT();
-    const [code, setCode] = useState('');
     return (
         <div className="eod-lan-browser">
             <h3 className="eod-lan-heading">{t('mp.lan.rooms')}</h3>
@@ -95,18 +163,7 @@ function RoomBrowser({ lan }) {
             ))}
             <div className="eod-lan-actions">
                 <button type="button" className="eod-button eod-button--primary" onClick={() => lan.createRoom()}>{t('mp.lan.create')}</button>
-                <form className="eod-lan-code" onSubmit={(event) => { event.preventDefault(); lan.joinRoom(code); }}>
-                    <input
-                        type="text"
-                        value={code}
-                        maxLength={5}
-                        placeholder={t('mp.lan.codePlaceholder')}
-                        autoCapitalize="characters"
-                        autoComplete="off"
-                        onChange={(event) => setCode(event.target.value.toUpperCase())}
-                    />
-                    <button type="submit" className="eod-button" disabled={code.trim().length !== 5}>{t('mp.lan.joinByCode')}</button>
-                </form>
+                <JoinByCode lan={lan} />
             </div>
         </div>
     );
@@ -192,11 +249,14 @@ function Room({ lan, session, onStart }) {
     const me = useLanStore((state) => state.me);
     const links = useLanStore((state) => state.links);
     const error = useLanStore((state) => state.error);
+    const startsIn = useCountdown(useLanStore((state) => state.startsAt));
     const ship = useGameStore((state) => state.settings.playerShip);
     const vrSupported = useVRSupported();
     const t = useT();
     const self = room.players.find((player) => player.playerId === me?.playerId);
     const inLobby = room.state === ROOM_STATE.LOBBY;
+    // A public room runs itself: nobody readies up, nobody presses start, nobody changes its options.
+    const isPublic = room.visibility === ROOM_VISIBILITY.PUBLIC;
     const hostLink = links[room.hostPlayerId] ?? LINK_STATUS.CLOSED;
     const linkOf = (player) => {
         if (lan.isHost) return player.isHost ? null : links[player.playerId] ?? LINK_STATUS.CONNECTING;
@@ -214,14 +274,22 @@ function Room({ lan, session, onStart }) {
     return (
         <div className="eod-lan-room-view">
             <div className="eod-lan-code-banner">
-                <span>{t('mp.lan.roomCode')}</span>
+                <span>{t(`mp.room.${room.visibility ?? ROOM_VISIBILITY.NETWORK}`)} · {t('mp.lan.roomCode')}</span>
                 <strong>{room.code}</strong>
                 <span>{t('mp.lan.players', { count: room.players.length, max: room.maxPlayers })}</span>
             </div>
+            {isPublic && inLobby && (
+                <p className={`eod-lan-countdown ${startsIn !== null ? 'eod-lan-countdown--on' : ''}`} role="status">
+                    {startsIn !== null ? t('mp.global.startsIn', { seconds: startsIn })
+                        : !lan.isHost && hostLink !== LINK_STATUS.OPEN ? t('mp.global.linking')
+                            : t('mp.global.waiting', { count: room.players.length, max: room.maxPlayers })}
+                    {lan.isHost && <small>{t('mp.global.hostNote')}</small>}
+                </p>
+            )}
             <ul className="eod-lan-players">
                 {room.players.map((player) => <PlayerRow key={player.playerId} player={player} isMe={player.playerId === me?.playerId} link={linkOf(player)} />)}
             </ul>
-            <RoomOptions lan={lan} room={room} />
+            {!isPublic && <RoomOptions lan={lan} room={room} />}
             <Loadout lan={lan} editable={inLobby} />
             {!inLobby && <p className="eod-lan-empty">{t('mp.lan.matchRunning')}</p>}
             <div className="eod-lan-actions">
@@ -229,12 +297,13 @@ function Room({ lan, session, onStart }) {
                     {t('mp.lan.ship')}
                     <small>{t(`ship.${ship}`)} · {t(`playerShip.${ship}.role`)}</small>
                 </button>
-                {lan.isHost ? (
+                {!isPublic && lan.isHost && (
                     <button type="button" className="eod-button eod-button--primary" disabled={!lan.canStart} onClick={start}>
                         {t('mp.lan.start')}
                         {!lan.canStart && <small>{t('mp.lan.startWaiting')}</small>}
                     </button>
-                ) : (
+                )}
+                {!isPublic && !lan.isHost && (
                     <button type="button" className="eod-button eod-button--primary" disabled={!inLobby || hostLink !== LINK_STATUS.OPEN} onClick={ready}>
                         {self?.ready ? t('mp.lan.setNotReady') : t('mp.lan.setReady')}
                         <small>{hostLink === LINK_STATUS.OPEN ? t('mp.lan.waitingForHost') : t(`mp.lan.link.${hostLink}`)}</small>
@@ -249,7 +318,7 @@ function Room({ lan, session, onStart }) {
                         <small>{t('ui.vr.enterHint')}</small>
                     </button>
                 )}
-                <button type="button" className="eod-button" onClick={() => lan.leaveRoom()}>{t('mp.lan.leave')}</button>
+                <button type="button" className="eod-button" onClick={() => lan.leaveRoom()}>{isPublic && inLobby ? t('mp.global.cancel') : t('mp.lan.leave')}</button>
             </div>
         </div>
     );
@@ -259,17 +328,19 @@ function Room({ lan, session, onStart }) {
  * @param {object} props
  * @param {import('../../net/lobby/LanMultiplayer.js').LanMultiplayer} props.lan
  * @param {import('../../state/GameSession.js').GameSession} props.session
+ * @param {string} [props.scope] LOBBY_SCOPE: players on one Wi-Fi (the default), or anywhere
  * @param {() => void} props.onStart called from the taps that lead into a match (unlocks audio)
  * @param {() => void} props.onBack back to the title menu
  */
-export default function LanLobby({ lan, session, onStart, onBack }) {
+export default function LanLobby({ lan, session, scope = LOBBY_SCOPE.LAN, onStart, onBack }) {
     const status = useLanStore((state) => state.status);
     const inRoom = useLanStore((state) => Boolean(state.room));
     const t = useT();
+    const global = scope === LOBBY_SCOPE.GLOBAL;
 
     useEffect(() => {
-        lan.open();
-    }, [lan]);
+        lan.open(scope);
+    }, [lan, scope]);
 
     const leave = () => {
         lan.close();
@@ -278,7 +349,7 @@ export default function LanLobby({ lan, session, onStart, onBack }) {
 
     return (
         <div className="eod-lan">
-            <h2 className="eod-hangar-title">{t('mp.lan.title')}</h2>
+            <h2 className="eod-hangar-title">{t(global ? 'mp.global.title' : 'mp.lan.title')}</h2>
             {/* The site's own sign-in (the button at the top of the screen), for playing as an account. */}
             {!inRoom && <AuthPanel isPortraitPhoneScreen={false} setDisplayOverlayCallback={() => {}} />}
             <ErrorLine />
@@ -290,7 +361,7 @@ export default function LanLobby({ lan, session, onStart, onBack }) {
                 <>
                     <p className="eod-lan-rules">{t('mp.lan.rules')}</p>
                     <Identity lan={lan} />
-                    <RoomBrowser lan={lan} />
+                    {global ? <GlobalBrowser lan={lan} onStart={onStart} /> : <RoomBrowser lan={lan} />}
                 </>
             )}
             {inRoom && <Room lan={lan} session={session} onStart={onStart} />}
