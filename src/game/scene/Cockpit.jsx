@@ -1,8 +1,9 @@
 import { Suspense, useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useVRActive, useVRSupported, vr } from '../xr/vrState.js';
-import VRCockpitShell, { preloadVRCockpit } from '../xr/VRCockpitShell.jsx';
+import VRCockpitShell, { CABIN_SCALE, SPARK_EMITTERS as VR_SPARK_EMITTERS, preloadVRCockpit } from '../xr/VRCockpitShell.jsx';
 import { preloadVRFlightStick } from '../xr/VRFlightStick.jsx';
+import CockpitSparks from './CockpitSparks.jsx';
 import GltfModel from './models/GltfModel.jsx';
 import { ModelErrorBoundary, getModelInfo, useShipMaterials } from './models/ShipModel.jsx';
 
@@ -21,7 +22,16 @@ function CockpitModel() {
     return inVR ? <VRCockpitShell /> : <GltfModel url={getModelInfo('cockpit').file} materials={materials} />;
 }
 
-export default function Cockpit({ baseFov }) {
+/**
+ * Where sparks can burst from in the flat-screen cockpit when the hull is hit, each
+ * [x, y, z, dx, dy, dz] (see CockpitSparks): the canopy frame overhead and the dashboard's corners.
+ */
+const SPARK_EMITTERS = [
+    [-0.55, 0.42, -1.1, 0.3, -1, 0.2], [0.55, 0.42, -1.1, -0.3, -1, 0.2], [0, 0.5, -1.2, 0, -1, 0.3],
+    [-0.6, -0.3, -0.9, 0.4, 1, 0.3], [0.6, -0.3, -0.9, -0.4, 1, 0.3],
+];
+
+export default function Cockpit({ baseFov, session }) {
     const groupRef = useRef(null);
     const inVR = useVRActive();
     // Where VR can be entered, fetch the VR cabin and flight stick ahead of time so they are
@@ -52,6 +62,9 @@ export default function Cockpit({ baseFov }) {
             {/* Soft instrument glow so the interior never goes pitch black. The VR cabin has its
                 glow baked in, and every light costs each lit surface in the scene, so not in VR. */}
             {!inVR && <pointLight position={[0, -0.3, -0.6]} intensity={0.5} distance={4} decay={1.2} color="#8fc4ff" />}
+            {inVR
+                ? <CockpitSparks session={session} emitters={VR_SPARK_EMITTERS} scale={CABIN_SCALE} />
+                : <CockpitSparks session={session} emitters={SPARK_EMITTERS} />}
         </group>
     );
 }

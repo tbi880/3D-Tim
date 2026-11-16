@@ -226,6 +226,7 @@
 }
 
 .eod-damage-flash { position: absolute; inset: 0; animation: eod-flash 0.32s ease-out forwards; }
+.eod-hud[data-scrambled] .eod-panel, .eod-hud[data-scrambled] .eod-radar { animation: eod-scramble 0.32s steps(6, jump-none); }
 .eod-damage-flash--shield { box-shadow: inset 0 0 120px 30px rgba(89, 208, 255, 0.5); }
 .eod-damage-flash--hull { box-shadow: inset 0 0 140px 40px rgba(255, 50, 60, 0.6); }
 .eod-warp-flash { position: absolute; inset: 0; background: #e8f6ff; animation: eod-flash 1.4s ease-out forwards; }
@@ -502,6 +503,16 @@
 @keyframes eod-blink { 50% { opacity: 0.35; } }
 @keyframes eod-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes eod-flash { from { opacity: 1; } to { opacity: 0; } }
+/* Instruments knocked by a hull hit: they jump sideways, smear and drop out, then settle.
+   (`translate` / `scale`, not `transform`: some panels are placed with a transform of their own.) */
+@keyframes eod-scramble {
+    0% { translate: -8px 0; scale: 1.03 0.9; filter: blur(1.6px) brightness(1.7); opacity: 0.55; }
+    18% { translate: 7px 0; scale: 1 1.04; filter: blur(0.6px) hue-rotate(-25deg); opacity: 1; }
+    34% { translate: -3px 0; scale: 1 0.93; filter: blur(1.2px) brightness(0.5); opacity: 0.35; }
+    52% { translate: 5px 0; scale: 1.02 1; filter: blur(0.5px) brightness(1.4); opacity: 0.9; }
+    74% { translate: -2px 0; scale: 1 1; filter: blur(0.8px); opacity: 0.6; }
+    100% { translate: 0 0; scale: 1 1; filter: none; opacity: 1; }
+}
 @keyframes eod-glitch { 0% { transform: translateX(-1px); } 100% { transform: translateX(1px); } }
 @keyframes eod-title-card {
     0% { opacity: 0; letter-spacing: 0.5em; }

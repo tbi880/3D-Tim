@@ -25,7 +25,7 @@ import layout from './cockpitLayout.json';
  *  - `glass`: the tinted glass roof.
  * Faces the pilot's head can never see were removed in Blender.
  *
- * The ambient light follows the ship (cabinLighting.js).
+ * The ambient light follows the ship, and stutters when the hull is hit (cabinLighting.js).
  */
 
 /**
@@ -33,6 +33,20 @@ import layout from './cockpitLayout.json';
  * sits further away in the headset. VRHud scales the instrument display the same way.
  */
 export const CABIN_SCALE = layout.cabinScale;
+
+/**
+ * Where sparks can burst from when the hull is hit, each [x, y, z, dx, dy, dz] in the cabin
+ * as drawn (see scene/CockpitSparks.jsx): the tips of the display glass, the dash top, under
+ * the display, the side sills, the canopy rails and the arch overhead.
+ */
+export const SPARK_EMITTERS = [
+    [-0.86, -0.46, -0.6, 0.3, 1, 0.5], [0.86, -0.46, -0.6, -0.3, 1, 0.5],
+    [-0.45, -0.57, -1.15, 0, 1, 0.4], [0.45, -0.57, -1.15, 0, 1, 0.4],
+    [-0.3, -0.7, -0.55, 0, 0.7, 0.7], [0.3, -0.7, -0.55, 0, 0.7, 0.7],
+    [-2.1, -0.6, -0.2, 0.8, 0.7, 0], [2.1, -0.6, -0.2, -0.8, 0.7, 0],
+    [-1.95, 0.9, -0.5, 0.8, -0.5, 0.2], [1.95, 0.9, -0.5, -0.8, -0.5, 0.2],
+    [-0.9, 1.52, 0.6, 0, -1, -0.3], [0.9, 1.52, 0.6, 0, -1, -0.3],
+].map(([x, y, z, ...direction]) => [x * layout.cabinScale, y * layout.cabinScale, z * layout.cabinScale, ...direction]);
 
 /** Same arguments as GltfModel (Draco + Meshopt decoders), so the file is fetched once. */
 const MODEL_FILE = 'game/vr-cockpit-transformed.glb';
@@ -88,9 +102,9 @@ export default function VRCockpitShell() {
     useEffect(() => addSelfLight(materials.cabin), [materials]);
 
     useFrame(() => {
-        lightMaterial.uniforms.color.value.copy(ambientLight.colour).multiplyScalar(LINE_BRIGHTNESS);
+        lightMaterial.uniforms.color.value.copy(ambientLight.colour).multiplyScalar(LINE_BRIGHTNESS * ambientLight.level);
         lightMaterial.uniforms.travel.value = ambientLight.travel;
-        materials.cabin.emissive.copy(ambientLight.colour).multiplyScalar(GLOW_BRIGHTNESS);
+        materials.cabin.emissive.copy(ambientLight.colour).multiplyScalar(GLOW_BRIGHTNESS * ambientLight.level);
     });
 
     return (

@@ -6,6 +6,7 @@ import { GAME_EVENTS } from '../core/EventBus.js';
 import { breakupPose, breakupSeconds } from './effects/breakup.js';
 import { DebrisSystem } from './effects/DebrisSystem.js';
 import { FireballSystem } from './effects/FireballSystem.js';
+import { shownImpact } from './effects/impactPoint.js';
 import { ParticleSystem, randomDirection } from './effects/ParticleSystem.js';
 import { HULL_WRECKAGE, ROCK_WRECKAGE, SHIP_WRECKAGE } from './effects/wreckageShapes.js';
 import { ModelErrorBoundary, useHullTextures } from './models/ShipModel.jsx';
@@ -50,7 +51,6 @@ const MAX_WARP_FLASH = 220;
 
 const FIRE = new THREE.Color('#ffb04a');
 const SPARK_COLORS = [new THREE.Color('#fff3c4'), new THREE.Color('#ffc46b'), new THREE.Color('#ff7a2e')];
-const SHIELD_SPARK = new THREE.Color('#7fd8ff');
 const HULL_SPARK = new THREE.Color('#ffb061');
 const WARP_COLOR = new THREE.Color('#a8d8ff');
 const ROCK_SPARKS = [new THREE.Color('#b08a5a'), new THREE.Color('#ffd9a0')];
@@ -316,10 +316,13 @@ function Effects({ session, textures }) {
                     pending.current.push({ delay: 0.16 + Math.random() * 0.12, run: () => blast(offset, size * 0.65, { drift, lit: false }) });
                 }
             }),
-            world.events.on(GAME_EVENTS.HIT, ({ position, shield }) => {
-                if (world.time - lastSparkAt.current < SPARK_COOLDOWN) return;
+            // Sparks where a shot bites into bare hull. (One stopped by a shield melts into it
+            // and breaks up instead: ProjectilesLayer.)
+            world.events.on(GAME_EVENTS.HIT, ({ target, position, shield }) => {
+                if (shield || world.time - lastSparkAt.current < SPARK_COOLDOWN) return;
                 lastSparkAt.current = world.time;
-                sparks.emit(position, { count: 6, speed: 34, life: 0.45, size: 1.6, colors: [shield ? SHIELD_SPARK : HULL_SPARK] });
+                // From the cockpit the pilot's own hull sparks out on its skin, not round the seat.
+                sparks.emit(shownImpact(session, target, position, false, scratchVector), { count: 6, speed: 34, life: 0.45, size: 1.6, colors: [HULL_SPARK] });
             }),
             world.events.on(GAME_EVENTS.WARP_FLASH, ({ position, size, quaternion }) => {
                 // Capped, or a dreadnought dropping out of warp would white out the whole view.

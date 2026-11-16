@@ -42,7 +42,7 @@ export function FlightStickModel({ getTrigger = null }) {
 
     useFrame(() => {
         const squeeze = getTrigger ? getTrigger() : 0;
-        material.emissive.copy(ambientLight.colour).multiplyScalar(GLOW_BRIGHTNESS * (1 + TRIGGER_GLOW * squeeze));
+        material.emissive.copy(ambientLight.colour).multiplyScalar(GLOW_BRIGHTNESS * ambientLight.level * (1 + TRIGGER_GLOW * squeeze));
     });
 
     return <mesh geometry={nodes.stick.geometry} material={material} />;

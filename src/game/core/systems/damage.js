@@ -21,13 +21,13 @@ export function mayAttack(world, ship, target) {
         && target.faction === ship.faction && target.faction !== FACTION.NEUTRAL;
 }
 
-function emitHit(world, target, position, shieldHit, amount, continuous) {
+function emitHit(world, target, position, shieldHit, amount, { continuous, source, weapon }) {
     // Continuous beams would emit an effect every frame; rate-limit them per target.
     if (continuous) {
         if (world.time < target.hitEffectTimer) return;
         target.hitEffectTimer = world.time + WORLD.beamHitEffectInterval;
     }
-    world.events.emit(GAME_EVENTS.HIT, { target, position, shield: shieldHit, amount });
+    world.events.emit(GAME_EVENTS.HIT, { target, position, shield: shieldHit, amount, source, weapon });
 }
 
 /** Tells whoever keeps the rules that `source` hurt `target` (every time, unlike the rate-limited HIT effect). */
@@ -70,6 +70,7 @@ export function destroyShip(world, ship, killer = null) {
  * Applies weapon damage to a ship or to a destructible projectile.
  * @param {object} options
  * @param {object} [options.source] the ship that dealt the damage
+ * @param {object} [options.weapon] the definition of the weapon that dealt it (config/weapons.js)
  * @param {import('three').Vector3} [options.point] world position of the impact
  * @param {number} [options.shieldMult] multiplier while the target still has shields
  * @param {number} [options.hullMult] multiplier against bare hull
@@ -77,7 +78,8 @@ export function destroyShip(world, ship, killer = null) {
  */
 export function applyDamage(world, target, amount, options = {}) {
     if (!target.alive || target.arriving || amount <= 0) return;
-    const { source = null, point = null, shieldMult = 1, hullMult = 1, continuous = false } = options;
+    const { source = null, weapon = null, point = null, shieldMult = 1, hullMult = 1, continuous = false } = options;
+    const effect = { continuous, source, weapon };
 
     if (target.isProjectile) {
         target.hp -= amount;
@@ -89,7 +91,7 @@ export function applyDamage(world, target, amount, options = {}) {
     if (target.invulnerable) {
         // Shielded ships shimmer; indestructible scenery (stations, wrecks) just sparks.
         if (target.targetable) target.lastShieldHitAt = world.time;
-        emitHit(world, target, position, true, 0, continuous);
+        emitHit(world, target, position, true, 0, effect);
         return;
     }
 
@@ -122,7 +124,7 @@ export function applyDamage(world, target, amount, options = {}) {
     target.shieldCooldown = target.cls.shieldDelay;
     target.lastDamagedAt = world.time;
     target.lastAttacker = source;
-    emitHit(world, target, position, shieldHit, amount, continuous);
+    emitHit(world, target, position, shieldHit, amount, effect);
     reportDamage(world, target, source, amount);
 
     if (target.hull <= 0) destroyShip(world, target, source);

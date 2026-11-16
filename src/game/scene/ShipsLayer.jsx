@@ -6,7 +6,8 @@ import { GAME_EVENTS } from '../core/EventBus.js';
 import { forwardOf } from '../core/math.js';
 import { breakupPose, breakupSeconds } from './effects/breakup.js';
 import { ExhaustPlume } from './effects/ExhaustPlume.js';
-import { ShieldShell, shieldShells } from './effects/ShieldShell.js';
+import { seenFromInside } from './effects/impactPoint.js';
+import { INSIDE_SCALE, ShieldShell, shieldShells } from './effects/ShieldShell.js';
 import { WARP_IN_DISTANCE, WARP_STRETCH, warpDisplacement } from './effects/warpPath.js';
 import { useGameStore } from '../state/gameStore.js';
 import ShipModel, { getModelInfo } from './models/ShipModel.jsx';
@@ -44,8 +45,10 @@ function shieldExtent(ship) {
 /**
  * The shield around a ship: nothing to see until it is hit, then a patch of honeycomb
  * flares where the hit landed (effects/ShieldShell.js). ShipsLayer feeds it the hits.
+ * The pilot's own is seen from inside it in the cockpit views: its inner face, drawn larger.
  */
-function Shield({ ship, world }) {
+function Shield({ ship, session }) {
+    const world = session.world;
     const meshRef = useRef(null);
     const scale = useMemo(() => shieldExtent(ship), [ship]);
     const shell = useMemo(() => new ShieldShell(FACTION_COLORS[ship.faction].shield, scale), [ship, scale]);
@@ -59,7 +62,13 @@ function Shield({ ship, world }) {
     }, [ship, shell]);
 
     useFrame(() => {
-        if (meshRef.current) meshRef.current.visible = shell.update(world.time);
+        const mesh = meshRef.current;
+        if (!mesh) return;
+        mesh.visible = shell.update(world.time);
+        if (!mesh.visible) return;
+        const inside = seenFromInside(session, ship);
+        mesh.material = inside ? shell.insideMaterial : shell.material;
+        mesh.scale.fromArray(scale).multiplyScalar(inside ? INSIDE_SCALE : 1);
     });
 
     return (
@@ -172,7 +181,7 @@ function ShipView({ ship, session }) {
         <group ref={groupRef}>
             <ShipModel modelId={ship.cls.model} faction={ship.faction} getThrust={getThrust} />
             {info?.engines?.length > 0 && <Exhaust engines={info.engines} faction={ship.faction} ship={ship} session={session} />}
-            {ship.maxShield > 0 && <Shield ship={ship} world={world} />}
+            {ship.maxShield > 0 && <Shield ship={ship} session={session} />}
             {/* Bright core of the warp streak; the stretched hull supplies the rest. */}
             <mesh ref={streakRef} scale={[streakWidth, streakWidth, ship.boundingRadius * 1.2]} visible={false}>
                 <sphereGeometry args={[1, 8, 6]} />
@@ -182,9 +191,10 @@ function ShipView({ ship, session }) {
     );
 }
 
-/** The player's own ship, drawn only in the third-person (chase) view. */
+/** The player's own ship: its hull is drawn only in the third-person (chase) view, its shield in every view. */
 function PlayerShipView({ session }) {
     const groupRef = useRef(null);
+    const hullRef = useRef(null);
     // Replaced on every new game or reload, which is also when a different ship may have been chosen.
     const player = useGameStore((state) => state.playerShip);
     const info = getModelInfo(player?.cls.model ?? 'kestrel');
@@ -194,7 +204,8 @@ function PlayerShipView({ session }) {
     useFrame(() => {
         const group = groupRef.current;
         if (!group || !player) return;
-        group.visible = player.alive && cameraModeOf(session) === 'chase';
+        group.visible = player.alive;
+        if (hullRef.current) hullRef.current.visible = cameraModeOf(session) === 'chase';
         group.position.copy(player.position);
         group.quaternion.copy(player.quaternion);
     });
@@ -203,9 +214,11 @@ function PlayerShipView({ session }) {
 
     return (
         <group ref={groupRef} visible={false}>
-            <ShipModel modelId={player?.cls.model ?? 'kestrel'} faction={faction} getThrust={getThrust} />
-            {info?.engines?.length > 0 && <EnginePlumes engines={info.engines} faction={faction} getThrust={getThrust} />}
-            {player && <Shield key={player.id} ship={player} world={session.world} />}
+            <group ref={hullRef} visible={false}>
+                <ShipModel modelId={player?.cls.model ?? 'kestrel'} faction={faction} getThrust={getThrust} />
+                {info?.engines?.length > 0 && <EnginePlumes engines={info.engines} faction={faction} getThrust={getThrust} />}
+            </group>
+            {player && <Shield key={player.id} ship={player} session={session} />}
         </group>
     );
 }

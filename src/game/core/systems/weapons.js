@@ -246,7 +246,7 @@ function updatePlayerBeam(world, ship, weapon, dt, triggerHeld) {
             else target.closestPoint(origin, scratchImpact);
         }
         applyDamage(world, target, damage, {
-            source: ship, point: scratchImpact, shieldMult: def.shieldMult, hullMult: def.hullMult, continuous: true,
+            source: ship, weapon: def, point: scratchImpact, shieldMult: def.shieldMult, hullMult: def.hullMult, continuous: true,
         });
     } else {
         // Nothing hostile in the ring: the beams fire dead ahead and carve up any asteroid in the way.
@@ -325,7 +325,7 @@ function updateAiBeam(world, ship, weapon, dt) {
     ship.closestPoint(scratchImpact, scratchOrigin);
     const beamScale = ship.faction === FACTION.UMBRA ? world.difficulty.enemyBeamDamage : 1;
     applyDamage(world, target, def.dps * beamScale * dt, {
-        source: ship, point: scratchImpact, shieldMult: def.shieldMult, hullMult: def.hullMult, continuous: true,
+        source: ship, weapon: def, point: scratchImpact, shieldMult: def.shieldMult, hullMult: def.hullMult, continuous: true,
     });
     world.addBeam(scratchOrigin, scratchImpact, def.color, def.width, 'beam', ship, target.isProjectile ? null : target);
 }
@@ -420,7 +420,7 @@ function applyLanceDamage(world, ship, weapon, origin, dt) {
         }
         if (hit) {
             applyDamage(world, other, def.dps * dt, {
-                source: ship, shieldMult: def.shieldMult, hullMult: def.hullMult, continuous: true,
+                source: ship, weapon: def, shieldMult: def.shieldMult, hullMult: def.hullMult, continuous: true,
             });
         }
     }

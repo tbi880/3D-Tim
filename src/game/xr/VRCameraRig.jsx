@@ -147,7 +147,10 @@ export default function VRCameraRig({ game }) {
         const isOwnShip = (ship) => Boolean(ship) && ship === world.player;
         const offs = [
             events.on(GAME_EVENTS.HIT, ({ target, amount, shield }) => {
-                if (vr.active && isOwnShip(target) && amount > 0) gamepads.pulse((shield ? 0.25 : 0.5) + amount / 200, shield ? 40 : 80);
+                if (!vr.active || !isOwnShip(target) || amount <= 0) return;
+                gamepads.pulse((shield ? 0.25 : 0.5) + amount / 200, shield ? 40 : 80);
+                // With the shield down the hit reaches the ship's power: the cabin lights stutter.
+                if (!shield) ambientLight.disturb(0.55 + amount / 30);
             }),
             events.on(GAME_EVENTS.PLAYER_COLLISION, ({ ship }) => { if (vr.active && isOwnShip(ship)) gamepads.pulse(1, 160); }),
         ];

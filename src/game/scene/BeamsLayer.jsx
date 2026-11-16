@@ -1,99 +1,60 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { lookRotation } from '../core/math.js';
+import { EnergyRibbons } from './effects/EnergyRibbons.js';
+import { INSIDE_FLARE_SCALE, seenFromInside, shownImpact } from './effects/impactPoint.js';
 
 const MAX_BEAMS = 48;
-const HALF_PI = Math.PI / 2;
 const WHITE = new THREE.Color(1, 1, 1);
 
-/** How each kind of beam is drawn: glow brightness, core brightness, and impact flare size. */
+/**
+ * How each kind of beam is drawn: the brightness of its halo and of its white core, how far
+ * the halo reaches (as a multiple of the beam's width), and the size of the flares where it
+ * leaves and where it lands (multiples of its width; 0 = none).
+ */
 const BEAM_STYLES = Object.freeze({
-    beam: { glow: 1.8, core: 2.2, flare: 3.2 },
-    lanceCharge: { glow: 0.9, core: 0, flare: 0 },
-    lance: { glow: 2.4, core: 3, flare: 0 },
-    cannon: { glow: 2.6, core: 3.4, flare: 4 },
-    tractor: { glow: 1.1, core: 0, flare: 1.2 },
+    beam: { glow: 1.5, core: 1.5, reach: 1.1, muzzle: 1.6, impact: 4.5 },
+    lanceCharge: { glow: 0.8, core: 0, reach: 1.1, muzzle: 0, impact: 0 },
+    lance: { glow: 2.0, core: 2.2, reach: 0.9, muzzle: 0, impact: 0 },
+    cannon: { glow: 2.2, core: 2.4, reach: 1.1, muzzle: 2.0, impact: 5.5 },
+    tractor: { glow: 0.9, core: 0, reach: 1.2, muzzle: 0, impact: 1.6 },
 });
 
-const dummy = new THREE.Object3D();
-const direction = new THREE.Vector3();
 const color = new THREE.Color();
+const scratchEnd = new THREE.Vector3();
 
 /**
- * Draws `world.beams` (rebuilt by the simulation every frame). Each beam is a coloured
- * outer cylinder, a white-hot core, and a flare where it lands.
+ * Draws `world.beams` (rebuilt by the simulation every frame) as light: a white-hot core in
+ * a halo of the beam's colour with energy running along it, a flare at the emitter and a
+ * larger one where it lands (effects/EnergyRibbons.js, one draw call for all of them).
+ * A beam aimed at a shielded ship ends on its shield, not on the hull beneath.
  */
 export default function BeamsLayer({ session }) {
-    const glowRef = useRef(null);
-    const coreRef = useRef(null);
-    const flareRef = useRef(null);
-    // Unit cylinder along Z, so scale.z is the beam length and scale.x/y its radius.
-    const beamGeometry = useMemo(() => new THREE.CylinderGeometry(1, 1, 1, 8, 1, true).rotateX(HALF_PI), []);
+    // A beam and its two flares each.
+    const ribbons = useMemo(() => new EnergyRibbons(MAX_BEAMS * 3), []);
+    useEffect(() => () => ribbons.dispose(), [ribbons]);
 
     useFrame(() => {
         const world = session.world;
-        const glow = glowRef.current;
-        const core = coreRef.current;
-        const flare = flareRef.current;
         const count = Math.min(world.beams.length, MAX_BEAMS);
-        let glowCount = 0;
-        let coreCount = 0;
-        let flareCount = 0;
-
+        ribbons.begin();
         for (let i = 0; i < count; i++) {
             const beam = world.beams[i];
             const style = BEAM_STYLES[beam.kind] ?? BEAM_STYLES.beam;
-            const length = direction.copy(beam.end).sub(beam.start).length();
-            if (length < 1e-3) continue;
-            const flicker = 1 + 0.18 * Math.sin(world.time * 55 + i * 2.1);
-            const radius = beam.width * 0.5 * flicker;
-
-            dummy.position.copy(beam.start).add(beam.end).multiplyScalar(0.5);
-            lookRotation(direction.multiplyScalar(1 / length), dummy.quaternion);
-            dummy.scale.set(radius, radius, length);
-            dummy.updateMatrix();
-            glow.setMatrixAt(glowCount, dummy.matrix);
-            glow.setColorAt(glowCount, color.set(beam.color).multiplyScalar(style.glow));
-            glowCount += 1;
-
-            if (style.core > 0) {
-                dummy.scale.set(radius * 0.4, radius * 0.4, length);
-                dummy.updateMatrix();
-                core.setMatrixAt(coreCount, dummy.matrix);
-                core.setColorAt(coreCount, color.copy(WHITE).multiplyScalar(style.core));
-                coreCount += 1;
-            }
-            if (style.flare > 0) {
-                dummy.position.copy(beam.end);
-                dummy.quaternion.identity();
-                dummy.scale.setScalar(beam.width * style.flare * flicker);
-                dummy.updateMatrix();
-                flare.setMatrixAt(flareCount, dummy.matrix);
-                flare.setColorAt(flareCount, color.set(beam.color).multiplyScalar(1.5));
-                flareCount += 1;
+            const end = beam.to ? shownImpact(session, beam.to, beam.end, beam.to.shield > 0, scratchEnd) : beam.end;
+            if (beam.start.distanceToSquared(end) < 1e-6) continue;
+            const seed = i * 2.1;
+            const flicker = 1 + 0.12 * Math.sin(world.time * 55 + seed);
+            color.set(beam.color);
+            ribbons.beam(beam.start, end, color, style.glow, beam.width * style.reach * flicker, style.core, seed);
+            if (style.muzzle > 0) ribbons.flare(beam.start, color, 1.2, beam.width * style.muzzle * flicker, 1.2, seed);
+            if (style.impact > 0) {
+                const size = beam.width * style.impact * flicker * (seenFromInside(session, beam.to) ? INSIDE_FLARE_SCALE : 1);
+                ribbons.flare(end, color.lerp(WHITE, 0.15), 1.5, size, style.core, seed + 1);
             }
         }
-
-        for (const [mesh, used] of [[glow, glowCount], [core, coreCount], [flare, flareCount]]) {
-            mesh.count = used;
-            mesh.instanceMatrix.needsUpdate = true;
-            if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-        }
+        ribbons.finish(world.time);
     });
 
-    return (
-        <>
-            <instancedMesh ref={glowRef} args={[beamGeometry, undefined, MAX_BEAMS]} frustumCulled={false}>
-                <meshBasicMaterial transparent opacity={0.55} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} toneMapped={false} />
-            </instancedMesh>
-            <instancedMesh ref={coreRef} args={[beamGeometry, undefined, MAX_BEAMS]} frustumCulled={false}>
-                <meshBasicMaterial transparent opacity={0.9} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} toneMapped={false} />
-            </instancedMesh>
-            <instancedMesh ref={flareRef} args={[undefined, undefined, MAX_BEAMS]} frustumCulled={false}>
-                <sphereGeometry args={[1, 10, 8]} />
-                <meshBasicMaterial transparent opacity={0.6} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
-            </instancedMesh>
-        </>
-    );
+    return <primitive object={ribbons.mesh} />;
 }

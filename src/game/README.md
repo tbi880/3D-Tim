@@ -127,9 +127,19 @@ and react to `world.events` (explosions, hits...).
   powerless hull drifts, burns and starts to tumble (`effects/breakup.js` gives both the
   hull and the fires their pose), then the main explosion replaces it with wreckage.
 * **Shields** (`effects/ShieldShell.js`) are invisible until hit, then glow around the
-  point of impact only. **Exhaust** for every ship but the player's is a shader-drawn
-  plume, one mesh per ship (`effects/ExhaustPlume.js`); a model with an empty `engines`
-  list (the Dawnbreaker) has none.
+  point of impact only; the pilot's own is also seen from inside it, from the cockpit.
+  **Exhaust** for every ship but the player's is a shader-drawn plume, one mesh per ship
+  (`effects/ExhaustPlume.js`); a model with an empty `engines` list (the Dawnbreaker) has none.
+* **Beams and bolts** (`effects/EnergyRibbons.js`) are drawn as light, not as solids: quads
+  that face the eye, shaded with a white-hot core, a soft halo and energy running along them,
+  one draw call for all beams and their flares and one for all bolts. A shot stopped by a
+  shield melts into it and breaks into shards (`effects/ShieldImpacts.js`); one that reaches
+  bare hull sparks.
+* **Being hit** (`effects/playerFeedback.js`): a sustained beam from anything larger than a
+  fighter keeps the camera trembling; with the shield down, hits shower sparks inside the
+  cockpit (`CockpitSparks.jsx`) and scramble the instruments for a moment. In VR the view
+  never shakes: the cabin shudders round the pilot instead, its lights stutter and the
+  instrument display tears (`xr/cabinLighting.js`, `xr/VRHud.jsx`).
 * Ships arriving by warp are invulnerable and untargetable until they land
   (`ship.arriving`); `ShipsLayer` draws the streak, `ExplosionsLayer` the flash and ring.
 

@@ -218,8 +218,11 @@ function Toast() {
     );
 }
 
-/** Screen-edge flash when the player's ship is hit: blue for shields, red for hull. */
-function DamageFlash({ session }) {
+/**
+ * The latest hit on the player's ship, for a moment after it lands: { kind: 'shield' | 'hull', id },
+ * else null.
+ */
+function useDamageFlash(session) {
     const [flash, setFlash] = useState(null);
 
     useEffect(() => {
@@ -235,7 +238,11 @@ function DamageFlash({ session }) {
             clearTimeout(timer);
         };
     }, [session]);
+    return flash;
+}
 
+/** Screen-edge flash when the player's ship is hit: blue for shields, red for hull. */
+function DamageFlash({ flash }) {
     if (!flash) return null;
     return <div key={flash.id} className={`eod-damage-flash eod-damage-flash--${flash.kind}`} />;
 }
@@ -332,11 +339,13 @@ function ScreenFade({ session }) {
 export default function GameHud({ session, markerCanvasRef, radarCanvasRef }) {
     const phase = useGameStore((state) => state.phase);
     const inFlight = phase === PHASE.PLAYING || phase === PHASE.PAUSED;
+    const flash = useDamageFlash(session);
 
     return (
-        <div className="eod-hud" data-phase={phase}>
+        // A hit on the bare hull (shield down) knocks the instruments: their panels jump and smear (hud.css).
+        <div className="eod-hud" data-phase={phase} data-scrambled={flash?.kind === 'hull' ? '' : undefined}>
             <canvas ref={markerCanvasRef} className="eod-marker-canvas" />
-            <DamageFlash session={session} />
+            <DamageFlash flash={flash} />
             <WarpFlash session={session} />
             <ScreenFade session={session} />
             {inFlight && IS_TOUCH && (

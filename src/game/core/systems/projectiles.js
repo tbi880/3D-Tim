@@ -23,6 +23,7 @@ function hitShip(world, projectile, ship) {
     const def = projectile.def;
     applyDamage(world, ship, def.damage * projectile.damageScale, {
         source: projectile.owner,
+        weapon: def,
         point: projectile.position,
         shieldMult: def.shieldMult ?? 1,
         hullMult: def.hullMult ?? 1,

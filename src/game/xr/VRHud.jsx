@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { CHARACTERS } from '../config/characters.js';
+import { GAME_EVENTS } from '../core/EventBus.js';
 import { translate } from '../i18n/index.js';
+import { isHullHitOnPlayer, playerFeedback } from '../scene/effects/playerFeedback.js';
 import { PHASE, SESSION_EVENTS } from '../state/GameSession.js';
 import { useGameStore } from '../state/gameStore.js';
 import { drawMarkers, drawRadar } from '../ui/markerRenderer.js';
@@ -25,6 +27,8 @@ import layout from './cockpitLayout.json';
  *        slowly, so it is redrawn (and uploaded to the GPU) TEXT_RATE times a second.
  *  - Instrument panel below the line of sight: shields, hull, beam energy, afterburner,
  *    radar, speed, torpedoes, power mode and the current target. Redrawn ten times a second.
+ *    A hit on the bare hull (shield down) scrambles its picture for a moment: it tears,
+ *    ghosts and drops lines, redrawn every frame while that lasts.
  *  - A veil around the eye for the docking fade-to-black and the warp-arrival white-out.
  */
 
@@ -52,6 +56,10 @@ const PANEL_TILT = layout.display.tilt;
 /** The comms box ends here (logical px), above the instrument panel's top edge. */
 const PANE_TEXT_BOTTOM = 392;
 const PANEL_INTERVAL = 0.1;
+/** A hull hit scrambles the panel this much (0..1) plus a little per point of damage; it clears at GLITCH_DECAY (1/s). */
+const GLITCH_PER_HIT = 0.55;
+const GLITCH_PER_DAMAGE = 0.03;
+const GLITCH_DECAY = 2.2;
 
 /** Must match ui/CommsPanel.jsx. */
 const TYPE_SPEED = 55;
@@ -255,7 +263,31 @@ function radarCanvas() {
     return radarCanvasCache;
 }
 
-function drawPanel(panel, session, state, t) {
+/**
+ * Scrambles what is on the panel, as a display does when its signal is knocked: bands of the
+ * picture slide sideways, a faint copy of it ghosts beside itself, lines drop out and static
+ * streaks across. `strength` 0..1.
+ */
+function scramblePanel({ ctx, canvas }, strength) {
+    const { width, height } = canvas;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    for (let band = 0; band < 3 + strength * 6; band++) {
+        const y = Math.random() * height;
+        const tall = 6 + Math.random() * 46 * strength;
+        ctx.drawImage(canvas, 0, y, width, tall, (Math.random() - 0.5) * 110 * strength, y, width, tall);
+    }
+    ctx.globalAlpha = 0.3 * strength;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.drawImage(canvas, (Math.random() - 0.5) * 36 * strength, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = 'rgba(2, 8, 16, 0.85)';
+    for (let line = 0; line < strength * 5; line++) ctx.fillRect(0, Math.random() * height, width, 3 + Math.random() * 12);
+    ctx.fillStyle = 'rgba(200, 235, 255, 0.4)';
+    for (let streak = 0; streak < strength * 14; streak++) ctx.fillRect(Math.random() * width, Math.random() * height, 20 + Math.random() * 140, 2);
+}
+
+function drawPanel(panel, session, state, t, glitch = 0) {
     const { ctx, canvas } = panel;
     const { width, height } = canvas;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -322,6 +354,7 @@ function drawPanel(panel, session, state, t) {
         ctx.fillStyle = 'rgba(200, 215, 230, 0.6)';
         ctx.fillText(t('hud.noTarget'), right, 246);
     }
+    if (glitch > 0.02) scramblePanel(panel, glitch);
     panel.commit();
 }
 
@@ -345,7 +378,7 @@ export default function VRHud({ game, seatRef }) {
         mesh.visible = false;
         return mesh;
     }, []);
-    const state = useRef({ panelTimer: 0, textTimer: 0, flash: 0, time: 0 });
+    const state = useRef({ panelTimer: 0, textTimer: 0, flash: 0, time: 0, glitch: 0 });
 
     useEffect(() => () => {
         markerPane.dispose();
@@ -357,6 +390,11 @@ export default function VRHud({ game, seatRef }) {
 
     useEffect(() => session.events.on(SESSION_EVENTS.WARP, ({ stage }) => {
         if (stage === 'arrive') state.current.flash = VEIL_FLASH_SECONDS;
+    }), [session]);
+
+    useEffect(() => session.world.events.on(GAME_EVENTS.HIT, (hit) => {
+        if (!isHullHitOnPlayer(session.world, hit)) return;
+        state.current.glitch = Math.min(1, state.current.glitch + GLITCH_PER_HIT + hit.amount * GLITCH_PER_DAMAGE);
     }), [session]);
 
     useFrame((_, delta) => {
@@ -389,13 +427,15 @@ export default function VRHud({ game, seatRef }) {
             local.textTimer = 0;
         }
 
-        // Instrument panel.
+        // Instrument panel: it rides with the cabin, and is redrawn every frame while scrambled.
         local.panelTimer -= delta;
-        if (local.panelTimer <= 0) {
+        local.glitch = Math.max(0, local.glitch - GLITCH_DECAY * delta);
+        if (local.panelTimer <= 0 || local.glitch > 0.02) {
             local.panelTimer = PANEL_INTERVAL;
-            drawPanel(panel, session, store, t);
+            drawPanel(panel, session, store, t, local.glitch);
         }
         panel.mesh.visible = flying && Boolean(store.hud?.alive);
+        panel.mesh.position.fromArray(PANEL_POSITION).multiplyScalar(CABIN_SCALE).add(playerFeedback.cabinShake);
 
         // Veil: black for the docking fade, white for a moment after a warp arrival.
         local.flash = Math.max(0, local.flash - delta);

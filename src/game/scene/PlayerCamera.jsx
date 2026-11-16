@@ -7,6 +7,7 @@ import { SESSION_EVENTS } from '../state/GameSession.js';
 import { cameraModeOf, vr } from '../xr/vrState.js';
 import { vrRig } from '../xr/VRCameraRig.jsx';
 import Cockpit from './Cockpit.jsx';
+import { playerFeedback, underHeavyBeam } from './effects/playerFeedback.js';
 import { viewPose } from './viewPose.js';
 import WarpTunnel from './WarpTunnel.jsx';
 
@@ -18,6 +19,16 @@ const CAMERA_PRIORITY = -1;
 const TRAUMA_DECAY = 1.5;
 const MAX_SHAKE_OFFSET = 1.1;
 const MAX_SHAKE_ROLL = 0.035;
+/**
+ * A sustained beam from a medium or large ship keeps the ship trembling for as long as it is
+ * on: this much shake while the shield takes it, more once it is burning the hull. Eased in
+ * and out at RUMBLE_FOLLOW (1/s) so it swells rather than switches.
+ */
+const BEAM_RUMBLE_SHAKE = 0.07;
+const BEAM_RUMBLE_BARE_HULL = 1.6;
+const RUMBLE_FOLLOW = 7;
+/** VR: how far (m) the cabin shudders round the pilot at full shake. The view itself never moves. */
+const VR_CABIN_SHAKE = 0.045;
 
 /** Pilot's eye relative to the ship's centre (inside the Kestrel's canopy). */
 const COCKPIT_EYE = new THREE.Vector3(0, 1.25, -3.4);
@@ -46,7 +57,8 @@ const scratchScale = new THREE.Vector3();
  * under it (xr/VRCameraRig.jsx), so the head moves freely inside the cockpit. For comfort
  * the seat is fixed to the ship there - no shake, no field-of-view changes and, in the chase
  * view, no swing - since anything that moves the picture without the head moving makes people
- * sick in a headset. `children` hang off the camera too (that VR rig).
+ * sick in a headset. What shakes there instead is the cabin round the pilot, by millimetres,
+ * while the stars stay still. `children` hang off the camera too (that VR rig).
  */
 export default function PlayerCamera({ session, children }) {
     const cameraRef = useRef(null);
@@ -87,15 +99,29 @@ export default function PlayerCamera({ session, children }) {
         const isCockpit = cameraModeOf(session) !== 'chase';
         const rig = chase.current;
 
+        // Hits fade; a heavy beam held on the ship keeps it trembling until it lets go.
+        trauma.current = Math.max(0, trauma.current - TRAUMA_DECAY * dt);
+        const bearing = player.alive && underHeavyBeam(world, player) ? 1 : 0;
+        playerFeedback.beamRumble += (bearing - playerFeedback.beamRumble) * (1 - Math.exp(-RUMBLE_FOLLOW * dt));
+        const rumble = playerFeedback.beamRumble * BEAM_RUMBLE_SHAKE * (player.shield > 0 ? 1 : BEAM_RUMBLE_BARE_HULL);
+        // Spooling up the warp drive rattles the ship too.
+        const shake = dt > 0 ? Math.max(trauma.current * trauma.current, world.warpFactor * 0.06, rumble) : 0;
+        const cabin = cockpitRef.current;
+
         if (vr.active) {
             placeVRSeat(camera, player, isCockpit);
             rig.ready = false;
             rig.lastPosition.copy(player.position);
-            if (cockpitRef.current) cockpitRef.current.visible = isCockpit && player.alive;
-            trauma.current = 0;
+            playerFeedback.cabinShake.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(shake * VR_CABIN_SHAKE);
+            if (cabin) {
+                cabin.visible = isCockpit && player.alive;
+                cabin.position.copy(playerFeedback.cabinShake);
+            }
             syncVRViewPose(camera, gl.xr.getCamera());
             return;
         }
+        playerFeedback.cabinShake.set(0, 0, 0);
+        if (cabin) cabin.position.set(0, 0, 0);
 
         if (isCockpit) {
             camera.quaternion.copy(player.quaternion);
@@ -117,12 +143,9 @@ export default function PlayerCamera({ session, children }) {
             camera.quaternion.setFromRotationMatrix(scratchMatrix.lookAt(camera.position, scratchTarget, scratchUp));
         }
         rig.lastPosition.copy(player.position);
-        if (cockpitRef.current) cockpitRef.current.visible = isCockpit && player.alive;
+        if (cabin) cabin.visible = isCockpit && player.alive;
 
-        trauma.current = Math.max(0, trauma.current - TRAUMA_DECAY * dt);
-        // Spooling up the warp drive rattles the ship too.
-        const shake = Math.max(trauma.current * trauma.current, world.warpFactor * 0.06);
-        if (shake > 0.0005 && dt > 0) {
+        if (shake > 0.0005) {
             camera.translateX((Math.random() - 0.5) * shake * MAX_SHAKE_OFFSET);
             camera.translateY((Math.random() - 0.5) * shake * MAX_SHAKE_OFFSET);
             camera.rotateZ((Math.random() - 0.5) * shake * MAX_SHAKE_ROLL);
@@ -143,7 +166,7 @@ export default function PlayerCamera({ session, children }) {
         <PerspectiveCamera ref={cameraRef} makeDefault fov={BASE_FOV} near={0.1} far={3_000_000}>
             {children}
             <group ref={cockpitRef}>
-                <Cockpit baseFov={BASE_FOV} />
+                <Cockpit baseFov={BASE_FOV} session={session} />
             </group>
             <WarpTunnel session={session} />
         </PerspectiveCamera>

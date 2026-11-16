@@ -8,7 +8,9 @@ import * as THREE from 'three';
  *  - its colour is the power mode's - blue balanced, cyan defense, red attack - and fades
  *    between them;
  *  - with the hull critical it throbs red;
- *  - on the afterburner the pulses along the light strips run faster.
+ *  - on the afterburner the pulses along the light strips run faster;
+ *  - when the bare hull is hit (shield down) the lights stutter for a moment, as if the
+ *    ship's power had been knocked.
  */
 
 /** Ambient-light colours per power mode. */
@@ -38,8 +40,17 @@ export const GLOW_BRIGHTNESS = 1.6;
  */
 const SELF_LIGHT = 0.7;
 
+/** A hit's stutter fades at this rate (1/s); while it lasts the lights drop out this many times a second. */
+const DISTURBANCE_DECAY = 2.4;
+const STUTTER_RATE = 17;
+/** How dark a drop-out is (fraction of normal brightness). */
+const STUTTER_LEVEL = 0.2;
+
 const modeColour = AMBIENT_COLOURS.balanced.clone();
 let time = 0;
+let disturbance = 0;
+let stutterUntil = 0;
+let stutterDark = false;
 
 export const ambientLight = {
     /** The colour shown this frame. */
@@ -47,6 +58,13 @@ export const ambientLight = {
     /** How far the pulses along the strips have travelled, in metres, kept within one
      * spacing: the pattern repeats there, and small numbers stay exact on the GPU. */
     travel: 0,
+    /** Brightness of every cabin light this frame (1 = normal), lower while they stutter. */
+    level: 1,
+
+    /** The power takes a knock: the lights stutter. `strength` 0..1 is how badly. */
+    disturb(strength) {
+        disturbance = Math.min(1, disturbance + strength);
+    },
 
     /** @param hud the game store's `hud` (may be null between flights) */
     update(hud, delta) {
@@ -57,6 +75,14 @@ export const ambientLight = {
             this.colour.lerp(ALARM_COLOUR, 0.5 - 0.5 * Math.cos(time * ALARM_RATE * Math.PI * 2));
         }
         this.travel = (this.travel + delta * (hud?.boosting ? BOOST_PULSE_SPEED : PULSE_SPEED)) % PULSE_SPACING;
+
+        disturbance = Math.max(0, disturbance - DISTURBANCE_DECAY * delta);
+        if (time >= stutterUntil) {
+            // Irregular: each stretch of light or dark lasts a random fraction of the beat.
+            stutterUntil = time + (0.3 + Math.random()) / STUTTER_RATE;
+            stutterDark = Math.random() < disturbance;
+        }
+        this.level = disturbance > 0.02 && stutterDark ? STUTTER_LEVEL + (1 - STUTTER_LEVEL) * (1 - disturbance) : 1;
     },
 };
 

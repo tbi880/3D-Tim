@@ -46,8 +46,15 @@ export function randomDirection(out) {
  * logarithmic depth buffer. Emitting never allocates: new particles overwrite the oldest ones.
  */
 export class ParticleSystem {
-    constructor(capacity) {
+    /**
+     * @param {object} [options]
+     * @param {THREE.Vector3} [options.gravity] pulls every particle this way (m/s²); none in open space
+     * @param {number} [options.drag] how quickly particles slow down (1/s)
+     */
+    constructor(capacity, { gravity = null, drag = 1.2 } = {}) {
         this.capacity = capacity;
+        this.gravity = gravity;
+        this.drag = drag;
         this.geometry = new THREE.BufferGeometry();
         this.attributes = {
             position: new THREE.BufferAttribute(new Float32Array(capacity * 3), 3),
@@ -79,15 +86,18 @@ export class ParticleSystem {
     }
 
     /**
-     * Adds `count` particles flying outwards from `origin`.
-     * @param {{ count: number, speed: number, life: number, size: number, colors: THREE.Color[] }} burst
+     * Adds `count` particles flying outwards from `origin`: in every direction, or - with a
+     * `direction` (unit vector) - in a spray round it, `spread` wide (0 = a jet, 1 = a wide fan).
+     * @param {{ count: number, speed: number, life: number, size: number, colors: THREE.Color[], direction?: THREE.Vector3, spread?: number }} burst
      */
-    emit(origin, { count, speed, life, size, colors }) {
+    emit(origin, { count, speed, life, size, colors, direction = null, spread = 0.6 }) {
         const { attributes } = this;
         for (let n = 0; n < count; n++) {
             const i = this.cursor;
             this.cursor = (this.cursor + 1) % this.capacity;
-            randomDirection(scratchVelocity).multiplyScalar(speed * (0.25 + Math.random() * 0.75));
+            randomDirection(scratchVelocity);
+            if (direction) scratchVelocity.multiplyScalar(spread).add(direction).normalize();
+            scratchVelocity.multiplyScalar(speed * (0.25 + Math.random() * 0.75));
             attributes.position.setXYZ(i, origin.x, origin.y, origin.z);
             scratchVelocity.toArray(this.velocity, i * 3);
             const tint = colors[Math.floor(Math.random() * colors.length)];
@@ -109,11 +119,17 @@ export class ParticleSystem {
         const { attributes, velocity, life, maxLife } = this;
         const positions = attributes.position.array;
         const alphas = attributes.alpha.array;
-        const drag = Math.exp(-1.2 * dt);
+        const drag = Math.exp(-this.drag * dt);
+        const gravity = this.gravity;
         for (let i = 0; i < this.capacity; i++) {
             if (life[i] <= 0) continue;
             life[i] -= dt;
             const offset = i * 3;
+            if (gravity) {
+                velocity[offset] += gravity.x * dt;
+                velocity[offset + 1] += gravity.y * dt;
+                velocity[offset + 2] += gravity.z * dt;
+            }
             positions[offset] += velocity[offset] * dt;
             positions[offset + 1] += velocity[offset + 1] * dt;
             positions[offset + 2] += velocity[offset + 2] * dt;

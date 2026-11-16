@@ -36,7 +36,10 @@ export const GAME_EVENTS = Object.freeze({
     SHIP_REMOVED: 'shipRemoved',
     /** { position, size, color?, capital?, ship? } - `ship` is set when a ship (not a projectile) blew up */
     EXPLOSION: 'explosion',
-    /** { target, position, shield: boolean, amount } */
+    /**
+     * { target, position, shield: boolean, amount, source?, weapon? } - `source` is the ship that
+     * fired and `weapon` its weapon's definition, when known (not on a multiplayer guest's device).
+     */
     HIT: 'hit',
     /** { ship, weapon, kind: 'bolt' | 'torpedo', projectile } */
     WEAPON_FIRED: 'weaponFired',
