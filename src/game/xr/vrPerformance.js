@@ -26,18 +26,36 @@ function describe(error) {
 export const vrPerformance = {
     /** The last flight's figures, or null before any: { fps, scale, width, height, drawCalls, triangles }. */
     flight: null,
+    /** How long the last frame's script took, in milliseconds (told by xr/frameGuard.js). */
+    lastFrameJs: 0,
+    /** A viewport scale to use whatever the frame rate (xr/vrBenchmark.js), or null. */
+    forcedScale: null,
 
     /** A session starts: full resolution, an empty report. */
     begin() {
         resolution.reset();
         sincePublish = 0;
-        session = { frames: 0, seconds: 0, width: 0, height: 0, lowestScale: 1, errors: 0, firstError: null };
+        session = { frames: 0, seconds: 0, js: 0, width: 0, height: 0, lowestScale: 1, errors: 0, firstError: null };
+    },
+
+    /** A frame's script took this long (xr/frameGuard.js). */
+    frameTook(milliseconds) {
+        this.lastFrameJs = milliseconds;
+        if (session) session.js += milliseconds;
     },
 
     /** The session is over: publish its report. */
     end() {
         if (!session) return;
-        useGameStore.setState({ vrReport: { ...session, seconds: Math.round(session.seconds) } });
+        const { frames, seconds, js } = session;
+        useGameStore.setState({
+            vrReport: {
+                ...session,
+                seconds: Math.round(seconds),
+                fps: seconds > 0 ? Math.round(frames / seconds) : 0,
+                js: frames > 0 ? Math.round((js / frames) * 10) / 10 : 0,
+            },
+        });
         session = null;
     },
 
@@ -50,7 +68,7 @@ export const vrPerformance = {
 
     /** The session never started (enterVR was refused or its set-up threw). */
     couldNotStart(error) {
-        useGameStore.setState({ vrReport: { frames: 0, seconds: 0, width: 0, height: 0, lowestScale: 1, errors: 1, firstError: describe(error), notStarted: true } });
+        useGameStore.setState({ vrReport: { frames: 0, seconds: 0, fps: 0, js: 0, width: 0, height: 0, lowestScale: 1, errors: 1, firstError: describe(error), notStarted: true } });
     },
 
     /**
@@ -62,10 +80,12 @@ export const vrPerformance = {
      */
     update(gl, delta, frame, { flying, adapt }) {
         const xrSession = gl.xr.getSession();
-        const scale = resolution.update(delta, xrSession?.frameRate, adapt);
-        // The headset's own viewport scaling is only touched when the pilot has turned it on:
-        // asked for on every frame's views, it is used from the next frame on.
-        if (adapt) {
+        const followed = resolution.update(delta, xrSession?.frameRate, adapt);
+        const scale = this.forcedScale ?? followed;
+        // The headset's own viewport scaling is only touched when the pilot has turned it on
+        // (or a benchmark is trying it): asked for on every frame's views, it is used from the
+        // next frame on.
+        if (adapt || this.forcedScale !== null) {
             const views = frame?.getViewerPose?.(gl.xr.getReferenceSpace())?.views ?? [];
             for (const view of views) view.requestViewportScale?.(scale);
         }

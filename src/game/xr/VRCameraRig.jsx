@@ -14,6 +14,7 @@ import { VRMenu } from './VRMenu.js';
 import { XRGamepadInput } from './XRGamepadInput.js';
 import { ambientLight } from './cabinLighting.js';
 import { guardXRFrames } from './frameGuard.js';
+import { vrBenchmark } from './vrBenchmark.js';
 import { vrPerformance } from './vrPerformance.js';
 import { getXRStore, useVRActive, vr } from './vrState.js';
 
@@ -119,7 +120,10 @@ export default function VRCameraRig({ game }) {
     }, []);
 
     // An error in one frame must not stop the headset's frames for good (see frameGuard.js).
-    useEffect(() => guardXRFrames(gl, (error) => vrPerformance.failed(error)), [gl]);
+    useEffect(() => guardXRFrames(gl, {
+        onError: (error) => vrPerformance.failed(error),
+        onFrame: (milliseconds) => vrPerformance.frameTook(milliseconds),
+    }), [gl]);
 
     // Leaving the headset's view (system menu, headset taken off) pauses the fight; leaving VR
     // drops every held control so the ship does not keep turning on the flat page.
@@ -138,6 +142,7 @@ export default function VRCameraRig({ game }) {
                 flatAutoClear.current = null;
             }
             frameCount.current = 0;
+            vrBenchmark.cancel();
             if (state.session) vrPerformance.begin();
             else vrPerformance.end();
             recenterAt.current = [...AUTO_RECENTER];
@@ -177,6 +182,8 @@ export default function VRCameraRig({ game }) {
         if (!vr.active) return;
         // First, while the renderer still holds last frame's counts.
         vrPerformance.update(gl, delta, frame, { flying: game.session.phase === PHASE.PLAYING, adapt: vr.dynamicResolution });
+        // A benchmark (started from the pause menu) measures flight only, and pauses again when it has finished.
+        if (vrBenchmark.running && game.session.phase === PHASE.PLAYING) vrBenchmark.update(gl, state.scene, delta, () => game.session.pause());
         // In VR the scene must be drawn with the headset's camera (@react-three/xr switches to
         // it when the session starts). PlayerCamera's <PerspectiveCamera makeDefault> takes the
         // default back whenever its effects run again - e.g. when part of the scene suspends

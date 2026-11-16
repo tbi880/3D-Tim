@@ -7,6 +7,8 @@ import { PHASE } from '../state/GameSession.js';
 import { loadSave } from '../state/saveGame.js';
 import { roundRect, wrapText } from './canvasPanel.js';
 import { buildMatchMenu, isMatchMenuOpen } from './VRMatchMenu.js';
+import { stageOfENV } from '../../Settings';
+import { vrBenchmark } from './vrBenchmark.js';
 import { vrPerformance } from './vrPerformance.js';
 import { exitVR, vr } from './vrState.js';
 
@@ -142,12 +144,17 @@ export class VRMenu {
                 items.push({ label: t('ui.view'), value: t(`ui.view.${vr.view}`), left: toggleView, right: toggleView, select: toggleView });
                 const toggleDynamic = () => { vr.dynamicResolution = !vr.dynamicResolution; };
                 items.push({ label: t('ui.vr.dynamicResolution'), value: t(vr.dynamicResolution ? 'ui.on' : 'ui.off'), left: toggleDynamic, right: toggleDynamic, select: toggleDynamic });
+                // Development: measure in this headset what each part of the picture costs (xr/vrBenchmark.js).
+                if (stageOfENV !== 'prod') {
+                    items.push({ label: t('ui.vr.benchmark'), select: () => { vrBenchmark.requested = true; session.resume(); } });
+                }
                 items.push(...this.commonSettings(settings, t));
                 items.push({ label: t('ui.quitToTitle'), select: () => session.enterTitle() });
                 items.push(exitItem);
                 // How the headset was coping just before the pause: the only place to see it from inside.
                 const flight = vrPerformance.flight;
                 const lines = flight ? [t('ui.vr.performance', { ...flight, scale: Math.round(flight.scale * 100), triangles: Math.round(flight.triangles / 1000) })] : [];
+                if (state.vrBenchmark) lines.push(t('ui.vr.benchmarkDone'));
                 return { key: 'paused', title: t('ui.paused'), lines, columns: t('ui.vr.controls').split(' · '), items };
             }
             case PHASE.GAME_OVER: {

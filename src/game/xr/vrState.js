@@ -48,6 +48,16 @@ export function canvasAntialias() {
     return typeof navigator !== 'undefined' && HEADSET_BROWSER.test(navigator.userAgent);
 }
 
+/**
+ * Extra WebGL context options in a headset's own browser: always the GPU's fast mode. The
+ * site asks for "low-power" whenever a page renders one pixel per CSS pixel, as the game's
+ * Smooth preset does, which is the last thing wanted where the page is about to draw two
+ * eyes at once.
+ */
+export function headsetContextOptions() {
+    return canvasAntialias() ? { powerPreference: 'high-performance' } : {};
+}
+
 /** The page's XR store, created on first use. */
 export function getXRStore() {
     if (!store) {

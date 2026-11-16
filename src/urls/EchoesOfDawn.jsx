@@ -10,7 +10,7 @@ import { startHostHeartbeat } from '../game/net/lobby/hostHeartbeat.js';
 import { createLanMultiplayer } from '../game/net/lobby/lanStore.js';
 import { isTouchDevice } from '../game/input/device.js';
 import GameScene from '../game/scene/GameScene.jsx';
-import { canvasAntialias } from '../game/xr/vrState.js';
+import { canvasAntialias, headsetContextOptions } from '../game/xr/vrState.js';
 import { GameSession } from '../game/state/GameSession.js';
 import { gameStoreSink, useGameStore, useT } from '../game/state/gameStore.js';
 import GameHud from '../game/ui/GameHud.jsx';
@@ -23,7 +23,7 @@ import '../game/ui/hud.css';
  * away. A logarithmic depth buffer keeps depth precise over that whole range, which is what
  * stops distant hulls and planet cloud layers from flickering through each other.
  */
-const GL_OPTIONS = { logarithmicDepthBuffer: true };
+const GL_OPTIONS = { logarithmicDepthBuffer: true, ...headsetContextOptions() };
 
 /**
  * Builds everything one visit to the game needs. The three objects are plain classes with

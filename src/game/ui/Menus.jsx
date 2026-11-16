@@ -76,6 +76,7 @@ function VRButton({ onStart }) {
                 <small>{t('ui.vr.enterHint')}</small>
             </button>
             {!active && <VRReport />}
+            {!active && <VRBenchmarkResults />}
         </>
     );
 }
@@ -100,6 +101,20 @@ function VRReport() {
             {report.errors > 0 && <><br />{report.notStarted ? '' : `${t('ui.vr.report.errors', { count: report.errors })} `}{report.firstError}</>}
             {failed && <><br />{t('ui.vr.report.retry')}</>}
         </p>
+    );
+}
+
+/** The last in-headset benchmark (xr/vrBenchmark.js, development builds): what each part of the picture cost there. */
+function VRBenchmarkResults() {
+    const results = useGameStore((state) => state.vrBenchmark);
+    if (!results) return null;
+    return (
+        <table className="eod-vr-benchmark">
+            <thead><tr><th>VR benchmark</th><th>fps</th><th>script ms</th><th>eye</th></tr></thead>
+            <tbody>
+                {results.map(({ name, fps, js, eye }) => <tr key={name}><td>{name}</td><td>{fps}</td><td>{js}</td><td>{eye}</td></tr>)}
+            </tbody>
+        </table>
     );
 }
 
