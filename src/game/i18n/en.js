@@ -580,6 +580,7 @@ export default {
     'mp.vote.revive': 'Bring them back',
     'mp.vote.endsIn': '{seconds} s',
     'mp.vote.chosen': 'Your choice',
+    'mp.refit.text': 'Taking a planet pays in refit points. Each one raises a rating of the {ship} by a level, up to 10, for the rest of the match.',
     'mp.refit.note': 'Installed at once. The ship flies on by itself while this is open.',
     'mp.refit.close': 'Not now',
     'mp.result.victory': 'VICTORY',

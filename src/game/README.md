@@ -24,6 +24,10 @@ frigates 280 m, the warden 520 m, the Dawnbreaker 1.4 km, the Forge 3 km, the Ec
 its older Penumbra-class sisters 3.4 km, and Lantern Station's ring 4.7 km. Fights with the
 big ones happen along their hulls, not at a point.
 
+There is also a multiplayer mode for devices on one Wi-Fi - a battle royale across a
+collapsing star system - described in `net/README.md` (the machinery) and
+`modes/battleRoyale/` (the rules; tuning in `config/battleRoyale.js`).
+
 ## Architecture
 
 The game is split into layers that only depend downwards. The simulation knows nothing
@@ -43,6 +47,10 @@ scene/    React Three Fiber components. Pure observers: each frame they copy wor
           into three.js objects. Model loading lives in scene/models/.
 ui/       DOM HUD, comms panel, menus, touch controls, and the 2D marker / radar drawing.
 i18n/     English and Chinese text. All player-facing strings are keys in en.js / zh.js.
+net/      Multiplayer machinery: the match server, the client every device runs, packets,
+          WebRTC links and the LAN lobby (net/README.md). Reuses core/ as it is.
+modes/    Multiplayer game modes: rules for the server, a presenter for each device.
+xr/       The same game in a VR headset.
 ```
 
 Data flow per frame: `scene/GameLoop` → `GameSession.update(dt, controls)` →
@@ -213,6 +221,9 @@ the autopilot dies implausibly often. Run it after touching `story/` or `config/
 In development (`stageOfENV = "dev"`) the running game is exposed as `window.__eod`
 (`{ session, input, sound }`) for poking at from the browser console.
 
+`npm run game:test` runs the unit tests (`tests/game/`): mostly multiplayer, played
+headlessly the same way.
+
 ## Controls
 
 | Action | Keys |
@@ -229,6 +240,7 @@ In development (`stageOfENV = "dev"`) the running game is exposed as `window.__e
 | Skip comms line | Enter |
 | Pause | Esc / P |
 | Mute | M |
+| Multiplayer: star map / refit / call reinforcements | G / U / B |
 
 **Phones and tablets** (`ui/TouchControls.jsx`, shown when the primary pointer is a
 finger): a stick under the left thumb steers, the bar beside it sets the throttle, and the

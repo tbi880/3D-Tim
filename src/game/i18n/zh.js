@@ -580,6 +580,7 @@ export default {
     'mp.vote.revive': '复活队友',
     'mp.vote.endsIn': '{seconds} 秒',
     'mp.vote.chosen': '你的选择',
+    'mp.refit.text': '占领行星可以获得改装点数。每一点让{ship}的一项性能提升一级，最高 10 级，本局内一直有效。',
     'mp.refit.note': '立即生效。打开这个窗口时座舰会自行直飞。',
     'mp.refit.close': '稍后再说',
     'mp.result.victory': '胜利',

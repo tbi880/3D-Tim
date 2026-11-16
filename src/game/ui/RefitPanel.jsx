@@ -49,7 +49,7 @@ export default function RefitPanel({ session }) {
     return (
         <div className="eod-screen eod-screen--overlay eod-refit">
             <h2 className="eod-screen-heading eod-refit-title">{t('ui.refit.title')}</h2>
-            <p className="eod-screen-text">{t('ui.refit.text', { ship: t(`ship.${classId}`) })}</p>
+            <p className="eod-screen-text">{t(inFlight ? 'mp.refit.text' : 'ui.refit.text', { ship: t(`ship.${classId}`) })}</p>
             <p className="eod-refit-points">{t('ui.refit.points', { points: left })}</p>
             <div className="eod-refit-rows">
                 {RATING_ORDER.map((rating) => (
