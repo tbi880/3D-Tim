@@ -2,28 +2,67 @@ import { LobbyError } from '../../../src/game/net/lobby/LobbyClient.js';
 import { LINK_STATUS } from '../../../src/game/net/transport/PeerLink.js';
 import { createMemoryLinkPair } from '../../../src/game/net/transport/MemoryLink.js';
 
+/** A public room's countdown in the fake server (the real one's is the backend's LanRoomManager.AutoStartDelay). */
+export const FAKE_AUTO_START_SECONDS = 20;
+
 /**
  * A stand-in for the lobby server and for WebRTC, in memory, so several LanMultiplayer
  * controllers can meet in one test. It follows the real server's rules where the controller
  * depends on them (the host is ready, a match needs everybody ready, signals carry the real
- * sender, the room closes with its host); the real rules are tested in the backend.
+ * sender, the room closes with its host, only network rooms are listed, quick match fills a
+ * public room or opens one, a public room counts down once everybody is ready); the real
+ * rules are tested in the backend.
  */
 export class FakeLobbyServer {
     constructor() {
         this.clients = new Map();
-        this.room = null;
+        /** Rooms by code, in the order they were opened. */
+        this.rooms = new Map();
         this.nextId = 1;
+        this.nextRoom = 0;
         this.signals = 0;
+        /** What GetIceServers answers. */
+        this.iceServers = [{ urls: ['stun:stun.test:3478'] }];
+    }
+
+    roomOf(playerId) {
+        return [...this.rooms.values()].find((room) => room.players.some((player) => player.playerId === playerId)) ?? null;
+    }
+
+    openRoom(host, options, visibility) {
+        // The first room keeps the code the older tests type in.
+        const code = this.nextRoom === 0 ? 'ABCDE' : `ROOM${String.fromCharCode(65 + this.nextRoom)}`;
+        this.nextRoom += 1;
+        const room = {
+            code, state: 'Lobby', hostPlayerId: host.playerId, mode: options?.mode ?? 'battleRoyale', settings: options?.settings ?? {},
+            maxPlayers: 6, matchId: null, players: [host], visibility, startsInSeconds: null,
+        };
+        this.rooms.set(code, room);
+        return room;
     }
 
     /** What a LanMultiplayer is given as `createLobby`. */
     createLobby = (handlers) => {
         const server = this;
         let me = null;
-        const requireRoom = () => {
-            if (!server.room?.players.some((player) => player.playerId === me?.playerId)) throw new LobbyError('lan.notInRoom');
+        const myRoom = () => {
+            const room = me && server.roomOf(me.playerId);
+            if (!room) throw new LobbyError('lan.notInRoom');
+            return room;
+        };
+        const hostedRoom = () => {
+            const room = myRoom();
+            if (room.hostPlayerId !== me.playerId) throw new LobbyError('lan.notHost');
+            return room;
         };
         const player = (profile, isHost) => ({ ...profile, playerId: me.playerId, ready: isHost, isHost, isGuest: true, accountName: null });
+        const enter = (room, profile) => {
+            if (room.state !== 'Lobby') throw new LobbyError('lan.matchInProgress');
+            if (room.players.length >= room.maxPlayers) throw new LobbyError('lan.roomFull');
+            room.players.push(player(profile, false));
+            server.broadcast(room);
+            return server.snapshot(room);
+        };
         const lobby = {
             handlers,
             async connect() {
@@ -38,76 +77,67 @@ export class FakeLobbyServer {
                 me = null;
             },
             async listRooms() {
-                const { room } = server;
-                return room && room.state === 'Lobby'
-                    ? [{ code: room.code, hostName: room.players[0].displayName, hostDeviceName: room.players[0].deviceName, hostDeviceKind: room.players[0].deviceKind, playerCount: room.players.length, maxPlayers: room.maxPlayers }]
-                    : [];
+                return [...server.rooms.values()].filter((room) => room.state === 'Lobby' && room.visibility === 'Network').map((room) => ({
+                    code: room.code, hostName: room.players[0].displayName, hostDeviceName: room.players[0].deviceName,
+                    hostDeviceKind: room.players[0].deviceKind, playerCount: room.players.length, maxPlayers: room.maxPlayers,
+                }));
+            },
+            async getIceServers() {
+                return JSON.parse(JSON.stringify(server.iceServers));
             },
             async createRoom(profile, options) {
-                server.room = { code: 'ABCDE', state: 'Lobby', hostPlayerId: me.playerId, mode: options?.mode ?? 'battleRoyale', settings: options?.settings ?? {}, maxPlayers: 6, matchId: null, players: [player(profile, true)] };
-                return server.snapshot();
+                return server.snapshot(server.openRoom(player(profile, true), options, options?.visibility ?? 'Network'));
             },
             async joinRoom(code, profile) {
-                if (!server.room || code !== server.room.code) throw new LobbyError('lan.roomNotFound');
-                if (server.room.state !== 'Lobby') throw new LobbyError('lan.matchInProgress');
-                server.room.players.push(player(profile, false));
-                server.broadcast();
-                return server.snapshot();
+                const room = server.rooms.get(code);
+                if (!room) throw new LobbyError('lan.roomNotFound');
+                return enter(room, profile);
+            },
+            async quickMatch(profile, criteria) {
+                const avoid = new Set(criteria?.avoid ?? []);
+                const room = [...server.rooms.values()].find((candidate) => candidate.visibility === 'Public' && candidate.state === 'Lobby'
+                    && candidate.players.length < candidate.maxPlayers && !avoid.has(candidate.code));
+                return room ? enter(room, profile) : server.snapshot(server.openRoom(player(profile, true), { mode: criteria?.mode }, 'Public'));
             },
             async updateProfile(profile) {
-                requireRoom();
-                Object.assign(server.room.players.find((entry) => entry.playerId === me.playerId), profile);
-                server.broadcast();
+                const room = myRoom();
+                Object.assign(room.players.find((entry) => entry.playerId === me.playerId), profile);
+                server.broadcast(room);
             },
             async setReady(ready) {
-                requireRoom();
-                const entry = server.room.players.find((candidate) => candidate.playerId === me.playerId);
+                const room = myRoom();
+                const entry = room.players.find((candidate) => candidate.playerId === me.playerId);
                 if (!entry.isHost) entry.ready = ready;
-                server.broadcast();
+                server.broadcast(room);
             },
             async updateOptions(options) {
-                requireRoom();
-                if (server.room.hostPlayerId !== me.playerId) throw new LobbyError('lan.notHost');
-                Object.assign(server.room, Object.fromEntries(Object.entries(options).filter(([, value]) => value != null)));
-                server.broadcast();
+                const room = hostedRoom();
+                Object.assign(room, Object.fromEntries(Object.entries(options).filter(([, value]) => value != null)));
+                server.broadcast(room);
             },
             async startMatch() {
-                requireRoom();
-                const { room } = server;
-                if (room.hostPlayerId !== me.playerId) throw new LobbyError('lan.notHost');
-                if (room.players.some((entry) => !entry.ready)) throw new LobbyError('lan.playersNotReady');
-                room.state = 'InMatch';
-                room.matchId = `match-${server.nextId++}`;
-                const start = {
-                    matchId: room.matchId, seed: 11, hostPlayerId: room.hostPlayerId, mode: room.mode, settings: room.settings,
-                    players: room.players.map((entry) => ({ playerId: entry.playerId, displayName: entry.displayName, shipClassId: entry.shipClassId, loadout: { upgrades: {}, equipment: [] } })),
-                };
-                server.toRoom((client) => client.handlers.onMatchStarted(start));
-                server.broadcast();
+                server.start(hostedRoom());
             },
             async endMatch() {
-                requireRoom();
-                if (server.room.hostPlayerId !== me.playerId) throw new LobbyError('lan.notHost');
-                server.room.state = 'Lobby';
-                server.room.matchId = null;
-                for (const entry of server.room.players) entry.ready = entry.isHost;
-                server.broadcast();
+                const room = hostedRoom();
+                room.state = 'Lobby';
+                room.matchId = null;
+                for (const entry of room.players) entry.ready = entry.isHost;
+                server.broadcast(room);
             },
             async leaveRoom() {
-                const { room } = server;
-                if (!room || !me) return;
-                const index = room.players.findIndex((entry) => entry.playerId === me.playerId);
-                if (index === -1) return;
-                room.players.splice(index, 1);
+                const room = me && server.roomOf(me.playerId);
+                if (!room) return;
+                room.players.splice(room.players.findIndex((entry) => entry.playerId === me.playerId), 1);
                 if (room.hostPlayerId === me.playerId) {
-                    server.room = null;
-                    for (const entry of room.players) server.clients.get(entry.playerId)?.handlers.onRoomClosed(room.code);
+                    server.rooms.delete(room.code);
+                    for (const entry of room.players.splice(0)) server.clients.get(entry.playerId)?.handlers.onRoomClosed(room.code);
                 } else {
-                    server.broadcast();
+                    server.broadcast(room);
                 }
             },
             async sendSignal(toPlayerId, type, payload) {
-                requireRoom();
+                myRoom();
                 server.signals += 1;
                 server.clients.get(toPlayerId)?.handlers.onSignal({ fromPlayerId: me.playerId, type, payload });
             },
@@ -115,16 +145,39 @@ export class FakeLobbyServer {
         return lobby;
     };
 
-    snapshot() {
-        return JSON.parse(JSON.stringify(this.room));
+    start(room) {
+        if (room.players.some((entry) => !entry.ready)) throw new LobbyError('lan.playersNotReady');
+        room.state = 'InMatch';
+        room.matchId = `match-${this.nextId++}`;
+        const start = {
+            matchId: room.matchId, seed: 11, hostPlayerId: room.hostPlayerId, mode: room.mode, settings: room.settings,
+            players: room.players.map((entry) => ({ playerId: entry.playerId, displayName: entry.displayName, shipClassId: entry.shipClassId, loadout: { upgrades: {}, equipment: [] } })),
+        };
+        this.toRoom(room, (client) => client.handlers.onMatchStarted(start));
+        this.broadcast(room);
     }
 
-    toRoom(action) {
-        for (const entry of this.room.players) action(this.clients.get(entry.playerId));
+    /** The countdowns run out: every public room that was counting starts (the backend's LanAutoStartService). */
+    startDueRooms() {
+        for (const room of [...this.rooms.values()]) {
+            if (this.countingDown(room)) this.start(room);
+        }
     }
 
-    broadcast() {
-        this.toRoom((client) => client.handlers.onRoomUpdated(this.snapshot()));
+    countingDown(room) {
+        return room.visibility === 'Public' && room.state === 'Lobby' && room.players.length >= 2 && room.players.every((entry) => entry.ready);
+    }
+
+    snapshot(room) {
+        return JSON.parse(JSON.stringify({ ...room, startsInSeconds: this.countingDown(room) ? FAKE_AUTO_START_SECONDS : null }));
+    }
+
+    toRoom(room, action) {
+        for (const entry of [...room.players]) action(this.clients.get(entry.playerId));
+    }
+
+    broadcast(room) {
+        this.toRoom(room, (client) => client.handlers.onRoomUpdated(this.snapshot(room)));
     }
 
     /** The lobby server goes away for everybody (the internet drops; the Wi-Fi is still there). */
@@ -140,15 +193,25 @@ export class FakeLobbyServer {
 export class FakeNetwork {
     constructor() {
         this.offers = new Map();
+        /** Links that have sent an offer and not heard back, by offer. */
+        this.calling = new Map();
         this.ends = [];
         this.nextOffer = 1;
         /** Set to true to make every new link fail to connect. */
         this.blocked = false;
+        /** Owners (see `createLink`) whose devices nobody can reach: an offer to one of them goes unanswered and fails. */
+        this.unreachable = new Set();
+        /** The `iceServers` every link was made with, in order. */
+        this.iceServersUsed = [];
     }
 
-    /** What a LanMultiplayer is given as `createLink`. */
-    createLink = ({ initiator, sendSignal, onStatus }) => {
+    /**
+     * What a LanMultiplayer is given as `createLink`. `owner` names the device the link is
+     * on, for `unreachable`; tests that need it wrap this function to pass it.
+     */
+    createLink = ({ initiator, sendSignal, onStatus, iceServers = null, owner = null }) => {
         const network = this;
+        network.iceServersUsed.push(iceServers);
         const link = {
             status: LINK_STATUS.CONNECTING,
             end: null,
@@ -173,6 +236,12 @@ export class FakeNetwork {
                 if (link.status !== LINK_STATUS.CONNECTING) return;
                 if (network.blocked) {
                     link.close();
+                    return;
+                }
+                if (type === 'offer' && !initiator && network.unreachable.has(owner)) {
+                    // The caller never hears back: for them the attempt times out.
+                    link.close();
+                    network.calling.get(payload)?.close();
                     return;
                 }
                 if (type === 'offer' && !initiator) {
@@ -201,7 +270,11 @@ export class FakeNetwork {
         if (initiator) {
             queueMicrotask(() => {
                 if (network.blocked) link.close();
-                else if (link.status === LINK_STATUS.CONNECTING) sendSignal('offer', `offer-${network.nextOffer++}`);
+                else if (link.status === LINK_STATUS.CONNECTING) {
+                    const offer = `offer-${network.nextOffer++}`;
+                    network.calling.set(offer, link);
+                    sendSignal('offer', offer);
+                }
             });
         }
         return link;

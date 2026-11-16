@@ -16,7 +16,9 @@ const scratchToRotation = new Quaternion();
  * between the two snapshots around it, so they move smoothly however unevenly packets arrive.
  */
 export class SnapshotTimeline {
-    constructor() {
+    /** @param {number} [delay] seconds behind the newest snapshot (NET.interpolationDelay on a LAN; more across the internet) */
+    constructor(delay = NET.interpolationDelay) {
+        this.delay = delay;
         this.snapshots = [];
         /** Host time being shown right now, or null before the first snapshot. */
         this.clock = null;
@@ -53,7 +55,7 @@ export class SnapshotTimeline {
         const latest = this.latest;
         if (!latest) return;
         this.sinceLatest += dt;
-        const target = latest.time + this.sinceLatest - NET.interpolationDelay;
+        const target = latest.time + this.sinceLatest - this.delay;
         if (this.clock === null) {
             this.clock = target;
             return;

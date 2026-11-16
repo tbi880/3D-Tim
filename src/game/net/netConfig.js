@@ -14,6 +14,11 @@ export const NET = Object.freeze({
      * arrive evenly, and every millisecond here is a millisecond the picture is late.
      */
     interpolationDelay: 0.045,
+    /**
+     * The same across the internet, where packets arrive less evenly and some come through a
+     * relay: a longer wait keeps other ships gliding instead of stopping and jumping.
+     */
+    internetInterpolationDelay: 0.1,
     /** Snapshots a client keeps for blending. */
     snapshotBufferSize: 12,
     /** A client's clock is pulled this fraction of the way to the host's with every snapshot. */
@@ -52,10 +57,36 @@ export const NET = Object.freeze({
 });
 
 /**
- * STUN servers for WebRTC. On one Wi-Fi the devices reach each other with their local
- * addresses and never need them; they only help on odd networks, at no cost otherwise.
+ * STUN servers for WebRTC, used when the lobby server names none. On one Wi-Fi the devices
+ * reach each other with their local addresses and never need them. Across the internet they
+ * are how a device learns its public address - and for networks where that is not enough
+ * the lobby server hands out a TURN relay with them (the backend's IceServerProvider).
  */
 export const ICE_SERVERS = Object.freeze([{ urls: 'stun:stun.l.google.com:19302' }]);
+
+const ICE_URL = /^(stun|turn|turns):[A-Za-z0-9.\-_~:?=\[\]%]{1,200}$/;
+const MAX_ICE_SERVERS = 8;
+const MAX_ICE_URLS = 8;
+
+/**
+ * The ICE servers the lobby server sent, checked before they are given to the browser:
+ * only stun: / turn: addresses, with credentials that are plain strings. Returns the
+ * default STUN servers if nothing usable is left.
+ * @param {unknown} servers `[{ urls: string[], username?, credential? }]`
+ */
+export function cleanIceServers(servers) {
+    const cleaned = [];
+    for (const server of Array.isArray(servers) ? servers.slice(0, MAX_ICE_SERVERS) : []) {
+        const urls = (Array.isArray(server?.urls) ? server.urls : [server?.urls])
+            .filter((url) => typeof url === 'string' && ICE_URL.test(url)).slice(0, MAX_ICE_URLS);
+        if (urls.length === 0) continue;
+        const relay = typeof server.username === 'string' && typeof server.credential === 'string';
+        // A relay without credentials cannot be used; a STUN server needs none.
+        if (!relay && urls.some((url) => !url.startsWith('stun:'))) continue;
+        cleaned.push(relay ? { urls, username: server.username.slice(0, 256), credential: server.credential.slice(0, 256) } : { urls });
+    }
+    return cleaned.length > 0 ? cleaned : [...ICE_SERVERS];
+}
 
 /** Names of the two data channels on every link. */
 export const CHANNELS = Object.freeze({

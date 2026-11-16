@@ -2,6 +2,7 @@ import { DEFAULT_GAME_MODE, gameModeOf } from '../../modes/index.js';
 import { ClientMatch } from '../match/ClientMatch.js';
 import { HostSeat } from '../match/HostSeat.js';
 import { normalizeMatchInfo } from '../match/matchInfo.js';
+import { NET, cleanIceServers } from '../netConfig.js';
 import { MatchServer } from '../server/MatchServer.js';
 import { LINK_STATUS } from '../transport/PeerLink.js';
 import { LOBBY_ERROR } from './LobbyClient.js';
@@ -9,15 +10,39 @@ import { LOBBY_ERROR } from './LobbyClient.js';
 /** Values of the backend's LanRoomState. */
 export const ROOM_STATE = Object.freeze({ LOBBY: 'Lobby', IN_MATCH: 'InMatch' });
 
+/** Values of the backend's LanRoomVisibility: who can find a room (anybody with its code can join it). */
+export const ROOM_VISIBILITY = Object.freeze({
+    /** Listed to the players on the network it was created from. */
+    NETWORK: 'Network',
+    /** Filled by quick match from anywhere; the server starts it once enough players are in. */
+    PUBLIC: 'Public',
+    /** Code only. */
+    PRIVATE: 'Private',
+});
+
+/** Which multiplayer the player opened from the title screen. */
+export const LOBBY_SCOPE = Object.freeze({
+    /** Players on one Wi-Fi: rooms on this network are listed. */
+    LAN: 'lan',
+    /** Players anywhere: quick match, or a room's code. */
+    GLOBAL: 'global',
+});
+
 export const LAN_STATUS = Object.freeze({ OFFLINE: 'offline', CONNECTING: 'connecting', ONLINE: 'online' });
 
 /** Errors this side raises itself, next to the server's `lan.*` codes (all have text in the i18n files). */
-export const LAN_ERROR = Object.freeze({ ROOM_CLOSED: 'lan.roomClosed', NO_LINK: 'lan.noLink', LINK_FAILED: 'lan.linkFailed' });
+export const LAN_ERROR = Object.freeze({
+    ROOM_CLOSED: 'lan.roomClosed', NO_LINK: 'lan.noLink', LINK_FAILED: 'lan.linkFailed',
+    /** Quick match: no host could be reached, in any of the rooms tried. */
+    NO_HOST_REACHABLE: 'lan.noHostReachable',
+});
 
 const MAX_NAME_LENGTH = 20;
 /** Seconds before a joining player's device tries again to reach the host after a failed attempt. */
 const RELINK_DELAY = 1.5;
 const RELINK_ATTEMPTS = 3;
+/** Quick match: rooms whose host this device could not reach that are tried before giving up. */
+const MATCH_ROOMS_TRIED = 3;
 
 export const initialLanState = () => ({
     /** LAN_STATUS: the connection to the lobby server. */
@@ -36,16 +61,27 @@ export const initialLanState = () => ({
     pilotName: '',
     /** What the player takes into the next match: { equipment } - a piece of the mode's equipment, or null. */
     loadout: { equipment: null },
+    /** LOBBY_SCOPE: which multiplayer the player opened. */
+    scope: LOBBY_SCOPE.LAN,
+    /** True from asking for a quick match until the match starts (or the player gives up): rooms come and go by themselves. */
+    matching: false,
+    /** A public room's countdown: the time (`Date.now()` milliseconds) the server starts the match at, or null. */
+    startsAt: null,
 });
 
 /**
- * LAN multiplayer, from the lobby to the match and back: the one object the menus talk to.
+ * Multiplayer, from the lobby to the match and back: the one object the menus talk to. It
+ * serves both kinds (LOBBY_SCOPE): players on one Wi-Fi, who see each other's rooms, and
+ * players anywhere, who are matched into public rooms or share a room's code. The rooms,
+ * the links and the match are the same; only how a room is found differs. (The names say
+ * "LAN" because that came first.)
  *
  * It keeps three things in step:
  *  - the lobby server (LobbyClient): which rooms exist, who is in this one, who is ready;
  *  - the links between the devices (PeerLink): every player's device connects straight to
  *    the host's as soon as it enters the room, so a link that will not work shows up in the
- *    lobby and not when the match starts;
+ *    lobby and not when the match starts - and, in a quick match, sends this device on to
+ *    another room by itself;
  *  - the game session: when the server announces a match, the host's device starts a
  *    MatchServer and every device a ClientMatch on the same GameSession the campaign uses.
  *
@@ -62,8 +98,9 @@ export class LanMultiplayer {
      * @param {{ load: () => string, save: (name: string) => void }} params.nameStore remembers the player's name
      * @param {{ load: () => object, save: (loadout: object) => void }} [params.loadoutStore] remembers the player's loadout
      * @param {object} [params.timers] { setTimeout, clearTimeout }
+     * @param {() => number} [params.now] wall clock in milliseconds (for a public room's countdown)
      */
-    constructor({ session, store, createLobby, createLink, device, nameStore, loadoutStore = null, timers = globalThis }) {
+    constructor({ session, store, createLobby, createLink, device, nameStore, loadoutStore = null, timers = globalThis, now = Date.now }) {
         this.session = session;
         this.store = store;
         this.createLink = createLink;
@@ -71,6 +108,13 @@ export class LanMultiplayer {
         this.nameStore = nameStore;
         this.loadoutStore = loadoutStore;
         this.timers = timers;
+        this.now = now;
+        /** STUN / TURN servers from the lobby server, for every link this device opens. */
+        this.iceServers = cleanIceServers(null);
+        /** Quick match: codes of rooms whose host this device could not reach. */
+        this.unreachableRooms = [];
+        /** True while a "ready" is on its way to the lobby server (public rooms report it by themselves). */
+        this.reportingReady = false;
         /** @type {Map<string, object>} player id -> link */
         this.links = new Map();
         this.relink = { timer: null, attempts: 0 };
@@ -102,13 +146,20 @@ export class LanMultiplayer {
 
     // ---- The lobby server --------------------------------------------------------------------
 
-    /** Connects to the lobby server (as the signed-in account, or as a guest) and lists the rooms on this network. */
-    async open() {
+    /**
+     * Connects to the lobby server (as the signed-in account, or as a guest), lists the rooms
+     * on this network and asks which STUN / TURN servers to use.
+     * @param {string} [scope] LOBBY_SCOPE: which multiplayer the player opened
+     */
+    async open(scope = this.state.scope) {
+        this.store.set({ scope });
         if (this.state.status !== LAN_STATUS.OFFLINE) return;
         this.store.set({ status: LAN_STATUS.CONNECTING, error: null });
         try {
             const me = await this.lobby.connect();
             const rooms = await this.lobby.listRooms();
+            // Without the server's list the default STUN servers still connect most devices.
+            this.iceServers = cleanIceServers(await this.lobby.getIceServers().catch(() => null));
             this.store.set({ status: LAN_STATUS.ONLINE, me, rooms });
         } catch (error) {
             this.store.set({ status: LAN_STATUS.OFFLINE, error: codeOf(error) });
@@ -118,8 +169,9 @@ export class LanMultiplayer {
     /** Leaves the room and the lobby server. */
     async close() {
         this.dropLinks();
+        this.unreachableRooms = [];
         await this.lobby.disconnect();
-        this.store.set({ ...initialLanState(), pilotName: this.state.pilotName, loadout: this.state.loadout });
+        this.store.set({ ...initialLanState(), pilotName: this.state.pilotName, loadout: this.state.loadout, scope: this.state.scope });
     }
 
     /** Connects again as whoever is signed in now (after the player signed in or out). */
@@ -146,24 +198,59 @@ export class LanMultiplayer {
             deviceName: this.device.name,
             deviceKind: this.device.kind,
             shipClassId: this.session.settings.playerShip,
+            // Two games that speak different versions cannot play each other: the lobby keeps them apart.
+            protocol: NET.protocolVersion,
         };
     }
 
     // ---- Rooms -------------------------------------------------------------------------------
 
+    /** Opens a room: one listed to this network by default; `options.visibility` (ROOM_VISIBILITY) says otherwise. */
     async createRoom(options = { mode: DEFAULT_GAME_MODE }) {
-        const room = await this.attempt(() => this.lobby.createRoom(this.profile(), options));
-        if (room) this.onRoomUpdated(room);
+        this.enterRoom(await this.attempt(() => this.lobby.createRoom(this.profile(), options)));
+    }
+
+    /**
+     * The lobby server's answer to creating or joining a room. A room that has been joined
+     * is also announced to everybody in it, and by the time the answer is read newer news of
+     * it may already be here: the answer only counts if nothing else has said so yet.
+     */
+    enterRoom(room) {
+        if (room && this.state.room?.code !== room.code) this.onRoomUpdated(room);
+    }
+
+    /** Opens a room nobody finds by themselves: for friends anywhere who are given its code. */
+    createPrivateRoom() {
+        return this.createRoom({ mode: DEFAULT_GAME_MODE, visibility: ROOM_VISIBILITY.PRIVATE });
+    }
+
+    /**
+     * Quick match: asks the lobby server for the best public room that is gathering players
+     * (it opens one if there is none). From here on this device looks after itself: it reports
+     * ready as soon as it is linked to the host, the server starts the match, and a room
+     * that closes or whose host cannot be reached is swapped for another.
+     */
+    async quickMatch() {
+        this.unreachableRooms = [];
+        this.store.set({ matching: true });
+        await this.seekMatch();
+    }
+
+    async seekMatch() {
+        const criteria = { mode: DEFAULT_GAME_MODE, avoid: this.unreachableRooms };
+        const room = await this.attempt(() => this.lobby.quickMatch(this.profile(), criteria));
+        if (room) this.enterRoom(room);
+        else this.store.set({ matching: false });
     }
 
     async joinRoom(code) {
-        const room = await this.attempt(() => this.lobby.joinRoom(code, this.profile()));
-        if (room) this.onRoomUpdated(room);
+        this.enterRoom(await this.attempt(() => this.lobby.joinRoom(code, this.profile())));
     }
 
+    /** Leaves the room - and, in a quick match, stops looking for another. */
     async leaveRoom() {
         this.dropLinks();
-        this.store.set({ room: null, links: {} });
+        this.store.set({ room: null, links: {}, matching: false, startsAt: null });
         if (this.inMatch) this.endMatch();
         await this.attempt(() => this.lobby.leaveRoom());
         await this.refreshRooms();
@@ -230,17 +317,35 @@ export class LanMultiplayer {
     // ---- What the lobby server tells us ------------------------------------------------------
 
     onRoomUpdated(room) {
-        this.store.set({ room });
+        const seconds = room.startsInSeconds;
+        this.store.set({ room, startsAt: Number.isFinite(seconds) ? this.now() + Math.max(0, seconds) * 1000 : null });
         this.syncLinks(room);
+        this.reportReady();
         // The host has ended the match: back to the lobby with everybody else.
         if (room.state === ROOM_STATE.LOBBY && this.inMatch) this.endMatch();
     }
 
     onRoomClosed() {
+        const seeking = this.state.matching && !this.inMatch;
         this.dropLinks();
-        this.store.set({ room: null, links: {}, error: LAN_ERROR.ROOM_CLOSED });
+        this.store.set({ room: null, links: {}, startsAt: null, error: seeking ? null : LAN_ERROR.ROOM_CLOSED });
         if (this.inMatch) this.endMatch();
-        this.refreshRooms();
+        // A quick match whose room went away before it started (its host left) simply looks for another.
+        if (seeking) this.seekMatch();
+        else this.refreshRooms();
+    }
+
+    /**
+     * In a public room nobody presses "ready": a device is ready when it is linked to the
+     * host, and says so itself - again after every match, when the room is a lobby once more.
+     */
+    reportReady() {
+        const { room, me, links } = this.state;
+        if (!room || !me || room.visibility !== ROOM_VISIBILITY.PUBLIC || room.state !== ROOM_STATE.LOBBY || this.reportingReady) return;
+        const self = room.players.find((player) => player.playerId === me.playerId);
+        if (!self || self.isHost || self.ready || links[room.hostPlayerId] !== LINK_STATUS.OPEN) return;
+        this.reportingReady = true;
+        this.lobby.setReady(true).catch(() => {}).finally(() => { this.reportingReady = false; });
     }
 
     /**
@@ -256,7 +361,10 @@ export class LanMultiplayer {
         const info = normalizeMatchInfo(start);
         const mode = gameModeOf(info);
         const localPlayerId = this.state.me.playerId;
-        const createClient = (link) => new ClientMatch({ info, localPlayerId, link, presenter: mode.createPresenter(this.state.loadout) });
+        // Players anywhere are further apart than players on one Wi-Fi: their ships are drawn a little later, and smoother for it.
+        const interpolationDelay = this.state.scope === LOBBY_SCOPE.GLOBAL ? NET.internetInterpolationDelay : NET.interpolationDelay;
+        const createClient = (link) => new ClientMatch({ info, localPlayerId, link, interpolationDelay, presenter: mode.createPresenter(this.state.loadout) });
+        this.store.set({ matching: false, startsAt: null });
 
         if (info.hostPlayerId === localPlayerId) {
             this.server = new MatchServer({ info, mode: mode.createRules(info) });
@@ -299,6 +407,7 @@ export class LanMultiplayer {
         this.dropLink(playerId);
         const link = this.createLink({
             initiator,
+            iceServers: this.iceServers,
             sendSignal: (type, payload) => { this.lobby.sendSignal(playerId, type, payload).catch(() => {}); },
             onStatus: (status) => this.onLinkStatus(playerId, link, status),
         });
@@ -311,6 +420,7 @@ export class LanMultiplayer {
         if (this.links.get(playerId) !== link) return;
         if (status === LINK_STATUS.OPEN) {
             this.relink.attempts = 0;
+            this.unreachableRooms = [];
             // A device that linked up late (or again) joins the match that is running.
             if (this.server && this.inMatch) this.server.attachLink(playerId, link);
         } else if (status === LINK_STATUS.CLOSED) {
@@ -318,12 +428,14 @@ export class LanMultiplayer {
             if (!this.isHost && this.state.room && !this.inMatch) this.scheduleRelink(playerId);
         }
         this.publishLinks();
+        if (status === LINK_STATUS.OPEN) this.reportReady();
     }
 
     /** A joiner whose link to the host failed tries a few more times before giving up with an error. */
     scheduleRelink(hostId) {
         if (this.relink.attempts >= RELINK_ATTEMPTS) {
-            this.store.set({ error: LAN_ERROR.LINK_FAILED });
+            if (this.state.matching) this.tryAnotherRoom();
+            else this.store.set({ error: LAN_ERROR.LINK_FAILED });
             return;
         }
         this.relink.attempts += 1;
@@ -331,6 +443,23 @@ export class LanMultiplayer {
         this.relink.timer = this.timers.setTimeout(() => {
             if (this.state.room?.hostPlayerId === hostId && !this.links.has(hostId)) this.openLink(hostId, true);
         }, RELINK_DELAY * 1000);
+    }
+
+    /**
+     * Quick match: this room's host cannot be reached from here (two networks that will not
+     * let each other in, and no relay). Another host may be: leave, and ask for a room that
+     * is not one of those already tried - a few times, then say so.
+     */
+    async tryAnotherRoom() {
+        const { room } = this.state;
+        if (room) this.unreachableRooms.push(room.code);
+        const givingUp = this.unreachableRooms.length >= MATCH_ROOMS_TRIED;
+        this.dropLinks();
+        this.store.set({ room: null, links: {}, startsAt: null });
+        await this.lobby.leaveRoom().catch(() => {});
+        if (!this.state.matching) return;
+        if (givingUp) this.store.set({ matching: false, error: LAN_ERROR.NO_HOST_REACHABLE });
+        else await this.seekMatch();
     }
 
     /** Tries the link to the host again from scratch (the lobby's "retry" button). */

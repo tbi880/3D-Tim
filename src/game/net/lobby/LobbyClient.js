@@ -26,8 +26,8 @@ export class LobbyError extends Error {
 
 /**
  * The game's connection to the lobby server (the backend's EchoesLanHub, over SignalR):
- * finding rooms on this network, sitting in one, and passing WebRTC signalling to the other
- * players. It only carries messages; what to do with them is LanMultiplayer's business.
+ * finding rooms - on this network, or anywhere by quick match or by code - sitting in one,
+ * and passing WebRTC signalling to the other players. It only carries messages; what to do with them is LanMultiplayer's business.
  *
  * Every method returns a promise that rejects with a LobbyError.
  */
@@ -95,8 +95,13 @@ export class LobbyClient {
     }
 
     listRooms() { return this.invoke('ListRooms'); }
+    /** `options`: { mode, settings, maxPlayers, visibility } (ROOM_VISIBILITY; the default lists the room to this network). */
     createRoom(profile, options = null) { return this.invoke('CreateRoom', profile, options); }
     joinRoom(code, profile) { return this.invoke('JoinRoom', code, profile); }
+    /** Into the best public room that is gathering players, or a new one. `criteria`: { mode, avoid: [room codes] }. */
+    quickMatch(profile, criteria = null) { return this.invoke('QuickMatch', profile, criteria); }
+    /** STUN / TURN servers for this device's links: `[{ urls, username, credential }]`. */
+    getIceServers() { return this.invoke('GetIceServers'); }
     updateProfile(profile) { return this.invoke('UpdateProfile', profile); }
     setReady(ready) { return this.invoke('SetReady', ready); }
     updateOptions(options) { return this.invoke('UpdateOptions', options); }

@@ -59,9 +59,10 @@ export class ClientMatch {
      * @param {string} params.localPlayerId this device's player id
      * @param {object} params.link the link to the server (transport/MemoryLink.js describes the interface)
      * @param {object} [params.presenter] the game mode's presenter (modes/index.js)
+     * @param {number} [params.interpolationDelay] seconds other ships are drawn behind the host's newest word (see NET)
      * @param {() => number} [params.now] clock in seconds
      */
-    constructor({ info, localPlayerId, link, presenter = null, now = defaultNow }) {
+    constructor({ info, localPlayerId, link, presenter = null, interpolationDelay = NET.interpolationDelay, now = defaultNow }) {
         this.info = info;
         this.localPlayerId = localPlayerId;
         this.link = link;
@@ -71,7 +72,7 @@ export class ClientMatch {
         this.epoch = -1;
 
         this.index = new EntityIndex();
-        this.timeline = new SnapshotTimeline();
+        this.timeline = new SnapshotTimeline(interpolationDelay);
         this.predictor = null;
         /** Raw packets received since the last frame; applied at the start of the next one. */
         this.inbox = { messages: [], states: [] };

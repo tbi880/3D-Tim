@@ -10,7 +10,9 @@ const BACKLOG_LIMIT = Object.freeze({ state: 8, message: 256 });
 /**
  * A link to another player's device over WebRTC (the interface is described in
  * MemoryLink.js). On one Wi-Fi the two browsers talk to each other directly, without
- * anything in between, which is what keeps the delay to a few milliseconds.
+ * anything in between, which is what keeps the delay to a few milliseconds. Across the
+ * internet they still do where their networks allow it; where they do not, the traffic goes
+ * through a TURN relay, if the lobby server has one to offer (`iceServers`).
  *
  * Two data channels: "state" (unordered, never retransmitted) for snapshots and inputs, and
  * "events" (ordered, reliable) for everything that must arrive.
@@ -25,10 +27,11 @@ export class PeerLink {
      * @param {boolean} params.initiator true on the joining player's device
      * @param {(type: 'offer' | 'answer' | 'ice', payload: string) => void} params.sendSignal
      * @param {(status: string) => void} [params.onStatus] told when the link opens or closes (for the lobby)
+     * @param {object[]} [params.iceServers] STUN / TURN servers from the lobby server (default: netConfig's STUN servers)
      * @param {typeof RTCPeerConnection} [params.RTCPeerConnection] replaceable in tests
      * @param {object} [params.timers] { setTimeout, clearTimeout }, replaceable in tests
      */
-    constructor({ initiator, sendSignal, onStatus = null, RTCPeerConnection: Peer = globalThis.RTCPeerConnection, timers = globalThis }) {
+    constructor({ initiator, sendSignal, onStatus = null, iceServers = ICE_SERVERS, RTCPeerConnection: Peer = globalThis.RTCPeerConnection, timers = globalThis }) {
         this.initiator = initiator;
         this.sendSignal = sendSignal;
         this.onStatus = onStatus;
@@ -42,7 +45,7 @@ export class PeerLink {
         this.pendingCandidates = [];
         this.hasRemoteDescription = false;
 
-        this.peer = new Peer({ iceServers: ICE_SERVERS });
+        this.peer = new Peer({ iceServers });
         this.peer.onicecandidate = (event) => {
             if (event.candidate) this.sendSignal('ice', JSON.stringify(event.candidate));
         };

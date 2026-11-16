@@ -36,6 +36,17 @@ function pair({ relay = null } = {}) {
     return { wire, timers, statuses, signals, ...links };
 }
 
+test('a link is made with the STUN and TURN servers it is given, or the game\'s own', () => {
+    const wire = new FakeWire();
+    const timers = manualTimers();
+    const relays = [{ urls: ['turn:turn.example.com:3478'], username: 'u', credential: 'c' }];
+    new PeerLink({ initiator: false, sendSignal: () => {}, iceServers: relays, RTCPeerConnection: wire.RTCPeerConnection, timers });
+    new PeerLink({ initiator: false, sendSignal: () => {}, RTCPeerConnection: wire.RTCPeerConnection, timers });
+
+    assert.deepEqual(wire.peers[0].config.iceServers, relays);
+    assert.ok(wire.peers[1].config.iceServers.every((server) => String(server.urls).startsWith('stun:')));
+});
+
 test('the joiner offers, the host answers, and both ends open', async () => {
     const { wire, joiner, host, statuses, signals } = pair();
     assert.equal(joiner.status, LINK_STATUS.CONNECTING);

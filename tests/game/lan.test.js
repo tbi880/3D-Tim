@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { DEVICE_KIND, describeDevice } from '../../src/game/net/lobby/deviceInfo.js';
-import { LAN_ERROR, LAN_STATUS, LanMultiplayer, ROOM_STATE, cleanName, initialLanState } from '../../src/game/net/lobby/LanMultiplayer.js';
+import { LAN_ERROR, LAN_STATUS, LOBBY_SCOPE, LanMultiplayer, ROOM_STATE, ROOM_VISIBILITY, cleanName, initialLanState } from '../../src/game/net/lobby/LanMultiplayer.js';
 import { LOBBY_ERROR, LobbyClient, LobbyError } from '../../src/game/net/lobby/LobbyClient.js';
+import { ICE_SERVERS, NET, cleanIceServers } from '../../src/game/net/netConfig.js';
 import { LINK_STATUS } from '../../src/game/net/transport/PeerLink.js';
 import { PHASE } from '../../src/game/state/GameSession.js';
-import { FakeLobbyServer, FakeNetwork } from './support/fakeLobby.js';
+import { FAKE_AUTO_START_SECONDS, FakeLobbyServer, FakeNetwork } from './support/fakeLobby.js';
 import { createTestSession, idle } from './support/matchHarness.js';
 
 // ---- Devices ---------------------------------------------------------------------------------
@@ -93,10 +94,13 @@ test('requests go to the hub under its method names', async () => {
     await client.sendSignal('p2', 'offer', 'sdp');
     await client.startMatch();
     await client.leaveRoom();
+    await client.quickMatch(profile, { mode: 'battleRoyale', avoid: ['ABCDE'] });
+    await client.getIceServers();
 
     assert.deepEqual(log.invoked.slice(1), [
         ['CreateRoom', profile, { mode: 'battleRoyale' }], ['JoinRoom', 'ABCDE', profile], ['SetReady', true],
         ['SendSignal', 'p2', 'offer', 'sdp'], ['StartMatch'], ['LeaveRoom'],
+        ['QuickMatch', profile, { mode: 'battleRoyale', avoid: ['ABCDE'] }], ['GetIceServers'],
     ]);
 });
 
@@ -150,11 +154,12 @@ function device(server, network, name, ship = 'kestrel') {
     let saved = name;
     let savedLoadout = null;
     const lan = new LanMultiplayer({
-        session, store, createLobby: server.createLobby, createLink: network.createLink,
+        session, store, createLobby: server.createLobby, createLink: (options) => network.createLink({ ...options, owner: name }),
         device: { name: `${name}'s device`, kind: DEVICE_KIND.DESKTOP },
         nameStore: { load: () => saved, save: (value) => { saved = value; } },
         loadoutStore: { load: () => savedLoadout, save: (value) => { savedLoadout = value; } },
         timers: { setTimeout: (callback) => { network.timers.push(callback); return callback; }, clearTimeout: (callback) => { network.timers = network.timers.filter((timer) => timer !== callback); } },
+        now: () => network.clockMs,
     });
     return { lan, session, ui, controls: idle(), get state() { return state; }, get savedName() { return saved; }, get savedLoadout() { return savedLoadout; } };
 }
@@ -163,6 +168,8 @@ function lanParty(names) {
     const server = new FakeLobbyServer();
     const network = new FakeNetwork();
     network.timers = [];
+    /** The wall clock every device reads (milliseconds). */
+    network.clockMs = 1_000_000;
     const devices = names.map((name) => device(server, network, name));
     const settle = () => new Promise((resolve) => { setImmediate(resolve); });
     const run = (seconds) => {
@@ -455,4 +462,230 @@ test('a guest without a link is not put into a match it cannot play', async () =
     assert.equal(ann.session.phase, PHASE.TITLE);
     assert.equal(ann.state.error, LAN_ERROR.NO_LINK);
     assert.equal(host.session.phase, PHASE.PLAYING);
+});
+
+// ---- Across the internet: quick match, private rooms, relays ---------------------------------
+
+/** Players anywhere, online in the global lobby; nobody is in a room yet. */
+async function strangers(names) {
+    const party = lanParty(names);
+    for (const each of party.devices) await each.lan.open(LOBBY_SCOPE.GLOBAL);
+    /** Lets promises and (failed link) timers run until things have settled. */
+    party.settleLinks = async (rounds = 8) => {
+        for (let round = 0; round < rounds; round++) {
+            await party.settle();
+            party.fireTimers();
+        }
+        await party.settle();
+    };
+    return party;
+}
+
+test('going online asks the lobby which STUN and TURN servers to use, and every link is made with them', async () => {
+    const party = lanParty(['Tim', 'Ann']);
+    const { server, network, devices: [tim, ann], settle } = party;
+    server.iceServers = [
+        { urls: ['stun:stun.example.com:3478'] },
+        { urls: ['turn:turn.example.com:3478?transport=udp', 'javascript:alert(1)'], username: 'user', credential: 'pass' },
+    ];
+    await tim.lan.open();
+    await ann.lan.open();
+    await tim.lan.createRoom();
+    await ann.lan.joinRoom(tim.state.room.code);
+    await settle();
+
+    const expected = [{ urls: ['stun:stun.example.com:3478'] }, { urls: ['turn:turn.example.com:3478?transport=udp'], username: 'user', credential: 'pass' }];
+    assert.equal(network.iceServersUsed.length, 2, 'the joiner\'s end and the host\'s');
+    for (const used of network.iceServersUsed) assert.deepEqual(used, expected);
+});
+
+test('a lobby that names no servers leaves the game its own STUN servers', async () => {
+    const party = lanParty(['Tim', 'Ann']);
+    const { server, network, devices: [tim, ann], settle } = party;
+    server.iceServers = 'none';
+    await tim.lan.open();
+    await ann.lan.open();
+    assert.equal(tim.state.status, LAN_STATUS.ONLINE, 'being online does not depend on it');
+    await tim.lan.createRoom();
+    await ann.lan.joinRoom(tim.state.room.code);
+    await settle();
+
+    assert.deepEqual(network.iceServersUsed[0], [...ICE_SERVERS]);
+});
+
+test('ICE servers from the lobby are checked before the browser gets them', () => {
+    assert.deepEqual(cleanIceServers([{ urls: 'stun:a.example:3478' }]), [{ urls: ['stun:a.example:3478'] }], 'one address is a list of one');
+    assert.deepEqual(
+        cleanIceServers([{ urls: ['turns:t.example:443?transport=tcp'], username: 'u', credential: 'c', extra: 'dropped' }]),
+        [{ urls: ['turns:t.example:443?transport=tcp'], username: 'u', credential: 'c' }],
+    );
+    const junk = [
+        null, 7, 'stun:x', {}, { urls: [] }, { urls: ['http://evil.example'] }, { urls: ['stun:bad host'] },
+        { urls: ['turn:t.example:3478'] }, { urls: ['turn:t.example:3478'], username: 5, credential: {} },
+    ];
+    assert.deepEqual(cleanIceServers(junk), [...ICE_SERVERS], 'nothing usable: the defaults; a relay without credentials is no use');
+    for (const nothing of [null, undefined, 'servers', {}, 12]) assert.deepEqual(cleanIceServers(nothing), [...ICE_SERVERS]);
+    assert.equal(cleanIceServers(Array.from({ length: 50 }, (_, index) => ({ urls: [`stun:s${index}.example`] }))).length, 8, 'and not any number of them');
+});
+
+test('quick match opens a public room for the first player and puts the next ones in it; nobody presses ready', async () => {
+    const { server, devices: [tim, ann, bo], settle, run } = await strangers(['Tim', 'Ann', 'Bo']);
+    await tim.lan.quickMatch();
+    assert.equal(tim.state.room.visibility, ROOM_VISIBILITY.PUBLIC);
+    assert.equal(tim.state.matching, true);
+    assert.equal(tim.state.startsAt, null, 'one pilot is not a match');
+    assert.deepEqual(await server.createLobby({}).listRooms(), [], 'a public room is on no network\'s list');
+
+    await ann.lan.quickMatch();
+    await bo.lan.quickMatch();
+    await settle();
+
+    assert.equal(ann.state.room.code, tim.state.room.code);
+    assert.equal(bo.state.room.code, tim.state.room.code);
+    assert.deepEqual(tim.state.room.players.map((player) => player.ready), [true, true, true], 'each device said "ready" itself once it was linked');
+    for (const each of [tim, ann, bo]) {
+        assert.equal(each.state.startsAt, 1_000_000 + FAKE_AUTO_START_SECONDS * 1000, 'the countdown is on every screen');
+    }
+
+    server.startDueRooms();
+    run(1);
+    for (const each of [tim, ann, bo]) {
+        assert.equal(each.session.phase, PHASE.PLAYING);
+        assert.equal(each.state.matching, false, 'matched');
+        assert.equal(each.state.startsAt, null);
+        assert.equal(each.ui.match.players.length, 3);
+    }
+});
+
+test('players anywhere draw other ships a little later than players on one Wi-Fi', async () => {
+    const { server, devices: [tim, ann], settle, run } = await strangers(['Tim', 'Ann']);
+    await tim.lan.quickMatch();
+    await ann.lan.quickMatch();
+    await settle();
+    server.startDueRooms();
+    run(0.5);
+    assert.equal(ann.session.match.timeline.delay, NET.internetInterpolationDelay);
+    assert.ok(NET.internetInterpolationDelay > NET.interpolationDelay);
+
+    const lan = await gathered(['Cy', 'Di']);
+    await lan.guests[0].lan.setReady(true);
+    await lan.host.lan.startMatch();
+    lan.run(0.5);
+    assert.equal(lan.guests[0].session.match.timeline.delay, NET.interpolationDelay);
+});
+
+test('after a public match the same players are counted down into the next one', async () => {
+    const { server, devices: [tim, ann], settle, run } = await strangers(['Tim', 'Ann']);
+    await tim.lan.quickMatch();
+    await ann.lan.quickMatch();
+    await settle();
+    server.startDueRooms();
+    run(0.5);
+
+    await tim.lan.returnToLobby();
+    await settle();
+    assert.equal(ann.session.phase, PHASE.TITLE);
+    assert.deepEqual(ann.state.room.players.map((player) => player.ready), [true, true], 'ready again without being asked');
+    assert.ok(ann.state.startsAt > 0);
+});
+
+test('a quick match whose host cannot be reached moves on to another room by itself', async () => {
+    const { network, devices: [tim, ann, bo], settleLinks } = await strangers(['Tim', 'Ann', 'Bo']);
+    network.unreachable.add('Tim');
+    await tim.lan.quickMatch();
+    const timsRoom = tim.state.room.code;
+
+    await ann.lan.quickMatch();
+    assert.equal(ann.state.room.code, timsRoom, 'the server cannot know the two networks will not connect');
+    await settleLinks();
+    assert.notEqual(ann.state.room.code, timsRoom, 'she gave up on Tim\'s room...');
+    assert.equal(ann.state.room.hostPlayerId, ann.state.me.playerId, '...and, nobody else waiting, opened one');
+    assert.deepEqual([ann.state.matching, ann.state.error], [true, null], 'still matching: this is no error to show');
+    assert.equal(tim.state.room.players.length, 1);
+
+    await bo.lan.quickMatch();
+    await settleLinks();
+    assert.equal(bo.state.room.code, ann.state.room.code, 'Bo too ends up with a host he can reach');
+    assert.deepEqual(Object.values(bo.state.links), [LINK_STATUS.OPEN]);
+});
+
+test('when no host can be reached quick match gives up and says so', async () => {
+    const { network, devices: [tim, ann, bo, cy], settleLinks } = await strangers(['Tim', 'Ann', 'Bo', 'Cy']);
+    for (const name of ['Tim', 'Ann', 'Bo']) network.unreachable.add(name);
+    await tim.lan.quickMatch();
+    await ann.lan.createRoom({ mode: 'battleRoyale', visibility: ROOM_VISIBILITY.PUBLIC });
+    await bo.lan.createRoom({ mode: 'battleRoyale', visibility: ROOM_VISIBILITY.PUBLIC });
+
+    await cy.lan.quickMatch();
+    await settleLinks(24);
+
+    assert.equal(cy.state.room, null);
+    assert.equal(cy.state.matching, false);
+    assert.equal(cy.state.error, LAN_ERROR.NO_HOST_REACHABLE);
+    for (const each of [tim, ann, bo]) assert.equal(each.state.room.players.length, 1, 'and is in nobody\'s room');
+});
+
+test('a public room that closes before it starts sends its players looking again', async () => {
+    const { devices: [tim, ann, bo], settle } = await strangers(['Tim', 'Ann', 'Bo']);
+    await tim.lan.quickMatch();
+    await ann.lan.quickMatch();
+    await bo.lan.quickMatch();
+    await settle();
+
+    await tim.lan.leaveRoom();
+    await settle();
+    await settle();
+
+    assert.equal(tim.state.matching, false, 'the one who left has stopped looking');
+    assert.ok(ann.state.room && bo.state.room, 'the others are in a room again');
+    assert.equal(ann.state.room.code, bo.state.room.code, 'the same one');
+    assert.deepEqual([ann.state.error, bo.state.error], [null, null]);
+    assert.deepEqual([ann.state.matching, bo.state.matching], [true, true]);
+});
+
+test('leaving a quick match stops the search', async () => {
+    const { devices: [tim, ann], settle } = await strangers(['Tim', 'Ann']);
+    await tim.lan.quickMatch();
+    await ann.lan.quickMatch();
+    await settle();
+
+    await ann.lan.leaveRoom();
+    await settle();
+
+    assert.deepEqual([ann.state.room, ann.state.matching, ann.state.startsAt], [null, false, null]);
+    assert.equal(tim.state.startsAt, null, 'and Tim, alone again, is no longer being counted down');
+});
+
+test('a private room is found by nobody and joined with its code from anywhere', async () => {
+    const { server, devices: [tim, ann, bo], settle, run } = await strangers(['Tim', 'Ann', 'Bo']);
+    await tim.lan.createPrivateRoom();
+    assert.equal(tim.state.room.visibility, ROOM_VISIBILITY.PRIVATE);
+    assert.deepEqual(ann.state.rooms, [], 'not listed');
+
+    await bo.lan.quickMatch();
+    assert.notEqual(bo.state.room.code, tim.state.room.code, 'not matched into');
+
+    await ann.lan.joinRoom(tim.state.room.code);
+    await settle();
+    assert.equal(ann.state.room.code, tim.state.room.code);
+    assert.equal(ann.state.room.players.find((player) => !player.isHost).ready, false, 'friends say when they are ready');
+    assert.equal(ann.state.startsAt, null, 'and their host says when to start');
+
+    await ann.lan.setReady(true);
+    server.startDueRooms();
+    assert.equal(tim.session.phase, PHASE.TITLE, 'no countdown starts it');
+    await tim.lan.startMatch();
+    run(0.5);
+    assert.equal(ann.session.phase, PHASE.PLAYING);
+});
+
+test('the game tells the lobby which protocol it speaks, and which multiplayer it opened is remembered', async () => {
+    const { devices: [tim] } = await strangers(['Tim']);
+    assert.equal(tim.lan.profile().protocol, NET.protocolVersion);
+    assert.equal(tim.state.scope, LOBBY_SCOPE.GLOBAL);
+
+    await tim.lan.close();
+    assert.equal(tim.state.scope, LOBBY_SCOPE.GLOBAL, 'closing the lobby does not forget where the player was');
+    await tim.lan.open(LOBBY_SCOPE.LAN);
+    assert.equal(tim.state.scope, LOBBY_SCOPE.LAN);
 });
