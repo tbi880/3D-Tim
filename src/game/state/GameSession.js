@@ -263,7 +263,7 @@ export class GameSession {
         match.dispose();
         this.world.setDifficulty(this.settings.difficulty);
         this.world.autoFire = Boolean(this.settings.autoFire);
-        this.ui.set({ match: null });
+        this.ui.set({ match: null, matchPanel: null, refit: null });
     }
 
     resetPresentation() {
@@ -358,6 +358,12 @@ export class GameSession {
      * offered; anything over a rating's cap is dropped) and closes it.
      */
     applyRefit(added) {
+        // In a match the points are the server's to spend: the match asks it.
+        if (this.match) {
+            this.ui.set({ refit: null });
+            this.match.applyRefit?.(added);
+            return;
+        }
         const pending = this.pendingRefit;
         if (!pending) return;
         let spent = 0;

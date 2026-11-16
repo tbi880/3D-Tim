@@ -25,6 +25,11 @@ export class HostSeat {
         server.attachLink(localPlayerId, serverEnd);
     }
 
+    /** The game mode's presenter on this device (what the mode's menus and panels talk to). */
+    get presenter() {
+        return this.client.presenter;
+    }
+
     begin(session) {
         this.server.start();
         this.client.begin(session);
@@ -46,6 +51,10 @@ export class HostSeat {
     /** Asks the game mode's rules for something, as any client would. */
     request(name, data) {
         this.client.request(name, data);
+    }
+
+    applyRefit(added) {
+        this.client.applyRefit(added);
     }
 
     missionHud() {

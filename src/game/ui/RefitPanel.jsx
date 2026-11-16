@@ -8,6 +8,9 @@ import { useGameStore, useT } from '../state/gameStore.js';
  * "Ship maintenance and refit": shown while the ship is docked at Lantern Station
  * (GameSession.openRefit). The player spends the points offered, one rating level each, never
  * past 10; confirming installs them (GameSession.applyRefit) and the story carries on.
+ *
+ * A multiplayer match opens the same window in flight (`refit.inFlight`) for the points a
+ * captured planet pays: there it can be closed again, and points can be kept for later.
  */
 
 /** Pips for one rating: what the ship already had, what this refit adds, and what is left. */
@@ -28,7 +31,7 @@ export default function RefitPanel({ session }) {
     const [added, setAdded] = useState({});
     if (!refit) return null;
 
-    const { points, classId, upgrades } = refit;
+    const { points, classId, upgrades, inFlight = false } = refit;
     const owned = upgradedRatings(classId, upgrades) ?? {};
     const spent = Object.values(added).reduce((sum, levels) => sum + levels, 0);
     const left = points - spent;
@@ -63,10 +66,11 @@ export default function RefitPanel({ session }) {
                 ))}
             </div>
             <div className="eod-menu">
-                <button type="button" className="eod-button eod-button--primary" disabled={!done} onClick={confirm}>
+                <button type="button" className="eod-button eod-button--primary" disabled={inFlight ? spent === 0 : !done} onClick={confirm}>
                     {t('ui.refit.confirm')}
-                    <small>{t('ui.refit.repairNote')}</small>
+                    <small>{t(inFlight ? 'mp.refit.note' : 'ui.refit.repairNote')}</small>
                 </button>
+                {inFlight && <button type="button" className="eod-button" onClick={() => { session.applyRefit({}); setAdded({}); }}>{t('mp.refit.close')}</button>}
             </div>
         </div>
     );

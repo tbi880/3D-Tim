@@ -1,0 +1,111 @@
+/* Multiplayer screens: the LAN lobby, the star map, the match HUD and the result. They use
+   the game's own colours and panels (ui/hud.css). */
+
+.eod-side--dawn { color: var(--eod-cyan); }
+.eod-side--umbra { color: var(--eod-violet); }
+.eod-side--pirate { color: var(--eod-amber); }
+
+/* ---- Lobby ------------------------------------------------------------------------------- */
+.eod-lan { display: flex; flex-direction: column; align-items: center; gap: 12px; width: min(760px, 94vw); max-height: 100%; overflow-y: auto; padding: 4px 4px 16px; }
+.eod-lan .eod-button:disabled, .eod-lan .eod-setting:disabled { opacity: 0.4; cursor: default; transform: none; }
+.eod-lan-rules { margin: 0; max-width: 640px; font-size: 12px; line-height: 1.6; color: rgba(225, 240, 255, 0.75); }
+.eod-lan-error { margin: 0; padding: 6px 14px; font-size: 12px; color: var(--eod-red); border: 1px solid var(--eod-red); background: rgba(40, 0, 10, 0.55); }
+.eod-lan-empty { margin: 0; font-size: 12px; color: rgba(225, 240, 255, 0.6); }
+.eod-lan-heading { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(225, 240, 255, 0.7); }
+
+.eod-lan-identity { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; width: 100%; }
+.eod-lan-field { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; text-align: left; background: var(--eod-panel); border: 1px solid var(--eod-border); }
+.eod-lan-field > span { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(225, 240, 255, 0.6); }
+.eod-lan-field strong { font-size: 13px; font-weight: 600; }
+.eod-lan-field small { font-size: 10px; line-height: 1.5; color: rgba(225, 240, 255, 0.5); }
+.eod-lan input { width: 100%; padding: 6px 8px; font: inherit; font-size: 14px; color: #fff; background: rgba(4, 12, 22, 0.8); border: 1px solid var(--eod-border); outline: none; }
+.eod-lan input:focus { border-color: var(--eod-cyan); }
+
+.eod-lan-browser, .eod-lan-room-view { display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 100%; }
+.eod-lan-room { display: grid; grid-template-columns: 1.2fr 1.4fr auto auto; align-items: center; gap: 12px; padding: 10px 14px; font: inherit; font-size: 12px; color: inherit; text-align: left; background: var(--eod-panel); border: 1px solid var(--eod-border); cursor: pointer; }
+.eod-lan-room:hover { border-color: var(--eod-cyan); }
+.eod-lan-room em { font-style: normal; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--eod-amber); }
+.eod-lan-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.eod-lan-actions > .eod-button { flex: 1 1 200px; }
+.eod-lan-code { display: flex; flex: 1 1 260px; gap: 6px; }
+.eod-lan-code input { flex: 0 0 96px; text-align: center; letter-spacing: 0.3em; text-transform: uppercase; }
+.eod-lan-code .eod-button { flex: 1; }
+
+.eod-lan-code-banner { display: flex; align-items: baseline; justify-content: center; gap: 14px; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(225, 240, 255, 0.7); }
+.eod-lan-code-banner strong { font-size: 30px; letter-spacing: 0.35em; color: var(--eod-amber); user-select: all; }
+.eod-lan-players { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.eod-lan-player { display: grid; grid-template-columns: 1.4fr 1.5fr 0.9fr 0.9fr; align-items: center; gap: 10px; padding: 8px 12px; font-size: 12px; text-align: left; background: var(--eod-panel); border: 1px solid var(--eod-border); }
+.eod-lan-player--me { border-color: var(--eod-cyan); }
+.eod-lan-player-name, .eod-lan-player-device, .eod-lan-player-ready { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.eod-lan-player-name strong { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eod-lan-player small { font-size: 10px; color: rgba(225, 240, 255, 0.55); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eod-lan-player small b { margin-right: 6px; font-weight: 700; color: var(--eod-amber); }
+.eod-lan-player-ready { font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(225, 240, 255, 0.5); text-align: right; }
+.eod-lan-player-ready--yes { color: var(--eod-green); }
+.eod-lan-link--open { color: var(--eod-green) !important; }
+.eod-lan-link--connecting { color: var(--eod-amber) !important; }
+.eod-lan-link--closed { color: var(--eod-red) !important; }
+.eod-lan-options { width: 100%; }
+
+/* ---- Match HUD --------------------------------------------------------------------------- */
+.eod-match-status { position: absolute; top: 150px; left: 22px; display: flex; flex-direction: column; gap: 5px; min-width: 210px; padding: 8px 12px; pointer-events: auto; }
+.eod-match-row { display: flex; align-items: baseline; gap: 8px; font-size: 12px; }
+.eod-match-row strong { font-size: 13px; }
+.eod-match-row small { margin-left: auto; font-size: 10px; color: rgba(225, 240, 255, 0.6); }
+.eod-match-ready { color: var(--eod-green); }
+.eod-match-planet--collapsing { color: var(--eod-amber); animation: eod-blink 0.8s steps(2) infinite; }
+.eod-match-planet--swallowed { color: var(--eod-red); }
+.eod-match-buttons { display: flex; gap: 5px; margin-top: 3px; }
+.eod-match-button { display: flex; flex: 1; align-items: center; justify-content: center; gap: 5px; padding: 6px 6px; font: inherit; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: inherit; background: rgba(10, 30, 50, 0.7); border: 1px solid var(--eod-border); cursor: pointer; }
+.eod-match-button:not(:disabled):hover { border-color: var(--eod-amber); color: var(--eod-amber); }
+.eod-match-button:disabled { opacity: 0.4; cursor: default; }
+.eod-match-button kbd { padding: 0 4px; font: inherit; font-size: 9px; border: 1px solid var(--eod-border); }
+.eod-match-button b { color: var(--eod-amber); }
+.eod-match-alerts { top: auto; bottom: 30%; }
+.eod-match-vote { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; width: min(440px, 92vw); padding: 12px 16px; text-align: center; pointer-events: auto; z-index: 6; border-color: var(--eod-amber); }
+.eod-match-vote strong { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--eod-amber); }
+.eod-match-vote p { margin: 0; font-size: 12px; line-height: 1.5; }
+.eod-match-vote-choices { display: flex; gap: 8px; }
+.eod-match-vote-choices .eod-button { flex: 1; }
+
+/* ---- Star map ---------------------------------------------------------------------------- */
+.eod-map { gap: 14px; }
+.eod-map-orbits { display: flex; align-items: stretch; justify-content: center; gap: 6px; width: min(1100px, 96vw); margin: 0; padding: 0; list-style: none; overflow-x: auto; }
+.eod-map-sun { display: flex; align-items: center; padding: 0 6px; font-size: 44px; color: #b06bff; text-shadow: 0 0 22px #7a2bd6; }
+.eod-map-planet { display: flex; flex: 1 1 0; flex-direction: column; align-items: center; gap: 4px; min-width: 128px; padding: 10px 8px; font-size: 11px; background: var(--eod-panel); border: 1px solid var(--eod-border); }
+.eod-map-planet strong { font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; }
+.eod-map-globe { font-size: 26px; line-height: 1; color: var(--eod-cyan); }
+.eod-map-status { font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--eod-green); }
+.eod-map-timer, .eod-map-forces, .eod-map-comrades { color: rgba(225, 240, 255, 0.7); }
+.eod-map-forces em { font-style: normal; color: var(--eod-red); }
+.eod-map-here { font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--eod-cyan); }
+.eod-map-planet--here { border-color: var(--eod-cyan); box-shadow: 0 0 14px rgba(89, 208, 255, 0.35) inset; }
+.eod-map-planet--collapsing { border-color: var(--eod-amber); }
+.eod-map-planet--collapsing .eod-map-status, .eod-map-planet--collapsing .eod-map-globe { color: var(--eod-amber); animation: eod-blink 0.8s steps(2) infinite; }
+.eod-map-planet--swallowed { opacity: 0.55; border-color: rgba(255, 75, 110, 0.5); }
+.eod-map-planet--swallowed .eod-map-status, .eod-map-planet--swallowed .eod-map-globe { color: var(--eod-red); }
+.eod-map-planet--held-dawn .eod-map-globe { text-shadow: 0 0 12px var(--eod-cyan), 0 0 26px var(--eod-cyan); }
+.eod-map-planet--held-umbra .eod-map-globe { text-shadow: 0 0 12px var(--eod-violet), 0 0 26px var(--eod-violet); }
+.eod-map-planet--held-pirate .eod-map-globe { text-shadow: 0 0 12px var(--eod-amber), 0 0 26px var(--eod-amber); }
+.eod-map-jump { margin-top: auto; padding: 8px 10px; width: 100%; }
+.eod-map-jump:disabled { opacity: 0.45; cursor: default; transform: none; }
+
+/* ---- Result ------------------------------------------------------------------------------ */
+.eod-result--victory .eod-screen-heading { color: var(--eod-green); }
+.eod-result--failure .eod-screen-heading { color: var(--eod-red); }
+.eod-result-table { width: min(620px, 94vw); border-collapse: collapse; font-size: 12px; }
+.eod-result-table th { padding: 4px 10px; font-size: 10px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(225, 240, 255, 0.55); text-align: left; }
+.eod-result-table td { padding: 7px 10px; text-align: left; background: var(--eod-panel); border-top: 1px solid var(--eod-border); }
+.eod-result-table td:last-child, .eod-result-table th:last-child { text-align: right; }
+.eod-result-me td { background: rgba(30, 80, 120, 0.5); }
+.eod-result-winner td:first-child { color: var(--eod-green); font-weight: 700; }
+
+/* ---- Phones (landscape) ------------------------------------------------------------------ */
+@media (pointer: coarse) {
+    .eod-match-status { top: 46px; left: auto; right: 10px; min-width: 170px; padding: 6px 8px; }
+    .eod-match-button kbd { display: none; }
+    .eod-match-button { padding: 9px 4px; }
+    .eod-map-planet { min-width: 104px; padding: 6px 4px; font-size: 10px; }
+    .eod-lan-player { grid-template-columns: 1.3fr 1.3fr 0.8fr 0.8fr; padding: 6px 8px; }
+    .eod-lan-code-banner strong { font-size: 22px; }
+}

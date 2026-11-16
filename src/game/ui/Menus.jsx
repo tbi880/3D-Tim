@@ -14,6 +14,11 @@ import {
 } from '../../utils/fullscreen.js';
 import { enterVR, useVRActive, useVRSupported } from '../xr/vrState.js';
 import { bucketURL } from '../../Settings';
+import { MATCH_PANEL } from '../modes/battleRoyale/BattleRoyalePresenter.js';
+import { useLanStore } from '../net/lobby/lanStore.js';
+import LanLobby from './multiplayer/LanLobby.jsx';
+import MatchResults from './multiplayer/MatchResults.jsx';
+import StarMapPanel from './multiplayer/StarMapPanel.jsx';
 import RefitPanel from './RefitPanel.jsx';
 
 /** Title screen, pause menu, game-over and ending screens, and the refit window. */
@@ -279,11 +284,14 @@ function savedShipClass(fallback) {
     return playerModelFile(classId) ? classId : fallback;
 }
 
-function TitleScreen({ session, onStart }) {
+function TitleScreen({ session, lan, onStart }) {
     const hasSave = useGameStore((state) => state.hasSave);
     const saveCheckpointId = useGameStore((state) => state.saveCheckpointId);
+    const inRoom = useLanStore((state) => Boolean(state.room));
     const t = useT();
-    const [view, setView] = useState('main');
+    const [chosenView, setView] = useState('main');
+    // Back from a match the player is still in its room: that is where the title screen opens.
+    const view = inRoom ? 'lan' : chosenView;
     const [confirmingNewGame, setConfirmingNewGame] = useState(false);
     /** While the ship model loads: { classId, start, backTo } for the game about to begin. */
     const [launching, setLaunching] = useState(null);
@@ -307,7 +315,7 @@ function TitleScreen({ session, onStart }) {
     const continueGame = () => beginLoading(savedShipClass(session.settings.playerShip), () => session.continueGame(), 'main');
 
     return (
-        <div className={`eod-screen eod-screen--title ${view === 'hangar' || view === 'loading' ? 'eod-screen--hangar' : ''}`}>
+        <div className={`eod-screen eod-screen--title ${view === 'hangar' || view === 'loading' || view === 'lan' ? 'eod-screen--hangar' : ''}`}>
             <div className="eod-title-block">
                 <p className="eod-title-kicker">{t('ui.subtitle')}</p>
                 <h1 className="eod-title">{t('ui.title')}</h1>
@@ -316,6 +324,7 @@ function TitleScreen({ session, onStart }) {
                 {NEEDS_HOME_SCREEN && <p className="eod-touch-hint eod-home-screen-hint">{t('ui.homeScreenHint')}</p>}
             </div>
             {view === 'hangar' && <Hangar session={session} onLaunch={launch} onBack={() => setView('main')} />}
+            {view === 'lan' && <LanLobby lan={lan} session={session} onStart={onStart} onBack={() => setView('main')} />}
             {view === 'loading' && launching && (
                 <ShipLoading classId={launching.classId} onReady={launching.start} onBack={() => setView(launching.backTo)} />
             )}
@@ -331,6 +340,10 @@ function TitleScreen({ session, onStart }) {
                         {t('ui.newGame')}
                         {confirmingNewGame && <small>{t('ui.confirmNewGame')}</small>}
                     </button>
+                    <button type="button" className="eod-button" onClick={() => setView('lan')}>
+                        {t('mp.lan.open')}
+                        <small>{t('mp.lan.openHint')}</small>
+                    </button>
                     <VRButton onStart={onStart} />
                     {!IS_TOUCH && <button type="button" className="eod-button" onClick={() => setView('controls')}>{t('ui.controls')}</button>}
                     <SettingsRows session={session} />
@@ -343,6 +356,35 @@ function TitleScreen({ session, onStart }) {
                 </div>
             )}
         </div>
+    );
+}
+
+/** The menu during a multiplayer match. Nothing pauses: the match goes on behind it. */
+function MatchMenu({ session, lan, onStart }) {
+    const t = useT();
+    return (
+        <div className="eod-screen eod-screen--overlay">
+            <h2 className="eod-screen-heading">{t('mp.pause.title')}</h2>
+            <p className="eod-screen-text">{t('mp.pause.note')}</p>
+            <div className="eod-menu">
+                <button type="button" className="eod-button eod-button--primary" onClick={() => session.resume()}>{t('ui.resume')}</button>
+                <button type="button" className="eod-button" onClick={() => lan.leaveRoom()}>{t('mp.pause.leave')}</button>
+                <VRButton onStart={onStart} />
+                <SettingsRows session={session} />
+                {!IS_TOUCH && <ControlsList />}
+            </div>
+        </div>
+    );
+}
+
+/** The windows a match opens over the flight view: the refit window and the star map. */
+function MatchPanels({ session }) {
+    const panel = useGameStore((state) => state.matchPanel);
+    return (
+        <>
+            <RefitPanel session={session} />
+            {panel === MATCH_PANEL.MAP && <StarMapPanel session={session} />}
+        </>
     );
 }
 
@@ -444,19 +486,23 @@ function EndingScreen({ session }) {
 /**
  * @param {object} props
  * @param {import('../state/GameSession.js').GameSession} props.session
+ * @param {import('../net/lobby/LanMultiplayer.js').LanMultiplayer} props.lan
  * @param {() => void} props.onStart called from the click that starts play (unlocks audio)
  */
-export default function Menus({ session, onStart }) {
+export default function Menus({ session, lan, onStart }) {
     const phase = useGameStore((state) => state.phase);
+    const inMatch = useGameStore((state) => Boolean(state.match));
     const assetsReady = useGameStore((state) => state.assetsReady);
     if (!assetsReady) return null;
     switch (phase) {
-        case PHASE.TITLE: return <TitleScreen session={session} onStart={onStart} />;
-        case PHASE.PAUSED: return <PauseMenu session={session} onStart={onStart} />;
+        case PHASE.TITLE: return <TitleScreen session={session} lan={lan} onStart={onStart} />;
+        case PHASE.PAUSED: return inMatch ? <MatchMenu session={session} lan={lan} onStart={onStart} /> : <PauseMenu session={session} onStart={onStart} />;
         case PHASE.GAME_OVER: return <GameOverScreen session={session} />;
         case PHASE.ENDING: return <EndingScreen session={session} />;
-        // In flight the only menu is the refit window, and only while one is open.
-        case PHASE.PLAYING: return <RefitPanel session={session} />;
+        case PHASE.MATCH_OVER: return <MatchResults lan={lan} />;
+        // In flight the only menus are the windows that open over the view: the refit window,
+        // and in a match the star map.
+        case PHASE.PLAYING: return inMatch ? <MatchPanels session={session} /> : <RefitPanel session={session} />;
         default: return null;
     }
 }

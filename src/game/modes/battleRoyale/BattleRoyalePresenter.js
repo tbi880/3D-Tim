@@ -1,6 +1,15 @@
+import { t } from '../../i18n/index.js';
 import { sanitizeBattleRoyaleState } from './battleRoyaleState.js';
-import { BR_EVENT } from './battleRoyaleProtocol.js';
+import { BR_EVENT, BR_REQUEST } from './battleRoyaleProtocol.js';
 import { PLANET_STATUS } from './collapse.js';
+
+/** The mode's own keys and buttons (bound in input/InputController.js, shown by ui/multiplayer). */
+export const MATCH_ACTION = Object.freeze({ MAP: 'match:map', REFIT: 'match:refit', SUMMON: 'match:summon' });
+export const MATCH_PANEL = Object.freeze({ MAP: 'map' });
+
+/** Names as the player reads them (the ids come from the host: an unknown one is shown as it came). */
+export const planetName = (planetId) => t(`mp.planet.${String(planetId)}`);
+export const factionName = (faction) => t(`mp.faction.${String(faction)}`);
 
 /** Seconds the warp streaks take to fade once the ship has arrived. */
 const WARP_EXIT_SECONDS = 1.4;
@@ -17,6 +26,9 @@ export class BattleRoyalePresenter {
         this.session = null;
         /** The jump in progress on screen: { phase: 'spool' | 'exit', elapsed, seconds }, or null. */
         this.warp = null;
+        /** The mode's window that is open (MATCH_PANEL), or null; and whether the refit window is. */
+        this.openPanel = null;
+        this.refitOpen = false;
     }
 
     sanitizeState(raw) {
@@ -41,19 +53,19 @@ export class BattleRoyalePresenter {
                 break;
             case BR_EVENT.COLLAPSE:
                 if (data?.status === PLANET_STATUS.SAFE) break;
-                session.showToast(`mp.collapse.${String(data?.status)}`, { planet: String(data?.planet) });
+                session.showToast(`mp.collapse.${String(data?.status)}`, { planet: planetName(data?.planet) });
                 // The alarm is for whoever is on that planet; the rest only read about it.
                 if (data?.planet === here) session.playCue('alarm');
                 break;
             case BR_EVENT.CAPTURED:
-                session.showToast('mp.captured', { planet: String(data?.planet), faction: String(data?.faction) });
+                session.showToast('mp.captured', { planet: planetName(data?.planet), faction: factionName(data?.faction) });
                 session.playCue('power');
                 break;
             case BR_EVENT.REWARD:
                 session.showToast('mp.reward', { points: Number(data?.points) || 0, summons: Number(data?.summons) || 0 });
                 break;
             case BR_EVENT.REVIVED:
-                session.showToast('mp.revived', { planet: String(data?.planet) });
+                session.showToast('mp.revived', { planet: planetName(data?.planet) });
                 break;
             case BR_EVENT.WARNING:
                 session.showToast('mp.loyalty.warning');
@@ -65,6 +77,64 @@ export class BattleRoyalePresenter {
                 break;
             default:
         }
+    }
+
+    // ---- The pilot's own keys and windows -----------------------------------------------------
+
+    /** Keys and buttons that belong to this mode (input/InputController.js MATCH_KEYS). */
+    handleAction(action) {
+        const state = this.client.state;
+        switch (action) {
+            case MATCH_ACTION.MAP:
+                this.setPanel(this.panel === MATCH_PANEL.MAP ? null : MATCH_PANEL.MAP);
+                return true;
+            case MATCH_ACTION.REFIT:
+                if (state?.you?.alive && state.you.points > 0) this.openRefit();
+                return true;
+            case MATCH_ACTION.SUMMON:
+                if (state?.you?.alive && state.you.summons > 0) this.client.request(BR_REQUEST.SUMMON);
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    get panel() {
+        return this.openPanel;
+    }
+
+    /** Opens one of the mode's windows (MATCH_PANEL), or closes whichever is open (null). */
+    setPanel(panel) {
+        this.openPanel = panel;
+        this.session.ui.set({ matchPanel: panel });
+    }
+
+    /** The refit window of the campaign, here for spending the points a captured planet pays. */
+    openRefit() {
+        const { you } = this.client.state;
+        const ship = this.session.world.player;
+        if (!ship) return;
+        this.refitOpen = true;
+        this.session.ui.set({ refit: { points: you.points, classId: ship.classId, upgrades: you.upgrades, inFlight: true } });
+    }
+
+    applyRefit(added) {
+        this.refitOpen = false;
+        if (added && Object.values(added).some((levels) => levels > 0)) this.client.request(BR_REQUEST.REFIT, { added });
+    }
+
+    /** With the map or the refit window open the pilot is not flying: the ship holds its course. */
+    holdsAttention() {
+        return this.openPanel !== null || this.refitOpen;
+    }
+
+    jumpTo(planetId) {
+        this.client.request(BR_REQUEST.JUMP, { to: planetId });
+        this.setPanel(null);
+    }
+
+    vote(choice) {
+        this.client.request(BR_REQUEST.VOTE, { choice });
     }
 
     /** The player is somewhere new (a jump, a revival, or the start): the streaks let go. */
@@ -103,5 +173,7 @@ export class BattleRoyalePresenter {
     dispose() {
         if (this.session) this.session.world.warpFactor = 0;
         this.warp = null;
+        this.openPanel = null;
+        this.refitOpen = false;
     }
 }

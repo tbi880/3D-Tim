@@ -5,6 +5,7 @@ import { isTouchDevice } from '../input/device.js';
 import { PHASE, SESSION_EVENTS } from '../state/GameSession.js';
 import { useGameStore, useT } from '../state/gameStore.js';
 import CommsPanel from './CommsPanel.jsx';
+import MatchHud from './multiplayer/MatchHud.jsx';
 
 /** Decided once: a device does not grow a mouse halfway through a mission. */
 const IS_TOUCH = isTouchDevice();
@@ -349,6 +350,7 @@ export default function GameHud({ session, markerCanvasRef, radarCanvasRef }) {
                     </div>
                     <TargetPanel />
                     <canvas ref={radarCanvasRef} className="eod-radar eod-radar--corner" />
+                    <MatchHud session={session} />
                     <Alerts />
                     <TitleCard />
                     <Toast />
@@ -365,6 +367,7 @@ export default function GameHud({ session, markerCanvasRef, radarCanvasRef }) {
                     <TargetPanel />
                     <StatusPanel />
                     <WeaponsPanel />
+                    <MatchHud session={session} />
                     <Alerts />
                     <HintBar />
                     <TitleCard />

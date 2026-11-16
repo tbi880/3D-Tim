@@ -28,6 +28,8 @@ export const useGameStore = create(() => ({
 
     /** The multiplayer match on the HUD and the results screen (net/match/matchState.js), or null in single player. */
     match: null,
+    /** The match's own window that is open over the flight view ('map'), or null. */
+    matchPanel: null,
 
     // Menus
     gameOverReason: null,

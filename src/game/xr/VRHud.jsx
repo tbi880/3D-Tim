@@ -152,7 +152,7 @@ function drawPaneText(ctx, state, t, now) {
     if (state.toast) {
         ctx.textAlign = 'center';
         ctx.font = `600 13px ${FONT}`;
-        const label = state.toast.checkpointId ? `${t(state.toast.key)} · ${t(`checkpoint.${state.toast.checkpointId}`)}` : t(state.toast.key);
+        const label = state.toast.checkpointId ? `${t(state.toast.key)} · ${t(`checkpoint.${state.toast.checkpointId}`)}` : t(state.toast.key, state.toast.params ?? undefined);
         drawShadowedText(ctx, label, centre, height / 2 + 74, '#9dffb0');
     }
 

@@ -6,6 +6,7 @@ import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 import { SoundEngine } from '../game/audio/SoundEngine.js';
 import { graphicsDpr } from '../game/config/graphics.js';
 import { InputController } from '../game/input/InputController.js';
+import { createLanMultiplayer } from '../game/net/lobby/lanStore.js';
 import { isTouchDevice } from '../game/input/device.js';
 import GameScene from '../game/scene/GameScene.jsx';
 import { canvasAntialias } from '../game/xr/vrState.js';
@@ -35,7 +36,9 @@ function createGame() {
     });
     const sound = new SoundEngine({ assetBaseUrl: bucketURL });
     sound.attach(session);
-    return { session, input, sound };
+    // LAN multiplayer plays its matches on the same session; it stays idle until the lobby is opened.
+    const lan = createLanMultiplayer(session);
+    return { session, input, sound, lan };
 }
 
 /** Covers the game on a phone held upright (CSS shows it only in portrait on touch devices). */
@@ -86,6 +89,7 @@ function EchoesOfDawn() {
         // Development aid: inspect or drive the running game from the browser console.
         if (stageOfENV !== 'prod') window.__eod = created;
         return () => {
+            created.lan.close();
             created.sound.dispose();
             created.session.dispose();
             useGameStore.setState({ assetsReady: false });
@@ -97,8 +101,9 @@ function EchoesOfDawn() {
         game.input.attach(inputSurfaceRef.current);
         // Leaving mid-fight should never cost the player their ship: pause when the tab is hidden,
         // the browser loses focus (another app or window in front) or the page is put away.
-        const pauseWhenHidden = () => { if (document.hidden) game.session.pause(); };
-        const pause = () => game.session.pause();
+        // (A multiplayer match cannot be paused, so there it would only put a menu in the way.)
+        const pause = () => { if (!game.session.match) game.session.pause(); };
+        const pauseWhenHidden = () => { if (document.hidden) pause(); };
         document.addEventListener('visibilitychange', pauseWhenHidden);
         window.addEventListener('blur', pause);
         window.addEventListener('pagehide', pause);
@@ -144,7 +149,7 @@ function EchoesOfDawn() {
                         <div ref={inputSurfaceRef} className="eod-input-surface" />
                         <GameHud session={game.session} markerCanvasRef={markerCanvasRef} radarCanvasRef={radarCanvasRef} />
                         <TouchControls input={game.input} session={game.session} />
-                        <Menus session={game.session} onStart={() => game.sound.unlock()} />
+                        <Menus session={game.session} lan={game.lan} onStart={() => game.sound.unlock()} />
                         <RotateHint />
                     </>
                 )}

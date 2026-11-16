@@ -16,6 +16,7 @@ import ShipsLayer from './ShipsLayer.jsx';
 import { PlayerShipLoader, ShipModelPreloader } from './models/ShipModel.jsx';
 import SpaceDust from './SpaceDust.jsx';
 import WarpArrivalsLayer from './WarpArrivalsLayer.jsx';
+import ZoneBubble from './ZoneBubble.jsx';
 import VRCameraRig from '../xr/VRCameraRig.jsx';
 import { getXRStore, useVRActive } from '../xr/vrState.js';
 
@@ -66,6 +67,7 @@ export default function GameScene({ game, markerCanvasRef, radarCanvasRef }) {
                 <BeamsLayer session={session} />
                 <ExplosionsLayer session={session} />
                 <WarpArrivalsLayer session={session} />
+                <ZoneBubble />
                 <SpaceDust session={session} />
                 <HudCanvasBridge game={game} markerCanvasRef={markerCanvasRef} radarCanvasRef={radarCanvasRef} />
                 {!vrActive && <PostEffects session={session} />}

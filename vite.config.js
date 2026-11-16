@@ -66,6 +66,11 @@ export default defineConfig(({ command, mode }) => {
         cert: fs.readFileSync('localhost.pem'),
       },
       host: true, // 允许局域网访问
+      // Echoes of Dawn's multiplayer lobby: other devices on the Wi-Fi open the game from this
+      // dev server and cannot reach "localhost:5133" themselves, so the hub goes through here.
+      proxy: {
+        '/connect/echoes-lan': { target: 'http://localhost:5133', ws: true, changeOrigin: true },
+      },
     },
 
     plugins: [

@@ -2,6 +2,7 @@ import { Vector3 } from 'three';
 import { FACTION } from '../../config/gameConfig.js';
 import { SECTORS } from '../../config/sectors.js';
 import { GAME_EVENTS } from '../../core/EventBus.js';
+import { PILOT_ACTIONS } from '../../core/systems/pilotActions.js';
 import { destroyProjectile, destroyShip } from '../../core/systems/damage.js';
 import { damageObstacle, updateObstacles } from '../../core/systems/obstacles.js';
 import { IDLE_CONTROLS } from '../../core/systems/playerFlight.js';
@@ -123,10 +124,19 @@ export class ClientMatch {
         world.prune();
     }
 
-    /** One-shot pilot actions are the server's to carry out: this only asks. */
+    /**
+     * One-shot actions: the game mode's own (open the map...) stay on this device; a pilot's
+     * are the server's to carry out, so this only asks.
+     */
     handleAction(action, params) {
+        if (this.presenter?.handleAction?.(action, params) || !PILOT_ACTIONS.includes(action)) return;
         const forward = params?.forward;
         this.send({ t: MSG.ACTION, a: action, ...(forward ? { f: [forward.x, forward.y, forward.z] } : {}) });
+    }
+
+    /** The refit window was confirmed (GameSession.applyRefit): the mode decides what that buys. */
+    applyRefit(added) {
+        this.presenter?.applyRefit?.(added);
     }
 
     /** Asks the game mode's rules for something (jump to a planet, spend refit points...). */
@@ -155,8 +165,10 @@ export class ClientMatch {
 
     sendInput(own, controls, dt) {
         const { world, sendControls } = this;
-        // No helm to hold while the ship is gone or the host has the controls locked.
-        quantizeControls(own && !world.controlsLocked ? controls : IDLE_CONTROLS, sendControls);
+        // No helm to hold while the ship is gone, the server has the controls locked, or the
+        // pilot is looking at something else (the map).
+        const atTheHelm = own && !world.controlsLocked && !this.presenter?.holdsAttention?.();
+        quantizeControls(atTheHelm ? controls : IDLE_CONTROLS, sendControls);
         if (sendControls.fireSecondary) this.secondaryRepeats = SECONDARY_REPEATS;
         else if (this.secondaryRepeats > 0 && own) {
             this.secondaryRepeats -= 1;

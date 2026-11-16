@@ -40,6 +40,10 @@ const ACTION_KEYS = Object.freeze({
     KeyM: 'toggleMute',
     KeyV: 'toggleView',
     KeyC: 'toggleView',
+    // Multiplayer only (the game mode's presenter handles them; they do nothing in the campaign).
+    KeyG: 'match:map',
+    KeyU: 'match:refit',
+    KeyB: 'match:summon',
 });
 
 export class InputController {
