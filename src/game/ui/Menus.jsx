@@ -82,7 +82,8 @@ function VRButton({ onStart }) {
 
 /**
  * How the last VR session went, under the button that started it: a headset has no console,
- * so a session that showed nothing has to say here what happened.
+ * so a session that showed nothing has to say here what happened. One that failed (in red)
+ * also tells the player what to do about it: reload the page and try again.
  */
 function VRReport() {
     const report = useGameStore((state) => state.vrReport);
@@ -96,7 +97,8 @@ function VRReport() {
     return (
         <p className={`eod-vr-report${failed ? ' eod-vr-report-failed' : ''}`}>
             {summary}
-            {report.errors > 0 && <><br />{t('ui.vr.report.errors', { count: report.errors })} {report.firstError}</>}
+            {report.errors > 0 && <><br />{report.notStarted ? '' : `${t('ui.vr.report.errors', { count: report.errors })} `}{report.firstError}</>}
+            {failed && <><br />{t('ui.vr.report.retry')}</>}
         </p>
     );
 }

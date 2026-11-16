@@ -437,6 +437,7 @@ export default {
     'ui.vr.report.summary': '上次 VR：{seconds} 秒内渲染 {frames} 帧 · 每只眼 {width}×{height} · 最低分辨率 {scale}%',
     'ui.vr.report.notStarted': 'VR 没能启动。',
     'ui.vr.report.errors': '有 {count} 帧出错：',
+    'ui.vr.report.retry': '请刷新页面后重试。',
     'ui.vr.menuHint': '摇杆选择 · 扳机 / A 确认 · B 返回',
     'ui.vr.refitHint': '摇杆左右：减少 / 增加一级',
     'ui.vr.controls': '右摇杆转向 · 左摇杆油门 / 滚转 · 右扳机光束 · 左扳机鱼雷 · 左握把加力 · 右握把锁定你正看着的目标 · A 下一个目标 · B 跳过通讯 · X 能量分配 · Y 切换视角 · 按下左摇杆重置座位 · 按下右摇杆暂停',

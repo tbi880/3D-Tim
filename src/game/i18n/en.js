@@ -437,6 +437,7 @@ export default {
     'ui.vr.report.summary': 'Last VR session: {frames} frames in {seconds} s · {width}×{height} per eye · lowest resolution {scale}%',
     'ui.vr.report.notStarted': 'VR could not start.',
     'ui.vr.report.errors': '{count} frames failed:',
+    'ui.vr.report.retry': 'Please reload the page and try again.',
     'ui.vr.menuHint': 'Stick: choose · Trigger / A: select · B: back',
     'ui.vr.refitHint': 'Stick left / right adds or removes a level',
     'ui.vr.controls': 'Right stick steer · Left stick throttle / roll · Right trigger beams · Left trigger torpedo · Left grip afterburner · Right grip lock what you look at · A next target · B skip comms · X power · Y view · Left stick click re-centre seat · Right stick click pause',
