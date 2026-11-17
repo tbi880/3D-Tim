@@ -228,6 +228,31 @@ function beamImpact(target, origin, forward, out) {
     return target.closestPoint(origin, out);
 }
 
+/** The capacitor refills once the beams have rested for `PLAYER.energyRegenDelay`. */
+function rechargeCapacitor(ship, dt) {
+    ship.energyRegenDelay -= dt;
+    if (ship.energyRegenDelay <= 0) ship.energy = Math.min(PLAYER.energyMax, ship.energy + PLAYER.energyRegen * dt);
+}
+
+/**
+ * Nothing to track: the beam fires dead ahead, as far as `def` reaches on this ship, and carves
+ * up the first asteroid in the way. Leaves where it ends in `scratchImpact`.
+ */
+function fireBeamAhead(world, ship, def, origin, damage) {
+    const range = playerBeamRange(ship, def);
+    const rock = raycastObstacles(world, origin, scratchForward, range);
+    scratchImpact.copy(origin).addScaledVector(scratchForward, rock ? rock.distance : range);
+    if (rock) damageObstacle(world, rock.obstacle, damage, scratchImpact, true);
+}
+
+/** Draws this frame's beam from each of the weapon's mounts to `scratchImpact`. */
+function drawPlayerBeams(world, ship, def, origin, target) {
+    for (const mount of def.mounts) {
+        scratchOrigin.fromArray(mount).applyQuaternion(ship.quaternion).add(origin);
+        world.addBeam(scratchOrigin, scratchImpact, def.color, def.width, 'beam', ship, target?.isProjectile ? null : target);
+    }
+}
+
 /**
  * The lance ability (config/abilities.js 'lance'): while it lasts the beam trigger fires it in
  * place of the beams. It finds its mark the way they do - the lock if it is in the ring, else
@@ -237,8 +262,7 @@ function beamImpact(target, origin, forward, out) {
 function updatePlayerLance(world, ship, weapon, dt, triggerHeld, lance) {
     const lanceDef = WEAPONS[lance.weapon];
     if (weapon.depleted && ship.energy >= BEAM_RESTART_ENERGY) weapon.depleted = false;
-    ship.energyRegenDelay -= dt;
-    if (ship.energyRegenDelay <= 0) ship.energy = Math.min(PLAYER.energyMax, ship.energy + PLAYER.energyRegen * dt);
+    rechargeCapacitor(ship, dt);
     weapon.firing = triggerHeld;
     ship.beamFiring = triggerHeld;
     if (!triggerHeld) return;
@@ -259,15 +283,9 @@ function updatePlayerLance(world, ship, weapon, dt, triggerHeld, lance) {
             applyTrueDamage(world, target, shieldRate * dt, hullRate * dt, { source: ship, weapon: lanceDef, point: scratchImpact });
         }
     } else {
-        const range = playerBeamRange(ship, lanceDef);
-        const rock = raycastObstacles(world, origin, scratchForward, range);
-        scratchImpact.copy(origin).addScaledVector(scratchForward, rock ? rock.distance : range);
-        if (rock) damageObstacle(world, rock.obstacle, lance.capitalDps * dt, scratchImpact, true);
+        fireBeamAhead(world, ship, lanceDef, origin, lance.capitalDps * dt);
     }
-    for (const mount of lanceDef.mounts) {
-        scratchOrigin.fromArray(mount).applyQuaternion(ship.quaternion).add(origin);
-        world.addBeam(scratchOrigin, scratchImpact, lanceDef.color, lanceDef.width, 'beam', ship, target?.isProjectile ? null : target);
-    }
+    drawPlayerBeams(world, ship, lanceDef, origin, target);
 }
 
 function updatePlayerBeam(world, ship, weapon, dt, triggerHeld) {
@@ -286,8 +304,7 @@ function updatePlayerBeam(world, ship, weapon, dt, triggerHeld) {
     ship.beamFiring = firing;
 
     if (!firing) {
-        ship.energyRegenDelay -= dt;
-        if (ship.energyRegenDelay <= 0) ship.energy = Math.min(PLAYER.energyMax, ship.energy + PLAYER.energyRegen * dt);
+        rechargeCapacitor(ship, dt);
         return;
     }
 
@@ -302,16 +319,10 @@ function updatePlayerBeam(world, ship, weapon, dt, triggerHeld) {
             source: ship, weapon: def, point: scratchImpact, shieldMult: def.shieldMult, hullMult: def.hullMult, continuous: true,
         });
     } else {
-        // Nothing hostile in the ring: the beams fire dead ahead and carve up any asteroid in the way.
-        const range = playerBeamRange(ship, def);
-        const rock = raycastObstacles(world, origin, scratchForward, range);
-        scratchImpact.copy(origin).addScaledVector(scratchForward, rock ? rock.distance : range);
-        if (rock) damageObstacle(world, rock.obstacle, damage, scratchImpact, true);
+        // Nothing hostile in the ring.
+        fireBeamAhead(world, ship, def, origin, damage);
     }
-    for (const mount of def.mounts) {
-        scratchOrigin.fromArray(mount).applyQuaternion(ship.quaternion).add(origin);
-        world.addBeam(scratchOrigin, scratchImpact, def.color, def.width, 'beam', ship, target?.isProjectile ? null : target);
-    }
+    drawPlayerBeams(world, ship, def, origin, target);
 }
 
 /** Torpedo target: the lock if it is roughly ahead, otherwise the torpedo flies straight. */
@@ -331,28 +342,18 @@ function updatePlayerTorpedo(world, ship, weapon, dt, triggerPressed) {
         return;
     }
 
-    forwardOf(ship.quaternion, scratchForward);
-    mountPosition(ship, def, scratchOrigin);
-    let target = null;
-    if (isValidTarget(ship.target)) {
-        aimPointOn(ship.target, ship.position, scratchForward, scratchAim);
-        if (angleOffAxis(ship.target, ship.position, scratchForward, scratchAim) <= degToRad(def.lockConeDeg)) {
-            target = ship.target;
-        }
-    }
-    // `weaponRange` stretches the torpedo's fuel, so the same warhead reaches further.
-    spawnTorpedo(world, ship, weapon, scratchOrigin, scratchForward, target,
-        POWER_MODES[ship.powerMode].damage * (ship.cls.weaponDamage ?? 1), ship.cls.weaponRange ?? 1);
+    launchPlayerTorpedo(world, ship, weapon);
     weapon.ammo -= 1;
     weapon.cooldown = def.cooldown;
 }
 
 /**
- * The ability torpedo (config/abilities.js 'torpedo'): leaves the ship like one of its own,
- * homing on the lock if that is anywhere in the warhead's (wide) cone. Returns the torpedo.
+ * A torpedo out of a player's tube: it homes on the lock if that is within the weapon's
+ * `lockConeDeg` of the nose, and flies straight otherwise. The power mode and the ship's
+ * `weaponDamage` scale its warhead; `weaponRange` stretches its fuel, so it reaches further.
  */
-export function launchAbilityTorpedo(world, ship, weaponId) {
-    const def = WEAPONS[weaponId];
+function launchPlayerTorpedo(world, ship, weapon) {
+    const def = weapon.def;
     forwardOf(ship.quaternion, scratchForward);
     mountPosition(ship, def, scratchOrigin);
     let target = null;
@@ -360,8 +361,16 @@ export function launchAbilityTorpedo(world, ship, weaponId) {
         aimPointOn(ship.target, ship.position, scratchForward, scratchAim);
         if (angleOffAxis(ship.target, ship.position, scratchForward, scratchAim) <= degToRad(def.lockConeDeg)) target = ship.target;
     }
-    return spawnTorpedo(world, ship, { id: weaponId, def }, scratchOrigin, scratchForward, target,
+    return spawnTorpedo(world, ship, weapon, scratchOrigin, scratchForward, target,
         POWER_MODES[ship.powerMode].damage * (ship.cls.weaponDamage ?? 1), ship.cls.weaponRange ?? 1);
+}
+
+/**
+ * The ability torpedo (config/abilities.js 'torpedo'): leaves the ship like one of its own,
+ * homing on the lock if that is anywhere in the warhead's (wide) cone. Returns the torpedo.
+ */
+export function launchAbilityTorpedo(world, ship, weaponId) {
+    return launchPlayerTorpedo(world, ship, { id: weaponId, def: WEAPONS[weaponId] });
 }
 
 function updatePlayerWeapons(world, ship, dt) {
@@ -417,15 +426,19 @@ function trackTarget(world, weapon, target, dt) {
     return weapon.lock >= 1;
 }
 
+/**
+ * What a computer-flown ship's weapon shoots at: a turret picks its own targets, a fixed gun
+ * fires on the pilot's target when the pilot wants it to.
+ */
+function aiWeaponTarget(world, ship, weapon, dt) {
+    if (!weapon.def.turret) return ship.ai.wantsFire ? ship.target : null;
+    refreshTurretTarget(world, ship, weapon, dt);
+    return weapon.target;
+}
+
 function updateAiBolt(world, ship, weapon, dt) {
     const def = weapon.def;
-    let target;
-    if (def.turret) {
-        refreshTurretTarget(world, ship, weapon, dt);
-        target = weapon.target;
-    } else {
-        target = ship.ai.wantsFire ? ship.target : null;
-    }
+    const target = aiWeaponTarget(world, ship, weapon, dt);
     if (def.lockTime && !trackTarget(world, weapon, target, dt)) return;
     if (!target || weapon.cooldown > 0) return;
 
@@ -443,13 +456,7 @@ function updateAiBolt(world, ship, weapon, dt) {
 
 function updateAiTorpedo(world, ship, weapon, dt) {
     const def = weapon.def;
-    let target;
-    if (def.turret) {
-        refreshTurretTarget(world, ship, weapon, dt);
-        target = weapon.target;
-    } else {
-        target = ship.ai.wantsFire ? ship.target : null;
-    }
+    const target = aiWeaponTarget(world, ship, weapon, dt);
     if (!isValidTarget(target) || weapon.cooldown > 0) return;
     if (hullSeparation(ship, target, def.range) > def.range) return;
 
