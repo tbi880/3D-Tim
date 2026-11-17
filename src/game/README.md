@@ -258,6 +258,10 @@ flies the player's ship along a straight line (Lantern's dock and undock sequenc
 by the player and by allies, Umbra toughness, fire rate and beam damage, allied damage and
 the player's shield recharge. `npm run game:simulate -- --difficulty=admiral` flies the
 campaign at a given level; add `--ship=swift` (or `shrike`, `bulwark`, `peregrine`) to fly another ship.
+A multiplayer match has its own, `BATTLE_ROYALE.difficulty` in `config/battleRoyale.js` (a
+`versus` difficulty): the computer-flown ships of both sides fight at one story level
+(`NPC_LEVEL`, Admiral) - as tough, as quick to fire and as painful to a player's ship as Umbra
+are there, whichever side they fly for - and nothing is scaled between one player and another.
 
 **Change the story** – edit `story/campaign.js`. It reads top to bottom:
 

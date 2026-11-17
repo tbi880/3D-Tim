@@ -63,8 +63,13 @@ export const POWER_MODE_ORDER = ['balanced', 'attack', 'defense'];
  *   enemyBeamDamage  - damage of Umbra continuous beams (they have no "rate" to scale)
  *   allyDamage       - damage dealt by Dawn ships other than the player
  *   shieldRegen      - recharge rate of the player's shields
- *   allyDamageVsShips - optional, replaces ALLIES.damageVsShips (multiplayer sets it to 1:
- *                       there both fleets fight each other for real)
+ *   allyDamageVsShips - optional, replaces ALLIES.damageVsShips
+ *   versus           - optional, multiplayer only (config/battleRoyale.js): no fleet is "the
+ *                      player's". The computer-flown ships of every side are the enemy fleet -
+ *                      `enemyToughness`, `enemyFireRate` and `enemyBeamDamage` apply to all of
+ *                      them alike - and `damageTaken` scales only what they do to a player's
+ *                      ship: what players do to each other is never scaled. The ally entries
+ *                      are not read.
  */
 export const DIFFICULTY = Object.freeze({
     cadet: {

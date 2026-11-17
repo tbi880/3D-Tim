@@ -1,4 +1,4 @@
-import { FACTION } from './gameConfig.js';
+import { DIFFICULTY, FACTION } from './gameConfig.js';
 
 /**
  * Tuning for the battle royale (multiplayer): three sides fight their way outwards through
@@ -31,6 +31,12 @@ export const STAR_SYSTEM = Object.freeze({
  * nothing to stop one pirate shooting another (core/systems/damage.js `mayAttack`).
  */
 export const PLAYER_FACTIONS = Object.freeze([FACTION.DAWN, FACTION.UMBRA, FACTION.PIRATE]);
+/**
+ * The single-player level every computer-flown ship of a match fights at (`difficulty`, below):
+ * as tough, as quick on the trigger and as painful to a player as the story's Umbra are there.
+ */
+const NPC_LEVEL = DIFFICULTY.admiral;
+
 /** The sides that garrison planets. */
 export const NPC_FACTIONS = Object.freeze([FACTION.DAWN, FACTION.UMBRA]);
 
@@ -333,11 +339,19 @@ export const BATTLE_ROYALE = Object.freeze({
     defaultPace: 'standard',
 
     /**
-     * Damage scaling for every zone: nothing is tilted towards anyone, and both fleets'
-     * computer-flown ships hit each other at full strength (see DIFFICULTY in config/gameConfig.js).
+     * Damage scaling for every zone (see DIFFICULTY and its `versus` in config/gameConfig.js).
+     * Nothing is tilted towards any side: the computer-flown ships of both fleets fight at
+     * `NPC_LEVEL` - against players of every side, and against each other, where the same
+     * numbers on both sides cancel out evenly. A player's ship takes from them what it would
+     * from the story's Umbra at that level (`damageTaken`), whichever fleet is shooting.
+     * Between players nothing is scaled, and shields recharge at their ordinary rate.
      */
     difficulty: Object.freeze({
-        id: 'versus', damageTaken: 1, allyDamageTaken: 1, enemyToughness: 1, enemyFireRate: 1,
-        enemyBeamDamage: 1, allyDamage: 1, shieldRegen: 1, allyDamageVsShips: 1,
+        id: 'versus', versus: true,
+        damageTaken: NPC_LEVEL.damageTaken,
+        enemyToughness: NPC_LEVEL.enemyToughness,
+        enemyFireRate: NPC_LEVEL.enemyFireRate,
+        enemyBeamDamage: NPC_LEVEL.enemyBeamDamage,
+        shieldRegen: 1,
     }),
 });

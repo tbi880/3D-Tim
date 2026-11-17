@@ -1,11 +1,11 @@
 import { Vector3 } from 'three';
-import { FACTION, PLAYER, POWER_MODES } from '../../config/gameConfig.js';
+import { PLAYER, POWER_MODES } from '../../config/gameConfig.js';
 import { WEAPONS } from '../../config/weapons.js';
 import { GAME_EVENTS } from '../EventBus.js';
 import { Projectile } from '../Projectile.js';
 import { degToRad, forwardOf, randomInCone, randomRange } from '../math.js';
 import { endAbility } from './abilities.js';
-import { applyDamage, applyTrueDamage, areHostile, mayAttack } from './damage.js';
+import { applyDamage, applyTrueDamage, areHostile, isEnemyFleet, mayAttack } from './damage.js';
 import { damageObstacle, raycastObstacles } from './obstacles.js';
 import { IDLE_CONTROLS } from './playerFlight.js';
 import { aimPointOn, angleOffAxis, isValidTarget } from './targeting.js';
@@ -392,7 +392,7 @@ function updateAiBeam(world, ship, weapon, dt) {
 
     impactPoint(target, ship.position, scratchImpact);
     ship.closestPoint(scratchImpact, scratchOrigin);
-    const beamScale = ship.faction === FACTION.UMBRA ? world.difficulty.enemyBeamDamage : 1;
+    const beamScale = isEnemyFleet(world, ship) ? world.difficulty.enemyBeamDamage : 1;
     applyDamage(world, target, def.dps * beamScale * dt, {
         source: ship, weapon: def, point: scratchImpact, shieldMult: def.shieldMult, hullMult: def.hullMult, continuous: true,
     });
@@ -546,9 +546,8 @@ export function updateShipWeapons(world, ship, dt) {
         return;
     }
     if (!ship.weaponsOnline) return;
-    const umbra = ship.faction === FACTION.UMBRA;
-    // Difficulty: Umbra guns cycle faster or slower; their beams hit harder or softer.
-    const reloadStep = dt * (umbra ? world.difficulty.enemyFireRate : 1);
+    // Difficulty: the enemy fleet's guns cycle faster or slower; its beams hit harder or softer.
+    const reloadStep = dt * (isEnemyFleet(world, ship) ? world.difficulty.enemyFireRate : 1);
     for (const weapon of ship.weapons) {
         weapon.cooldown = Math.max(0, weapon.cooldown - reloadStep);
         switch (weapon.def.type) {

@@ -30,6 +30,15 @@ export function mayAttack(world, ship, target) {
 }
 
 /**
+ * Whether a computer-flown ship belongs to the fleet the difficulty's `enemy...` numbers are
+ * about: Umbra in the story; in multiplayer (a `versus` difficulty) the fleets of every side.
+ */
+export function isEnemyFleet(world, ship) {
+    if (ship.isPlayer) return false;
+    return world.difficulty.versus ? ship.faction !== FACTION.NEUTRAL : ship.faction === FACTION.UMBRA;
+}
+
+/**
  * True while a ship's ability keeps `source`'s fire off it (`immunity` in config/abilities.js):
  * 'weapons' stops whatever a ship fires, 'all' also what nobody fired (a rammed rock).
  */
@@ -149,7 +158,16 @@ export function applyDamage(world, target, amount, options = {}) {
     }
 
     let remaining = amount;
-    if (target.isPlayer) {
+    if (world.difficulty.versus) {
+        // Multiplayer: every side's computer-flown ships are as tough as each other and hurt a
+        // player's ship alike; what one player does to another is left as it is.
+        if (target.isPlayer) {
+            const fromFleet = Boolean(source) && isEnemyFleet(world, source);
+            remaining *= (fromFleet ? world.difficulty.damageTaken : 1) * POWER_MODES[target.powerMode].damageTaken;
+        } else if (isEnemyFleet(world, target)) {
+            remaining /= world.difficulty.enemyToughness;
+        }
+    } else if (target.isPlayer) {
         remaining *= world.difficulty.damageTaken * POWER_MODES[target.powerMode].damageTaken;
     } else if (target.faction === FACTION.DAWN) {
         remaining *= world.difficulty.allyDamageTaken;
