@@ -79,15 +79,20 @@ export function updatePlayerFlight(world, ship, controls, dt) {
     // After running dry the boost must recharge a little before it can be re-engaged.
     if (ship.boost <= 0) ship.boostLockout = true;
     if (ship.boost > 0.25) ship.boostLockout = false;
-    ship.boosting = wantsBoost && !ship.boostLockout;
+    // The overdrive ability (config/abilities.js): a dash past the afterburner's top speed. It
+    // burns nothing from the tank, and shows as an afterburner (flames, the camera, the sound).
+    const overdrive = ship.effect('overdrive');
+    const burning = wantsBoost && !ship.boostLockout && !overdrive;
+    ship.boosting = burning || Boolean(overdrive);
     ship.boost = clamp(
-        ship.boost + (ship.boosting ? -dt / (PLAYER.boostDuration * handling.boostDuration) : dt / PLAYER.boostRecharge),
+        ship.boost + (burning ? -dt / (PLAYER.boostDuration * handling.boostDuration) : dt / PLAYER.boostRecharge),
         0, 1,
     );
 
     const cruiseSpeed = ship.cls.maxSpeed * mode.engine;
-    const targetSpeed = ship.boosting ? cruiseSpeed * PLAYER.boostMultiplier * handling.boostMultiplier : cruiseSpeed * ship.throttle;
-    const acceleration = PLAYER.acceleration * handling.acceleration * (ship.boosting ? 2.5 : 1);
+    const boostSpeed = cruiseSpeed * PLAYER.boostMultiplier * handling.boostMultiplier;
+    const targetSpeed = overdrive ? boostSpeed * overdrive.speedMult : ship.boosting ? boostSpeed : cruiseSpeed * ship.throttle;
+    const acceleration = PLAYER.acceleration * handling.acceleration * (overdrive ? overdrive.accelerationMult : ship.boosting ? 2.5 : 1);
     ship.speed = approach(ship.speed, targetSpeed, acceleration * dt);
 
     // --- Velocity follows the nose with a little drift -----------------------------------

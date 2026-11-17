@@ -1,4 +1,5 @@
 import { Vector3, Quaternion } from 'three';
+import { abilityOf } from '../config/abilities.js';
 import { PLAYER } from '../config/gameConfig.js';
 import { clamp } from './math.js';
 
@@ -121,6 +122,13 @@ export class Ship {
         this.maxShield = cls.shield;
         this.shield = cls.shield;
         this.shieldCooldown = 0;
+        /** Seconds the shield is held down, unable to come back (a breach torpedo's blast: systems/damage.js `stripShield`). */
+        this.shieldDown = 0;
+        /**
+         * True while nothing can lock the ship or fire on it (the cloak ability). Kept by
+         * systems/abilities.js where the ship is simulated, by the host's snapshots on other devices.
+         */
+        this.cloaked = false;
 
         this.alive = true;
         this.invulnerable = options.invulnerable ?? cls.invulnerable ?? false;
@@ -186,6 +194,20 @@ export class Ship {
         this.powerMode = 'balanced';
         this.angularVelocity = new Vector3();
         this.beamFiring = false;
+        /**
+         * The ship's active ability (config/abilities.js, systems/abilities.js), or null for a
+         * class without one: its definition, seconds until it can be used again, seconds its
+         * effect still lasts, and - for the torpedo - the warhead in flight (`armed` while it
+         * can be set off; `projectile` only where the ship is simulated).
+         */
+        const ability = abilityOf(cls);
+        this.ability = ability ? { def: ability, cooldown: 0, active: 0, armed: false, projectile: null } : null;
+    }
+
+    /** The definition of the ship's ability while its effect of `kind` is running, else null. */
+    effect(kind) {
+        const ability = this.ability;
+        return ability && ability.active > 0 && ability.def.kind === kind ? ability.def : null;
     }
 
     hasTag(tag) {

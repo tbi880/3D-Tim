@@ -129,6 +129,17 @@ html.eod-page-locked body {
 .eod-torpedo--loaded { background: var(--eod-cyan); opacity: 1; box-shadow: 0 0 6px var(--eod-cyan); }
 
 .eod-speed { display: flex; align-items: baseline; gap: 6px; }
+/* The ship's active ability: name and key, a bar (time left while it runs, recharge after), and what it is doing. */
+.eod-ability { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; padding-top: 6px; border-top: 1px solid var(--eod-border); }
+.eod-ability .eod-meter-label { display: inline-flex; align-items: center; gap: 5px; color: #dff4ff; }
+.eod-ability kbd { font: inherit; padding: 1px 4px; border: 1px solid currentColor; border-radius: 2px; }
+.eod-ability .eod-meter-fill { background: rgba(190, 230, 255, 0.45); }
+.eod-ability-state { font-size: 10px; min-width: 34px; text-align: right; color: rgba(190, 230, 255, 0.72); }
+.eod-ability--ready .eod-meter-fill { background: var(--eod-green); box-shadow: 0 0 6px var(--eod-green); }
+.eod-ability--ready .eod-ability-state { color: var(--eod-green); }
+.eod-ability--active .eod-meter-fill, .eod-ability--armed .eod-meter-fill { background: var(--eod-amber); box-shadow: 0 0 6px var(--eod-amber); }
+.eod-ability--active .eod-ability-state, .eod-ability--armed .eod-ability-state { color: var(--eod-amber); }
+.eod-ability--armed .eod-ability-state { animation: eod-blink 0.5s steps(2) infinite; }
 .eod-speed-value { font-size: 22px; font-weight: 700; min-width: 48px; text-align: right; }
 .eod-speed-unit { font-size: 10px; margin-right: auto; }
 
@@ -219,6 +230,7 @@ html.eod-page-locked body {
 
 .eod-alerts { position: absolute; top: 27%; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .eod-alert { padding: 4px 14px; font-size: 12px; font-weight: 700; color: var(--eod-red); border: 1px solid var(--eod-red); background: rgba(40, 0, 10, 0.55); animation: eod-blink 0.8s steps(2) infinite; }
+.eod-alert--cloak { color: var(--eod-cyan); border-color: var(--eod-cyan); background: rgba(0, 24, 40, 0.55); animation: none; }
 
 .eod-hint {
     position: absolute;
@@ -306,6 +318,9 @@ html.eod-page-locked body {
 .eod-ship-card--selected strong { color: var(--eod-amber); }
 .eod-ship-card em { font-style: normal; font-size: 11px; letter-spacing: 0.08em; color: var(--eod-cyan); }
 .eod-ship-card p { margin: 2px 0 6px; min-height: 5.6em; font-size: 12px; line-height: 1.45; color: rgba(225, 240, 255, 0.78); }
+/* The ship's ability under its description: its name on a line of its own, then what it does. */
+.eod-ship-card .eod-ship-card-ability { min-height: 7.4em; padding-top: 6px; border-top: 1px solid rgba(120, 200, 255, 0.2); font-size: 11px; }
+.eod-ship-card-ability b { display: block; margin-bottom: 2px; font-size: 11px; letter-spacing: 0.06em; color: var(--eod-amber); }
 .eod-rating { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(225, 240, 255, 0.7); }
 /* Ten pips (RATING_MAX) in the same share of every card, so the rows line up. */
 .eod-rating-pips { display: flex; flex: none; width: min(110px, 48%); gap: 2px; }
@@ -517,6 +532,18 @@ html.eod-page-locked body {
 .eod-touch-button--bottom { left: 50px; top: 100px; }
 .eod-touch-button--fire { border-color: var(--eod-amber); color: var(--eod-amber); }
 .eod-touch-button--torpedo { border-color: var(--eod-cyan); color: var(--eod-cyan); }
+/* The ability: a fifth, slightly smaller button off the diamond's lower left corner, 8 px clear of
+   TORPEDO like the four are of each other, and well clear of FIRE. Not the upper left corner: in
+   a match the status panel comes down to there on a phone. It stays right of the comms line.
+   Its fill is a dial: it empties while the effect runs and refills as the ability recharges. */
+.eod-touch-button--ability {
+    left: -38px; top: 106px; width: 56px; height: 56px; gap: 1px; font-size: 9px; line-height: 1.1;
+    border-color: rgba(190, 230, 255, 0.5); color: rgba(223, 244, 255, 0.75);
+    background: conic-gradient(rgba(89, 208, 255, 0.3) calc(var(--eod-ability-charge, 1) * 360deg), rgba(6, 16, 28, 0.55) 0);
+}
+.eod-touch-button--ability small { font-size: 9px; font-weight: 700; }
+.eod-touch-button--ability-ready { border-color: var(--eod-green); color: var(--eod-green); background: rgba(6, 28, 20, 0.5); box-shadow: 0 0 8px rgba(120, 255, 190, 0.35); }
+.eod-touch-button--ability-active, .eod-touch-button--ability-armed { border-color: var(--eod-amber); color: #fff4dc; text-shadow: 0 0 3px #000; background: conic-gradient(rgba(255, 190, 90, 0.35) calc(var(--eod-ability-charge, 1) * 360deg), rgba(6, 16, 28, 0.55) 0); }
 .eod-touch-pause { position: absolute; top: 8px; left: calc(8px + env(safe-area-inset-left, 0px)); width: 40px; height: 34px; padding: 0; font: inherit; font-size: 12px; font-weight: 700; color: #dff4ff; background: rgba(6, 16, 28, 0.55); border: 1px solid var(--eod-border); border-radius: 4px; pointer-events: auto; touch-action: none; }
 
 /* ---- First-flight tutorial (ui/TutorialOverlay.jsx) --------------------------------------- */

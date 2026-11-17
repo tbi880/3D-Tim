@@ -1,4 +1,5 @@
 import { Vector3 } from 'three';
+import { ABILITIES, ABILITY_PHASES } from '../../config/abilities.js';
 import { FACTION } from '../../config/gameConfig.js';
 import { SECTORS } from '../../config/sectors.js';
 import { GAME_EVENTS } from '../../core/EventBus.js';
@@ -474,6 +475,12 @@ export class ClientMatch {
             }
         }
         world.setPlayerTarget(own.targetId ? this.index.ships.get(own.targetId) ?? null : null);
+        if (ship.ability) {
+            ship.ability.cooldown = own.abilityCooldown;
+            ship.ability.active = own.abilityActive;
+            ship.ability.armed = own.abilityArmed;
+        }
+        ship.shieldDown = own.shieldDown;
     }
 
     // ---- World events from the host ----------------------------------------------------------
@@ -544,6 +551,15 @@ export class ClientMatch {
             case WORLD_EVENT.REFIT: {
                 const ship = index.ships.get(a);
                 if (ship?.alive && ship.isPlayer) world.refitShip(ship, cleanUpgrades(b));
+                break;
+            }
+            case WORLD_EVENT.ABILITY: {
+                if (!Object.hasOwn(ABILITIES, b) || !ABILITY_PHASES.includes(c)) break;
+                const blast = [d, e, f, entry[7]].every(Number.isFinite);
+                world.events.emit(GAME_EVENTS.ABILITY, {
+                    ship: index.ships.get(a) ?? null, ability: b, phase: c,
+                    ...(blast ? { position: new Vector3(d, e, f), radius: entry[7] } : {}),
+                });
                 break;
             }
             case WORLD_EVENT.STAGE:

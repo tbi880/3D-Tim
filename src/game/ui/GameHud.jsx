@@ -4,6 +4,7 @@ import { hasTranslation } from '../i18n/index.js';
 import { isTouchDevice } from '../input/device.js';
 import { PHASE, SESSION_EVENTS } from '../state/GameSession.js';
 import { useGameStore, useT } from '../state/gameStore.js';
+import { abilityStateText } from './abilityText.js';
 import CommsPanel from './CommsPanel.jsx';
 import MatchHud from './multiplayer/MatchHud.jsx';
 
@@ -78,6 +79,18 @@ function CompactShipPanel() {
     );
 }
 
+/** The ship's active ability (config/abilities.js): its name, its key, and a bar that empties while it runs and refills as it recharges. */
+function AbilityRow({ ability }) {
+    const t = useT();
+    return (
+        <div className={`eod-ability eod-ability--${ability.state}`}>
+            <span className="eod-meter-label"><kbd>Q</kbd>{t(`ability.${ability.id}.name`)}</span>
+            <div className="eod-meter-track"><div className="eod-meter-fill" style={{ width: percent(ability.charge) }} /></div>
+            <span className="eod-ability-state">{abilityStateText(t, ability)}</span>
+        </div>
+    );
+}
+
 function WeaponsPanel() {
     const hud = useGameStore((state) => state.hud);
     const t = useT();
@@ -100,6 +113,7 @@ function WeaponsPanel() {
                 <span className="eod-speed-unit">m/s</span>
                 <span className="eod-meter-label">{t('hud.throttle')} {percent(hud.throttle)}</span>
             </div>
+            {hud.ability && <AbilityRow ability={hud.ability} />}
         </div>
     );
 }
@@ -177,11 +191,14 @@ function Alerts() {
     else if (hud.cannonLock === 1) alerts.push('hud.cannonTracking');
     if (escort && escort.hull < 0.3) alerts.push('hud.escortCritical');
     if (hud.hull < 0.3) alerts.push('hud.hullCritical');
-    else if (hud.shield <= 0.01) alerts.push('hud.shieldsDown');
-    if (alerts.length === 0) return null;
+    else if (hud.shield <= 0.01 && hud.shieldDown <= 0) alerts.push('hud.shieldsDown');
+    if (alerts.length === 0 && hud.shieldDown <= 0 && !hud.cloaked) return null;
     return (
         <div className="eod-alerts">
+            {/* A breach blast has the shield down: how long until it can come back. */}
+            {hud.shieldDown > 0 && <span className="eod-alert">{t('hud.shieldsBreached', { seconds: hud.shieldDown })}</span>}
             {alerts.map((key) => <span key={key} className="eod-alert">{t(key)}</span>)}
+            {hud.cloaked && <span className="eod-alert eod-alert--cloak">{t('hud.cloaked')}</span>}
         </div>
     );
 }

@@ -10,8 +10,10 @@
  *   left grip          afterburner (hold)        right grip      lock the target you look at;
  *                                                                held: dock at a station / let go (multiplayer)
  *   A                  next target               B               skip comms line
- *   X                  power mode                Y               cockpit / chase view
+ *   X                  power mode                Y               the ship's ability (config/abilities.js)
  *   left stick click   re-centre the seat        right stick click  pause
+ *
+ * The cockpit / chase view is switched in the pause menu (xr/VRMenu.js).
  *
  * With a VR menu open, either stick moves the selection (up / down) and changes a value
  * (left / right); trigger or A picks, B goes back.
@@ -51,7 +53,7 @@ export class XRGamepadInput {
     /**
      * @param {object} params
      * @param {import('../input/InputController.js').InputController} params.input
-     * @param {(event: string) => void} params.onFlightAction 'cycleTarget' | 'skip' | 'power:cycle' | 'toggleView' | 'gazeTarget' | 'gripHeld' | 'recenter' | 'pause'
+     * @param {(event: string) => void} params.onFlightAction 'cycleTarget' | 'skip' | 'power:cycle' | 'ability' | 'gazeTarget' | 'gripHeld' | 'recenter' | 'pause'
      * @param {(event: string) => void} params.onMenuAction 'up' | 'down' | 'left' | 'right' | 'select' | 'back' | 'pause'
      * @param {() => boolean} params.isMenuOpen
      * @param {() => boolean} params.getInvertY
@@ -148,7 +150,7 @@ export class XRGamepadInput {
         if (edges.a) this.onFlightAction('cycleTarget');
         if (edges.b) this.onFlightAction('skip');
         if (edges.x) this.onFlightAction('power:cycle');
-        if (edges.y) this.onFlightAction('toggleView');
+        if (edges.y) this.onFlightAction('ability');
     }
 
     /** A right grip kept squeezed for GRIP_HOLD_SECONDS is 'gripHeld', once per squeeze. */

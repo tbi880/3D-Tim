@@ -110,6 +110,9 @@ export function applySnapshotSample(world, shipsById, { from, to, alpha }, ownSh
         ship.shield = to.shield[i] * ship.maxShield;
         ship.invulnerable = Boolean(flags & SHIP_FLAG.INVULNERABLE);
         ship.targetable = Boolean(flags & SHIP_FLAG.TARGETABLE);
+        ship.cloaked = Boolean(flags & SHIP_FLAG.CLOAKED);
+        // Only that it is down is known here (the pilot's own ship is told the seconds: ClientMatch.applyOwnShip).
+        ship.shieldDown = flags & SHIP_FLAG.SHIELD_DOWN ? ship.shieldDown || 1 : 0;
         if (ship === ownShip) continue;
         ship.boosting = Boolean(flags & SHIP_FLAG.BOOSTING);
 

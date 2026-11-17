@@ -4,7 +4,7 @@
  */
 export const NET = Object.freeze({
     /** Bumped whenever packets change shape; a host refuses a client that speaks another version. */
-    protocolVersion: 2,
+    protocolVersion: 3,
 
     /** World snapshots the host sends each client per second. */
     snapshotHz: 30,

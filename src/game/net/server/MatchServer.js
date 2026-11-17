@@ -234,12 +234,14 @@ export class MatchServer {
                 pilot.joined = true;
                 pilot.needsWelcome = true;
                 return;
-            case MSG.ACTION:
+            case MSG.ACTION: {
                 if (!pilot.joined || !pilot.ship?.alive || pilot.zone.world.controlsLocked) return;
-                if (applyPilotAction(pilot.zone.world, pilot.ship, message.a, { forward: message.f ? scratchForward.fromArray(message.f) : null })) {
-                    pilot.tell(WORLD_EVENT.STAGE, 'playCue', 'power');
-                }
+                // A ship the game mode has in hand (docked, say) is not the pilot's to throw about.
+                if (message.a === 'ability' && pilot.helmHeld) return;
+                const cue = applyPilotAction(pilot.zone.world, pilot.ship, message.a, { forward: message.f ? scratchForward.fromArray(message.f) : null });
+                if (cue) pilot.tell(WORLD_EVENT.STAGE, 'playCue', cue);
                 return;
+            }
             case MSG.REQUEST:
                 if (pilot.joined) this.mode.onRequest(pilot, message.k, message.d ?? {});
                 return;

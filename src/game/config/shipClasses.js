@@ -78,6 +78,7 @@ export const SHIP_CLASSES = Object.freeze({
     //   weaponDamage - multiplier on beam and torpedo damage
     //   weaponRange  - multiplier on beam reach (3 km) and torpedo flight time (about 1.8 km);
     //                  beams always outreach torpedoes on the same ship
+    //   ability      - the ship's active ability (config/abilities.js); the Bulwark has none
     // `radius` is the hit sphere: bigger hulls are easier to hit and to scrape on rocks.
     // Models: MODEL_OVERRIDES in scene/models/ShipModel.jsx.
     kestrel: {
@@ -88,6 +89,7 @@ export const SHIP_CLASSES = Object.freeze({
         maxSpeed: 150, turnRate: 1.2, acceleration: 110,
         weaponRange: 1,
         weapons: ['playerBeam', 'playerTorpedo'],
+        ability: 'breachTorpedo',
     },
     swift: {
         // Alien spaceship: a compact predator built to turn. Tears round inside anything, a fierce
@@ -100,6 +102,7 @@ export const SHIP_CLASSES = Object.freeze({
         weaponDamage: 1,
         weaponRange: 0.75,
         weapons: ['playerBeam', 'playerTorpedo'],
+        ability: 'overdrive',
     },
     shrike: {
         // Archont: a long gun-ship - all cannon and engine. Hits harder than anything its size and
@@ -112,6 +115,7 @@ export const SHIP_CLASSES = Object.freeze({
         weaponDamage: 1.65,
         weaponRange: 1.5,
         weapons: ['playerBeam', 'playerTorpedo'],
+        ability: 'focusLance',
     },
     bulwark: {
         // Vigilant: a destroyer with a fighter's crew. Heaviest shields, plate and guns in the
@@ -144,6 +148,7 @@ export const SHIP_CLASSES = Object.freeze({
         weaponDamage: 0.92,
         weaponRange: 1.1,
         weapons: ['playerBeam', 'playerTorpedo'],
+        ability: 'cloak',
     },
     dawnbreaker: {
         nameKey: 'ship.dawnbreaker', faction: FACTION.DAWN, behavior: 'capital', kind: 'capital',

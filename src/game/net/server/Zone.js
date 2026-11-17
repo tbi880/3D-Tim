@@ -86,6 +86,10 @@ export class Zone {
         });
         on(GAME_EVENTS.LANCE_CHARGING, ({ ship, weapon }) => this.share(WORLD_EVENT.LANCE, ship.id, ship.weapons.indexOf(weapon), 0));
         on(GAME_EVENTS.LANCE_FIRING, ({ ship, weapon }) => this.share(WORLD_EVENT.LANCE, ship.id, ship.weapons.indexOf(weapon), 1));
+        on(GAME_EVENTS.ABILITY, ({ ship, ability, phase, position, radius }) => {
+            if (position) this.share(WORLD_EVENT.ABILITY, ship?.id ?? 0, ability, phase, round(position.x), round(position.y), round(position.z), radius);
+            else this.share(WORLD_EVENT.ABILITY, ship?.id ?? 0, ability, phase);
+        });
         on(GAME_EVENTS.PLAYER_COLLISION, ({ ship, speed }) => onPlayerCollision(this, ship, round(speed)));
     }
 

@@ -28,6 +28,11 @@ function contactColor(player, ship) {
     return areHostile(player, ship) ? COLORS.hostile : COLORS.friendly;
 }
 
+/** A cloaked ship (config/abilities.js) shows on nobody's markers or radar but its own side's. */
+function isHiddenFrom(player, ship) {
+    return ship.cloaked && areHostile(player, ship);
+}
+
 /** A torpedo worth warning about: an enemy's, or anybody's that is locked on the pilot (a pirate's on a pirate). */
 function isIncoming(player, projectile) {
     return areHostile(player, projectile) || projectile.target === player;
@@ -259,7 +264,7 @@ function drawShipMarkers(ctx, session, camera, width, height) {
     let locked = null;
 
     for (const ship of world.ships) {
-        if (ship === player || !ship.alive || !ship.targetable || ship.arriving) continue;
+        if (ship === player || !ship.alive || !ship.targetable || ship.arriving || isHiddenFrom(player, ship)) continue;
         const isLocked = player.target === ship;
         const isEscort = escortTag && ship.tags.has(escortTag);
         const hostile = areHostile(player, ship);
@@ -411,7 +416,7 @@ export function drawRadar(ctx, session, size) {
     };
 
     for (const ship of world.ships) {
-        if (ship === player || !ship.alive || !ship.targetable || ship.arriving) continue;
+        if (ship === player || !ship.alive || !ship.targetable || ship.arriving || isHiddenFrom(player, ship)) continue;
         plot(ship.position, contactColor(player, ship), ship.cls.kind === 'capital' ? 6 : 3.5, player.target === ship);
     }
     for (const projectile of world.projectiles) {

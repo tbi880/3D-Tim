@@ -66,4 +66,10 @@ export const GAME_EVENTS = Object.freeze({
     SECTOR_CHANGED: 'sectorChanged',
     /** { ship } - a player tried to fire with an empty capacitor / no torpedoes */
     WEAPON_EMPTY: 'weaponEmpty',
+    /**
+     * { ship, ability, phase, position?, radius? } - a ship's active ability (config/abilities.js):
+     * `ability` is its id, `phase` one of ABILITY_PHASE ('start', 'end', or 'blast' with where the
+     * warhead went off and how far its blast reaches). `ship` may no longer be alive.
+     */
+    ABILITY: 'ability',
 });

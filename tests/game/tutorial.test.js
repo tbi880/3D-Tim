@@ -61,6 +61,7 @@ const ANSWERS = {
     status: { action: TUTORIAL_ACTION.NEXT },
     power: { action: 'power:attack' },
     torpedo: { action: 'cycleTarget', controls: { fireSecondary: true } },
+    ability: { action: 'ability' },
     pause: { action: TUTORIAL_ACTION.NEXT },
 };
 
@@ -81,7 +82,7 @@ test('a new pilot is stopped at every control in turn, and the game stands still
     let saved = false;
     session.events.on('checkpoint', () => { saved = true; });
     const shown = [];
-    for (const expected of tutorialStepsFor(TUTORIAL_PLATFORM.DESKTOP)) {
+    for (const expected of tutorialStepsFor(TUTORIAL_PLATFORM.DESKTOP, session.world.player)) {
         const stepId = game.untilCard();
         assert.equal(stepId, expected, `card after ${shown.at(-1) ?? 'the start'}`);
         shown.push(stepId);
@@ -98,12 +99,17 @@ test('a new pilot is stopped at every control in turn, and the game stands still
         assert.equal(session.effectsDelta, 0);
         assert.equal(ui.tutorial?.id, stepId, `${stepId}: still asked`);
 
+        // The ability's card names the ability of the ship being flown.
+        assert.equal(ui.tutorial.ability, stepId === 'ability' ? 'breachTorpedo' : null);
         answer(game, stepId);
         assert.notEqual(ui.tutorial?.state === TUTORIAL_STATE.ASK && ui.tutorial.id, stepId, `${stepId}: answered`);
         assert.ok(session.world.time > time || stepId === 'pause', `${stepId}: the game goes on`);
 
         // The pupil is no fighter pilot: the wave is cleared for them once its lesson is over.
-        if (stepId === 'beams' || stepId === 'torpedo') {
+        if (stepId === 'ability') {
+            assert.ok(session.world.player.ability.cooldown > 0, 'the ability the card asked for was really used');
+        }
+        if (stepId === 'beams' || stepId === 'ability') {
             for (const ship of [...session.world.ships]) if (ship.group === 'scavengers') destroyShip(session.world, ship, session.world.player);
         }
     }
@@ -158,7 +164,15 @@ test('a phone is not asked for controls it does not have, a headset is asked for
         tutorialStepsFor(TUTORIAL_PLATFORM.TOUCH),
         ['comms', 'objective', 'steer', 'throttle', 'boost', 'radar', 'lock', 'beams', 'status', 'torpedo', 'pause'],
     );
-    assert.equal(tutorialStepsFor(TUTORIAL_PLATFORM.VR).length, tutorialStepsFor(TUTORIAL_PLATFORM.DESKTOP).length);
+    // The ability's card is for a ship that has one; on a phone it lights up the ability button.
+    const withAbility = { ability: {} };
+    assert.deepEqual(tutorialStepsFor(TUTORIAL_PLATFORM.TOUCH, withAbility).slice(-3), ['torpedo', 'ability', 'pause']);
+    assert.equal(tutorialStepsFor(TUTORIAL_PLATFORM.DESKTOP).includes('ability'), false);
+    // A headset has every control a desk has but the view key (Y is the ability; the view is in the pause menu).
+    assert.deepEqual(
+        tutorialStepsFor(TUTORIAL_PLATFORM.VR, withAbility),
+        tutorialStepsFor(TUTORIAL_PLATFORM.DESKTOP, withAbility).filter((stepId) => stepId !== 'view'),
+    );
 
     // In a headset an info card goes on with A (the lock button), and the cards count the headset's steps.
     const game = createSession();
@@ -175,9 +189,21 @@ test('a phone is not asked for controls it does not have, a headset is asked for
     assert.notEqual(ui.tutorial?.state, TUTORIAL_STATE.ASK, 'A answered the card');
 });
 
+test('a ship with no ability is not shown the ability card, and the cards count without it', () => {
+    const game = createSession({ playerShip: 'bulwark' });
+    const { session, ui } = game;
+    session.newGame();
+    game.run(STEP);
+    const steps = tutorialStepsFor(TUTORIAL_PLATFORM.DESKTOP, session.world.player);
+    assert.equal(steps.includes('ability'), false);
+    assert.equal(game.untilCard(), 'comms');
+    assert.equal(ui.tutorial.total, steps.length);
+    assert.deepEqual(session.tutorial.begin(['ability']), { finished: true }, 'asked for, the card is passed over');
+});
+
 test('every card has its words in both languages', () => {
     for (const dictionary of [en, zh]) {
-        for (const stepId of tutorialStepsFor(TUTORIAL_PLATFORM.DESKTOP)) {
+        for (const stepId of tutorialStepsFor(TUTORIAL_PLATFORM.DESKTOP, { ability: {} })) {
             assert.ok(dictionary[`tutorial.${stepId}.title`], `tutorial.${stepId}.title`);
             assert.ok(dictionary[`tutorial.${stepId}.text`], `tutorial.${stepId}.text`);
         }

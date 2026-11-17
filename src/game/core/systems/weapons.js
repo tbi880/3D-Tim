@@ -4,7 +4,8 @@ import { WEAPONS } from '../../config/weapons.js';
 import { GAME_EVENTS } from '../EventBus.js';
 import { Projectile } from '../Projectile.js';
 import { degToRad, forwardOf, randomInCone, randomRange } from '../math.js';
-import { applyDamage, areHostile, mayAttack } from './damage.js';
+import { endAbility } from './abilities.js';
+import { applyDamage, applyTrueDamage, areHostile, mayAttack } from './damage.js';
 import { damageObstacle, raycastObstacles } from './obstacles.js';
 import { IDLE_CONTROLS } from './playerFlight.js';
 import { aimPointOn, angleOffAxis, isValidTarget } from './targeting.js';
@@ -143,6 +144,7 @@ function spawnTorpedo(world, ship, weapon, origin, direction, target, damageScal
     torpedo.damageScale = damageScale;
     world.projectiles.push(torpedo);
     world.events.emit(GAME_EVENTS.WEAPON_FIRED, { ship, weapon, kind: 'torpedo', projectile: torpedo });
+    return torpedo;
 }
 
 /** Burst bookkeeping shared by every bolt weapon. */
@@ -161,9 +163,13 @@ function consumeBurstShot(weapon) {
 // Player weapons
 // ---------------------------------------------------------------------------------------
 
-/** Reach of the player's beams in metres: the weapon's range scaled by the ship's `weaponRange`. */
+/**
+ * Reach of the player's beams in metres: the weapon's range scaled by the ship's `weaponRange` -
+ * or, while the lance ability has taken the beams' place, the lance's own fixed reach.
+ */
 export function playerBeamRange(ship, def) {
-    return def.range * (ship.cls.weaponRange ?? 1);
+    const lance = ship.effect?.('lance');
+    return lance ? WEAPONS[lance.weapon].range : def.range * (ship.cls.weaponRange ?? 1);
 }
 
 /** Reach of the player's torpedoes in metres: speed times fuel, stretched by the ship's `weaponRange`. */
@@ -206,6 +212,59 @@ function pickPlayerBeamTarget(world, ship, def, origin, forward) {
     return best;
 }
 
+/** Where a beam from `origin`, tracking `target`, lands on it. */
+function beamImpact(target, origin, forward, out) {
+    aimPointOn(target, origin, forward, scratchAim);
+    if (target.isProjectile) return out.copy(target.position);
+    // Where the line of fire actually enters the hull.
+    scratchDirection.copy(scratchAim).sub(origin).normalize();
+    const entry = target.raycast(origin, scratchDirection);
+    if (Number.isFinite(entry)) return out.copy(origin).addScaledVector(scratchDirection, entry);
+    return target.closestPoint(origin, out);
+}
+
+/**
+ * The lance ability (config/abilities.js 'lance'): while it lasts the beam trigger fires it in
+ * place of the beams. It finds its mark the way they do - the lock if it is in the ring, else
+ * whatever is nearest the crosshair - but reaches much further, draws nothing from the
+ * capacitor (which rests and refills meanwhile), and what it does is true damage.
+ */
+function updatePlayerLance(world, ship, weapon, dt, triggerHeld, lance) {
+    const lanceDef = WEAPONS[lance.weapon];
+    if (weapon.depleted && ship.energy >= BEAM_RESTART_ENERGY) weapon.depleted = false;
+    ship.energyRegenDelay -= dt;
+    if (ship.energyRegenDelay <= 0) ship.energy = Math.min(PLAYER.energyMax, ship.energy + PLAYER.energyRegen * dt);
+    weapon.firing = triggerHeld;
+    ship.beamFiring = triggerHeld;
+    if (!triggerHeld) return;
+
+    forwardOf(ship.quaternion, scratchForward);
+    const origin = ship.position;
+    const target = pickPlayerBeamTarget(world, ship, lanceDef, origin, scratchForward);
+    if (target) {
+        beamImpact(target, origin, scratchForward, scratchImpact);
+        if (target.isProjectile) {
+            applyDamage(world, target, lance.capitalDps * dt, { source: ship, weapon: lanceDef, point: scratchImpact, continuous: true });
+        } else {
+            // Small craft lose a share of what they are every second, so the time to burn one down
+            // is the same whatever it is; a ship of the line is far too much ship for that.
+            const small = target.cls.kind === 'fighter' || target.isPlayer;
+            const shieldRate = small ? target.maxShield / (lance.shieldedKillSeconds - lance.bareKillSeconds) : lance.capitalDps;
+            const hullRate = small ? target.maxHull / lance.bareKillSeconds : lance.capitalDps;
+            applyTrueDamage(world, target, shieldRate * dt, hullRate * dt, { source: ship, weapon: lanceDef, point: scratchImpact });
+        }
+    } else {
+        const range = playerBeamRange(ship, lanceDef);
+        const rock = raycastObstacles(world, origin, scratchForward, range);
+        scratchImpact.copy(origin).addScaledVector(scratchForward, rock ? rock.distance : range);
+        if (rock) damageObstacle(world, rock.obstacle, lance.capitalDps * dt, scratchImpact, true);
+    }
+    for (const mount of lanceDef.mounts) {
+        scratchOrigin.fromArray(mount).applyQuaternion(ship.quaternion).add(origin);
+        world.addBeam(scratchOrigin, scratchImpact, lanceDef.color, lanceDef.width, 'beam', ship, target?.isProjectile ? null : target);
+    }
+}
+
 function updatePlayerBeam(world, ship, weapon, dt, triggerHeld) {
     const def = weapon.def;
     if (weapon.depleted && ship.energy >= BEAM_RESTART_ENERGY) weapon.depleted = false;
@@ -233,16 +292,7 @@ function updatePlayerBeam(world, ship, weapon, dt, triggerHeld) {
 
     const damage = def.dps * POWER_MODES[ship.powerMode].damage * (ship.cls.weaponDamage ?? 1) * dt;
     if (target) {
-        aimPointOn(target, origin, scratchForward, scratchAim);
-        if (target.isProjectile) {
-            scratchImpact.copy(target.position);
-        } else {
-            // Where the line of fire actually enters the hull.
-            scratchDirection.copy(scratchAim).sub(origin).normalize();
-            const entry = target.raycast(origin, scratchDirection);
-            if (Number.isFinite(entry)) scratchImpact.copy(origin).addScaledVector(scratchDirection, entry);
-            else target.closestPoint(origin, scratchImpact);
-        }
+        beamImpact(target, origin, scratchForward, scratchImpact);
         applyDamage(world, target, damage, {
             source: ship, weapon: def, point: scratchImpact, shieldMult: def.shieldMult, hullMult: def.hullMult, continuous: true,
         });
@@ -292,12 +342,33 @@ function updatePlayerTorpedo(world, ship, weapon, dt, triggerPressed) {
     weapon.cooldown = def.cooldown;
 }
 
+/**
+ * The ability torpedo (config/abilities.js 'torpedo'): leaves the ship like one of its own,
+ * homing on the lock if that is anywhere in the warhead's (wide) cone. Returns the torpedo.
+ */
+export function launchAbilityTorpedo(world, ship, weaponId) {
+    const def = WEAPONS[weaponId];
+    forwardOf(ship.quaternion, scratchForward);
+    mountPosition(ship, def, scratchOrigin);
+    let target = null;
+    if (isValidTarget(ship.target)) {
+        aimPointOn(ship.target, ship.position, scratchForward, scratchAim);
+        if (angleOffAxis(ship.target, ship.position, scratchForward, scratchAim) <= degToRad(def.lockConeDeg)) target = ship.target;
+    }
+    return spawnTorpedo(world, ship, { id: weaponId, def }, scratchOrigin, scratchForward, target,
+        POWER_MODES[ship.powerMode].damage * (ship.cls.weaponDamage ?? 1), ship.cls.weaponRange ?? 1);
+}
+
 function updatePlayerWeapons(world, ship, dt) {
     const controls = ship.controls ?? IDLE_CONTROLS;
     const helmFree = !world.controlsLocked;
+    // A cloak does not survive its own ship opening fire.
+    if (helmFree && (controls.firePrimary || controls.fireSecondary) && ship.effect('cloak')?.brokenByFiring) endAbility(world, ship);
+    const lance = ship.effect('lance');
     for (const weapon of ship.weapons) {
         weapon.cooldown = Math.max(0, weapon.cooldown - dt);
-        if (weapon.def.type === 'beam') updatePlayerBeam(world, ship, weapon, dt, helmFree && controls.firePrimary);
+        if (weapon.def.type === 'beam' && lance) updatePlayerLance(world, ship, weapon, dt, helmFree && controls.firePrimary, lance);
+        else if (weapon.def.type === 'beam') updatePlayerBeam(world, ship, weapon, dt, helmFree && controls.firePrimary);
         else if (weapon.def.type === 'torpedo') updatePlayerTorpedo(world, ship, weapon, dt, helmFree && controls.fireSecondary);
     }
 }

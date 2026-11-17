@@ -184,7 +184,7 @@ const prologue = [
     say('vega', 'prologue.vega.secondWave'),
     spawn('raider', { count: 2, group: 'scavengers', at: { anchor: 'player', bearing: 'ahead', distance: 1500 } }),
     spawn('drone', { count: 2, group: 'scavengers', at: { anchor: 'player', bearing: 'left', distance: 1400 } }),
-    tutorial('status', 'power', 'torpedo'),
+    tutorial('status', 'power', 'torpedo', 'ability'),
     waitForGroup('scavengers'),
     hint(null),
     // The last card (pausing, the settings, what the ship does by itself) ends the tutorial for good.

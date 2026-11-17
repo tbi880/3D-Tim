@@ -27,11 +27,15 @@ import { PACKET } from './inputPacket.js';
  * OWN SHIP is everything the client needs to correct its prediction and fill its HUD:
  *   u32 id, vec3 position, 4 x f32 orientation, vec3 velocity, vec3 angular velocity,
  *   f32 speed, throttle, boost, energy, u8 OWN_FLAG bits, u8 cannon lock, u8 power mode,
- *   u8 torpedoes, f32 torpedo reload timer, u32 target id
+ *   u8 torpedoes, f32 torpedo reload timer, u32 target id,
+ *   f32 ability cooldown, f32 ability time left, f32 seconds the shield is held down
+ *   (the active ability, config/abilities.js: zeros for a ship without one)
  */
 
-export const SHIP_FLAG = Object.freeze({ POSE: 1, BOOSTING: 2, INVULNERABLE: 4, TARGETABLE: 8 });
-const OWN_FLAG = Object.freeze({ BOOSTING: 1, BOOST_LOCKOUT: 2, BEAM_DEPLETED: 4, OUT_OF_BOUNDS: 8, BEAM_FIRING: 16 });
+/** CLOAKED: nothing can lock it (the cloak ability). SHIELD_DOWN: its shield is being held down (a breach blast). */
+export const SHIP_FLAG = Object.freeze({ POSE: 1, BOOSTING: 2, INVULNERABLE: 4, TARGETABLE: 8, CLOAKED: 16, SHIELD_DOWN: 32 });
+/** ABILITY_ARMED: the ship's ability torpedo is in flight and can be set off. */
+const OWN_FLAG = Object.freeze({ BOOSTING: 1, BOOST_LOCKOUT: 2, BEAM_DEPLETED: 4, OUT_OF_BOUNDS: 8, BEAM_FIRING: 16, ABILITY_ARMED: 32 });
 const WORLD_FLAG = Object.freeze({ CONTROLS_LOCKED: 1 });
 
 export const BEAM_KINDS = Object.freeze(['beam', 'lanceCharge', 'lance', 'cannon', 'tractor']);
@@ -73,6 +77,8 @@ function shipFlags(ship) {
     if (ship.boosting) flags |= SHIP_FLAG.BOOSTING;
     if (ship.invulnerable) flags |= SHIP_FLAG.INVULNERABLE;
     if (ship.targetable) flags |= SHIP_FLAG.TARGETABLE;
+    if (ship.cloaked) flags |= SHIP_FLAG.CLOAKED;
+    if (ship.shieldDown > 0) flags |= SHIP_FLAG.SHIELD_DOWN;
     return flags;
 }
 
@@ -156,6 +162,7 @@ function writeOwnShip(writer, ship) {
     if (beam?.depleted) flags |= OWN_FLAG.BEAM_DEPLETED;
     if (ship.outOfBounds) flags |= OWN_FLAG.OUT_OF_BOUNDS;
     if (ship.beamFiring) flags |= OWN_FLAG.BEAM_FIRING;
+    if (ship.ability?.armed) flags |= OWN_FLAG.ABILITY_ARMED;
     const { quaternion } = ship;
     writer.u32(ship.id)
         .vec3(ship.position)
@@ -168,7 +175,10 @@ function writeOwnShip(writer, ship) {
         .u8(Math.max(0, POWER_MODE_ORDER.indexOf(ship.powerMode)))
         .u8(Math.max(0, Math.min(255, torpedoes?.ammo ?? 0)))
         .f32(torpedoes?.reloadTimer ?? 0)
-        .u32(ship.target?.alive && !ship.target.isProjectile ? ship.target.id : 0);
+        .u32(ship.target?.alive && !ship.target.isProjectile ? ship.target.id : 0)
+        .f32(ship.ability?.cooldown ?? 0)
+        .f32(Math.max(0, ship.ability?.active ?? 0))
+        .f32(ship.shieldDown);
 }
 
 // ---- Decoding (client) -----------------------------------------------------------------------
@@ -198,11 +208,16 @@ function readOwnShip(reader) {
     own.beamDepleted = Boolean(flags & OWN_FLAG.BEAM_DEPLETED);
     own.outOfBounds = Boolean(flags & OWN_FLAG.OUT_OF_BOUNDS);
     own.beamFiring = Boolean(flags & OWN_FLAG.BEAM_FIRING);
+    own.abilityArmed = Boolean(flags & OWN_FLAG.ABILITY_ARMED);
     own.cannonLock = Math.min(2, reader.u8());
     own.powerMode = POWER_MODE_ORDER[reader.u8()] ?? POWER_MODE_ORDER[0];
     own.torpedoes = reader.u8();
     own.torpedoReload = reader.f32();
     own.targetId = reader.u32();
+    own.abilityCooldown = Math.max(0, reader.f32());
+    own.abilityActive = Math.max(0, reader.f32());
+    own.shieldDown = Math.max(0, reader.f32());
+    if (![own.abilityCooldown, own.abilityActive, own.shieldDown].every(Number.isFinite)) throw new PacketError('invalid ability state');
     return own;
 }
 

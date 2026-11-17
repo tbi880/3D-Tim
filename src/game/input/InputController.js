@@ -36,6 +36,7 @@ const ACTION_KEYS = Object.freeze({
     KeyT: 'cycleTarget',
     Tab: 'cycleTarget',
     KeyR: 'targetCrosshair',
+    KeyQ: 'ability',
     Digit1: 'power:balanced',
     Digit2: 'power:attack',
     Digit3: 'power:defense',

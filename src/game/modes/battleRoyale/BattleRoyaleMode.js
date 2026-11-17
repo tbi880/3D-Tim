@@ -467,6 +467,9 @@ export class BattleRoyaleMode {
             powerMode: ship.powerMode,
             throttle: ship.throttle,
             weapons: ship.weapons.map((weapon) => ({ ammo: weapon.ammo, reloadTimer: weapon.reloadTimer })),
+            // A jump does not recharge the ship's ability, and ends one that was running.
+            abilityCooldown: ship.ability ? (ship.ability.active > 0 ? ship.ability.def.cooldown : ship.ability.cooldown) : 0,
+            shieldDown: ship.shieldDown,
         };
         pilot.zone.world.removeShip(ship, { flash: true });
         contestant.jump = null;
@@ -482,6 +485,8 @@ export class BattleRoyaleMode {
         arrived.powerMode = carried.powerMode;
         arrived.throttle = carried.throttle;
         arrived.weapons.forEach((weapon, index) => Object.assign(weapon, carried.weapons[index]));
+        if (arrived.ability) arrived.ability.cooldown = carried.abilityCooldown;
+        arrived.shieldDown = carried.shieldDown;
         this.tellMode(pilot, BR_EVENT.JUMPED, { to: jump.to });
         this.server.publishState();
     }

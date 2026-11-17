@@ -97,6 +97,11 @@ export const WORLD_EVENT = Object.freeze({
     SCORE: 'score',
     /** Something only the game mode understands: `[kind, name, data]` (see the mode's client). */
     MODE: 'mode',
+    /**
+     * A ship's active ability (GAME_EVENTS.ABILITY): `[kind, shipId, abilityId, phase]`, and for
+     * a warhead's blast `x, y, z, radius` after them.
+     */
+    ABILITY: 'ability',
 });
 
 const REQUEST_NAME = /^[a-z][A-Za-z]{0,23}$/;

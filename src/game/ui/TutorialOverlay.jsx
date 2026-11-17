@@ -4,7 +4,7 @@ import { PHASE } from '../state/GameSession.js';
 import { useGameStore, useT } from '../state/gameStore.js';
 import { TUTORIAL_STATE } from '../state/Tutorial.js';
 import { useVRActive } from '../xr/vrState.js';
-import { tutorialKeys, tutorialText } from './tutorialText.js';
+import { tutorialKeys, tutorialParams, tutorialText } from './tutorialText.js';
 
 /** Room left around a spotlit HUD element, in pixels. */
 const SPOT_PADDING = 8;
@@ -87,7 +87,7 @@ export default function TutorialOverlay({ session }) {
                     <span>{index} / {total}</span>
                 </div>
                 <h3 className="eod-tutorial-title">{title}</h3>
-                <p className="eod-tutorial-text">{tutorialText(t, `tutorial.${id}.text`, platform)}</p>
+                <p className="eod-tutorial-text">{tutorialText(t, `tutorial.${id}.text`, platform, tutorialParams(t, tutorial))}</p>
                 {keys.length > 0 && (
                     <div className="eod-tutorial-keys">
                         {keys.map((key) => <kbd key={key}>{key}</kbd>)}

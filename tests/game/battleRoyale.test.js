@@ -1582,6 +1582,64 @@ test('a bot fights what is hostile to it and scores like any pilot', () => {
     assert.equal(bot.score, BATTLE_ROYALE.score.ships.drone);
 });
 
+/** A bot put alone at a planet its side holds, in the ship named, with one hostile ship in front of it. */
+function botIn(classId, enemyClass, offset, enemyOptions = {}) {
+    const game = withBots(['ann']);
+    const [bot] = game.bots;
+    bot.pilot.classId = classId;
+    const ship = game.alone(bot, THIRD);
+    game.place(THIRD).owner = bot.faction;
+    const world = game.place(THIRD).zone.world;
+    const abilities = [];
+    world.events.on('ability', (event) => abilities.push(event));
+    const enemy = world.spawnShip(enemyClass, { faction: bot.faction === UMBRA ? DAWN : UMBRA, position: ship.position.clone().add(offset), ...enemyOptions });
+    return { game, bot, ship, world, enemy, abilities };
+}
+
+test('a bot uses its ship\'s ability as a pilot would: the Kestrel\'s breach torpedo at a shielded target', () => {
+    const { game, ship, enemy, abilities } = botIn('kestrel', 'harrier', { x: 0, y: 0, z: -1500 }, { aiMode: 'hold' });
+    assert.equal(ship.ability.def.id, 'breachTorpedo');
+    for (let second = 0; second < 30 && enemy.shieldDown <= 0; second++) game.run(1);
+    assert.deepEqual(abilities.slice(0, 1).map((event) => [event.ship, event.phase]), [[ship, 'start']]);
+    assert.ok(enemy.shieldDown > 0, 'the frigate\'s shield was breached');
+    assert.equal(abilities.filter((event) => event.phase === 'start').length, 1, 'once: then it has to recharge like anybody\'s');
+});
+
+test('a bot uses its ship\'s ability as a pilot would: the Shrike\'s lance with a target ahead', () => {
+    const { game, ship, enemy, abilities } = botIn('shrike', 'harrier', { x: 0, y: 0, z: -2500 }, { aiMode: 'hold' });
+    const before = enemy.hull + enemy.shield;
+    let lanced = false;
+    for (let second = 0; second < 20 && !lanced; second++) {
+        game.run(1);
+        lanced = Boolean(ship.effect('lance')) && ship.beamFiring;
+    }
+    assert.equal(abilities[0]?.ability, 'focusLance');
+    assert.ok(lanced, 'fired with the beam trigger while it lasts');
+    assert.ok(enemy.hull + enemy.shield < before);
+});
+
+test('a bot uses its ship\'s ability as a pilot would: the dash and the cloak to get away, never while docked', () => {
+    for (const [classId, abilityId] of [['swift', 'overdrive'], ['peregrine', 'cloak']]) {
+        const { game, bot, ship, abilities } = botIn(classId, 'raider', { x: 0, y: 0, z: -600 });
+        game.run(1);
+        assert.equal(abilities.length, 0, `${classId}: not with its shield whole`);
+        ship.shield = ship.maxShield * 0.1;
+        ship.shieldCooldown = 30;
+        for (let tick = 0; tick < 40 && abilities.length === 0; tick++) game.run(0.1);
+        assert.equal(abilities[0]?.ability, abilityId, classId);
+        assert.equal(abilities[0].ship, ship);
+
+        // Clamped to a station, the ship is not the bot's to throw about.
+        ship.ability.cooldown = 0;
+        ship.ability.active = 0;
+        ship.cloaked = false;
+        bot.pilot.helmHeld = true;
+        const count = abilities.filter((event) => event.phase === 'start').length;
+        game.run(2);
+        assert.equal(abilities.filter((event) => event.phase === 'start').length, count, `${classId}: docked`);
+    }
+});
+
 test('a bot never fires on its own side, and is never branded for it', () => {
     const game = withBots(['ann']);
     const bot = game.bots.find((contestant) => contestant.faction !== PIRATE);

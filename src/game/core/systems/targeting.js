@@ -8,7 +8,8 @@ const scratchToTarget = new Vector3();
 const scratchRayPoint = new Vector3();
 
 export function isValidTarget(target) {
-    return Boolean(target && target.alive && target.targetable !== false && !target.arriving);
+    // A cloaked ship (config/abilities.js) is there, but nothing can hold a lock on it.
+    return Boolean(target && target.alive && target.targetable !== false && !target.arriving && !target.cloaked);
 }
 
 /**

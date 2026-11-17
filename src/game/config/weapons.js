@@ -16,6 +16,9 @@
  * by the ship's `weaponRange`): beams work from stand-off range, torpedoes are a closing blow.
  */
 
+/** Seconds of fuel in the player's torpedo: 420 m/s for 4.3 s is about 1.8 km. */
+const PLAYER_TORPEDO_LIFETIME = 4.3;
+
 const DAWN_BEAM = '#ffb648';
 const DAWN_TORPEDO = '#7fd8ff';
 const UMBRA_BOLT = '#ff3d81';
@@ -36,8 +39,30 @@ export const WEAPONS = Object.freeze({
         // bare hull): the beams have to open the way first.
         type: 'torpedo', speed: 420, turnRate: 1.9, damage: 150, shieldMult: 0.4, hullMult: 1.5,
         // 420 m/s for 4.3 s: about 1.8 km of fuel, well short of the beams' 3 km.
-        lifetime: 4.3, cooldown: 0.7, capacity: 6, reloadTime: 4.5, lockConeDeg: 40,
+        lifetime: PLAYER_TORPEDO_LIFETIME, cooldown: 0.7, capacity: 6, reloadTime: 4.5, lockConeDeg: 40,
         radius: 2.2, hp: 30, color: DAWN_TORPEDO, mount: [0, -1.2, -9],
+    },
+
+    // ---- Player abilities (config/abilities.js) ------------------------------------------------
+    breachTorpedo: {
+        // The Kestrel's ability. On the hull it meets it lands like an ordinary torpedo; what
+        // matters is the blast (`breach`), wherever it goes off - on a hull, on a rock, at the end
+        // of its fuel, or where its pilot sets it off: every ship within `radius` metres loses
+        // its shield and cannot raise it again for `shieldDownSeconds`. `hitsAllies` false spares
+        // the launching ship and its own side (the ship it was locked on is never spared).
+        // Shot down on the way, it does nothing.
+        type: 'torpedo', speed: 420, turnRate: 2.4, damage: 150, shieldMult: 0.4, hullMult: 1.5,
+        // Half as far again as the ordinary torpedo, and it homes on a lock well off the nose.
+        lifetime: PLAYER_TORPEDO_LIFETIME * 1.5, lockConeDeg: 75,
+        radius: 2.6, hp: 60, color: '#ffa24a', mount: [0, -1.2, -9],
+        breach: { ability: 'breachTorpedo', radius: 1500, shieldDownSeconds: 10, hitsAllies: false },
+    },
+    focusLance: {
+        // The Shrike's ability: fired with the beam trigger while the ability lasts. It tracks
+        // inside the same ring as the beams, to a fixed 20 km whatever the ship's `weaponRange`.
+        // Its damage is the ability's (true damage: see 'lance' in config/abilities.js).
+        type: 'beam', range: 20000, arcDeg: 26, color: '#8ff2ff', width: 1.5,
+        mounts: [[0, -0.6, -11]],
     },
 
     // ---- Dawn fleet (allies) ------------------------------------------------------------

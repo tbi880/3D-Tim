@@ -268,6 +268,22 @@ waitForGroup('wave'),
 checkpoint('my-checkpoint'),                               // save point
 ```
 
+**Abilities** – every player ship but the Bulwark has one active ability, on a button of its
+own (Q, the fifth touch button, Y on a VR controller): the Kestrel's breach torpedo, the
+Swift's overdrive dash, the Shrike's focus lance, the Peregrine's cloak. A class names its
+ability with `ability: '<id>'`; every number is in `config/abilities.js` (the three cooldown
+lengths, durations, what the effect keeps out) and, for the two that fire something, in
+`config/weapons.js` (`breachTorpedo`, `focusLance`). The rules are `core/systems/abilities.js`;
+what an effect does is read where it matters through `ship.effect(kind)` (flight, weapons,
+damage, targeting). Names and descriptions are `ability.<id>.name`, `.short` (the touch
+button) and `.text` (the hangar card, the tutorial). In a match the host runs them like any
+pilot action; a ship's cloak and a shield held down by a breach blast travel as ship flags,
+the pilot's own cooldown in their part of the snapshot, starts / ends / blasts as a world
+event (`GAME_EVENTS.ABILITY`) for effects and sound. Bots press the button too
+(`BATTLE_ROYALE.bots.ability`). To add one: a new `kind` in `config/abilities.js`, its rule
+where the effect bites, its texts, and its look in `scene/ExplosionsLayer.jsx` and sound in
+`audio/SoundEngine.js`.
+
 Rules for checkpoints: enemies are never saved, so place checkpoints at lulls; ships that
 must survive a reload need `persistent: true` and a tag; anything non-serialisable
 (background sequences, progress bars, objective counters) is declared again right after
@@ -299,6 +315,9 @@ the autopilot dies implausibly often. Run it after touching `story/` or `config/
 In development (`stageOfENV = "dev"`) the running game is exposed as `window.__eod`
 (`{ session, input, sound }`) for poking at from the browser console.
 
+`npm run game:simulate -- --ship=swift --abilities` flies another ship and lets the autopilot
+press its ability button.
+
 `npm run game:test` runs the unit tests (`tests/game/`): mostly multiplayer, played
 headlessly the same way (`tutorial.test.js` flies the first-flight tutorial like that).
 
@@ -312,6 +331,7 @@ headlessly the same way (`tutorial.test.js` flies the first-flight tutorial like
 | Afterburner | Shift |
 | Beam arrays (hold) | Left mouse / F |
 | Torpedo | Right mouse / Space |
+| Ship ability | Q |
 | Next target / nearest to crosshair | T / R |
 | Cockpit / chase view | V / C |
 | Power: balanced / attack / defense | 1 / 2 / 3 |
@@ -323,7 +343,8 @@ headlessly the same way (`tutorial.test.js` flies the first-flight tutorial like
 **Phones and tablets** (`ui/TouchControls.jsx`, shown when the primary pointer is a
 finger): a stick under the left thumb steers and the right thumb has four buttons in a
 diamond, like a gamepad's face buttons: FIRE below, TORP to the left, BURN to the right, LOCK
-above. Stick and buttons keep clear of the screen edges, so a thumb at full reach stays on the
+above; a ship with an ability has a fifth, smaller button off the diamond's lower left corner,
+which shows the ability's short name, what it is doing, and a dial of its charge. Stick and buttons keep clear of the screen edges, so a thumb at full reach stays on the
 glass. The throttle is one finger slid up or down anywhere else on the screen
 (`input/throttleSwipe.js`, read by `InputController` on the view under the controls): the
 swipe is relative, starting from the throttle the ship has, half a screen height from idle to

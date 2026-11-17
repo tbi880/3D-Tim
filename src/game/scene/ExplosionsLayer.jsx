@@ -1,8 +1,10 @@
 import { Suspense, useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { ABILITIES, ABILITY_PHASE } from '../config/abilities.js';
 import { EFFECTS, FACTION } from '../config/gameConfig.js';
 import { GAME_EVENTS } from '../core/EventBus.js';
+import { areHostile } from '../core/systems/damage.js';
 import { breakupPose, breakupSeconds } from './effects/breakup.js';
 import { DebrisSystem } from './effects/DebrisSystem.js';
 import { FireballSystem } from './effects/FireballSystem.js';
@@ -63,6 +65,9 @@ const WRECKAGE_COLORS = Object.freeze({
 });
 const wreckageColors = (ship) => WRECKAGE_COLORS[ship.faction] ?? WRECKAGE_COLORS[FACTION.NEUTRAL];
 const WHITE = new THREE.Color(1, 1, 1);
+/** A breach warhead's blast (the colour of the torpedo, config/weapons.js) and a cloak switching on or off. */
+const BREACH_COLOR = new THREE.Color('#ffa24a');
+const CLOAK_COLOR = new THREE.Color('#8ff2ff');
 
 const FLASH_VERTEX_SHADER = /* glsl */ `
     #include <common>
@@ -329,6 +334,31 @@ function Effects({ session, textures }) {
                 startFlash(position, Math.min(size * 1.8, MAX_WARP_FLASH * 2), 0.45, WARP_COLOR);
                 startRing(position, size * 2.6, 0.9, WARP_COLOR, quaternion);
                 sparks.emit(position, { count: 36, speed: size * 1.6, life: 0.7, size: Math.min(30, size * 0.08), colors: [WARP_COLOR] });
+            }),
+            // Abilities (config/abilities.js). A breach warhead: a hard flash, and a ring that races out
+            // to exactly where its blast reaches. A cloak going on or off and a dash starting: a
+            // small flash and ring at the ship. All from the pools above, so they cost nothing new.
+            world.events.on(GAME_EVENTS.ABILITY, ({ ship, ability, phase, position, radius }) => {
+                if (phase === ABILITY_PHASE.BLAST) {
+                    startFlash(position, MAX_FLASH, 0.5, BREACH_COLOR);
+                    startLight(position, 60, BREACH_COLOR);
+                    startRing(position, radius, 1.1, BREACH_COLOR);
+                    startRing(position, radius * 0.45, 0.7, WHITE);
+                    sparks.emit(position, { count: 40, speed: 420, life: 0.8, size: 9, colors: [BREACH_COLOR] });
+                    return;
+                }
+                const kind = ABILITIES[ability]?.kind;
+                if (!ship?.alive || (kind !== 'cloak' && kind !== 'overdrive')) return;
+                // A hostile cloak going on is not announced with a flash where the ship is hiding.
+                if (kind === 'cloak' && ship !== world.player && world.player && areHostile(world.player, ship) && phase === ABILITY_PHASE.START) return;
+                const size = ship.boundingRadius;
+                if (kind === 'cloak') {
+                    startFlash(ship.position, size * 5, 0.35, CLOAK_COLOR);
+                    startRing(ship.position, size * 4, 0.6, CLOAK_COLOR);
+                } else if (phase === ABILITY_PHASE.START) {
+                    startFlash(ship.position, size * 4, 0.3, WARP_COLOR);
+                    startRing(ship.position, size * 5, 0.5, WARP_COLOR, ship.quaternion);
+                }
             }),
             // After a jump nothing from the old sector should hang in the new sky.
             world.events.on(GAME_EVENTS.SECTOR_CHANGED, () => {

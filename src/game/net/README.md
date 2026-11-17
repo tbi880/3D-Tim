@@ -105,9 +105,9 @@ nothing extra but one more ship in their snapshots.
 | | Channel | From | Content |
 | --- | --- | --- | --- |
 | input | state | client, every frame | 11 bytes: stick, throttle, buttons (`codec/inputPacket.js`) |
-| snapshot | state | server, 30 / s | every ship's pose, hull, shield; beams; the receiver's own ship in full (`codec/snapshotPacket.js`) |
+| snapshot | state | server, 30 / s | every ship's pose, hull, shield, flags (boosting, cloaked, shield held down ...); beams; the receiver's own ship in full, with where its ability stands (`codec/snapshotPacket.js`) |
 | hello / action / req / ping | events | client | "send me the world", a pilot action, a request to the game mode (`protocol.js`) |
-| welcome / batch | events | server | the whole zone; then what happened each frame: spawns, hits, kills, the match state |
+| welcome / batch | events | server | the whole zone; then what happened each frame: spawns, hits, kills, abilities starting, ending and going off, the match state |
 
 Remote ships are drawn a moment (45 ms) behind the newest snapshot, blended between two
 (`match/SnapshotTimeline.js`). The player's own ship does not wait: it is flown at once with

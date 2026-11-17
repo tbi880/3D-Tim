@@ -58,6 +58,9 @@ export function captureZone(zone) {
             energy: round(ship.energy),
             boost: round(ship.boost),
             powerMode: ship.powerMode,
+            // The active ability as it stands (a warhead in flight is not kept, like any shot), and a shield held down.
+            ability: ship.ability ? [round(ship.ability.cooldown), round(Math.max(0, ship.ability.active))] : null,
+            shieldDown: round(ship.shieldDown),
             // Infinity (an energy weapon's "ammunition") does not survive JSON: null stands for it.
             weapons: ship.weapons.map((weapon) => [Number.isFinite(weapon.ammo) ? weapon.ammo : null, round(weapon.reloadTimer), round(weapon.cooldown), weapon.depleted ? 1 : 0]),
             aiMode: ship.ai.mode,
@@ -134,6 +137,13 @@ function restoreShip(world, entry, built) {
     ship.energy = Math.max(0, number(entry.energy, ship.energy));
     ship.boost = Math.min(1, Math.max(0, number(entry.boost, ship.boost)));
     if (POWER_MODE_ORDER.includes(entry.powerMode)) ship.powerMode = entry.powerMode;
+    if (ship.ability && Array.isArray(entry.ability)) {
+        const { def } = ship.ability;
+        ship.ability.cooldown = Math.min(def.cooldown, Math.max(0, number(entry.ability[0])));
+        ship.ability.active = Math.min(def.duration ?? 0, Math.max(0, number(entry.ability[1])));
+        ship.cloaked = Boolean(ship.effect('cloak'));
+    }
+    ship.shieldDown = Math.min(60, Math.max(0, number(entry.shieldDown)));
     if (Array.isArray(entry.weapons)) {
         ship.weapons.forEach((weapon, index) => {
             const state = entry.weapons[index];

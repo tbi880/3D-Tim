@@ -3,6 +3,7 @@
  *
  *   npm run game:simulate            # whole campaign, every checkpoint reload, careless pilot
  *   npm run game:simulate -- --quiet # only print the summary
+ *   npm run game:simulate -- --ship=swift --abilities  # another ship, pressing its ability button
  *
  * The simulation core has no browser dependencies, so an autopilot can fly the entire
  * story in Node in a few seconds. Run it after changing the script (src/game/story) or
@@ -29,6 +30,8 @@ globalThis.localStorage = {
 const QUIET = process.argv.includes('--quiet');
 /** `--difficulty=cadet|captain|admiral` flies the campaign at another setting (default captain). */
 const DIFFICULTY_ID = process.argv.find((arg) => arg.startsWith('--difficulty='))?.split('=')[1] ?? 'captain';
+/** `--abilities` lets the autopilot press the ship's ability button (config/abilities.js); without it the campaign is flown on beams and torpedoes alone. */
+const USE_ABILITIES = process.argv.includes('--abilities');
 /** `--ship=kestrel|swift|shrike|bulwark|peregrine` picks the player's ship (default kestrel). */
 const SHIP_ID = process.argv.find((arg) => arg.startsWith('--ship='))?.split('=')[1] ?? 'kestrel';
 const STEP = 1 / 30;
@@ -104,6 +107,22 @@ function lanceDodgePoint(world, player) {
     return null;
 }
 
+/**
+ * The ability button, pressed when a pilot plainly would: the dash and the cloak with the
+ * shield going, the breach torpedo at a shielded target in reach, the lance with a target ahead.
+ */
+function pressAbility(session, player, target, distance, onTheNose) {
+    const ability = player.ability;
+    if (!ability || ability.cooldown > 0 || ability.active > 0 || ability.projectile) return;
+    const { kind } = ability.def;
+    let wanted = false;
+    if (kind === 'overdrive' || kind === 'cloak') wanted = player.shieldFraction < 0.4 && Boolean(target);
+    else if (!target || !onTheNose) return;
+    else if (kind === 'torpedo') wanted = target.shieldFraction > 0.3 && distance < playerTorpedoRange(player, WEAPONS[ability.def.weapon]) * 0.8;
+    else if (kind === 'lance') wanted = distance < 6000;
+    if (wanted) session.handleAction('ability');
+}
+
 /** A simple but honest pilot: it uses the same controls a human has. */
 function autopilot(session, focused = true) {
     const { world } = session;
@@ -148,6 +167,7 @@ function autopilot(session, focused = true) {
     // A fast ship eases off near its target, as a human would, instead of overshooting into it.
     if (target && !tooClose && surfaceDistance < 1500) controls.throttle = Math.min(1, 160 / player.cls.maxSpeed);
 
+    if (USE_ABILITIES) pressAbility(session, player, target, surfaceDistance, scratchLocal.z < -0.9 && direction === 1);
     if (target && scratchLocal.z < -0.9 && direction === 1) {
         controls.firePrimary = surfaceDistance < beamRange * (sniping ? 0.97 : 0.73);
         const shieldsDown = target.shield <= 0 || target.maxShield === 0;

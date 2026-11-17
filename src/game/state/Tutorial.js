@@ -37,7 +37,7 @@ const TUTORIAL_SIGNALS = Object.freeze({
  * steering a second time).
  *
  * No React and no DOM here: what is on screen goes out through `session.ui` as
- * `tutorial: { id, kind, state, index, total, platform, needsTarget }` (drawn by
+ * `tutorial: { id, kind, state, index, total, platform, needsTarget, ability }` (drawn by
  * ui/TutorialOverlay.jsx on the page and xr/VRHud.jsx in a headset).
  */
 export class Tutorial {
@@ -63,13 +63,18 @@ export class Tutorial {
         return isTouchDevice() ? TUTORIAL_PLATFORM.TOUCH : TUTORIAL_PLATFORM.DESKTOP;
     }
 
+    /** The ship being flown: a step about its ability is only for a ship that has one. */
+    get ship() {
+        return this.session.world?.player ?? null;
+    }
+
     /** A VR session started or ended: the card on screen, if any, changes hands with the controls. */
     setVR(active) {
         if (this.vr === active) return;
         this.vr = active;
         if (!this.step) return;
         // A step about a control the new hands do not have is dropped.
-        if (tutorialStepApplies(this.step.id, this.platform)) this.publish();
+        if (tutorialStepApplies(this.step.id, this.platform, this.ship)) this.publish();
         else this.advance();
     }
 
@@ -87,7 +92,7 @@ export class Tutorial {
     begin(stepIds) {
         if (!this.enabled) return NOTHING_TO_SHOW;
         const { platform } = this;
-        const queue = stepIds.filter((stepId) => tutorialStepApplies(stepId, platform) && !this.seen.has(stepId));
+        const queue = stepIds.filter((stepId) => tutorialStepApplies(stepId, platform, this.ship) && !this.seen.has(stepId));
         if (queue.length === 0) return NOTHING_TO_SHOW;
         // Only the main story asks, one beat at a time; an unfinished run is simply replaced.
         if (this.run) this.run.finished = true;
@@ -254,7 +259,7 @@ export class Tutorial {
             return;
         }
         const { platform } = this;
-        const steps = tutorialStepsFor(platform);
+        const steps = tutorialStepsFor(platform, this.ship);
         this.session.ui.set({
             tutorial: {
                 id: step.id,
@@ -264,6 +269,8 @@ export class Tutorial {
                 total: steps.length,
                 platform,
                 needsTarget: Boolean(step.def.needsTarget),
+                /** The ability the card is about (its id), for the step that teaches it. */
+                ability: step.def.needsAbility ? this.ship?.ability?.def.id ?? null : null,
             },
         });
     }

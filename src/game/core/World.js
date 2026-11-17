@@ -6,6 +6,7 @@ import { EventBus, GAME_EVENTS } from './EventBus.js';
 import { Ship } from './Ship.js';
 import { createRng, lookRotation } from './math.js';
 import { upgradedClass } from './refit.js';
+import { updateAbility } from './systems/abilities.js';
 import { updateAI } from './systems/aiPilot.js';
 import { resolvePlayerCollisions } from './systems/collisions.js';
 import { regenerateShield } from './systems/damage.js';
@@ -330,6 +331,7 @@ export class World {
         for (const ship of this.ships) {
             if (!ship.alive || !ship.isPlayer) continue;
             ship.cannonLock = 0;
+            updateAbility(this, ship, step);
             updatePlayerFlight(this, ship, this.controlsLocked ? IDLE_CONTROLS : ship.controls ?? IDLE_CONTROLS, step);
         }
         for (const ship of this.ships) {

@@ -8,8 +8,9 @@ import { isHullHitOnPlayer, playerFeedback } from '../scene/effects/playerFeedba
 import { PHASE, SESSION_EVENTS } from '../state/GameSession.js';
 import { useGameStore } from '../state/gameStore.js';
 import { TUTORIAL_STATE } from '../state/Tutorial.js';
+import { abilityStateText } from '../ui/abilityText.js';
 import { drawMarkers, drawRadar } from '../ui/markerRenderer.js';
-import { tutorialKeys, tutorialText } from '../ui/tutorialText.js';
+import { tutorialKeys, tutorialParams, tutorialText } from '../ui/tutorialText.js';
 import { CABIN_SCALE } from './VRCockpitShell.jsx';
 import { createCanvasPanel, drawMeter, roundRect, wrapText } from './canvasPanel.js';
 import layout from './cockpitLayout.json';
@@ -192,7 +193,7 @@ export function drawTutorialCard(ctx, tutorial, t) {
     const left = centre - TUTORIAL_CARD_WIDTH / 2;
     const inner = TUTORIAL_CARD_WIDTH - 36;
     ctx.font = `400 14px ${FONT}`;
-    const lines = wrapText(ctx, tutorialText(t, `tutorial.${tutorial.id}.text`, platform) ?? '', inner);
+    const lines = wrapText(ctx, tutorialText(t, `tutorial.${tutorial.id}.text`, platform, tutorialParams(t, tutorial)) ?? '', inner);
     const keys = tutorialKeys(t, tutorial.id, platform).join('  /  ');
     const height = 64 + lines.length * 20 + (keys ? 30 : 0) + (tutorial.needsTarget ? 20 : 0) + 42;
     const top = TUTORIAL_CARD_TOP;
@@ -304,13 +305,18 @@ function drawPaneText(ctx, state, t, now, scoreFeed) {
         else if (hud.cannonLock === 1) alerts.push('hud.cannonTracking');
         if (state.escort && state.escort.hull < 0.3) alerts.push('hud.escortCritical');
         if (hud.hull < 0.3) alerts.push('hud.hullCritical');
-        else if (hud.shield <= 0.01) alerts.push('hud.shieldsDown');
+        else if (hud.shield <= 0.01 && hud.shieldDown <= 0) alerts.push('hud.shieldsDown');
+        const lines = alerts.map((key) => t(key));
+        // A breach blast has the shield down: how long until it can come back.
+        if (hud.shieldDown > 0) lines.unshift(t('hud.shieldsBreached', { seconds: hud.shieldDown }));
         const blink = Math.floor(now * 2.5) % 2 === 0 ? 1 : 0.55;
         ctx.textAlign = 'center';
         ctx.font = `700 12px ${FONT}`;
         ctx.globalAlpha = blink;
-        alerts.slice(0, 2).forEach((key, index) => drawShadowedText(ctx, t(key).toUpperCase(), centre, height / 2 - 70 - index * 17, '#ff6b6b'));
+        lines.slice(0, 2).forEach((line, index) => drawShadowedText(ctx, line.toUpperCase(), centre, height / 2 - 70 - index * 17, '#ff6b6b'));
         ctx.globalAlpha = 1;
+        // Not a warning: the cloak is on (steady, under the warnings' place).
+        if (hud.cloaked) drawShadowedText(ctx, t('hud.cloaked').toUpperCase(), centre, height / 2 - 53, '#59d0ff');
     }
 
     // Multiplayer: side, planet and jump drive on one line under the alerts' place, and the collapse as an alert.
@@ -460,6 +466,9 @@ function scramblePanel({ ctx, canvas }, strength) {
     for (let streak = 0; streak < strength * 14; streak++) ctx.fillRect(Math.random() * width, Math.random() * height, 20 + Math.random() * 140, 2);
 }
 
+/** The colour of an ability's state on the panel: ready, running (or a warhead waiting for the button), recharging. */
+const ABILITY_TONES = Object.freeze({ ready: '#7dffa8', active: '#ffb648', armed: '#ffb648', cooldown: 'rgba(200, 215, 230, 0.6)' });
+
 function drawPanel(panel, session, state, t, glitch = 0) {
     const { ctx, canvas } = panel;
     const { width, height } = canvas;
@@ -495,17 +504,25 @@ function drawPanel(panel, session, state, t, glitch = 0) {
     ctx.textAlign = 'left';
     ctx.fillStyle = 'rgba(190, 225, 255, 0.85)';
     ctx.font = `600 20px ${FONT}`;
-    ctx.fillText(`${t('hud.speed')}  ${hud.speed} m/s`, right, 56);
-    ctx.fillText(`${t('hud.throttle')}  ${percentText(hud.throttle)}`, right, 86);
-    ctx.fillText(t('hud.torpedoes'), right, 126);
+    ctx.fillText(`${t('hud.speed')}  ${hud.speed} m/s`, right, 52);
+    ctx.fillText(`${t('hud.throttle')}  ${percentText(hud.throttle)}`, right, 80);
+    ctx.fillText(t('hud.torpedoes'), right, 116);
     for (let index = 0; index < hud.torpedoCapacity; index++) {
         ctx.fillStyle = index < hud.torpedoes ? '#b6ff3d' : 'rgba(182, 255, 61, 0.18)';
-        ctx.fillRect(right + 120 + index * 26, 110, 18, 18);
+        ctx.fillRect(right + 120 + index * 26, 100, 18, 18);
     }
     ctx.fillStyle = 'rgba(190, 225, 255, 0.85)';
-    ctx.fillText(`${t('hud.power')}  `, right, 164);
+    ctx.fillText(`${t('hud.power')}  `, right, 150);
     ctx.fillStyle = '#ffd36b';
-    ctx.fillText(t(`hud.power.${hud.powerMode}`), right + ctx.measureText(`${t('hud.power')}  `).width, 164);
+    ctx.fillText(t(`hud.power.${hud.powerMode}`), right + ctx.measureText(`${t('hud.power')}  `).width, 150);
+    // The ship's ability (Y): its name, then ready / seconds of effect left / seconds to wait.
+    if (hud.ability) {
+        const name = `${t(`ability.${hud.ability.id}.name`)}  `;
+        ctx.fillStyle = 'rgba(190, 225, 255, 0.85)';
+        ctx.fillText(name, right, 182);
+        ctx.fillStyle = ABILITY_TONES[hud.ability.state];
+        ctx.fillText(abilityStateText(t, hud.ability), right + ctx.measureText(name).width, 182);
+    }
 
     const target = state.target;
     ctx.fillStyle = 'rgba(160, 215, 255, 0.7)';

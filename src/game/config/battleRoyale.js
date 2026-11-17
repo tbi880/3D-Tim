@@ -299,6 +299,27 @@ export const BATTLE_ROYALE = Object.freeze({
         recoverShield: 0.6,
         /** Big ships are only attacked when no small one is within this many metres. */
         fighterFirstRange: 2000,
+        /**
+         * When a bot presses its ship's ability button (config/abilities.js), if it is charged:
+         *   dashShield      the Swift's dash and the Peregrine's cloak, when breaking away or running
+         *                   with its shield down to this share
+         *   torpedoShield   the Kestrel's breach torpedo, at a locked target with at least this
+         *                   share of its shield still up, within `torpedoRange` of the warhead's
+         *                   reach and `torpedoOffAxis` radians off the nose
+         *   detonateWithin  that warhead is set off by hand once it is this near its target (metres)
+         *                   and no longer closing on it
+         *   lanceRange      the Shrike's lance, at a target within this many metres and
+         *                   `lanceOffAxis` radians off the nose
+         */
+        ability: Object.freeze({
+            dashShield: 0.6,
+            torpedoShield: 0.3,
+            torpedoRange: 0.8,
+            torpedoOffAxis: 0.35,
+            detonateWithin: 320,
+            lanceRange: 5000,
+            lanceOffAxis: 0.4,
+        }),
     }),
 
     /**

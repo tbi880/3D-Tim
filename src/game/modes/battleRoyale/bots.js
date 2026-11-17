@@ -1,9 +1,11 @@
 import { Quaternion, Vector3 } from 'three';
 import { BATTLE_ROYALE } from '../../config/battleRoyale.js';
+import { WEAPONS } from '../../config/weapons.js';
 import { PLAYER_SHIPS, RATING_ORDER } from '../../config/playerShips.js';
 import { clamp, forwardOf, randomUnitVector } from '../../core/math.js';
 import { avoidObstacles } from '../../core/systems/aiPilot.js';
 import { areHostile } from '../../core/systems/damage.js';
+import { applyPilotAction } from '../../core/systems/pilotActions.js';
 import { isValidTarget } from '../../core/systems/targeting.js';
 import { playerBeamRange, playerTorpedoRange } from '../../core/systems/weapons.js';
 import { JUMP_REFUSAL, VOTE } from './battleRoyaleProtocol.js';
@@ -17,7 +19,8 @@ import { EQUIPMENT } from './equipment.js';
  * person's (MatchServer.addBot) and the rules treat it as a contestant like any other; all
  * that is here is what a person's hands and head would do: every frame it sets the same
  * controls a device would send - stick, throttle, afterburner, triggers - and now and then
- * it asks the rules for the things a player asks for: a jump, a docking, a refit, a vote.
+ * it asks the rules for the things a player asks for: a jump, a docking, a refit, a vote -
+ * and it presses its ship's ability button (config/abilities.js) when the moment suits it.
  * It can do nothing a player cannot, and its ship answers exactly as a player's would.
  */
 
@@ -84,6 +87,8 @@ export class BotPilot {
         this.torpedoIn = between(rng, TUNING.torpedoPause);
         /** Seconds with nothing hostile in reach. */
         this.quietFor = 0;
+        /** How far its breach warhead was from its target a frame ago (metres), to tell when it stops closing. */
+        this.warheadGap = Infinity;
     }
 
     get pilot() {
@@ -217,6 +222,7 @@ export class BotPilot {
         controls.fireSecondary = false;
         controls.boost = false;
         controls.roll = 0;
+        this.useAbility(ship, world);
         switch (this.goal.kind) {
             case 'attack': this.flyAttack(ship, world, controls, dt); break;
             case 'evade':
@@ -266,7 +272,8 @@ export class BotPilot {
         const beam = ship.weapons.find((weapon) => weapon.def.type === 'beam');
         const torpedoes = ship.weapons.find((weapon) => weapon.def.type === 'torpedo');
         // The beams find their own mark inside their arc: the bot only has to point roughly and hold the trigger.
-        if (beam && this.bursting && !beam.depleted && distance < playerBeamRange(ship, beam.def) * 0.95 && offAxis < (beam.def.arcDeg * Math.PI) / 180 * 0.8) {
+        // (The Shrike's lance is fired with the same trigger, in the same bursts; it does not run dry.)
+        if (beam && this.bursting && (!beam.depleted || ship.effect('lance')) && distance < playerBeamRange(ship, beam.def) * 0.95 && offAxis < (beam.def.arcDeg * Math.PI) / 180 * 0.8) {
             controls.firePrimary = true;
         }
         if (torpedoes && torpedoes.ammo > 0 && this.torpedoIn <= 0 && ship.target === target
@@ -275,6 +282,52 @@ export class BotPilot {
             this.torpedoIn = between(rng, TUNING.torpedoPause);
         }
         this.steer(ship, world, scratchDesired, controls, distance > 900 ? 1 : 0.65, true);
+    }
+
+    // ---- The ability button -------------------------------------------------------------------
+
+    /**
+     * Presses the ship's ability button when a person would: the dash and the cloak to get out
+     * of trouble, the breach torpedo at a target whose shield is worth taking down (and again to
+     * set it off beside a target it is about to miss), the lance with a target in front of it.
+     */
+    useAbility(ship, world) {
+        const ability = ship.ability;
+        // Docked, the ship is not the bot's to throw about (as for a person: MatchServer).
+        if (!ability || this.pilot.helmHeld || world.controlsLocked) return;
+        const press = () => applyPilotAction(world, ship, 'ability');
+        const tuning = TUNING.ability;
+        const { goal } = this;
+        const { kind } = ability.def;
+
+        if (ability.projectile?.alive) {
+            const warhead = ability.projectile;
+            const mark = warhead.target;
+            const gap = mark?.alive ? mark.distanceToPoint(warhead.position) : Infinity;
+            if (gap < tuning.detonateWithin && gap >= this.warheadGap) press();
+            this.warheadGap = gap;
+            return;
+        }
+        this.warheadGap = Infinity;
+        if (ability.cooldown > 0 || ability.active > 0) return;
+
+        if (kind === 'overdrive' || kind === 'cloak') {
+            const running = goal.kind === 'evade' || (goal.kind === 'attack' && this.breakLeft > 0);
+            if (running && ship.shieldFraction < tuning.dashShield) press();
+            return;
+        }
+        const target = goal.kind === 'attack' ? goal.target : null;
+        if (!target || ship.target !== target || this.breakLeft > 0) return;
+        const distance = target.distanceToPoint(ship.position);
+        forwardOf(ship.quaternion, scratchForward);
+        const offAxis = scratchForward.angleTo(scratchPoint.copy(target.position).sub(ship.position));
+        if (kind === 'torpedo') {
+            const def = WEAPONS[ability.def.weapon];
+            if (target.maxShield > 0 && target.shieldFraction >= tuning.torpedoShield && !target.invulnerable
+                && distance < playerTorpedoRange(ship, def) * tuning.torpedoRange && offAxis < tuning.torpedoOffAxis) press();
+        } else if (kind === 'lance') {
+            if (distance < tuning.lanceRange && offAxis < tuning.lanceOffAxis) press();
+        }
     }
 
     /** To the station's dock: line up on the approach lane, fly into the mouth, clamp on. */

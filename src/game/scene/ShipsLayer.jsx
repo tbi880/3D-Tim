@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { FACTION } from '../config/gameConfig.js';
 import { GAME_EVENTS } from '../core/EventBus.js';
 import { forwardOf } from '../core/math.js';
+import { areHostile } from '../core/systems/damage.js';
 import { breakupPose, breakupSeconds } from './effects/breakup.js';
 import { ExhaustPlume } from './effects/ExhaustPlume.js';
 import { seenFromInside } from './effects/impactPoint.js';
@@ -28,6 +29,9 @@ const scratchForward = new THREE.Vector3();
 /** A ship in a black hole's tide (`ship.tidal` = 1): this many times longer, and this much of its width gone. */
 const TIDAL_STRETCH = 3.2;
 const TIDAL_THINNING = 0.6;
+
+/** The pilot's own cloaked hull is drawn while sin(9 t) is above this: a fifth of a second in every 0.7. */
+const CLOAK_SHIMMER = 0.55;
 
 // A unit cone with its base at the origin and its tip at +Z: scaled into an exhaust plume.
 let plumeGeometry = null;
@@ -178,6 +182,9 @@ function ShipView({ ship, session }) {
     useFrame(() => {
         const group = groupRef.current;
         if (!group) return;
+        // A cloaked ship is seen by its own side only.
+        group.visible = !(ship.cloaked && world.player && areHostile(world.player, ship));
+        if (!group.visible) return;
         group.quaternion.copy(ship.quaternion);
         applyWarpTransform(group, streakRef.current, ship);
     });
@@ -214,7 +221,8 @@ function PlayerShipView({ session }) {
         const group = groupRef.current;
         if (!group || !player) return;
         group.visible = player.alive;
-        if (hullRef.current) hullRef.current.visible = cameraModeOf(session) === 'chase';
+        // Cloaked, the hull only shimmers into view now and then: enough to keep flying it by.
+        if (hullRef.current) hullRef.current.visible = cameraModeOf(session) === 'chase' && (!player.cloaked || Math.sin(session.world.time * 9) > CLOAK_SHIMMER);
         group.position.copy(player.position);
         group.quaternion.copy(player.quaternion);
     });

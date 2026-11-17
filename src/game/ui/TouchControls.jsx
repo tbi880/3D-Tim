@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { PHASE } from '../state/GameSession.js';
 import { useGameStore, useT } from '../state/gameStore.js';
+import { abilityStateText } from './abilityText.js';
 
 const STICK_TRAVEL = 56;
 /** LOCK kept down this long (ms) starts stepping through the hostiles, one more every LOCK_REPEAT_MS. */
@@ -16,7 +17,9 @@ const LOCK_REPEAT_MS = 650;
  *                 a percentage in the status panel top left, GameHud.jsx)
  *   right thumb - four buttons in a diamond, like a gamepad's: FIRE (hold) below, TORPEDO to
  *                 the left, BURN (hold) to the right, LOCK above (tap: the hostile nearest the
- *                 crosshair, like R on a keyboard; held: steps through the others, like T)
+ *                 crosshair, like R on a keyboard; held: steps through the others, like T);
+ *                 the ship's ability (config/abilities.js), if it has one, is a fifth button
+ *                 off the diamond's lower left corner, where it is reached but never brushed
  *   top left    - pause
  *
  * Phones keep only what a thumb pilot needs: the view is locked to chase, the power mode stays
@@ -25,6 +28,28 @@ const LOCK_REPEAT_MS = 650;
  * The `data-tutorial` names are how the first-flight tutorial finds a button to light up
  * (config/tutorial.js).
  */
+/**
+ * The ability button: its short name, and under it what it is doing (seconds left, or nothing
+ * when it is ready). The ring around it empties while the effect runs and refills as it recharges.
+ */
+function AbilityButton({ session }) {
+    const t = useT();
+    const ability = useGameStore((state) => state.hud?.ability);
+    if (!ability) return null;
+    return (
+        <button
+            type="button"
+            className={`eod-touch-button eod-touch-button--ability eod-touch-button--ability-${ability.state}`}
+            style={{ '--eod-ability-charge': ability.charge }}
+            data-tutorial="ability"
+            onPointerDown={() => session.handleAction('ability')}
+        >
+            {t(`ability.${ability.id}.short`)}
+            {ability.state !== 'ready' && <small>{abilityStateText(t, ability)}</small>}
+        </button>
+    );
+}
+
 export default function TouchControls({ input, session }) {
     const t = useT();
     const phase = useGameStore((state) => state.phase);
@@ -109,6 +134,7 @@ export default function TouchControls({ input, session }) {
                 <button type="button" className="eod-touch-button eod-touch-button--left eod-touch-button--torpedo" data-tutorial="torpedo" {...hold('fireSecondary')}>{t('hud.torp')}</button>
                 <button type="button" className="eod-touch-button eod-touch-button--right" data-tutorial="boost" {...hold('boost')}>{t('hud.boost')}</button>
                 <button type="button" className="eod-touch-button eod-touch-button--bottom eod-touch-button--fire" data-tutorial="fire" {...hold('firePrimary')}>{t('hud.fire')}</button>
+                <AbilityButton session={session} />
             </div>
             <button type="button" className="eod-touch-pause" aria-label={t('controls.pause')} {...tap('pause')}>II</button>
         </div>

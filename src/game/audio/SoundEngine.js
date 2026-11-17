@@ -1,3 +1,4 @@
+import { ABILITIES, ABILITY_DENIED_CUE, ABILITY_PHASE } from '../config/abilities.js';
 import { MUSIC_TRACKS } from '../config/gameConfig.js';
 import { GAME_EVENTS } from '../core/EventBus.js';
 import { SESSION_EVENTS } from '../state/GameSession.js';
@@ -34,6 +35,8 @@ export class SoundEngine {
         this.fadeTimers = new Set();
         /** Ships dropping out of warp nearby, heard in 3D (WarpArrivalAudio.js). */
         this.arrivals = new WarpArrivalAudio(this);
+        /** The pilot's ship and whether its ability was still recharging last frame (updateAbilityReady). */
+        this.abilityWatch = { ship: null, waiting: false };
     }
 
     // ---- Setup --------------------------------------------------------------------------
@@ -70,6 +73,7 @@ export class SoundEngine {
             world.on(GAME_EVENTS.WEAPON_EMPTY, ({ ship }) => this.isOwnShip(ship) && this.tone({ from: 160, to: 120, duration: 0.12, gain: 0.15, type: 'square' })),
             world.on(GAME_EVENTS.LANCE_CHARGING, ({ weapon }) => this.tone({ from: 60, to: 520, duration: weapon.def.chargeTime, gain: 0.16, type: 'sawtooth' })),
             world.on(GAME_EVENTS.LANCE_FIRING, ({ weapon }) => this.noise({ duration: weapon.def.fireTime, frequency: 240, gain: 0.5 })),
+            world.on(GAME_EVENTS.ABILITY, (event) => this.onAbility(event)),
             world.on(GAME_EVENTS.WARP_IN_STARTED, ({ ship }) => this.arrivals.onStart(ship)),
             world.on(GAME_EVENTS.WARP_FLASH, ({ position, ship }) => {
                 if (ship) this.arrivals.onLanding(ship);
@@ -225,6 +229,56 @@ export class SoundEngine {
         else this.thud(0.35);
     }
 
+    /** An ability (config/abilities.js) started, ended, or its warhead went off. Other ships' are heard by distance. */
+    onAbility({ ship, ability, phase, position, radius }) {
+        if (phase === ABILITY_PHASE.BLAST) {
+            // The blast reaches further than most sounds carry: whoever is inside it hears it.
+            const player = this.session?.world.player;
+            const inside = player && position && player.position.distanceTo(position) <= radius;
+            const loudness = Math.max(this.attenuation(position), inside ? 0.45 : 0);
+            if (loudness <= 0) return;
+            this.noise({ duration: 1.5, frequency: 420, gain: 0.7 * loudness });
+            this.tone({ from: 95, to: 24, duration: 1.3, gain: 0.45 * loudness });
+            this.tone({ from: 2400, to: 300, duration: 0.5, gain: 0.12 * loudness, type: 'sawtooth' });
+            return;
+        }
+        const kind = ABILITIES[ability]?.kind;
+        const own = this.isOwnShip(ship);
+        const loudness = own ? 1 : ship ? this.attenuation(ship.position) * 0.6 : 0;
+        if (loudness <= 0) return;
+        const starting = phase === ABILITY_PHASE.START;
+        switch (kind) {
+            case 'cloak':
+                // Heard by its own pilot only: a cloak that announced itself would not be one.
+                if (!own) return;
+                if (starting) {
+                    this.tone({ from: 1500, to: 260, duration: 0.55, gain: 0.14, type: 'triangle' });
+                    this.noise({ duration: 0.5, frequency: 3200, gain: 0.12 });
+                } else {
+                    this.tone({ from: 260, to: 1200, duration: 0.3, gain: 0.12, type: 'triangle' });
+                }
+                break;
+            case 'overdrive':
+                if (!starting) return;
+                this.tone({ from: 110, to: 980, duration: 0.4, gain: 0.22 * loudness, type: 'sawtooth' });
+                this.noise({ duration: 0.7, frequency: 1500, gain: 0.35 * loudness });
+                break;
+            case 'lance':
+                if (starting) {
+                    this.tone({ from: 180, to: 1700, duration: 0.5, gain: 0.16 * loudness, type: 'sawtooth' });
+                    this.tone({ from: 1700, to: 1700, duration: 0.25, gain: 0.08 * loudness, type: 'sine', delay: 0.5 });
+                } else {
+                    this.tone({ from: 900, to: 140, duration: 0.45, gain: 0.14 * loudness, type: 'sawtooth' });
+                }
+                break;
+            case 'torpedo':
+                // On top of the torpedo's own launch: the heavier tube.
+                if (starting) this.tone({ from: 150, to: 48, duration: 0.6, gain: 0.3 * loudness });
+                break;
+            default: break;
+        }
+    }
+
     onWarp(stage) {
         if (stage === 'spool') this.tone({ from: 70, to: 1400, duration: 2.4, gain: 0.25, type: 'sawtooth' });
         else this.noise({ duration: 1.6, frequency: 1800, gain: 0.5 });
@@ -252,6 +306,11 @@ export class SoundEngine {
                 this.tone({ from: 500, to: 900, duration: 0.12, gain: 0.1, type: 'triangle' });
                 break;
             // A tutorial step done: two soft rising notes.
+            case ABILITY_DENIED_CUE:
+                // The ability button, pressed while it is still recharging.
+                this.tone({ from: 210, to: 170, duration: 0.09, gain: 0.13, type: 'square' });
+                this.tone({ from: 170, to: 140, duration: 0.11, gain: 0.13, type: 'square', delay: 0.11 });
+                break;
             case 'tutorialStep':
                 this.tone({ from: 740, to: 740, duration: 0.09, gain: 0.09, type: 'triangle' });
                 this.tone({ from: 1110, to: 1110, duration: 0.14, gain: 0.09, type: 'triangle', delay: 0.09 });
@@ -299,6 +358,20 @@ export class SoundEngine {
         this.engineVoice.gain.gain.setTargetAtTime(flying ? 0.1 + speedFraction * 0.22 : 0, now, 0.2);
         this.engineVoice.filter.frequency.setTargetAtTime(90 + speedFraction * 260, now, 0.2);
         this.arrivals.update(world);
+        this.updateAbilityReady(flying ? player : null);
+    }
+
+    /** Two rising notes the moment the pilot's own ability has recharged. */
+    updateAbilityReady(player) {
+        const ability = player?.ability ?? null;
+        const waiting = Boolean(ability) && (ability.cooldown > 0 || ability.active > 0);
+        const watched = this.abilityWatch;
+        if (watched.ship === player && watched.waiting && ability && !waiting) {
+            this.tone({ from: 880, to: 880, duration: 0.09, gain: 0.1, type: 'triangle' });
+            this.tone({ from: 1320, to: 1320, duration: 0.16, gain: 0.1, type: 'triangle', delay: 0.09 });
+        }
+        watched.ship = player;
+        watched.waiting = waiting;
     }
 
     // ---- Music --------------------------------------------------------------------------

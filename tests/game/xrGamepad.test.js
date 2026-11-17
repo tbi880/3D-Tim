@@ -66,3 +66,23 @@ test('the left grip is the afterburner and docks nothing; nor does a grip held w
     pads.run(GRIP_HOLD_SECONDS / 2);
     assert.equal(pads.flight.includes('gripHeld'), false, 'and the time under the menu does not count');
 });
+
+test('Y is the ship\'s ability: once per press, and not while a menu is open', () => {
+    const Y = 5;
+    const pads = controllers();
+    pads.press('left', Y);
+    pads.run(1);
+    assert.deepEqual(pads.flight, ['ability'], 'held down, it is still one press');
+    pads.release('left', Y);
+    pads.run(0.1);
+    pads.press('left', Y);
+    pads.run(0.1);
+    assert.deepEqual(pads.flight, ['ability', 'ability'], 'the second press sets a warhead off');
+
+    pads.release('left', Y);
+    pads.state.menuOpen = true;
+    pads.run(0.1);
+    pads.press('left', Y);
+    pads.run(0.5);
+    assert.deepEqual(pads.flight, ['ability', 'ability'], 'in a menu Y means "back"');
+});

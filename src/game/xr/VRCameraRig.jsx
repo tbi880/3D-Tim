@@ -94,11 +94,6 @@ export default function VRCameraRig({ game }) {
                 switch (action) {
                     case 'recenter': recenterSoon(); break;
                     case 'pause': session.togglePause(); break;
-                    case 'toggleView':
-                        vr.view = vr.view === 'chase' ? 'cockpit' : 'chase';
-                        // The headset has a view of its own, so the session never hears of the switch: the tutorial is told here.
-                        session.tutorial.noteAction('toggleView');
-                        break;
                     case 'skip':
                         // A match has no comms lines: there the same button opens the star map.
                         if (session.match) session.handleAction(MATCH_ACTION.MAP);

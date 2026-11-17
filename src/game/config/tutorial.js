@@ -11,7 +11,8 @@
  * Fields of a step:
  *   kind       'info' | 'action'
  *   platforms  where the control exists (default: everywhere). A phone has no roll, view or
- *              power controls, so those steps are left out there.
+ *              power controls, so those steps are left out there; in a headset the view is
+ *              switched in the pause menu, not on a button.
  *   done       one-shot actions (see input/InputController.js) that complete the step
  *   allow      other one-shot actions let through while the step waits (the rest are ignored)
  *   signal     a held control (the tests are TUTORIAL_SIGNALS in state/Tutorial.js): the step
@@ -22,6 +23,8 @@
  *   needsTarget     the control only counts with a target locked, and the card says whether one is
  *   needsComms      the step is about the comms line on screen: with none there (the pilot has
  *                   already skipped it, so they know how) it is passed over
+ *   needsAbility    the step is about the ship's ability (config/abilities.js): it is left out
+ *                   for a ship that has none, and its text names the one this ship has
  *   practice   seconds of free flight after the step, before the next one stops the game again
  *   target     CSS selector of the HUD element to spotlight on the flat page, by platform
  *   place      where the card sits on the flat page: 'centre' (default) or 'top'
@@ -67,7 +70,7 @@ export const TUTORIAL_STEPS = Object.freeze({
         target: { [DESKTOP]: '.eod-meter--boost', [TOUCH]: '[data-tutorial="boost"]' },
     },
     view: {
-        kind: 'action', platforms: STICKS, done: ['toggleView'], practice: 2,
+        kind: 'action', platforms: [DESKTOP], done: ['toggleView'], practice: 2,
     },
     radar: {
         kind: 'info',
@@ -95,16 +98,20 @@ export const TUTORIAL_STEPS = Object.freeze({
         signal: 'fireSecondary',
         target: { [DESKTOP]: '.eod-torpedoes', [TOUCH]: '[data-tutorial="torpedo"]' },
     },
+    ability: {
+        kind: 'action', needsAbility: true, done: ['ability'], allow: LOCK_ACTIONS, practice: 3,
+        target: { [DESKTOP]: '.eod-ability', [TOUCH]: '[data-tutorial="ability"]' },
+    },
     pause: {
         kind: 'info',
         target: { [TOUCH]: '.eod-touch-pause' },
     },
 });
 
-/** Every step in the order the prologue shows them; the card counts "3 / 14" along this list. */
+/** Every step in the order the prologue shows them; the card counts "3 / 15" along this list. */
 export const TUTORIAL_ORDER = Object.freeze([
     'comms', 'objective', 'steer', 'throttle', 'roll', 'boost', 'view',
-    'radar', 'lock', 'beams', 'status', 'power', 'torpedo', 'pause',
+    'radar', 'lock', 'beams', 'status', 'power', 'torpedo', 'ability', 'pause',
 ]);
 
 /** The step that ends the tutorial: once it is done the tutorial never shows again (until switched back on). */
@@ -119,12 +126,18 @@ export const TUTORIAL_TIMING = Object.freeze({
     doneSeconds: 0.9,
 });
 
-export function tutorialStepApplies(stepId, platform) {
+/**
+ * @param {string} stepId
+ * @param {string} platform TUTORIAL_PLATFORM
+ * @param {{ ability?: object | null } | null} [ship] the ship being flown (a step about its ability needs it to have one)
+ */
+export function tutorialStepApplies(stepId, platform, ship = null) {
     const step = TUTORIAL_STEPS[stepId];
-    return Boolean(step) && (!step.platforms || step.platforms.includes(platform));
+    if (!step || (step.platforms && !step.platforms.includes(platform))) return false;
+    return !step.needsAbility || Boolean(ship?.ability);
 }
 
-/** The steps a platform is shown, in order. */
-export function tutorialStepsFor(platform) {
-    return TUTORIAL_ORDER.filter((stepId) => tutorialStepApplies(stepId, platform));
+/** The steps a pilot is shown, in order: those of their platform and, for the ability, of their ship. */
+export function tutorialStepsFor(platform, ship = null) {
+    return TUTORIAL_ORDER.filter((stepId) => tutorialStepApplies(stepId, platform, ship));
 }

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { abilityOf } from '../config/abilities.js';
 import { DIFFICULTY_ORDER } from '../config/gameConfig.js';
 import { GRAPHICS_ORDER } from '../config/graphics.js';
 import { PLAYER_SHIPS, RATING_MAX, RATING_ORDER } from '../config/playerShips.js';
 import { FINAL_SCORE } from '../config/scoring.js';
+import { SHIP_CLASSES } from '../config/shipClasses.js';
 import { LOCALES, LOCALE_LABELS } from '../i18n/index.js';
 import { isTouchDevice } from '../input/device.js';
 import { PHASE } from '../state/GameSession.js';
@@ -36,11 +38,23 @@ const IS_TOUCH = isTouchDevice();
 const NEEDS_HOME_SCREEN = IS_TOUCH && typeof window !== 'undefined' && !isFullscreenSupported()
     && !(window.navigator.standalone || window.matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches);
 
-const CONTROL_ROWS = ['steer', 'throttle', 'roll', 'boost', 'beam', 'torpedo', 'target', 'power', 'view', 'skip', 'pause'];
+const CONTROL_ROWS = ['steer', 'throttle', 'roll', 'boost', 'beam', 'torpedo', 'ability', 'target', 'power', 'view', 'skip', 'pause'];
 
 function formatDuration(seconds) {
     const minutes = Math.floor(seconds / 60);
     return `${minutes}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
+}
+
+/** A ship's ability on its hangar card (config/abilities.js): its name and what it does. */
+function ShipAbility({ classId }) {
+    const t = useT();
+    const ability = abilityOf(SHIP_CLASSES[classId]);
+    return (
+        <p className="eod-ship-card-ability">
+            <b>{t('ui.ability')} · {ability ? t(`ability.${ability.id}.name`) : t('ui.ability.none')}</b>
+            {ability && t(`ability.${ability.id}.text`)}
+        </p>
+    );
 }
 
 function ControlsList() {
@@ -279,6 +293,7 @@ function Hangar({ session, onLaunch, onBack }) {
                         <strong>{t(`ship.${classId}`)}</strong>
                         <em>{t(`playerShip.${classId}.role`)}</em>
                         <p>{t(`playerShip.${classId}.text`)}</p>
+                        <ShipAbility classId={classId} />
                         {RATING_ORDER.map((rating) => <Rating key={rating} label={t(`ui.rating.${rating}`)} value={ratings[rating]} />)}
                     </button>
                 ))}

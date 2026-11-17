@@ -56,6 +56,20 @@ test('a match resumed from a checkpoint is the match that was captured', () => {
     for (const place of next.mode.places.values()) assert.equal(place.station.ship, place.zone.world.findByTag(STATION_TAG), `${place.planet.id} has its station`);
 });
 
+test('an ability still recharging, and a shield held down, go on from where they were', () => {
+    const game = createTestServer(['ann', 'bo'], { start: { seed: 3, settings: { bots: 'none', pace: 'quick' } } });
+    game.run(1);
+    const ship = game.server.pilots.get('ann').ship;
+    ship.ability.cooldown = 17;
+    ship.shield = 0;
+    ship.shieldDown = 6;
+
+    const resumed = resumeFrom(game).pilots.get('ann').ship;
+
+    assert.equal(resumed.ability.def, ship.ability.def);
+    assert.deepEqual([resumed.ability.cooldown, resumed.ability.active, resumed.shieldDown, resumed.cloaked], [17, 0, 6, false]);
+});
+
 test('a checkpoint is plain data, small enough to send every few seconds', () => {
     const game = createTestServer(['ann', 'bo', 'cy'], { start: { settings: { bots: 'fill' } } });
     game.run(30);

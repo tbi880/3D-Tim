@@ -25,6 +25,17 @@ export function mayAttack(world, ship, target) {
     return !target.isPlayer || ship.faction === FACTION.PIRATE;
 }
 
+/**
+ * True while a ship's ability keeps `source`'s fire off it (`immunity` in config/abilities.js):
+ * 'weapons' stops whatever a ship fires, 'all' also what nobody fired (a rammed rock).
+ */
+export function shrugsOff(target, source) {
+    const ability = target.ability;
+    if (!ability || ability.active <= 0) return false;
+    const { immunity } = ability.def;
+    return immunity === 'all' || (immunity === 'weapons' && Boolean(source));
+}
+
 function emitHit(world, target, position, shieldHit, amount, { continuous, source, weapon }) {
     // Continuous beams would emit an effect every frame; rate-limit them per target.
     if (continuous) {
@@ -90,6 +101,7 @@ export function applyDamage(world, target, amount, options = {}) {
         if (target.hp <= 0) destroyProjectile(world, target, true);
         return;
     }
+    if (shrugsOff(target, source)) return;
 
     const position = point ?? target.position;
     if (target.invulnerable) {
@@ -151,13 +163,83 @@ export function drainShip(world, ship, amount) {
     if (ship.hull <= 0) destroyShip(world, ship, null);
 }
 
+/**
+ * True damage from a weapon: `shieldAmount` comes off the shield while there is one,
+ * `hullAmount` off the hull once there is none (and in the same proportion for the step in
+ * which the shield gives out). Nothing scales it - no difficulty, no power mode, no shield or
+ * hull multiplier - but what cannot be hurt at all still cannot: invulnerable hulls, a hull's
+ * floor (`minHull`), a ship whose ability keeps fire off it. Continuous, like a beam.
+ * @param {object} [options] `source`, `weapon`, `point`, as for applyDamage
+ */
+export function applyTrueDamage(world, target, shieldAmount, hullAmount, options = {}) {
+    if (!target.alive || target.arriving || target.isProjectile) return;
+    const { source = null, weapon = null, point = null } = options;
+    if (shrugsOff(target, source)) return;
+    const effect = { continuous: true, source, weapon };
+    const position = point ?? target.position;
+    if (target.invulnerable) {
+        if (target.targetable) target.lastShieldHitAt = world.time;
+        emitHit(world, target, position, true, 0, effect);
+        return;
+    }
+
+    let hullShare = 1;
+    let dealt = 0;
+    const shieldHit = target.shield > 0 && shieldAmount > 0;
+    if (shieldHit) {
+        const absorbed = Math.min(target.shield, shieldAmount);
+        target.shield -= absorbed;
+        hullShare = 1 - absorbed / shieldAmount;
+        dealt += absorbed;
+        target.lastShieldHitAt = world.time;
+    }
+    if (hullShare > 0 && hullAmount > 0) {
+        const before = target.hull;
+        target.hull = Math.max(target.minHull, target.hull - hullAmount * hullShare);
+        dealt += before - target.hull;
+    }
+    target.shieldCooldown = target.cls.shieldDelay;
+    target.lastDamagedAt = world.time;
+    target.lastAttacker = source;
+    emitHit(world, target, position, shieldHit, dealt, effect);
+    reportDamage(world, target, source, dealt);
+    if (target.hull <= 0) destroyShip(world, target, source);
+}
+
+/**
+ * Takes a ship's shield away and keeps it from coming back for `seconds` (a breach torpedo's
+ * blast). Ships with no shield to lose, invulnerable ones and those whose ability keeps fire
+ * off them are left alone.
+ * @param {object} [options] `source`, `weapon`, `point`, as for applyDamage
+ * @returns {boolean} whether the ship was affected
+ */
+export function stripShield(world, ship, seconds, options = {}) {
+    if (!ship.alive || ship.arriving || ship.invulnerable || ship.maxShield <= 0) return false;
+    const { source = null, weapon = null, point = null } = options;
+    if (shrugsOff(ship, source)) return false;
+    const lost = ship.shield;
+    ship.shield = 0;
+    ship.shieldDown = Math.max(ship.shieldDown, seconds);
+    ship.lastDamagedAt = world.time;
+    ship.lastShieldHitAt = world.time;
+    ship.lastAttacker = source;
+    emitHit(world, ship, point ?? ship.position, true, lost, { continuous: false, source, weapon });
+    if (lost > 0) reportDamage(world, ship, source, lost);
+    return true;
+}
+
 export function regenerateShield(world, ship, dt) {
     if (!ship.alive || ship.maxShield <= 0) return;
+    // Held down by a breach blast: nothing comes back until the time is up.
+    if (ship.shieldDown > 0) {
+        ship.shieldDown = Math.max(0, ship.shieldDown - dt);
+        ship.shield = 0;
+    }
     if (ship.shieldCooldown > 0) {
         ship.shieldCooldown -= dt;
         return;
     }
-    if (ship.shield >= ship.maxShield) return;
+    if (ship.shieldDown > 0 || ship.shield >= ship.maxShield) return;
     const modeBonus = ship.isPlayer ? POWER_MODES[ship.powerMode].shieldRegen * world.difficulty.shieldRegen : 1;
     ship.shield = Math.min(ship.maxShield, ship.shield + ship.cls.shieldRegen * modeBonus * dt);
 }

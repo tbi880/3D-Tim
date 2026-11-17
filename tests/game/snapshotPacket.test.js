@@ -74,6 +74,43 @@ test('flags carry boosting, invulnerable and targetable', () => {
     assert.equal(flagsOf(drone) & SHIP_FLAG.TARGETABLE, 0);
 });
 
+test('flags carry a cloak and a shield held down by a breach blast', () => {
+    const { world, player, drone } = worldWithShips();
+    player.cloaked = true;
+    drone.shieldDown = 4;
+
+    const snapshot = roundTrip(world);
+    const flagsOf = (ship) => snapshot.flags[snapshot.indexOf.get(ship.id)];
+
+    assert.ok(flagsOf(player) & SHIP_FLAG.CLOAKED);
+    assert.equal(flagsOf(player) & SHIP_FLAG.SHIELD_DOWN, 0);
+    assert.ok(flagsOf(drone) & SHIP_FLAG.SHIELD_DOWN);
+    assert.equal(flagsOf(drone) & SHIP_FLAG.CLOAKED, 0);
+});
+
+test('the player\'s own ship comes back with where its ability stands', () => {
+    const { world, player } = worldWithShips();
+    assert.deepEqual(Object.entries(roundTrip(world, player).own).filter(([key]) => /ability|shieldDown/.test(key)),
+        [['abilityArmed', false], ['abilityCooldown', 0], ['abilityActive', 0], ['shieldDown', 0]]);
+
+    player.ability.cooldown = 22.5;
+    player.ability.armed = true;
+    player.shieldDown = 7.25;
+    let { own } = roundTrip(world, player);
+    assert.deepEqual([own.abilityCooldown, own.abilityActive, own.abilityArmed, own.shieldDown], [22.5, 0, true, 7.25]);
+
+    player.ability.cooldown = 0;
+    player.ability.armed = false;
+    player.ability.active = 1.5;
+    ({ own } = roundTrip(world, player));
+    assert.deepEqual([own.abilityCooldown, own.abilityActive, own.abilityArmed], [0, 1.5, false]);
+
+    // A ship with no ability (the Bulwark) sends noughts.
+    const bulwark = world.spawnShip('bulwark', { position: [0, 0, 900], pilotId: 'bo', local: false });
+    ({ own } = roundTrip(world, bulwark));
+    assert.deepEqual([own.abilityCooldown, own.abilityActive, own.abilityArmed], [0, 0, false]);
+});
+
 test('ships mounted on another ship are sent without a pose', () => {
     const { world, warden, turret } = worldWithShips();
 

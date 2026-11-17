@@ -70,6 +70,25 @@ function shipStatus(ship) {
 }
 
 /**
+ * A ship's active ability as the HUD shows it, or null for a ship without one:
+ * `state` 'ready' | 'active' (its effect is running) | 'armed' (a warhead is in flight: the
+ * button sets it off) | 'cooldown'; `charge` 0..1 how full its bar is (time left of the
+ * effect, else how far it has recharged); `seconds` left of the effect or of the cooldown.
+ */
+export function abilityStatus(ship) {
+    const ability = ship.ability;
+    if (!ability) return null;
+    const { def } = ability;
+    const active = ability.active > 0;
+    return {
+        id: def.id,
+        state: ability.armed ? 'armed' : active ? 'active' : ability.cooldown > 0 ? 'cooldown' : 'ready',
+        charge: active ? ability.active / def.duration : 1 - ability.cooldown / def.cooldown,
+        seconds: Math.ceil(active ? ability.active : ability.cooldown),
+    };
+}
+
+/**
  * One play session: owns the world, the story director and the comms queue, implements the
  * "stage" the story script talks to, and publishes a throttled snapshot for the HUD.
  *
@@ -606,6 +625,10 @@ export class GameSession {
                 powerMode: player.powerMode,
                 outOfBounds: world.outOfBounds,
                 cannonLock: world.playerCannonLock,
+                ability: abilityStatus(player),
+                /** Seconds the shield is still held down by a breach blast (0: it is its own again). */
+                shieldDown: Math.ceil(player.shieldDown),
+                cloaked: player.cloaked,
             },
             target: target ? { ...shipStatus(target), distance: Math.round(Math.max(0, target.distanceToPoint(player.position))) } : null,
             escort: mission.escort ? shipStatus(mission.escort) : null,
