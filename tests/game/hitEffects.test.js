@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Color, Vector3 } from 'three';
 import { WEAPONS } from '../../src/game/config/weapons.js';
+import { createRng } from '../../src/game/core/math.js';
 import { GAME_EVENTS } from '../../src/game/core/EventBus.js';
 import { World } from '../../src/game/core/World.js';
 import { applyDamage } from '../../src/game/core/systems/damage.js';
@@ -99,7 +100,10 @@ test('more shots than there are shards reuse the oldest instead of overflowing',
     assert.ok(drawn <= MAX_SHARDS);
 });
 
-test('the cabin lights stutter after a knock and settle again', () => {
+test('the cabin lights stutter after a knock and settle again', (t) => {
+    // Which flicker goes dark is chance; a seeded Math.random makes this run the same every time
+    // (with the real one about 1 run in 120 had no drop-out deep enough in the first 0.35 s).
+    t.mock.method(Math, 'random', createRng(7));
     const hud = { alive: true, hull: 1, powerMode: 'balanced', boosting: false };
     const levels = (seconds) => {
         const seen = [];
