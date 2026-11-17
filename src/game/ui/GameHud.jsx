@@ -47,6 +47,20 @@ function shipTitle(t, ship) {
     return ship.callsign ?? t(ship.nameKey);
 }
 
+/** One pip per torpedo tube, lit while the tube is loaded. */
+function TorpedoTubes({ loaded, capacity }) {
+    return (
+        <div className="eod-torpedo-tubes">
+            {Array.from({ length: capacity }, (_, index) => (
+                <span key={index} className={`eod-torpedo ${index < loaded ? 'eod-torpedo--loaded' : ''}`} />
+            ))}
+        </div>
+    );
+}
+
+/** How a hostile ship's hull bar is coloured: purple while nothing can hurt it yet. */
+const hostileHullTone = (ship) => (ship.invulnerable ? 'locked' : 'hostile');
+
 function StatusPanel() {
     const hud = useGameStore((state) => state.hud);
     const t = useT();
@@ -84,11 +98,7 @@ function CompactShipPanel() {
             <Meter label={t('hud.hull')} value={hud.hull} tone="hull" warning={hud.hull < 0.3} />
             <Meter label={t('hud.energy')} value={hud.energy} tone="energy" warning={hud.beamDepleted} />
             <Meter label={t('hud.throttle')} value={throttleSwipe ?? hud.throttle} tone="throttle" live={throttleSwipe !== null} />
-            <div className="eod-torpedo-tubes">
-                {Array.from({ length: hud.torpedoCapacity }, (_, index) => (
-                    <span key={index} className={`eod-torpedo ${index < hud.torpedoes ? 'eod-torpedo--loaded' : ''}`} />
-                ))}
-            </div>
+            <TorpedoTubes loaded={hud.torpedoes} capacity={hud.torpedoCapacity} />
         </div>
     );
 }
@@ -126,11 +136,7 @@ function WeaponsPanel() {
             <Meter label={t('hud.boost')} value={hud.boost} tone="boost" />
             <div className="eod-torpedoes">
                 <span className="eod-meter-label">{t('hud.torpedoes')}</span>
-                <div className="eod-torpedo-tubes">
-                    {Array.from({ length: hud.torpedoCapacity }, (_, index) => (
-                        <span key={index} className={`eod-torpedo ${index < hud.torpedoes ? 'eod-torpedo--loaded' : ''}`} />
-                    ))}
-                </div>
+                <TorpedoTubes loaded={hud.torpedoes} capacity={hud.torpedoCapacity} />
             </div>
             <div className="eod-speed">
                 <span className="eod-meter-label">{t('hud.speed')}</span>
@@ -154,7 +160,7 @@ function TargetPanel() {
                 <>
                     <span className="eod-target-name">{shipTitle(t, target)}</span>
                     {target.hasShield && <Meter label={t('hud.shields')} value={target.shield} tone="shield" />}
-                    <Meter label={t('hud.hull')} value={target.hull} tone={target.invulnerable ? 'locked' : 'hostile'} />
+                    <Meter label={t('hud.hull')} value={target.hull} tone={hostileHullTone(target)} />
                     <span className="eod-target-distance">{target.distance} m</span>
                 </>
             ) : <span className="eod-target-name eod-target-name--none">{t('hud.noTarget')}</span>}
@@ -181,28 +187,28 @@ function ObjectivePanel() {
     );
 }
 
+/** One named ship's bars at the top centre: `role` 'boss' (an enemy to bring down) or 'escort' (a ship to keep alive). */
+function FleetBar({ ship, role }) {
+    const t = useT();
+    const boss = role === 'boss';
+    return (
+        <div className={`eod-fleet-bar eod-fleet-bar--${role}`}>
+            <span className="eod-fleet-name">{shipTitle(t, ship)}</span>
+            {ship.hasShield && <Meter label={t('hud.shields')} value={ship.shield} tone="shield" />}
+            <Meter label={t('hud.hull')} value={ship.hull} tone={boss ? hostileHullTone(ship) : 'hull'} warning={!boss && ship.hull < 0.3} />
+        </div>
+    );
+}
+
 /** Bars for the ship being protected and the current boss (top centre). */
 function FleetBars() {
     const escort = useGameStore((state) => state.escort);
     const boss = useGameStore((state) => state.boss);
-    const t = useT();
     if (!escort && !boss) return null;
     return (
         <div className="eod-fleet-bars">
-            {boss && (
-                <div className="eod-fleet-bar eod-fleet-bar--boss">
-                    <span className="eod-fleet-name">{shipTitle(t, boss)}</span>
-                    {boss.hasShield && <Meter label={t('hud.shields')} value={boss.shield} tone="shield" />}
-                    <Meter label={t('hud.hull')} value={boss.hull} tone={boss.invulnerable ? 'locked' : 'hostile'} />
-                </div>
-            )}
-            {escort && (
-                <div className="eod-fleet-bar eod-fleet-bar--escort">
-                    <span className="eod-fleet-name">{shipTitle(t, escort)}</span>
-                    {escort.hasShield && <Meter label={t('hud.shields')} value={escort.shield} tone="shield" />}
-                    <Meter label={t('hud.hull')} value={escort.hull} tone="hull" warning={escort.hull < 0.3} />
-                </div>
-            )}
+            {boss && <FleetBar ship={boss} role="boss" />}
+            {escort && <FleetBar ship={escort} role="escort" />}
         </div>
     );
 }
