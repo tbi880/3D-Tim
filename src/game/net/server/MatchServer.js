@@ -360,8 +360,13 @@ export class MatchServer {
     restoreZone(id, sectorId, options, data) {
         const zone = this.addZone(id, sectorId, options);
         for (const ship of restoreZone(zone, data)) {
-            const pilot = ship.pilotId != null ? this.pilots.get(ship.pilotId) : null;
-            if (!pilot || pilot.gone || pilot.ship) continue;
+            if (ship.pilotId == null) continue;
+            const pilot = this.pilots.get(ship.pilotId);
+            // A player's ship with no player to fly it (none of that name, one who has left, a second ship) is not kept.
+            if (!pilot || pilot.gone || pilot.ship) {
+                zone.world.removeShip(ship);
+                continue;
+            }
             pilot.ship = ship;
             this.moveToZone(pilot, zone);
         }

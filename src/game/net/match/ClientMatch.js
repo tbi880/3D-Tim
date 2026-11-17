@@ -29,6 +29,8 @@ const PLACELESS_EVENTS = new Set([WORLD_EVENT.MATCH, WORLD_EVENT.MODE, WORLD_EVE
 /** Calls the host may make on this device's stage. */
 const STAGE_CALLS = new Set(['showTitleCard', 'setHint', 'playMusic', 'playCue']);
 const FACTIONS = new Set(Object.values(FACTION));
+/** Seconds between requests for the world while none has been answered. */
+const HELLO_RETRY_SECONDS = 1.5;
 /** Most devices a succession list is taken to hold. */
 const MAX_SUCCESSORS = 16;
 
@@ -107,6 +109,7 @@ export class ClientMatch {
         this.secondaryRepeats = 0;
         this.lastReconcileAt = null;
         this.lastHeardAt = null;
+        this.lastHelloAt = -Infinity;
         this.lastPingAt = -Infinity;
         /** Round trip to the host in milliseconds, or null until measured. */
         this.rtt = null;
@@ -124,9 +127,21 @@ export class ClientMatch {
         this.listen();
     }
 
+    /**
+     * Still no welcome: asks again every so often. A device taking a match over may not have
+     * been listening on this link when the first request reached it.
+     */
+    askAgain() {
+        const now = this.now();
+        if (now - this.lastHelloAt < HELLO_RETRY_SECONDS) return;
+        this.lastHelloAt = now;
+        this.send({ t: MSG.HELLO, v: NET.protocolVersion, m: this.info.matchId });
+    }
+
     /** Takes the link's packets and asks its other end for the world. */
     listen() {
         this.lastHeardAt = this.now();
+        this.lastHelloAt = this.lastHeardAt;
         const { link, inbox } = this;
         link.onMessage = (text) => { inbox.messages.push(text); };
         link.onState = (data) => {
@@ -172,7 +187,10 @@ export class ClientMatch {
         this.receive();
         this.checkLink();
         this.presenter?.update(dt);
-        if (!this.welcomed) return;
+        if (!this.welcomed) {
+            this.askAgain();
+            return;
+        }
 
         const own = world.player?.alive ? world.player : null;
         this.sendInput(own, controls, dt);

@@ -12,9 +12,9 @@ The two kinds differ only in how a room is found (see "Rooms" below). Names in t
 
 ```
             lobby server (.NET, SignalR)            only before and between matches:
-           /            |             \             rooms, who is ready, WebRTC signalling
-      device A       device B       device C
-      (host)   <---- WebRTC ---->   (joiners connect to the host only)
+           /            |             \             rooms, who is ready, WebRTC signalling,
+      device A ----- device B ----- device C        and which device hosts
+      (host)   \_______ WebRTC _______/             (every device is linked to every other)
    MatchServer
    + ClientMatch    ClientMatch     ClientMatch
 ```
@@ -29,8 +29,9 @@ The two kinds differ only in how a room is found (see "Rooms" below). Names in t
   a server on the internet could never be. Across the internet it is still direct wherever
   the two networks allow it, and through a relay where they do not. Two channels per link: `state` (unordered, never
   retransmitted - snapshots and inputs, where late is worthless) and `events` (reliable).
-* **The host's device runs the one real simulation**: `server/MatchServer.js`, with one
-  `World` per zone (`server/Zone.js`). It has no screen and no player of its own.
+* **One device, the host, runs the one real simulation**: `server/MatchServer.js`, with one
+  `World` per zone (`server/Zone.js`). It has no screen and no player of its own. Which
+  device that is, and what happens when it is lost, is "The host" below.
 * **Every device, the host's included, runs a `match/ClientMatch.js`**: a copy of the zone
   its player is in. The host's own client reaches the server through an in-memory link
   (`match/HostSeat.js`), so there is one way of showing a match and the host sees nothing
@@ -81,9 +82,9 @@ The match still runs on the host's device, so everybody's delay is their distanc
 host - which is why quick match looks for a near one - and other ships are drawn 100 ms
 behind the host's word instead of the LAN's 45 (`NET.internetInterpolationDelay`).
 
-Not there yet: a match does not survive its host leaving, and a public room's host can
-cheat like any host (see "Cheating"). Both need the match to run on a server instead; the
-`MatchServer` was written so that it can.
+A match is given to the best-placed device and survives losing it (see "The host"). What
+is not there: a public room's host can cheat like any host (see "Cheating"). That needs the
+match to run on a server instead; the `MatchServer` was written so that it can.
 
 ### Computer-flown players
 
@@ -125,15 +126,63 @@ kill or a score, so there is nothing of that kind to forge:
 * what a client receives is checked too (`sanitize...`), so a broken host cannot crash it.
 
 What this does **not** cover: the host. The simulation runs on the host's own device, so a
-host who modifies their game can cheat, as in any LAN game. Closing that needs the server
-to run somewhere neutral - `MatchServer` has no browser in it for exactly that reason.
+host who modifies their game can cheat, as in any LAN game - and a device can make itself
+host by reporting itself faster and nearer than it is. Closing that needs the server to run
+somewhere neutral - `MatchServer` has no browser in it for exactly that reason.
 
-## The host's page in the background
+## The host
+
+One device runs the match for everybody. It is not whoever owns the room: the room's owner
+sets the options, starts it and can put players out, and that is all.
+
+**Choosing it.** In the lobby every device links to every other (the one that joined later
+calls), pings each link every couple of seconds, and times a small standard simulation once
+(`lobby/hostFitness.js`). It reports both to the lobby server (`ReportFitness`). When the
+match starts the server ranks the players (`LanRoomManager.RankHosts`): devices linked to
+everybody first, then the lower "average round trip + 40 x milliseconds per simulation
+step". The best one hosts; the whole ranking comes with the match as the order of
+succession. With nothing reported the owner hosts, as it used to.
+
+**Keeping a way on.** While it hosts, a device keeps ranking the others the same way from
+what they report to it (`MSG.LINKS`, with every ping) and every three seconds
+(`NET.checkpointInterval`):
+
+* tells every device the order of succession and its own term (`MSG.SUCCESSION`; the term
+  is 0 for the first host and one more for every takeover);
+* sends the first two in line a **checkpoint** (`MSG.CHECKPOINT`, in pieces): the whole
+  match as plain data - `MatchServer.capture()`: every zone's ships (`server/checkpoint.js`)
+  and the game mode's own state (`saveState`).
+
+**Losing it.** A client that hears nothing from its host for `NET.hostLostTimeout` (or
+whose link to it closes) stands still and asks its controller (`LanMultiplayer.onHostLost`),
+which walks the order of succession:
+
+* the first device in it that this one is still linked to becomes its host: the client is
+  given that link (`ClientMatch.switchLink`) and asks it for the world until it answers;
+* if the first one is this device itself, it takes over (`takeOver`): a new `MatchServer`
+  from its last checkpoint (`MatchServer`'s `checkpoint`; the mode's `restoreState`), every
+  link it has attached to it, and a notice to everybody (`MSG.TAKEOVER` with the new term);
+* a device that does not answer within `NET.takeoverTimeout` is passed over.
+
+The match goes on from the checkpoint - a few seconds back - without the player whose
+device was lost, and without shots that were in flight. A device that hears of a takeover
+with a later term than it knows follows it at once; if it was hosting itself (it had only
+stalled, or was cut off from the others) it stands down and plays on as a client.
+
+What this does not do: two groups of devices that can no longer reach each other at all
+each go on with their own match; and a device that never got a checkpoint (it was third in
+line or further, and both ahead of it are gone as well) cannot take over - the match ends
+for those it would have served, as it used to for everybody.
+
+The checkpoint holds everything, including what the map hides from a player. The two
+devices next in line could read it. That is the price of not running the match on a server.
+
+### The host's page in the background
 
 The game advances once per drawn frame, and browsers stop drawing hidden pages.
 `lobby/hostHeartbeat.js` keeps a hosted match going from a Web Worker's timer when that
 happens. It cannot help when the system suspends the page altogether (a phone whose browser
-is put away): the other players then lose the host after `NET.linkTimeout` and are told so.
+is put away): the others then lose the host, and the next in line takes over.
 
 ## Adding a game mode
 

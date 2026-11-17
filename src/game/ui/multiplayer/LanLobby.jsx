@@ -268,11 +268,11 @@ function Room({ lan, session, onStart }) {
     // start button and no options - only, like every host, the power to put a player out.
     const isPublic = room.visibility === ROOM_VISIBILITY.PUBLIC;
     const everybodyReady = room.players.every((player) => player.ready);
-    const hostLink = links[room.hostPlayerId] ?? LINK_STATUS.CLOSED;
-    const linkOf = (player) => {
-        if (lan.isHost) return player.isHost ? null : links[player.playerId] ?? LINK_STATUS.CONNECTING;
-        return player.playerId === me?.playerId ? hostLink : null;
-    };
+    // Every device links to every other (any of them may be given the match to run): each row
+    // shows this device's link to that player, and "linked" is being linked to somebody.
+    const linkOf = (player) => (player.playerId === me?.playerId ? null : links[player.playerId] ?? LINK_STATUS.CONNECTING);
+    const linked = room.players.length === 1 || Object.values(links).includes(LINK_STATUS.OPEN);
+    const ownLink = linked ? LINK_STATUS.OPEN : Object.values(links).includes(LINK_STATUS.CONNECTING) ? LINK_STATUS.CONNECTING : LINK_STATUS.CLOSED;
     const changeShip = () => {
         const classes = PLAYER_SHIPS.map((entry) => entry.classId);
         session.updateSettings({ playerShip: next(classes, ship) });
@@ -292,7 +292,7 @@ function Room({ lan, session, onStart }) {
             {isPublic && inLobby && (
                 <p className={`eod-lan-countdown ${startsIn !== null ? 'eod-lan-countdown--on' : ''}`} role="status">
                     {startsIn !== null ? t('mp.global.startsIn', { seconds: startsIn })
-                        : !lan.isHost && hostLink !== LINK_STATUS.OPEN ? t('mp.global.linking')
+                        : !linked ? t('mp.global.linking')
                             : room.players.length > 1 && !everybodyReady ? t('mp.global.waitingReady')
                                 : t('mp.global.waiting', { count: room.players.length, max: room.maxPlayers })}
                     {lan.isHost && <small>{t('mp.global.hostNote')}</small>}
@@ -325,12 +325,12 @@ function Room({ lan, session, onStart }) {
                     </button>
                 )}
                 {!lan.isHost && (
-                    <button type="button" className="eod-button eod-button--primary" disabled={!inLobby || hostLink !== LINK_STATUS.OPEN} onClick={ready}>
+                    <button type="button" className="eod-button eod-button--primary" disabled={!inLobby || !linked} onClick={ready}>
                         {self?.ready ? t('mp.lan.setNotReady') : t('mp.lan.setReady')}
-                        <small>{hostLink === LINK_STATUS.OPEN ? t('mp.lan.waitingForHost') : t(`mp.lan.link.${hostLink}`)}</small>
+                        <small>{linked ? t('mp.lan.waitingForHost') : t(`mp.lan.link.${ownLink}`)}</small>
                     </button>
                 )}
-                {!lan.isHost && error === LAN_ERROR.LINK_FAILED && (
+                {error === LAN_ERROR.LINK_FAILED && (
                     <button type="button" className="eod-button" onClick={() => lan.retryLink()}>{t('mp.lan.linkRetry')}</button>
                 )}
                 {vrSupported && (

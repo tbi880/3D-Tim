@@ -48,7 +48,25 @@ test('ping carries a number', () => {
 });
 
 test('messages only a host may send are refused from a client', () => {
-    for (const type of [MSG.WELCOME, MSG.BATCH, MSG.PONG, MSG.REFUSED, 'spawn', 'match', undefined]) refused({ t: type });
+    for (const type of [MSG.WELCOME, MSG.BATCH, MSG.PONG, MSG.REFUSED, MSG.SUCCESSION, MSG.CHECKPOINT, 'spawn', 'match', undefined]) refused({ t: type });
+});
+
+test('a report of fitness to host is a step cost and round trips, each within bounds', () => {
+    assert.deepEqual(parse({ t: 'links', c: 0.4, r: { p2: 31, p3: 120.5 } }), { t: MSG.LINKS, stepCost: 0.4, rtt: { p2: 31, p3: 120.5 } });
+    assert.deepEqual(parse({ t: 'links', c: 1e9, r: { p2: 1e9 } }), { t: MSG.LINKS, stepCost: 1000, rtt: { p2: 10000 } }, 'absurd numbers are capped');
+    assert.deepEqual(parse({ t: 'links', c: 0, r: {} }).rtt, {});
+    for (const bad of [
+        { t: 'links' }, { t: 'links', c: -1, r: {} }, { t: 'links', c: '1', r: {} }, { t: 'links', c: 1 }, { t: 'links', c: 1, r: [] },
+        { t: 'links', c: 1, r: { p2: -4 } }, { t: 'links', c: 1, r: { p2: 'near' } }, { t: 'links', c: 1, r: { ['x'.repeat(65)]: 1 } },
+        { t: 'links', c: 1, r: Object.fromEntries(Array.from({ length: 17 }, (_, index) => [`p${index}`, 1])) },
+    ]) refused(bad);
+});
+
+test('pings between two devices pass without a word, and a takeover names its term and its host', () => {
+    assert.deepEqual(parse({ t: 'lp', n: 5, extra: 'dropped' }), { t: MSG.LINK_PING });
+    assert.deepEqual(parse({ t: 'lq', n: 5 }), { t: MSG.LINK_PONG });
+    assert.deepEqual(parse({ t: 'to', n: 2, h: 'p3', more: true }), { t: MSG.TAKEOVER, n: 2, h: 'p3' });
+    for (const bad of [{ t: 'to' }, { t: 'to', n: 0, h: 'p3' }, { t: 'to', n: 1.5, h: 'p3' }, { t: 'to', n: 1 }, { t: 'to', n: 1, h: '' }, { t: 'to', n: 1, h: 'x'.repeat(65) }]) refused(bad);
 });
 
 test('only the fields the host uses come through', () => {

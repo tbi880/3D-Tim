@@ -121,7 +121,7 @@ function lobbyRoom(game, state, lanState, t, exitItem) {
     if (isPublic && inLobby) {
         const seconds = lanState.startsAt === null ? null : Math.max(0, Math.ceil((lanState.startsAt - Date.now()) / 1000));
         lines.push(seconds !== null ? t('mp.global.startsIn', { seconds })
-            : !lan.isHost && links[room.hostPlayerId] !== LINK_STATUS.OPEN ? t('mp.global.linking')
+            : room.players.length > 1 && !Object.values(links).includes(LINK_STATUS.OPEN) ? t('mp.global.linking')
                 : room.players.length > 1 && !room.players.every((player) => player.ready) ? t('mp.global.waitingReady')
                     : t('mp.global.waiting', { count: room.players.length, max: room.maxPlayers }));
         if (lan.isHost) lines.push(t('mp.global.hostNote'));
@@ -171,10 +171,11 @@ function lobbyRoom(game, state, lanState, t, exitItem) {
             select: () => { sound.unlock(); lan.startMatch(); },
         });
     } else {
-        const linked = links[room.hostPlayerId] === LINK_STATUS.OPEN;
+        // Linked to somebody is enough to be ready: the match is given to a device everybody reaches.
+        const linked = Object.values(links).includes(LINK_STATUS.OPEN);
         items.push({
             label: self?.ready ? t('mp.lan.setNotReady') : t('mp.lan.setReady'),
-            sub: linked ? t('mp.lan.waitingForHost') : t(`mp.lan.link.${links[room.hostPlayerId] ?? LINK_STATUS.CLOSED}`),
+            sub: linked ? t('mp.lan.waitingForHost') : t(`mp.lan.link.${Object.values(links).includes(LINK_STATUS.CONNECTING) ? LINK_STATUS.CONNECTING : LINK_STATUS.CLOSED}`),
             disabled: !inLobby || !linked,
             select: () => { sound.unlock(); lan.setReady(!self?.ready); },
         });
