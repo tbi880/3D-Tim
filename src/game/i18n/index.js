@@ -15,10 +15,6 @@ export function setLocale(locale) {
     if (DICTIONARIES[locale]) activeLocale = locale;
 }
 
-export function getLocale() {
-    return activeLocale;
-}
-
 /** Picks Chinese for Chinese browsers, English otherwise. */
 export function detectLocale() {
     const language = typeof navigator !== 'undefined' ? navigator.language ?? '' : '';

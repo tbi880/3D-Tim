@@ -29,7 +29,6 @@ export const CUE = Object.freeze({ INTRO: 'matchIntro', VICTORY: 'victory', DEFE
 /** Names as the player reads them (the ids come from the host: an unknown one is shown as it came). */
 export const planetName = (planetId) => t(`mp.planet.${String(planetId)}`);
 export const factionName = (faction) => t(`mp.faction.${String(faction)}`);
-export const equipmentName = (item) => t(`mp.equipment.${String(item)}.name`);
 
 const scratchOffset = new Vector3();
 
