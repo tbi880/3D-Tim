@@ -330,6 +330,72 @@ test('a client with somebody to turn to gives up on a silent host sooner, and st
     assert.equal(typeof hostOnly.id, 'string');
 });
 
+test('a client waits longer for the first word from its host, which may still be setting the match up', () => {
+    const match = createTestMatch(['host', 'ann']);
+    const [ann] = match.clients;
+    let asked = 0;
+    ann.match.onHostLost = () => { asked += 1; return true; };
+    // The host's device is busy with its first frames of the match: it runs nothing and says nothing.
+    const hostBusy = (seconds) => {
+        for (let elapsed = 0; elapsed < seconds; elapsed += 1 / 30) {
+            match.advanceClock(1 / 30);
+            ann.session.update(1 / 30, ann.controls);
+        }
+    };
+    hostBusy(NET.firstContactTimeout - 1);
+    assert.equal(asked, 0, 'Ann is still waiting');
+    assert.ok(NET.firstContactTimeout > NET.hostLostTimeout);
+
+    // The host comes round and answers her hello (she has been repeating it). From then on the usual patience applies.
+    match.run(1);
+    assert.equal(ann.match.welcomed, true);
+    hostBusy(NET.hostLostTimeout + 0.5);
+    assert.equal(asked, 1);
+});
+
+test('a client whose own page stopped does not hold that against its host', () => {
+    const match = createTestMatch(['host', 'ann']);
+    match.run(1);
+    const [ann] = match.clients;
+    let asked = 0;
+    ann.match.onHostLost = () => { asked += 1; return true; };
+
+    // Nothing runs on Ann's device for a while (her page was in the background, or busy with a scene).
+    match.advanceClock(NET.hostLostTimeout * 3);
+    ann.session.update(1 / 30, ann.controls);
+    assert.equal(asked, 0, 'coming back is no reason to give the host up');
+
+    // Silence once she is back counts as before.
+    const silent = (seconds) => {
+        for (let elapsed = 0; elapsed < seconds; elapsed += 1 / 30) {
+            match.advanceClock(1 / 30);
+            ann.session.update(1 / 30, ann.controls);
+        }
+    };
+    silent(NET.hostLostTimeout - 0.5);
+    assert.equal(asked, 0);
+    silent(1);
+    assert.equal(asked, 1);
+});
+
+test('what reaches a client while its page is stopped counts when it arrived, not when the page reads it', () => {
+    const match = createTestMatch(['host', 'ann']);
+    match.run(1);
+    const [ann] = match.clients;
+    let asked = 0;
+    ann.match.onHostLost = () => { asked += 1; return true; };
+    // Ann's page stops; the host goes on, and what it sends arrives on her device.
+    for (let elapsed = 0; elapsed < NET.hostLostTimeout * 2; elapsed += 1 / 30) {
+        match.advanceClock(1 / 30);
+        for (const link of match.links) link.deliver();
+        match.host.session.update(1 / 30, match.host.controls);
+        for (const link of match.links) link.deliver();
+    }
+    ann.session.update(1 / 30, ann.controls);
+    assert.equal(asked, 0);
+    assert.ok(match.clock() - ann.match.lastHeardAt < 0.1, 'heard just now');
+});
+
 test('a client given another link asks it for the world, again and again until it answers', () => {
     const match = createTestMatch(['host', 'ann']);
     match.run(1);

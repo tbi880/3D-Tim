@@ -62,6 +62,19 @@ export const NET = Object.freeze({
      * that can go on should not stand still for long.
      */
     hostLostTimeout: 4,
+    /**
+     * The same across the internet. There a host's few seconds of silence are much more often
+     * its page catching its breath than its end - a new scene to draw, a phone busy for a
+     * moment - and the price of guessing wrong is high: the match is taken over from a
+     * checkpoint a few seconds back, or ends for a player who had no checkpoint to go on from.
+     */
+    internetHostLostTimeout: 8,
+    /**
+     * Seconds a client waits for the first word from its host. More than the rest of the match
+     * allows: the host has the match to set up and its first frames of it to draw, and a hello
+     * that reached it before it knew of the match is only answered when it is asked again.
+     */
+    firstContactTimeout: 15,
     /** Seconds between the checkpoints of the whole match that the host sends to those next in line. */
     checkpointInterval: 3,
     /** How many of those next in line are kept supplied with checkpoints. */

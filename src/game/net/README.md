@@ -22,8 +22,10 @@ The two kinds differ only in how a room is found (see "Rooms" below). Names in t
 * **The lobby server** (`3D_Tim_backend`, `EchoesLanHub`) finds players a room (the rooms on
   the caller's network, quick match, or a code), keeps the room (names, devices, ships,
   readiness), says who each connection is (account or guest) and relays WebRTC offers /
-  answers / candidates. It never sees match traffic. `lobby/LobbyClient.js` is the game's
-  end of it.
+  answers / candidates. It never sees match traffic, and a match does not need it: a device
+  whose connection to it drops is taken off the room's list, but keeps its links and its
+  place in a match being played (`LanMultiplayer.syncLinks`); only back in the lobby does the
+  list count again. `lobby/LobbyClient.js` is the game's end of it.
 * **The devices talk to each other directly** over WebRTC data channels
   (`transport/PeerLink.js`): on one Wi-Fi that is a few milliseconds, which a detour through
   a server on the internet could never be. Across the internet it is still direct wherever
@@ -159,7 +161,13 @@ what they report to it (`MSG.LINKS`, with every ping) and every three seconds
 
 **Losing it.** A client that hears nothing from its host for `NET.hostLostTimeout` (or
 whose link to it closes) stands still and asks its controller (`LanMultiplayer.onHostLost`),
-which walks the order of succession:
+which walks the order of succession. Across the internet the wait is
+`NET.internetHostLostTimeout`, and for the host's very first word `NET.firstContactTimeout`
+(it may still be setting the match up). Only time this device itself was running counts:
+a page that was not drawn for a while does not hold that against its host, and what arrived
+meanwhile counts from when it arrived. Guessing wrong is dear - the match goes back to a
+checkpoint, or ends for a device that has none - and the start of a match, when every device
+is busy with a new scene, is where it was easiest to guess wrong.
 
 * the first device in it that this one is still linked to becomes its host: the client is
   given that link (`ClientMatch.switchLink`) and asks it for the world until it answers;

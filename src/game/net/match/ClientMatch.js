@@ -34,6 +34,12 @@ const FACTIONS = new Set(Object.values(FACTION));
 const HELLO_RETRY_SECONDS = 1.5;
 /** Most devices a succession list is taken to hold. */
 const MAX_SUCCESSORS = 16;
+/**
+ * A gap this long (seconds) between two frames is this device stopping, not a slow frame: its
+ * page was not drawn (in the background, or busy with a new scene). Silence from the host
+ * while this device was stopped does not count against it - nor was this device asking.
+ */
+const OWN_STALL_SECONDS = 0.5;
 
 const defaultNow = () => performance.now() / 1000;
 const scratchStart = new Vector3();
@@ -74,15 +80,18 @@ export class ClientMatch {
      *        another host (it then waits for `switchLink` or `giveUp`), false to end the match here
      * @param {() => { stepCost: number, rtt: Record<string, number> } | null} [params.linkReport] this device's
      *        fitness to host, sent to the host with every ping so it can keep the order of succession
+     * @param {number} [params.hostLostTimeout] seconds of silence after which a client with `onHostLost` turns
+     *        elsewhere (NET.hostLostTimeout; across the internet NET.internetHostLostTimeout)
      * @param {() => number} [params.now] clock in seconds
      */
-    constructor({ info, localPlayerId, link, presenter = null, interpolationDelay = NET.interpolationDelay, onHostLost = null, linkReport = null, now = defaultNow }) {
+    constructor({ info, localPlayerId, link, presenter = null, interpolationDelay = NET.interpolationDelay, onHostLost = null, linkReport = null, hostLostTimeout = NET.hostLostTimeout, now = defaultNow }) {
         this.info = info;
         this.localPlayerId = localPlayerId;
         this.link = link;
         this.presenter = presenter;
         this.onHostLost = onHostLost;
         this.linkReport = linkReport;
+        this.hostLostTimeout = hostLostTimeout;
         this.now = now;
         /** True from losing the host until another one has sent its welcome: the picture stands still. */
         this.migrating = false;
@@ -112,6 +121,10 @@ export class ClientMatch {
         this.secondaryRepeats = 0;
         this.lastReconcileAt = null;
         this.lastHeardAt = null;
+        /** True once the host this client listens to has said anything at all (see NET.firstContactTimeout). */
+        this.heardFromHost = false;
+        /** When this device last ran a frame of the match (see OWN_STALL_SECONDS). */
+        this.lastUpdateAt = null;
         this.lastHelloAt = -Infinity;
         this.lastPingAt = -Infinity;
         /** Round trip to the host in milliseconds, or null until measured. */
@@ -145,9 +158,20 @@ export class ClientMatch {
     listen() {
         this.lastHeardAt = this.now();
         this.lastHelloAt = this.lastHeardAt;
+        this.heardFromHost = false;
         const { link, inbox } = this;
-        link.onMessage = (text) => { inbox.messages.push(text); };
+        // Heard when it arrives, not when the next frame reads it: a page that is not being
+        // drawn still receives, and what came in meanwhile shows the host was there.
+        const heard = () => {
+            this.lastHeardAt = this.now();
+            this.heardFromHost = true;
+        };
+        link.onMessage = (text) => {
+            heard();
+            inbox.messages.push(text);
+        };
         link.onState = (data) => {
+            heard();
             inbox.states.push(data);
             // A page that is not being drawn (in the background) is not reading these: keep the newest only.
             if (inbox.states.length > MAX_UNREAD_SNAPSHOTS) inbox.states.shift();
@@ -204,6 +228,7 @@ export class ClientMatch {
 
     update(dt, controls) {
         const { world } = this;
+        this.noteOwnStall();
         this.receive();
         this.checkLink();
         this.presenter?.update(dt);
@@ -302,15 +327,33 @@ export class ClientMatch {
 
     receive() {
         const { messages, states } = this.inbox;
-        if (messages.length > 0 || states.length > 0) this.lastHeardAt = this.now();
         for (const text of messages.splice(0)) this.onMessage(text);
         for (const data of states.splice(0)) this.onSnapshot(data);
     }
 
+    /**
+     * This device has not run a frame for a while (its page was hidden, or busy setting up a
+     * scene): the host's silence in that time is not held against it - it was not listening
+     * for long, nor asking (a hello that went unanswered is not repeated while nothing runs).
+     * The clock of silence stops while this device does, and a request for the world goes out
+     * again at once.
+     */
+    noteOwnStall() {
+        const now = this.now();
+        const last = this.lastUpdateAt;
+        this.lastUpdateAt = now;
+        if (last === null || now - last < OWN_STALL_SECONDS) return;
+        // Heard of while stopped: that counts as it is. Otherwise the silence goes on from where it had got to.
+        if (this.lastHeardAt <= last) this.lastHeardAt = now - (last - this.lastHeardAt);
+        this.lastHelloAt = -Infinity;
+    }
+
     checkLink() {
         if (this.state?.phase === MATCH_PHASE.DISCONNECTED || this.migrating) return;
-        // With somebody to turn to there is no point in waiting long for a host that has gone quiet.
-        const patience = this.onHostLost ? NET.hostLostTimeout : NET.linkTimeout;
+        // Until the host has said anything it may still be setting the match up; after that,
+        // with somebody to turn to there is no point in waiting long for a host that has gone quiet.
+        const patience = !this.heardFromHost ? Math.max(NET.firstContactTimeout, this.hostLostTimeout)
+            : this.onHostLost ? this.hostLostTimeout : NET.linkTimeout;
         if (!this.link.isOpen || this.now() - this.lastHeardAt > patience) this.hostLost();
     }
 

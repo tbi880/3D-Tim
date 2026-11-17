@@ -353,9 +353,10 @@ export class LanMultiplayer {
     onRoomUpdated(room) {
         const seconds = room.startsInSeconds;
         this.store.set({ room, startsAt: Number.isFinite(seconds) ? this.now() + Math.max(0, seconds) * 1000 : null });
-        this.syncLinks(room);
-        // The host has ended the match: back to the lobby with everybody else.
+        // The host has ended the match: back to the lobby with everybody else - and then the
+        // links follow the room again, also for those who dropped off its list during the match.
         if (room.state === ROOM_STATE.LOBBY && this.inMatch) this.endMatch();
+        this.syncLinks(room);
     }
 
     onRoomClosed() {
@@ -389,11 +390,14 @@ export class LanMultiplayer {
         const info = normalizeMatchInfo(start);
         const mode = gameModeOf(info);
         const localPlayerId = this.state.me.playerId;
-        // Players anywhere are further apart than players on one Wi-Fi: their ships are drawn a little later, and smoother for it.
-        const interpolationDelay = this.state.scope === LOBBY_SCOPE.GLOBAL ? NET.internetInterpolationDelay : NET.interpolationDelay;
+        // Players anywhere are further apart than players on one Wi-Fi: their ships are drawn a little later, and smoother for it;
+        // and a host across the internet that goes quiet for a moment is given longer before it is given up.
+        const global = this.state.scope === LOBBY_SCOPE.GLOBAL;
+        const interpolationDelay = global ? NET.internetInterpolationDelay : NET.interpolationDelay;
+        const hostLostTimeout = global ? NET.internetHostLostTimeout : NET.hostLostTimeout;
         const createClient = (link) => {
             this.client = new ClientMatch({
-                info, localPlayerId, link, interpolationDelay,
+                info, localPlayerId, link, interpolationDelay, hostLostTimeout,
                 presenter: mode.createPresenter(this.state.loadout),
                 onHostLost: () => this.onHostLost(),
                 linkReport: () => this.fitness(),
@@ -444,6 +448,13 @@ export class LanMultiplayer {
     /**
      * Keeps the links in step with who is in the room: one to every other player. Of two
      * players the one who joined later reaches for the other, so both ends never call at once.
+     *
+     * While a match is on, a player missing from the room keeps their link. The room is the
+     * lobby server's list, and a device whose connection to the lobby server dropped (a blip
+     * of its network, a phone between masts) is taken off it - while its link, and its place
+     * in the match, are fine. A player who really leaves closes their links themselves
+     * (`leaveRoom`), and a device that is gone loses its link with it; either way the match
+     * hears of it from the link.
      */
     syncLinks(room) {
         const { me } = this.state;
@@ -451,7 +462,7 @@ export class LanMultiplayer {
         const order = room.players.map((player) => player.playerId);
         const mine = order.indexOf(me.playerId);
         for (const playerId of [...this.links.keys()]) {
-            if (!order.includes(playerId)) this.dropLink(playerId);
+            if (!order.includes(playerId) && !(this.inMatch && this.links.get(playerId).isOpen)) this.dropLink(playerId);
         }
         for (const playerId of [...this.relinks.keys()]) {
             if (!order.includes(playerId)) this.forgetRelink(playerId);

@@ -418,6 +418,38 @@ test('a match survives the lobby server going away', async () => {
     assert.equal(host.ui.match.players.length, 2);
 });
 
+test('a player whose lobby connection drops during a match stays in it: the link says who is there, not the room list', async () => {
+    // Two players are two sides: had Ann been put out of the match, Tim's side would have won on the spot.
+    const { server, host: tim, guests: [ann], run, settle } = await gathered(['Tim', 'Ann']);
+    await ann.lan.setReady(true);
+    await tim.lan.startMatch();
+    run(0.5);
+    const annId = ann.state.me.playerId;
+
+    // Ann's connection to the lobby server drops (her network blinked): the server takes her
+    // off the room's list and tells the others - but her link to Tim is fine.
+    const room = server.roomOf(annId);
+    room.players.splice(room.players.findIndex((player) => player.playerId === annId), 1);
+    server.broadcast(room);
+    server.clients.get(annId).handlers.onDisconnected();
+    await settle();
+    run(1);
+
+    assert.equal(tim.lan.links.get(annId)?.isOpen, true, 'Tim keeps his link to Ann');
+    for (const each of [tim, ann]) {
+        assert.equal(each.session.phase, PHASE.PLAYING);
+        assert.equal(each.ui.match.phase, 'playing', 'nobody has won, nobody is cut off');
+        assert.deepEqual(each.ui.match.players.map((player) => player.name).sort(), ['Ann', 'Tim']);
+    }
+
+    // Back in the lobby the room's list counts again: Ann is no longer in it, nor linked to.
+    await tim.lan.returnToLobby();
+    await settle();
+    run(0.2);
+    assert.equal(tim.session.phase, PHASE.TITLE);
+    assert.equal(tim.lan.links.has(annId), false);
+});
+
 test('a refused join says why', async () => {
     const { devices: [tim, ann] } = lanParty(['Tim', 'Ann']);
     await tim.lan.open();
@@ -578,7 +610,7 @@ test('quick match opens a public room for the first player and puts the next one
     }
 });
 
-test('players anywhere draw other ships a little later than players on one Wi-Fi', async () => {
+test('players anywhere draw other ships a little later than players on one Wi-Fi, and give a quiet host longer', async () => {
     const { server, devices: [tim, ann], settle, run } = await strangers(['Tim', 'Ann']);
     await tim.lan.quickMatch();
     await ann.lan.quickMatch();
@@ -588,12 +620,15 @@ test('players anywhere draw other ships a little later than players on one Wi-Fi
     run(0.5);
     assert.equal(ann.session.match.timeline.delay, NET.internetInterpolationDelay);
     assert.ok(NET.internetInterpolationDelay > NET.interpolationDelay);
+    assert.equal(ann.session.match.hostLostTimeout, NET.internetHostLostTimeout);
+    assert.ok(NET.internetHostLostTimeout > NET.hostLostTimeout);
 
     const lan = await gathered(['Cy', 'Di']);
     await lan.guests[0].lan.setReady(true);
     await lan.host.lan.startMatch();
     lan.run(0.5);
     assert.equal(lan.guests[0].session.match.timeline.delay, NET.interpolationDelay);
+    assert.equal(lan.guests[0].session.match.hostLostTimeout, NET.hostLostTimeout);
 });
 
 test('after a public match the room waits for everybody to be ready again before the next one', async () => {
