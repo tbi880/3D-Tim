@@ -81,7 +81,7 @@ html.eod-page-locked body {
 /* ---- Panels ----------------------------------------------------------------------------- */
 
 .eod-panel {
-    position: absolute;
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 7px;
@@ -91,10 +91,58 @@ html.eod-page-locked body {
     backdrop-filter: blur(3px);
 }
 
-.eod-status { left: 22px; bottom: 22px; width: 250px; border-radius: 4px 18px 4px 4px; }
-.eod-weapons { right: 22px; bottom: 22px; width: 250px; border-radius: 18px 4px 4px 4px; }
-.eod-target { right: 22px; top: 22px; width: 230px; border-radius: 4px 4px 4px 18px; }
-.eod-objective { left: 22px; top: 22px; width: min(340px, 34vw); border-radius: 4px 4px 18px 4px; }
+.eod-status { position: absolute; left: 22px; bottom: 22px; width: 250px; border-radius: 4px 18px 4px 4px; }
+.eod-weapons { position: absolute; right: 22px; bottom: 22px; width: 250px; border-radius: 18px 4px 4px 4px; }
+.eod-target { width: 230px; border-radius: 4px 4px 4px 18px; }
+.eod-objective { border-radius: 4px 4px 18px 4px; }
+
+/*
+ * ---- Docks: where the panels live ------------------------------------------------------
+ * Panels are not placed one by one (GameHud.jsx). Each sits in one of these docks, and a dock
+ * stacks what is in it, so panels that come up together push each other along instead of
+ * covering each other:
+ *   left    top left, a column: the objective, the match status (on a phone: ship panel, objective)
+ *   centre  top centre, a column: boss / escort bars, the hint, the match vote (a phone: the
+ *           match strip; its vote goes to the bottom) - and at its foot the warnings, a third
+ *           of the way down the screen (lower if the rest needs it)
+ *   right   top right: the target, the toast under it
+ *   and at the bottom centre the dock prompt and the comms line (.eod-centre-stack).
+ * The docks are sized to keep clear of one another and of the corners: the two gauge panels on
+ * a desktop, the stick and the buttons on a touch screen. The site's own two buttons (Tools/
+ * Menu.jsx on the left edge, Tools/GraphicSetting.jsx on the right, both halfway down) stay
+ * uncovered: no dock reaches the middle of a side edge.
+ */
+.eod-hud {
+    /* Gap to the screen edge, and the width of the left column (the centre dock keeps that much clear on both sides). */
+    --eod-edge: 22px;
+    --eod-side: min(340px, 30vw);
+    /* How far the left column steps in from the edge (see below). */
+    --eod-side-shift: 0px;
+}
+.eod-dock { position: absolute; display: flex; flex-direction: column; gap: 10px; }
+.eod-dock > * { flex: none; }
+.eod-dock .eod-panel { box-sizing: border-box; }
+/* Above the status panel in the lower left corner (about 100 px tall): what does not fit is cut, the objective first. */
+.eod-dock--left { left: calc(var(--eod-edge) + var(--eod-side-shift)); top: var(--eod-edge); width: var(--eod-side); max-height: calc(100% - 2 * var(--eod-edge) - 120px); }
+.eod-dock--left > .eod-panel { width: 100%; }
+.eod-dock--left > .eod-objective { flex: 0 1 auto; min-height: 0; overflow: hidden; }
+/* In a match on a short screen the column (objective + match status) comes down to the middle of
+   the left edge, where the site's menu button is (34 px wide): it steps in to clear it, and the
+   centre dock narrows to match. */
+@media (max-height: 720px) {
+    .eod-hud--desktop:has(.eod-match-status) { --eod-side-shift: 24px; }
+}
+.eod-dock--right { right: var(--eod-edge); top: var(--eod-edge); align-items: flex-end; }
+/* No wider than the left column: the centre dock keeps that much clear on both sides. */
+.eod-hud--desktop .eod-dock--right > * { max-width: var(--eod-side); box-sizing: border-box; }
+.eod-dock--centre {
+    top: 18px; left: 50%; transform: translateX(-50%); align-items: center; gap: 8px;
+    width: min(560px, calc(100% - 2 * (var(--eod-side) + var(--eod-side-shift) + var(--eod-edge) + 18px)));
+    /* The warnings sit at the foot of this: a third of the way down, above the reticle's ring. */
+    min-height: calc(30% - 18px);
+}
+.eod-dock--centre > * { max-width: 100%; box-sizing: border-box; }
+.eod-dock-row { display: flex; align-items: flex-start; gap: 6px; }
 
 .eod-meter {
     display: grid;
@@ -151,26 +199,18 @@ html.eod-page-locked body {
 .eod-target-distance { font-size: 11px; text-align: right; }
 
 .eod-objective-text { margin: 0; font-size: 13px; line-height: 1.45; color: #fff; letter-spacing: 0.03em; }
+.eod-objective-label { display: block; margin-bottom: 7px; line-height: 1.2; }
 
 /* ---- Fleet / boss bars ------------------------------------------------------------------ */
 
-.eod-fleet-bars {
-    position: absolute;
-    top: 18px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(430px, 36vw);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
+.eod-fleet-bars { width: min(430px, 100%); display: flex; flex-direction: column; gap: 8px; }
 .eod-fleet-bar { padding: 8px 12px; background: var(--eod-panel); border: 1px solid var(--eod-border); display: flex; flex-direction: column; gap: 5px; }
 .eod-fleet-bar--boss { border-color: rgba(255, 75, 110, 0.5); }
 .eod-fleet-name { font-size: 12px; font-weight: 700; text-align: center; text-transform: uppercase; }
 .eod-fleet-bar--boss .eod-fleet-name { color: var(--eod-red); }
 .eod-fleet-bar--escort .eod-fleet-name { color: var(--eod-cyan); }
 
-/* ---- Centre stack: comms + radar -------------------------------------------------------- */
+/* ---- Centre stack: dock prompt, comms, radar (bottom centre, between the corner gauges) --- */
 
 .eod-centre-stack {
     position: absolute;
@@ -181,9 +221,10 @@ html.eod-page-locked body {
     flex-direction: column;
     align-items: center;
     gap: 12px;
-    width: min(620px, calc(100vw - 600px));
-    min-width: 300px;
+    /* Clear of the two corner gauges (280 px wide, 22 px in) with 18 px to spare on each side. */
+    width: min(620px, calc(100% - 640px));
 }
+.eod-centre-stack > * { flex: none; max-width: 100%; box-sizing: border-box; }
 .eod-radar { width: 132px; height: 132px; }
 
 .eod-comms {
@@ -229,16 +270,13 @@ html.eod-page-locked body {
 
 /* ---- Transient elements ----------------------------------------------------------------- */
 
-.eod-alerts { position: absolute; top: 27%; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.eod-alert { padding: 4px 14px; font-size: 12px; font-weight: 700; color: var(--eod-red); border: 1px solid var(--eod-red); background: rgba(40, 0, 10, 0.55); animation: eod-blink 0.8s steps(2) infinite; }
+/* The warnings: at the foot of the top-centre dock (margin-top: auto). */
+.eod-alerts { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.eod-alerts:empty { display: none; }
+.eod-alert { padding: 4px 14px; font-size: 12px; font-weight: 700; line-height: 1.35; color: var(--eod-red); border: 1px solid var(--eod-red); background: rgba(40, 0, 10, 0.55); animation: eod-blink 0.8s steps(2) infinite; }
 .eod-alert--cloak { color: var(--eod-cyan); border-color: var(--eod-cyan); background: rgba(0, 24, 40, 0.55); animation: none; }
 
 .eod-hint {
-    position: absolute;
-    top: 96px;
-    left: 50%;
-    transform: translateX(-50%);
-    max-width: min(640px, 60vw);
     padding: 8px 16px;
     font-size: 12px;
     line-height: 1.5;
@@ -252,7 +290,7 @@ html.eod-page-locked body {
 .eod-title-card h2 { margin: 0; font-size: clamp(22px, 3.4vw, 46px); font-weight: 800; letter-spacing: 0.2em; text-shadow: 0 0 24px rgba(89, 208, 255, 0.7); }
 .eod-title-card p { margin: 12px 0 0; font-size: clamp(11px, 1.2vw, 16px); color: rgba(210, 235, 255, 0.8); letter-spacing: 0.18em; }
 
-.eod-toast { position: absolute; top: 200px; right: 22px; display: flex; flex-direction: column; gap: 3px; padding: 8px 14px; border-left: 3px solid var(--eod-green); background: var(--eod-panel); animation: eod-rise 0.3s ease-out; }
+.eod-toast { display: flex; flex-direction: column; gap: 3px; padding: 8px 14px; border-left: 3px solid var(--eod-green); background: var(--eod-panel); animation: eod-rise 0.3s ease-out; }
 .eod-toast strong { color: var(--eod-green); font-size: 11px; }
 .eod-toast span { font-size: 10px; color: rgba(210, 235, 255, 0.75); }
 
@@ -515,60 +553,119 @@ html.eod-page-locked body {
 
 .eod-touch { position: absolute; inset: 0; z-index: 4; pointer-events: none; display: none; }
 .eod-touch-hint { display: none; margin: 10px 0 0; font-size: 11px; color: var(--eod-amber); }
-/* Phones and tablets: a pared-down HUD (GameHud.jsx renders a different set of panels). The
-   lower corners belong to the thumbs, so everything else hugs the top edge, small, leaving the
-   middle of the screen to the fight. */
 @media (pointer: coarse) {
     .eod-touch { display: block; }
     .eod-touch-hint { display: block; }
     .eod-home-screen-hint { max-width: 560px; color: rgba(215, 238, 255, 0.75); }
-
-    .eod-panel { padding: 6px 8px; gap: 3px; backdrop-filter: none; }
-    .eod-meter { grid-template-columns: 42px 1fr 26px; gap: 5px; }
-    .eod-meter-label, .eod-meter-value { font-size: 8px; }
-    .eod-meter-track { height: 5px; }
-
-    /* Top left: pause button, then ship status, the objective under them. */
-    .eod-ship-compact { left: calc(56px + env(safe-area-inset-left, 0px)); top: 8px; width: 160px; border-radius: 4px 4px 12px 4px; }
-    .eod-ship-compact .eod-torpedo-tubes { gap: 4px; padding-left: 47px; }
-    .eod-ship-compact .eod-torpedo { width: 6px; height: 10px; }
-    .eod-objective { left: calc(8px + env(safe-area-inset-left, 0px)); top: 96px; width: min(220px, 27vw); border-radius: 4px 4px 12px 4px; }
-    .eod-objective-text { font-size: 11px; line-height: 1.35; }
-
-    /* Top right: target, the radar under it. */
-    .eod-target { right: calc(8px + env(safe-area-inset-right, 0px)); top: 8px; width: 150px; border-radius: 4px 4px 4px 12px; }
-    .eod-target-name { font-size: 11px; }
-    .eod-target-distance { font-size: 9px; }
-    .eod-radar--corner { position: absolute; top: 92px; right: calc(8px + env(safe-area-inset-right, 0px)); width: 68px; height: 68px; }
-    .eod-toast { top: 92px; right: calc(84px + env(safe-area-inset-right, 0px)); padding: 5px 10px; }
-    .eod-toast strong { font-size: 10px; }
-    .eod-toast span { font-size: 9px; }
-
-    /* Top centre: boss / escort bars, the hint under them. */
-    .eod-top-stack {
-        position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
-        width: min(300px, calc(100vw - 480px)); min-width: 190px;
-        display: flex; flex-direction: column; align-items: center; gap: 5px;
-    }
-    .eod-top-stack .eod-fleet-bars { position: static; transform: none; width: 100%; gap: 4px; }
-    .eod-fleet-bar { padding: 4px 8px; gap: 3px; }
-    .eod-fleet-name { font-size: 9px; }
-    .eod-top-stack .eod-hint { position: static; transform: none; max-width: 100%; font-size: 10px; line-height: 1.4; padding: 4px 9px; }
-
-    .eod-alerts { top: 34%; gap: 4px; }
-    .eod-alert { font-size: 10px; padding: 3px 10px; }
-    .eod-score-pop strong { font-size: 16px; }
-
-    /* Bottom centre, between the thumbs: the comms line. Tap it to show it all, again to skip. */
-    .eod-centre-stack { width: min(400px, calc(100vw - 440px)); min-width: 220px; bottom: 6px; gap: 0; }
-    .eod-comms { padding: 6px 9px; gap: 8px; border-left-width: 3px; }
-    .eod-comms-portrait { flex-basis: 34px; height: 34px; }
-    .eod-comms-glyph { width: 26px; height: 26px; }
-    .eod-comms-name { font-size: 11px; }
-    .eod-comms-role, .eod-power kbd { display: none; }
-    .eod-comms-text { font-size: 11.5px; line-height: 1.4; min-height: 0; margin: 3px 0 8px; }
-    .eod-comms-skip { font-size: 8px; color: rgba(200, 225, 240, 0.55); }
 }
+
+/*
+ * Phones and tablets: a pared-down HUD (GameHud.jsx TouchHud). Keyed to the class GameHud sets,
+ * not to the media query, so the panels and their places always change together. The lower
+ * corners belong to the thumbs - the stick (76..204 px from the left, its top 164 px above the
+ * bottom) and the four buttons (a 162 px square 20 px in from the lower right, the ability
+ * button off its lower left) - so everything else hugs the top edge, small, leaving the middle
+ * of the screen to the fight. The numbers below keep clear of those.
+ */
+.eod-hud--touch {
+    --eod-edge: 8px;
+    /* Room the top corners take: pause button + ship panel on the left (56 + 160), radar + target on the right (68 + 6 + 150). */
+    --eod-touch-corner: 232px;
+}
+.eod-hud--touch .eod-panel { padding: 6px 8px; gap: 3px; backdrop-filter: none; }
+.eod-hud--touch .eod-meter { grid-template-columns: 42px 1fr 26px; gap: 5px; }
+.eod-hud--touch .eod-meter-label, .eod-hud--touch .eod-meter-value { font-size: 8px; }
+.eod-hud--touch .eod-meter-track { height: 5px; }
+
+/* Top left, right of the pause button: ship status, the objective under it - all of it above the stick. */
+.eod-hud--touch .eod-dock--left {
+    left: calc(56px + env(safe-area-inset-left, 0px)); top: 8px; width: 160px; gap: 5px;
+    max-height: calc(100% - 8px - 164px - 8px - env(safe-area-inset-bottom, 0px));
+}
+.eod-hud--touch .eod-ship-compact { border-radius: 4px 4px 12px 4px; }
+.eod-hud--touch .eod-ship-compact .eod-torpedo-tubes { gap: 4px; padding-left: 47px; }
+.eod-hud--touch .eod-ship-compact .eod-torpedo { width: 6px; height: 10px; }
+/* The objective in a narrower, more upright face than the rest, its label running on its first
+   line, and cut to as many lines as the screen's height leaves room for (with an ellipsis). */
+.eod-hud--touch .eod-objective { border-radius: 4px 4px 12px 4px; padding: 5px 8px; }
+.eod-hud--touch .eod-objective > * { flex: none; }
+.eod-hud--touch .eod-objective-text {
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; overflow: hidden;
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-size: 11px; line-height: 1.3; letter-spacing: 0.01em;
+}
+.eod-hud--touch .eod-objective-label { display: inline; margin: 0 5px 0 0; font-family: 'Orbitron', sans-serif; color: var(--eod-amber); }
+@media (max-height: 430px) { .eod-hud--touch .eod-objective-text { -webkit-line-clamp: 4; } }
+@media (max-height: 360px) {
+    .eod-hud--touch .eod-objective-text { -webkit-line-clamp: 3; }
+    /* A progress bar under the text takes a line's room. */
+    .eod-hud--touch .eod-objective:has(.eod-meter) .eod-objective-text { -webkit-line-clamp: 2; }
+}
+
+/* Top right: the radar, the target beside it; the toast under them. */
+.eod-hud--touch .eod-dock--right { right: calc(8px + env(safe-area-inset-right, 0px)); top: 8px; gap: 6px; }
+.eod-hud--touch .eod-target { width: 150px; border-radius: 4px 4px 4px 12px; }
+.eod-hud--touch .eod-target-name { font-size: 11px; }
+.eod-hud--touch .eod-target-distance { font-size: 9px; }
+.eod-hud--touch .eod-radar { width: 68px; height: 68px; }
+.eod-hud--touch .eod-toast { padding: 5px 10px; }
+.eod-hud--touch .eod-toast strong { font-size: 10px; }
+.eod-hud--touch .eod-toast span { font-size: 9px; }
+
+/* Top centre, between the two corners: boss / escort bars (side by side), the match strip, the hint; the warnings at its foot. */
+.eod-hud--touch .eod-dock--centre {
+    top: 8px; gap: 5px; min-height: calc(30% - 8px);
+    width: min(340px, calc(100% - 2 * (var(--eod-touch-corner) + 8px) - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+    min-width: 160px;
+}
+.eod-hud--touch .eod-fleet-bars { flex-direction: row; width: 100%; gap: 4px; }
+/* The boss and the escort side by side, not one over the other: half the height. */
+.eod-hud--touch .eod-fleet-bar { flex: 1 1 0; min-width: 0; padding: 3px 7px; gap: 2px; }
+.eod-hud--touch .eod-fleet-bar .eod-meter { grid-template-columns: auto 1fr 22px; gap: 4px; }
+.eod-hud--touch .eod-fleet-name { font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eod-hud--touch .eod-hint {
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-size: 11px; line-height: 1.3; letter-spacing: 0.01em; padding: 3px 9px;
+}
+.eod-hud--touch .eod-alerts { gap: 3px; }
+.eod-hud--touch .eod-alert { font-size: 9px; line-height: 1.3; padding: 2px 8px; }
+
+/* Kill points: just under the reticle, the total and the newest kill only - two short lines that
+   end above the comms line or the match's prompts. */
+.eod-hud--touch .eod-score-feed { top: calc(50% + 22px); gap: 1px; }
+.eod-hud--touch .eod-score-total { font-size: 8px; }
+.eod-hud--touch .eod-score-pop:not(:last-child) { display: none; }
+.eod-hud--touch .eod-score-pop { gap: 5px; }
+.eod-hud--touch .eod-score-pop strong { font-size: 14px; }
+.eod-hud--touch .eod-score-pop span { font-size: 9px; }
+@media (max-height: 340px) { .eod-hud--touch .eod-score-total { display: none; } }
+
+/* A narrow phone (under 700 px across): a narrower target panel gives the top centre more room;
+   there the hint makes way while a warning is up (it is back when the warning is over), and the
+   warnings are tighter - a long one takes two lines here. */
+@media (max-width: 700px) {
+    .eod-hud--touch { --eod-touch-corner: 216px; }
+    .eod-hud--touch .eod-target { width: 130px; }
+    .eod-hud--touch .eod-dock--centre:has(.eod-alert) .eod-hint { display: none; }
+    .eod-hud--touch .eod-alert { padding: 1px 6px; line-height: 1.25; }
+    /* The comms line between the thumbs is narrow and so tall here: the kill points go beside the reticle, not under it. */
+    .eod-hud--touch .eod-score-feed { left: calc(50% + 30px); top: 50%; transform: translateY(-50%); align-items: flex-start; }
+}
+
+/* Bottom centre, between the thumbs: the match's vote and dock prompt, the comms line (tap it to
+   show it all, again to skip), the match's buttons. Clear of the stick on the left and of the
+   ability button on the right; above the home bar. */
+.eod-hud--touch .eod-centre-stack {
+    width: min(400px, calc(100% - 450px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px))); min-width: 190px;
+    bottom: calc(6px + env(safe-area-inset-bottom, 0px)); gap: 5px;
+}
+.eod-hud--touch .eod-comms { padding: 6px 9px; gap: 8px; border-left-width: 3px; }
+.eod-hud--touch .eod-comms-portrait { flex-basis: 34px; height: 34px; }
+.eod-hud--touch .eod-comms-glyph { width: 26px; height: 26px; }
+.eod-hud--touch .eod-comms-name { font-size: 11px; }
+.eod-hud--touch .eod-comms-role { display: none; }
+.eod-hud--touch .eod-comms-text { font-size: 11.5px; line-height: 1.4; min-height: 0; margin: 3px 0 8px; }
+.eod-hud--touch .eod-comms-skip { font-size: 8px; color: rgba(200, 225, 240, 0.55); }
 /*
  * The thumbs' corners. Everything a thumb presses or drags keeps clear of the screen edges: a
  * thumb pushing the stick left or down, or reaching for the lowest button, must not slide off
@@ -732,18 +829,34 @@ html.eod-page-locked body {
     .eod-rotate-hint span { font-size: 48px; }
 }
 
-/* ---- Narrow screens ----------------------------------------------------------------------- */
+/* ---- Narrow desktop windows --------------------------------------------------------------- */
 
-@media (max-width: 900px) and (pointer: fine) {
-    .eod-status, .eod-weapons { width: 200px; }
-    .eod-target { width: 180px; }
-    .eod-fleet-bars { top: 110px; width: 60vw; }
+/* A short window (a laptop's 720 px and less): a smaller radar under the comms, and the kill
+   points beside the reticle - under it they would run into the comms or the dock prompt. */
+@media (max-height: 760px) {
+    .eod-hud--desktop .eod-radar { width: 104px; height: 104px; }
+    /* The boss and the escort side by side: half the height, so the warnings stay above the reticle. */
+    .eod-hud--desktop .eod-fleet-bars { flex-direction: row; width: 100%; }
+    .eod-hud--desktop .eod-fleet-bar { flex: 1 1 0; min-width: 0; }
+    .eod-hud--desktop .eod-fleet-bar .eod-meter { grid-template-columns: auto 1fr 32px; }
+    .eod-hud--desktop .eod-fleet-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .eod-hud--desktop .eod-score-feed { left: calc(50% + 56px); top: 50%; transform: translateY(-50%); align-items: flex-start; }
+    .eod-hud--desktop .eod-score-pop:not(:nth-last-child(-n + 3)) { display: none; }
 }
-/* A narrow desktop window: lift the comms above the corner gauges. (Phones keep the bottom
-   centre free between the thumbs, so they are excluded.) */
-@media (max-width: 900px) and (pointer: fine) {
-    .eod-centre-stack { width: min(560px, 92vw); min-width: 0; bottom: 150px; }
-    .eod-hint { top: auto; bottom: 46%; max-width: 86vw; }
+
+/* Smaller corner gauges, and the comms and radar between them (not lifted over them: that put the radar on the reticle). */
+@media (max-width: 900px) {
+    /* A narrower left column, so the top centre (and the vote in it) keeps some width. */
+    .eod-hud--desktop { --eod-side: 210px; }
+    .eod-hud--desktop .eod-status, .eod-hud--desktop .eod-weapons { width: 200px; }
+    .eod-hud--desktop .eod-target { width: 180px; }
+    .eod-hud--desktop .eod-centre-stack { width: min(560px, calc(100% - 2 * (200px + 28px + 22px + 12px))); min-width: 0; }
+    /* The comms line in that narrow gap: a smaller face, so a long line still ends under the reticle. */
+    .eod-hud--desktop .eod-comms { padding: 8px 10px; gap: 9px; }
+    .eod-hud--desktop .eod-comms-portrait { flex-basis: 42px; height: 42px; }
+    .eod-hud--desktop .eod-comms-glyph { width: 32px; height: 32px; }
+    .eod-hud--desktop .eod-comms-role { display: none; }
+    .eod-hud--desktop .eod-comms-text { min-height: 0; margin: 3px 0 10px; font-size: 13px; line-height: 1.4; }
 }
 
 /* ---- Animations --------------------------------------------------------------------------- */

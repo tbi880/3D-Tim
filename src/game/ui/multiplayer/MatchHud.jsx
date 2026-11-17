@@ -11,6 +11,10 @@ import { EQUIPMENT_ICONS } from './EquipmentPanel.jsx';
  * are and how long that will last, the jump drive, what they carry and have to spend, the
  * station's dock when the ship is in it - and the buttons for the map, the refit window,
  * reinforcements, docking and the equipment (keys G, U, B, E and I).
+ *
+ * Each part is placed by ui/GameHud.jsx in one of its docks, so that it stacks with the
+ * panels it shows up with instead of covering them. GameHud shows none of them during a
+ * match's introduction or ending. Each one draws nothing outside a match.
  */
 
 /** What the pilot carries, and which of it is on right now. */
@@ -29,14 +33,11 @@ function EquipmentRow({ you }) {
     );
 }
 
-/** Side, planet, jump drive and rewards, with the mode's three buttons. */
-function MatchStatus({ session }) {
-    const match = useGameStore((state) => state.match);
+/** Side, planet and jump drive, and what the pilot carries. */
+function MatchRows({ match }) {
     const t = useT();
-    const you = match?.you;
-    if (!you) return null;
+    const you = match.you;
     const here = match.planets.find((planet) => planet.id === you.planet);
-    const act = (action) => () => session.handleAction(action);
     const jump = you.jump.to ? t('mp.hud.jumpSpooling', { planet: t(`mp.planet.${you.jump.to}`) })
         : you.jump.trapped ? t('mp.hud.jumpTrapped')
             : you.jump.cooldown > 0 ? t('mp.hud.jumpCharging', { seconds: you.jump.cooldown }) : t('mp.hud.jumpReady');
@@ -45,38 +46,64 @@ function MatchStatus({ session }) {
         : null;
 
     return (
-        <div className="eod-panel eod-match-status">
-            <div className="eod-match-row">
+        <>
+            <div className="eod-match-row eod-match-row--side">
                 <span className="eod-meter-label">{t('mp.hud.side')}</span>
                 <strong className={`eod-side--${you.faction}`}>{t(`mp.faction.${you.faction}`)}</strong>
                 {Number.isFinite(match.rtt) && <small className="eod-match-ping">{t('mp.hud.ping', { ms: match.rtt })}</small>}
             </div>
             {here && (
-                <div className="eod-match-row">
+                <div className="eod-match-row eod-match-row--planet">
                     <span className="eod-meter-label">{t('mp.hud.planet')}</span>
                     <strong className={`eod-match-planet--${here.status}`}>{t(`mp.planet.${here.id}`)}</strong>
                     <small>{timer ?? t(`mp.hud.status.${here.status}`)}</small>
                 </div>
             )}
-            <div className="eod-match-row">
+            <div className="eod-match-row eod-match-row--jump">
                 <span className="eod-meter-label">{t('mp.hud.jump')}</span>
                 <strong className={you.jump.cooldown === 0 && !you.jump.trapped ? 'eod-match-ready' : ''}>{jump}</strong>
             </div>
             <EquipmentRow you={you} />
-            <div className="eod-match-buttons">
-                <button type="button" className="eod-match-button" onClick={act(MATCH_ACTION.MAP)}>
-                    <kbd>{t('mp.hud.keyMap')}</kbd>{t('mp.hud.map')}
-                </button>
-                <button type="button" className={`eod-match-button ${you.picks > 0 ? 'eod-match-button--calling' : ''}`} onClick={act(MATCH_ACTION.EQUIPMENT)}>
-                    <kbd>{t('mp.hud.keyEquipment')}</kbd>{t('mp.hud.equipment')}{you.picks > 0 && <b>{you.picks}</b>}
-                </button>
-                <button type="button" className="eod-match-button" disabled={!you.alive || you.points === 0} onClick={act(MATCH_ACTION.REFIT)}>
-                    <kbd>{t('mp.hud.keyRefit')}</kbd>{t('mp.hud.refit')}<b>{you.points}</b>
-                </button>
-                <button type="button" className="eod-match-button" disabled={!you.alive || you.summons === 0} onClick={act(MATCH_ACTION.SUMMON)}>
-                    <kbd>{t('mp.hud.keySummon')}</kbd>{t('mp.hud.summon')}<b>{you.summons}</b>
-                </button>
-            </div>
+        </>
+    );
+}
+
+/** The mode's buttons: map, equipment, refit and reinforcements. */
+export function MatchButtons({ session }) {
+    const match = useGameStore((state) => state.match);
+    const t = useT();
+    const you = match?.you;
+    if (!you) return null;
+    const act = (action) => () => session.handleAction(action);
+    return (
+        <div className="eod-match-buttons">
+            <button type="button" className="eod-match-button" onClick={act(MATCH_ACTION.MAP)}>
+                <kbd>{t('mp.hud.keyMap')}</kbd>{t('mp.hud.map')}
+            </button>
+            <button type="button" className={`eod-match-button ${you.picks > 0 ? 'eod-match-button--calling' : ''}`} onClick={act(MATCH_ACTION.EQUIPMENT)}>
+                <kbd>{t('mp.hud.keyEquipment')}</kbd>{t('mp.hud.equipment')}{you.picks > 0 && <b>{you.picks}</b>}
+            </button>
+            <button type="button" className="eod-match-button" disabled={!you.alive || you.points === 0} onClick={act(MATCH_ACTION.REFIT)}>
+                <kbd>{t('mp.hud.keyRefit')}</kbd>{t('mp.hud.refit')}<b>{you.points}</b>
+            </button>
+            <button type="button" className="eod-match-button" disabled={!you.alive || you.summons === 0} onClick={act(MATCH_ACTION.SUMMON)}>
+                <kbd>{t('mp.hud.keySummon')}</kbd>{t('mp.hud.summon')}<b>{you.summons}</b>
+            </button>
+        </div>
+    );
+}
+
+/**
+ * Side, planet, jump drive and rewards in one panel - with the mode's buttons under them, or
+ * (`buttons={false}`, phones) without: there the buttons sit between the thumbs (MatchButtons).
+ */
+export function MatchStatus({ session, buttons = true }) {
+    const match = useGameStore((state) => state.match);
+    if (!match?.you) return null;
+    return (
+        <div className={`eod-panel eod-match-status ${buttons ? '' : 'eod-match-status--strip'}`}>
+            <MatchRows match={match} />
+            {buttons && <MatchButtons session={session} />}
         </div>
     );
 }
@@ -85,7 +112,7 @@ function MatchStatus({ session }) {
  * The station's dock. In its mouth: the button that clamps the ship on. Clamped on: how long
  * is left, and the button that lets go.
  */
-function DockPrompt({ session }) {
+export function DockPrompt({ session }) {
     const match = useGameStore((state) => state.match);
     const t = useT();
     const you = match?.you;
@@ -112,8 +139,8 @@ function DockPrompt({ session }) {
     );
 }
 
-/** The collapse and the pilot's own side shouting at them. */
-function MatchAlerts() {
+/** The collapse and the pilot's own side shouting at them: lines for GameHud's alert stack. */
+export function MatchAlerts() {
     const match = useGameStore((state) => state.match);
     const t = useT();
     const you = match?.you;
@@ -128,15 +155,11 @@ function MatchAlerts() {
     if (you.loyalty === LOYALTY.WARNED) alerts.push(t('mp.alert.warned'));
     if (!you.alive) alerts.push(t('mp.hud.dead'));
     if (alerts.length === 0) return null;
-    return (
-        <div className="eod-alerts eod-match-alerts">
-            {alerts.map((text) => <span key={text} className="eod-alert">{text}</span>)}
-        </div>
-    );
+    return alerts.map((text) => <span key={text} className="eod-alert">{text}</span>);
 }
 
 /** After taking a planet with comrades down: the reward, or bring them back. */
-function VotePrompt({ session }) {
+export function VotePrompt({ session }) {
     const vote = useGameStore((state) => state.match?.you?.vote);
     const t = useT();
     const presenter = session.match?.presenter;
@@ -156,23 +179,5 @@ function VotePrompt({ session }) {
                 {choice(VOTE.REVIVE, 'mp.vote.revive')}
             </div>
         </div>
-    );
-}
-
-/**
- * @param {object} props
- * @param {import('../../state/GameSession.js').GameSession} props.session
- */
-export default function MatchHud({ session }) {
-    // Nothing to fly, and so nothing to show, until the introduction is over and once the ending has begun.
-    const flying = useGameStore((state) => Boolean(state.match) && state.match.intro == null && !state.matchOutro);
-    if (!flying) return null;
-    return (
-        <>
-            <MatchStatus session={session} />
-            <MatchAlerts />
-            <DockPrompt session={session} />
-            <VotePrompt session={session} />
-        </>
     );
 }

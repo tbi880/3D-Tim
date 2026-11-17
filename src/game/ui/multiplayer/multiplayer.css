@@ -82,7 +82,8 @@
 .eod-gear-picks--some { color: var(--eod-amber); }
 
 /* ---- Match HUD --------------------------------------------------------------------------- */
-.eod-match-status { position: absolute; top: 150px; left: 22px; display: flex; flex-direction: column; gap: 5px; min-width: 210px; padding: 8px 12px; pointer-events: auto; }
+/* Placed by GameHud.jsx: the status in the top-left dock (a phone: a strip in the top-centre one, its buttons between the thumbs), the dock prompt over the comms line, the vote in the top-centre dock. */
+.eod-match-status { display: flex; flex-direction: column; gap: 5px; padding: 8px 12px; pointer-events: auto; }
 .eod-match-row { display: flex; align-items: baseline; gap: 8px; font-size: 12px; }
 .eod-match-row strong { font-size: 13px; }
 .eod-match-row small { margin-left: auto; font-size: 10px; color: rgba(225, 240, 255, 0.6); }
@@ -94,7 +95,7 @@
 .eod-match-gear b { margin-left: 2px; font-size: 10px; color: var(--eod-amber); }
 .eod-match-effect { font-size: 11px !important; color: var(--eod-green); }
 .eod-match-button--calling { border-color: var(--eod-amber); animation: eod-blink 1s steps(2) infinite; }
-.eod-match-dock { position: absolute; left: 50%; bottom: 21%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; width: min(420px, 90vw); padding: 10px 14px; font-size: 12px; text-align: center; pointer-events: auto; z-index: 5; border-color: var(--eod-amber); }
+.eod-match-dock { display: flex; flex-direction: column; align-items: center; gap: 6px; width: min(420px, 100%); padding: 10px 14px; font-size: 12px; text-align: center; pointer-events: auto; border-color: var(--eod-amber); }
 .eod-match-dock strong { font-size: 14px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--eod-amber); }
 .eod-match-dock .eod-button { flex-direction: row; align-items: center; justify-content: center; padding: 7px 18px; }
 .eod-match-dock kbd { margin-right: 8px; padding: 0 5px; font: inherit; font-size: 10px; border: 1px solid currentColor; }
@@ -105,8 +106,7 @@
 .eod-match-button:disabled { opacity: 0.4; cursor: default; }
 .eod-match-button kbd { padding: 0 4px; font: inherit; font-size: 9px; border: 1px solid var(--eod-border); }
 .eod-match-button b { color: var(--eod-amber); }
-.eod-match-alerts { top: auto; bottom: 30%; }
-.eod-match-vote { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; width: min(440px, 92vw); padding: 12px 16px; text-align: center; pointer-events: auto; z-index: 6; border-color: var(--eod-amber); }
+.eod-match-vote { display: flex; flex-direction: column; gap: 8px; width: min(440px, 100%); padding: 12px 16px; text-align: center; pointer-events: auto; border-color: var(--eod-amber); }
 .eod-match-vote strong { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--eod-amber); }
 .eod-match-vote p { margin: 0; font-size: 12px; line-height: 1.5; }
 .eod-match-vote-choices { display: flex; gap: 8px; }
@@ -154,13 +154,48 @@
 .eod-result-winner td:first-child { color: var(--eod-green); font-weight: 700; }
 
 /* ---- Phones (landscape) ------------------------------------------------------------------ */
+/* The match's part of the touch HUD (GameHud.jsx TouchHud): side, planet and jump drive as one
+   short strip at the top centre; the four buttons in a row between the thumbs, under the comms
+   line; the dock prompt, side by side with its button, over the comms line. */
+.eod-hud--touch .eod-match-status--strip { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 2px 10px; width: 100%; padding: 4px 8px; }
+.eod-hud--touch .eod-match-status--strip .eod-match-row { gap: 4px; font-size: 9px; }
+.eod-hud--touch .eod-match-status--strip .eod-match-row strong { font-size: 10px; }
+.eod-hud--touch .eod-match-status--strip .eod-match-row small { margin-left: 2px; font-size: 8px; }
+/* Two short lines: the side (in its colour) and the planet, then the jump drive and the gear. The side and the planet go without their labels: the names say what they are. */
+.eod-hud--touch .eod-match-status--strip .eod-match-row--side .eod-meter-label,
+.eod-hud--touch .eod-match-status--strip .eod-match-row--planet .eod-meter-label { display: none; }
+.eod-hud--touch .eod-match-status--strip .eod-match-gear { gap: 2px 6px; font-size: 11px; }
+.eod-hud--touch .eod-match-effect { font-size: 9px !important; }
+.eod-hud--touch .eod-centre-stack > .eod-match-buttons { width: 100%; flex-wrap: nowrap; margin: 0; gap: 4px; pointer-events: auto; }
+.eod-hud--touch .eod-match-button { flex: 1 1 0; min-width: 0; padding: 7px 2px; font-size: 9px; letter-spacing: 0.04em; background: rgba(6, 16, 28, 0.62); }
+.eod-hud--touch .eod-match-button kbd { display: none; }
+.eod-hud--touch .eod-match-dock { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 4px 8px; width: 100%; padding: 5px 8px; font-size: 10px; text-align: left; }
+.eod-hud--touch .eod-match-dock > span { flex: 1 1 140px; line-height: 1.35; }
+.eod-hud--touch .eod-match-dock strong { font-size: 11px; }
+.eod-hud--touch .eod-match-dock-bar { flex-basis: 100%; order: 1; height: 5px; }
+.eod-hud--touch .eod-match-dock .eod-button { padding: 6px 12px; font-size: 11px; }
+/* Docked: the objective already says the helm is locked; here just the time left, the bar and Let go. */
+.eod-hud--touch .eod-match-dock--on > span { display: none; }
+.eod-hud--touch .eod-match-dock--on strong { flex: 1 1 auto; }
+.eod-hud--touch .eod-match-dock kbd { display: none; }
+/* The vote, over the dock prompt: on a short screen the buttons say enough without the explanation. */
+.eod-hud--touch .eod-match-vote { width: 100%; gap: 5px; padding: 5px 8px; }
+.eod-hud--touch .eod-match-vote strong { font-size: 10px; }
+.eod-hud--touch .eod-match-vote p { font-size: 10px; line-height: 1.35; }
+.eod-hud--touch .eod-match-vote-choices { gap: 5px; }
+.eod-hud--touch .eod-match-vote .eod-button { padding: 7px 4px; font-size: 9px; letter-spacing: 0.04em; }
+@media (max-height: 430px) { .eod-hud--touch .eod-match-vote p { display: none; } }
+/* A narrow phone: no ping in the strip, so the side and the planet share its first line. */
+@media (max-width: 700px) { .eod-hud--touch .eod-match-status--strip .eod-match-ping { display: none; } }
+/* A narrow desktop window: the vote in the narrower top-centre column (hud.css). */
+@media (max-width: 900px) {
+    .eod-hud--desktop .eod-match-vote { gap: 6px; padding: 9px 12px; }
+    .eod-hud--desktop .eod-match-vote strong { font-size: 12px; letter-spacing: 0.08em; }
+    .eod-hud--desktop .eod-match-vote p { font-size: 11px; line-height: 1.4; }
+    .eod-hud--desktop .eod-match-vote .eod-button { padding: 7px 6px; font-size: 10px; letter-spacing: 0.06em; }
+}
 @media (pointer: coarse) {
-    .eod-match-status { top: 46px; left: auto; right: 10px; min-width: 170px; padding: 6px 8px; }
-    .eod-match-button kbd { display: none; }
-    .eod-match-button { padding: 9px 4px; }
     .eod-map-planet { min-width: 104px; padding: 6px 4px; font-size: 10px; }
-    .eod-match-dock { bottom: 30%; padding: 6px 10px; }
-    .eod-match-dock kbd { display: none; }
     .eod-gear-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .eod-gear-card { padding: 6px; font-size: 10px; }
     .eod-gear-icon { font-size: 18px; }

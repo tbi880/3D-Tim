@@ -1,21 +1,35 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { GAME_EVENTS } from '../core/EventBus.js';
 import { hasTranslation } from '../i18n/index.js';
-import { isTouchDevice } from '../input/device.js';
+import { isTouchDevice, watchTouchDevice } from '../input/device.js';
 import { PHASE, SESSION_EVENTS } from '../state/GameSession.js';
 import { useGameStore, useT } from '../state/gameStore.js';
 import { abilityStateText } from './abilityText.js';
 import CommsPanel from './CommsPanel.jsx';
-import MatchHud from './multiplayer/MatchHud.jsx';
-
-/** Decided once: a device does not grow a mouse halfway through a mission. */
-const IS_TOUCH = isTouchDevice();
+import { DockPrompt, MatchAlerts, MatchButtons, MatchStatus, VotePrompt } from './multiplayer/MatchHud.jsx';
 
 /**
  * The in-flight HUD. Each panel subscribes to one slice of the game store (refreshed about
  * ten times a second by GameSession.publishHud). Fast-moving elements - reticle, target
  * brackets, radar - are drawn on canvases by scene/HudCanvasBridge.jsx instead.
+ *
+ * Panels are not placed one by one. Each goes into one of a few docks - a column top left,
+ * one top centre, one top right, a stack at the bottom centre - and a dock stacks what is in
+ * it, so panels that come up together (the objective and the match status, a hint and a
+ * vote, a dock prompt and the comms line) push each other along instead of covering each
+ * other. The docks are sized in hud.css to keep clear of one another, of the corners (the
+ * gauges on a desktop; the stick and the buttons on a touch screen) and of the reticle.
  */
+
+/**
+ * Whether to lay the HUD out for fingers. Followed live, not decided once: a browser's phone
+ * emulation switched off, or a trackpad keyboard put on a tablet, changes it mid-flight - and
+ * the panels must then change with the stylesheet (which follows the same media query),
+ * or phone panels end up placed by desktop rules, all piled in a corner.
+ */
+function useTouchLayout() {
+    return useSyncExternalStore(watchTouchDevice, isTouchDevice, () => false);
+}
 
 const percent = (fraction) => `${Math.round(Math.max(0, Math.min(1, fraction)) * 100)}%`;
 
@@ -148,6 +162,7 @@ function TargetPanel() {
     );
 }
 
+/** The label is inside the text so that on a phone it can run on the text's first line (hud.css). */
 function ObjectivePanel() {
     const objective = useGameStore((state) => state.objective);
     const progress = useGameStore((state) => state.progress);
@@ -156,17 +171,17 @@ function ObjectivePanel() {
     return (
         <div className="eod-panel eod-objective">
             {objective && (
-                <>
-                    <span className="eod-meter-label">{t('hud.objective')}</span>
-                    <p className="eod-objective-text">{t(objective.key, objective.params ?? undefined)}</p>
-                </>
+                <p className="eod-objective-text">
+                    <span className="eod-meter-label eod-objective-label">{t('hud.objective')}</span>
+                    {t(objective.key, objective.params ?? undefined)}
+                </p>
             )}
             {progress && <Meter label={t(progress.labelKey)} value={progress.value} tone="energy" />}
         </div>
     );
 }
 
-/** Top-centre bars for the ship being protected and the current boss. */
+/** Bars for the ship being protected and the current boss (top centre). */
 function FleetBars() {
     const escort = useGameStore((state) => state.escort);
     const boss = useGameStore((state) => state.boss);
@@ -192,7 +207,8 @@ function FleetBars() {
     );
 }
 
-function Alerts() {
+/** Warnings about the pilot's own ship: lines for the alert stack. */
+function ShipAlerts() {
     const hud = useGameStore((state) => state.hud);
     const escort = useGameStore((state) => state.escort);
     const t = useT();
@@ -206,11 +222,25 @@ function Alerts() {
     else if (hud.shield <= 0.01 && hud.shieldDown <= 0) alerts.push('hud.shieldsDown');
     if (alerts.length === 0 && hud.shieldDown <= 0 && !hud.cloaked) return null;
     return (
-        <div className="eod-alerts">
+        <>
             {/* A breach blast has the shield down: how long until it can come back. */}
             {hud.shieldDown > 0 && <span className="eod-alert">{t('hud.shieldsBreached', { seconds: hud.shieldDown })}</span>}
             {alerts.map((key) => <span key={key} className="eod-alert">{t(key)}</span>)}
             {hud.cloaked && <span className="eod-alert eod-alert--cloak">{t('hud.cloaked')}</span>}
+        </>
+    );
+}
+
+/**
+ * Every warning in one stack - the ship's own and the match's (MatchHud.jsx) - at the foot of
+ * the top-centre dock: a third of the way down the screen, or lower if what is above it needs
+ * the room (hud.css).
+ */
+function AlertStack() {
+    return (
+        <div className="eod-alerts">
+            <ShipAlerts />
+            <MatchAlerts />
         </div>
     );
 }
@@ -230,13 +260,13 @@ function TitleCard() {
 /** Hints about controls phones do not have. */
 const TOUCH_HIDDEN_HINTS = new Set(['hint.power']);
 
-function HintBar() {
+function HintBar({ touch }) {
     const hint = useGameStore((state) => state.hint);
     const t = useT();
-    if (!hint || (IS_TOUCH && TOUCH_HIDDEN_HINTS.has(hint))) return null;
+    if (!hint || (touch && TOUCH_HIDDEN_HINTS.has(hint))) return null;
     // Hints that name keys have a `.touch` twin describing the on-screen controls instead.
     const touchHint = `${hint}.touch`;
-    return <div className="eod-hint">{t(IS_TOUCH && hasTranslation(touchHint) ? touchHint : hint)}</div>;
+    return <div className="eod-hint">{t(touch && hasTranslation(touchHint) ? touchHint : hint)}</div>;
 }
 
 function Toast() {
@@ -369,60 +399,94 @@ function ScreenFade({ session }) {
     return <div ref={ref} className="eod-screen-fade" style={{ opacity: 0 }} />;
 }
 
+/**
+ * Phones and tablets: a pared-down HUD. The lower corners belong to the thumbs (stick, buttons:
+ * ui/TouchControls.jsx), so what is there to be read hugs the top edge, small, and what is
+ * there to be pressed - the match's vote, dock and buttons - sits between the thumbs with the
+ * comms line, leaving the middle of the screen to the fight.
+ */
+function TouchHud({ session, radarCanvasRef }) {
+    return (
+        <>
+            {/* Right of the pause button: the ship, the objective under it - ending above the stick. */}
+            <div className="eod-dock eod-dock--left">
+                <CompactShipPanel />
+                <ObjectivePanel />
+            </div>
+            <div className="eod-dock eod-dock--centre">
+                <FleetBars />
+                <MatchStatus session={session} buttons={false} />
+                <HintBar touch />
+                <AlertStack />
+            </div>
+            {/* The radar beside the target, not under it: under it, it would come down to the buttons on a short screen. */}
+            <div className="eod-dock eod-dock--right">
+                <div className="eod-dock-row">
+                    <canvas ref={radarCanvasRef} className="eod-radar" />
+                    <TargetPanel />
+                </div>
+                <Toast />
+            </div>
+            <TitleCard />
+            <ScoreFeed session={session} />
+            <div className="eod-centre-stack">
+                <VotePrompt session={session} />
+                <DockPrompt session={session} />
+                <CommsPanel session={session} />
+                <MatchButtons session={session} />
+            </div>
+        </>
+    );
+}
+
+/** Mouse and keyboard: the full HUD, with a gauge panel in each lower corner. */
+function DesktopHud({ session, radarCanvasRef }) {
+    return (
+        <>
+            <div className="eod-dock eod-dock--left">
+                <ObjectivePanel />
+                <MatchStatus session={session} />
+            </div>
+            <div className="eod-dock eod-dock--centre">
+                <FleetBars />
+                <HintBar touch={false} />
+                <VotePrompt session={session} />
+                <AlertStack />
+            </div>
+            <div className="eod-dock eod-dock--right">
+                <TargetPanel />
+                <Toast />
+            </div>
+            <StatusPanel />
+            <WeaponsPanel />
+            <TitleCard />
+            <ScoreFeed session={session} />
+            <div className="eod-centre-stack">
+                <DockPrompt session={session} />
+                <CommsPanel session={session} />
+                <canvas ref={radarCanvasRef} className="eod-radar" />
+            </div>
+        </>
+    );
+}
+
 export default function GameHud({ session, markerCanvasRef, radarCanvasRef }) {
     const phase = useGameStore((state) => state.phase);
     // A match's introduction and ending have the screen to themselves.
     const ceremony = useGameStore((state) => Boolean(state.matchOutro) || state.match?.intro != null);
     const inFlight = (phase === PHASE.PLAYING || phase === PHASE.PAUSED) && !ceremony;
     const flash = useDamageFlash(session);
+    const touch = useTouchLayout();
 
     return (
         // A hit on the bare hull (shield down) knocks the instruments: their panels jump and smear (hud.css).
-        <div className="eod-hud" data-phase={phase} data-scrambled={flash?.kind === 'hull' ? '' : undefined}>
+        <div className={`eod-hud ${touch ? 'eod-hud--touch' : 'eod-hud--desktop'}`} data-phase={phase} data-scrambled={flash?.kind === 'hull' ? '' : undefined}>
             <canvas ref={markerCanvasRef} className="eod-marker-canvas" />
             <DamageFlash flash={flash} />
             <WarpFlash session={session} />
             <ScreenFade session={session} />
-            {inFlight && IS_TOUCH && (
-                <>
-                    <CompactShipPanel />
-                    <ObjectivePanel />
-                    {/* Boss / escort bars and the hint share the top centre, stacked. */}
-                    <div className="eod-top-stack">
-                        <FleetBars />
-                        <HintBar />
-                    </div>
-                    <TargetPanel />
-                    <canvas ref={radarCanvasRef} className="eod-radar eod-radar--corner" />
-                    <MatchHud session={session} />
-                    <Alerts />
-                    <TitleCard />
-                    <Toast />
-                    <ScoreFeed session={session} />
-                    <div className="eod-centre-stack">
-                        <CommsPanel session={session} />
-                    </div>
-                </>
-            )}
-            {inFlight && !IS_TOUCH && (
-                <>
-                    <ObjectivePanel />
-                    <FleetBars />
-                    <TargetPanel />
-                    <StatusPanel />
-                    <WeaponsPanel />
-                    <MatchHud session={session} />
-                    <Alerts />
-                    <HintBar />
-                    <TitleCard />
-                    <Toast />
-                    <ScoreFeed session={session} />
-                    <div className="eod-centre-stack">
-                        <CommsPanel session={session} />
-                        <canvas ref={radarCanvasRef} className="eod-radar" />
-                    </div>
-                </>
-            )}
+            {inFlight && touch && <TouchHud session={session} radarCanvasRef={radarCanvasRef} />}
+            {inFlight && !touch && <DesktopHud session={session} radarCanvasRef={radarCanvasRef} />}
         </div>
     );
 }
