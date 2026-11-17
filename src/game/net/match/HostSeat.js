@@ -13,16 +13,23 @@ export class HostSeat {
     /**
      * @param {object} params
      * @param {import('../server/MatchServer.js').MatchServer} params.server
-     * @param {(link: object) => import('./ClientMatch.js').ClientMatch} params.createClient builds the host player's client on its end of the link
+     * @param {(link: object) => import('./ClientMatch.js').ClientMatch} [params.createClient] builds the host player's client on its end of the link
+     * @param {import('./ClientMatch.js').ClientMatch} [params.client] instead of `createClient`: the client this device was
+     *        already playing through, when it takes a match over from a host that was lost
      * @param {string} params.localPlayerId the host's own player id
      */
-    constructor({ server, createClient, localPlayerId }) {
+    constructor({ server, createClient = null, client = null, localPlayerId }) {
         this.server = server;
         const [serverEnd, clientEnd] = createMemoryLinkPair();
         this.serverEnd = serverEnd;
         this.clientEnd = clientEnd;
-        this.client = createClient(clientEnd);
         server.attachLink(localPlayerId, serverEnd);
+        if (client) {
+            // Taking over: the match is already running here; the client turns to its own device for it.
+            server.start();
+            client.switchLink(clientEnd);
+        }
+        this.client = client ?? createClient(clientEnd);
     }
 
     /** True for the seat that carries the match for everybody (see lobby/hostHeartbeat.js). */

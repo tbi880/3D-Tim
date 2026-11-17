@@ -147,6 +147,9 @@ test('a dropped connection is reported once, a deliberate disconnect not at all'
 
 // ---- LanMultiplayer --------------------------------------------------------------------------
 
+/** How fast each test device says it simulates (milliseconds a step); the others say 0.5. */
+const STEP_COSTS = { Tim: 3, Ann: 0.1, Bo: 1, Cy: 2 };
+
 /** One device: a session, a store and a controller on the shared fake lobby and network. */
 function device(server, network, name, ship = 'kestrel') {
     const { session, ui } = createTestSession({ playerShip: ship });
@@ -161,6 +164,7 @@ function device(server, network, name, ship = 'kestrel') {
         loadoutStore: { load: () => savedLoadout, save: (value) => { savedLoadout = value; } },
         timers: { setTimeout: (callback) => { network.timers.push(callback); return callback; }, clearTimeout: (callback) => { network.timers = network.timers.filter((timer) => timer !== callback); } },
         now: () => network.clockMs,
+        measureStepCost: () => STEP_COSTS[name] ?? 0.5,
     });
     return { lan, session, ui, controls: idle(), get state() { return state; }, get savedName() { return saved; }, get savedLoadout() { return savedLoadout; } };
 }
@@ -180,7 +184,12 @@ function lanParty(names) {
         }
     };
     const fireTimers = () => { for (const timer of network.timers.splice(0)) timer(); };
-    return { server, network, devices, settle, run, fireTimers };
+    /** A device drops off the face of the earth: its links close and nothing on it runs any more. */
+    const lose = (gone) => {
+        devices.splice(devices.indexOf(gone), 1);
+        for (const link of [...gone.lan.links.values()]) link.close();
+    };
+    return { server, network, devices, settle, run, fireTimers, lose };
 }
 
 /** Everybody online, the first hosting a room the others have joined and are linked to. */
@@ -224,14 +233,15 @@ test('the room shows every player\'s own name, device and ship', async () => {
     assert.deepEqual(host.state.room, ann.state.room, 'everybody sees the same room');
 });
 
-test('a joiner links to the host on entering the room, not when the match starts', async () => {
+test('every device links to every other on entering the room, not when the match starts', async () => {
     const { host, guests: [ann, bo], server } = await gathered(['Tim', 'Ann', 'Bo']);
     const idOf = (each) => each.state.me.playerId;
+    const { OPEN } = LINK_STATUS;
 
-    assert.deepEqual(ann.state.links, { [idOf(host)]: LINK_STATUS.OPEN });
-    assert.deepEqual(bo.state.links, { [idOf(host)]: LINK_STATUS.OPEN });
-    assert.deepEqual(host.state.links, { [idOf(ann)]: LINK_STATUS.OPEN, [idOf(bo)]: LINK_STATUS.OPEN });
-    assert.equal(server.signals, 4, 'an offer and an answer per joiner; joiners do not link to each other');
+    assert.deepEqual(host.state.links, { [idOf(ann)]: OPEN, [idOf(bo)]: OPEN });
+    assert.deepEqual(ann.state.links, { [idOf(host)]: OPEN, [idOf(bo)]: OPEN });
+    assert.deepEqual(bo.state.links, { [idOf(host)]: OPEN, [idOf(ann)]: OPEN });
+    assert.equal(server.signals, 6, 'an offer and an answer for each pair: the one who joined later calls');
 });
 
 test('a changed name or ship reaches the room, and the name is remembered', async () => {
@@ -354,7 +364,7 @@ test('a second match can be played on the same links', async () => {
     }
 });
 
-test('a guest who leaves is gone from the room; the host leaving closes it for everybody', async () => {
+test('a guest who leaves is gone from the room; when the owner leaves the room passes to the next player', async () => {
     const { host, guests: [ann, bo], settle } = await gathered(['Tim', 'Ann', 'Bo']);
 
     await ann.lan.leaveRoom();
@@ -362,13 +372,16 @@ test('a guest who leaves is gone from the room; the host leaving closes it for e
     assert.equal(ann.state.room, null);
     assert.deepEqual(ann.state.links, {});
     assert.deepEqual(host.state.room.players.map((player) => player.displayName), ['Tim', 'Bo']);
-    assert.deepEqual(Object.keys(host.state.links), [bo.state.me.playerId], 'and the host lets go of the link');
+    assert.deepEqual(Object.keys(host.state.links), [bo.state.me.playerId], 'and everybody lets go of the link to them');
+    assert.deepEqual(Object.keys(bo.state.links), [host.state.me.playerId]);
 
     await host.lan.leaveRoom();
     await settle();
-    assert.equal(bo.state.room, null);
-    assert.equal(bo.state.error, LAN_ERROR.ROOM_CLOSED);
+    assert.equal(bo.state.room.hostPlayerId, bo.state.me.playerId, 'the room is Bo\'s now');
+    assert.equal(bo.lan.isHost, true);
+    assert.equal(bo.state.error, null);
     assert.deepEqual(bo.state.links, {});
+    assert.equal(host.state.room, null);
 });
 
 test('leaving in the middle of a match takes the player back to the title screen', async () => {
@@ -441,11 +454,13 @@ test('a link that will not open is retried, then reported', async () => {
     assert.equal(ann.state.error, null);
 });
 
-test('signals from anybody but the host are ignored by a joiner', async () => {
-    const { guests: [ann, bo] } = await gathered(['Tim', 'Ann', 'Bo']);
+test('signals from outside the room, and offers from a player who is not the one to call, are ignored', async () => {
+    const { host, guests: [ann] } = await gathered(['Tim', 'Ann', 'Bo']);
     const linksBefore = { ...ann.state.links };
 
-    ann.lan.onSignal({ fromPlayerId: bo.state.me.playerId, type: 'offer', payload: 'offer-99' });
+    // Tim was in the room before Ann: it is Ann who calls Tim, never the other way round.
+    ann.lan.onSignal({ fromPlayerId: host.state.me.playerId, type: 'offer', payload: 'offer-99' });
+    ann.lan.onSignal({ fromPlayerId: ann.state.me.playerId, type: 'offer', payload: 'offer-97' });
     ann.lan.onSignal({ fromPlayerId: 'stranger', type: 'offer', payload: 'offer-98' });
     ann.lan.onSignal(null);
     ann.lan.onSignal({ fromPlayerId: 5, type: 'offer' });
@@ -658,7 +673,7 @@ test('a quick match whose host cannot be reached moves on to another room by its
 
     await bo.lan.quickMatch();
     await settleLinks();
-    assert.equal(bo.state.room.code, ann.state.room.code, 'Bo too ends up with a host he can reach');
+    assert.equal(bo.state.room.code, ann.state.room.code, 'Bo too ends up with somebody he can reach');
     assert.deepEqual(Object.values(bo.state.links), [LINK_STATUS.OPEN]);
 });
 
@@ -678,22 +693,39 @@ test('when no host can be reached quick match gives up and says so', async () =>
     for (const each of [tim, ann, bo]) assert.equal(each.state.room.players.length, 1, 'and is in nobody\'s room');
 });
 
-test('a public room that closes before it starts sends its players looking again', async () => {
+test('a public room whose owner leaves before it starts goes on under the next player: nobody has to look again', async () => {
     const { devices: [tim, ann, bo], settle } = await strangers(['Tim', 'Ann', 'Bo']);
     await tim.lan.quickMatch();
     await ann.lan.quickMatch();
     await bo.lan.quickMatch();
     await settle();
+    const code = tim.state.room.code;
 
     await tim.lan.leaveRoom();
     await settle();
-    await settle();
 
     assert.equal(tim.state.matching, false, 'the one who left has stopped looking');
-    assert.ok(ann.state.room && bo.state.room, 'the others are in a room again');
-    assert.equal(ann.state.room.code, bo.state.room.code, 'the same one');
+    assert.deepEqual([ann.state.room.code, bo.state.room.code], [code, code], 'the others are where they were');
+    assert.equal(ann.state.room.hostPlayerId, ann.state.me.playerId, 'and the room is Ann\'s now');
     assert.deepEqual([ann.state.error, bo.state.error], [null, null]);
-    assert.deepEqual([ann.state.matching, bo.state.matching], [true, true]);
+    assert.deepEqual(Object.values(bo.state.links), [LINK_STATUS.OPEN], 'still linked to each other');
+});
+
+test('a room that is closed under a player in a quick match sends them looking again', async () => {
+    const { devices: [tim, ann], settle } = await strangers(['Tim', 'Ann']);
+    await tim.lan.quickMatch();
+    await ann.lan.quickMatch();
+    await settle();
+    const code = ann.state.room.code;
+
+    // (The lobby server no longer closes a room that still has players; an older one might.)
+    await ann.lan.lobby.leaveRoom();
+    ann.lan.onRoomClosed();
+    await settle();
+
+    assert.deepEqual([ann.state.matching, ann.state.error], [true, null]);
+    assert.ok(ann.state.room, 'she is in a room again');
+    assert.equal(typeof code, 'string');
 });
 
 test('leaving a quick match stops the search', async () => {
@@ -741,4 +773,214 @@ test('the game tells the lobby which protocol it speaks, and which multiplayer i
     assert.equal(tim.state.scope, LOBBY_SCOPE.GLOBAL, 'closing the lobby does not forget where the player was');
     await tim.lan.open(LOBBY_SCOPE.LAN);
     assert.equal(tim.state.scope, LOBBY_SCOPE.LAN);
+});
+
+// ---- Whose device runs the match, and what happens when it is lost ----------------------------
+
+/**
+ * Tim (the room's owner, on a slow device), Ann (a fast one) and whoever else, in Tim's room,
+ * linked, their reports in, everybody ready. Ann's device is the best host.
+ */
+async function measured(names = ['Tim', 'Ann', 'Bo']) {
+    const party = await gathered(names);
+    // Links are up: the pings go out, their answers come back, and the reports follow.
+    for (let round = 0; round < 3; round++) {
+        party.fireTimers();
+        party.network.clockMs += 20;
+        party.network.pump();
+        await party.settle();
+    }
+    for (const guest of party.guests) await guest.lan.setReady(true);
+    party.byName = Object.fromEntries(party.devices.map((each) => [each.state.pilotName, each]));
+    party.idOf = (name) => party.byName[name].state.me.playerId;
+    return party;
+}
+
+test('every device tells the lobby how fast it simulates and how far it is from the others', async () => {
+    const { server, byName, idOf } = await measured();
+    const room = [...server.rooms.values()][0];
+    const reported = Object.fromEntries(room.players.map((player) => [player.displayName, player.fitness]));
+
+    assert.deepEqual([reported.Tim.stepCostMs, reported.Ann.stepCostMs, reported.Bo.stepCostMs], [STEP_COSTS.Tim, STEP_COSTS.Ann, STEP_COSTS.Bo]);
+    assert.deepEqual(Object.keys(reported.Tim.rttMs).sort(), [idOf('Ann'), idOf('Bo')].sort(), 'a round trip to each of the others');
+    assert.ok(Object.values(reported.Bo.rttMs).every((ms) => ms >= 0 && ms < 1000));
+    assert.equal(byName.Tim.lan.fitness().stepCost, STEP_COSTS.Tim);
+});
+
+test('the match runs on the device the lobby picked, not on the room owner\'s', async () => {
+    const { host: tim, byName: { Ann: ann, Bo: bo }, devices, run, idOf } = await measured();
+    await tim.lan.startMatch();
+    run(1);
+
+    assert.ok(ann.lan.server, 'Ann\'s fast device runs it');
+    assert.equal(tim.lan.server, null, 'Tim owns the room and plays as a client');
+    assert.equal(tim.lan.isHost, true);
+    for (const each of devices) {
+        assert.equal(each.session.phase, PHASE.PLAYING);
+        assert.equal(each.lan.matchHostId, idOf('Ann'));
+        assert.equal(each.session.world.player?.pilotId, each.state.me.playerId);
+    }
+    assert.equal(ann.session.match.isHost, true);
+    assert.equal(Boolean(bo.session.match.isHost), false);
+});
+
+test('when the device running the match is lost, the next in line takes it over and the match goes on', async () => {
+    const party = await measured();
+    const { host: tim, byName: { Ann: ann, Bo: bo }, run, idOf, lose } = party;
+    await tim.lan.startMatch();
+    run(4);
+    assert.ok(bo.lan.client.latestCheckpoint && tim.lan.client.latestCheckpoint, 'both of the others hold a checkpoint of the whole match');
+    assert.deepEqual(tim.lan.client.succession, [idOf('Bo'), idOf('Tim')], 'and know the line: Bo\'s device is the better of the two');
+    const timeBefore = tim.ui.match.time;
+
+    lose(ann);
+    run(1);
+
+    assert.ok(bo.lan.server, 'Bo\'s device has the match now');
+    assert.equal(tim.lan.server, null);
+    for (const each of [tim, bo]) {
+        assert.equal(each.session.phase, PHASE.PLAYING, 'nobody was thrown out');
+        assert.equal(each.lan.matchHostId, idOf('Bo'));
+        assert.equal(each.lan.client.migrating, false, 'and both have the new host\'s picture');
+        assert.equal(each.lan.client.term, 1);
+        assert.equal(each.session.world.player?.alive, true, 'in their own ships');
+        assert.deepEqual(each.ui.match.players.map((player) => player.id).sort(), [idOf('Tim'), idOf('Bo')].sort(), 'Ann is out of the match');
+    }
+    assert.ok(tim.ui.match.time >= timeBefore - 4, 'a few seconds back at the most');
+    assert.equal(bo.session.match.isHost, true);
+
+    // And it is a match again: the ships fly under the new host.
+    tim.controls.throttleTarget = 1;
+    const before = tim.session.world.player.position.clone();
+    run(2);
+    assert.ok(tim.session.world.player.position.distanceTo(before) > 20, 'Tim\'s ship answers its helm');
+    assert.ok(bo.lan.server.pilots.get(idOf('Tim')).ship.position.distanceTo(tim.session.world.player.position) < 60, 'and is where Bo\'s server has it');
+});
+
+test('the new host writes checkpoints in its turn: a match can change hands more than once', async () => {
+    const party = await measured(['Tim', 'Ann', 'Bo', 'Cy']);
+    const { host: tim, byName: { Ann: ann, Bo: bo, Cy: cy }, run, idOf, lose } = party;
+    await tim.lan.startMatch();
+    run(4);
+    lose(ann);
+    run(4);
+    assert.ok(bo.lan.server);
+    assert.ok(cy.lan.client.latestCheckpoint && cy.lan.client.term === 1);
+
+    lose(bo);
+    run(1);
+    const hosting = [tim, cy].filter((each) => each.lan.server);
+    assert.equal(hosting.length, 1, 'one of the two that are left has it');
+    for (const each of [tim, cy]) {
+        assert.equal(each.session.phase, PHASE.PLAYING);
+        assert.equal(each.lan.client.term, 2);
+        assert.equal(each.lan.matchHostId, hosting[0].state.me.playerId);
+    }
+    assert.equal(hosting[0], cy, `Cy's device is faster than Tim's (${idOf('Cy')})`);
+});
+
+test('if the next in line is gone too, the one after it takes over', async () => {
+    const party = await measured(['Tim', 'Ann', 'Bo', 'Cy']);
+    const { host: tim, byName: { Ann: ann, Bo: bo, Cy: cy }, run, idOf, lose } = party;
+    await tim.lan.startMatch();
+    run(4);
+    assert.equal(tim.lan.client.succession[0], idOf('Bo'));
+
+    lose(ann);
+    lose(bo);
+    run(1);
+
+    assert.ok(cy.lan.server, 'Cy was second in line and had a checkpoint too');
+    assert.equal(tim.lan.matchHostId, idOf('Cy'));
+    assert.equal(tim.session.phase, PHASE.PLAYING);
+    assert.equal(tim.lan.client.migrating, false);
+});
+
+test('a host that had only stalled stands down when it hears that another device has the match', async () => {
+    const party = await measured();
+    const { host: tim, byName: { Ann: ann, Bo: bo }, run, idOf } = party;
+    await tim.lan.startMatch();
+    run(4);
+
+    // Ann's device hangs: the others hear nothing for too long and move on. Her links are still up.
+    tim.lan.client.hostLost();
+    bo.lan.client.hostLost();
+    run(1);
+
+    assert.ok(bo.lan.server);
+    assert.equal(ann.lan.server, null, 'Ann\'s device let go of its own copy of the match');
+    assert.equal(Boolean(ann.session.match.isHost), false);
+    for (const each of [tim, ann, bo]) {
+        assert.equal(each.lan.matchHostId, idOf('Bo'));
+        assert.equal(each.session.phase, PHASE.PLAYING);
+        assert.equal(each.lan.client.migrating, false);
+    }
+    assert.equal(bo.lan.server.pilots.get(idOf('Ann')).gone, false, 'she was reachable, so she is still in it');
+    assert.equal(ann.ui.match.players.length, 3);
+});
+
+test('with no checkpoint to go on from, a lost host ends the match as it used to', async () => {
+    const party = await measured();
+    const { host: tim, byName: { Ann: ann, Bo: bo }, run, lose } = party;
+    await tim.lan.startMatch();
+    run(1);
+    // (The host sends its first checkpoint at once; these two have somehow never had one.)
+    tim.lan.client.latestCheckpoint = null;
+    bo.lan.client.latestCheckpoint = '{"not": "a checkpoint"}';
+
+    lose(ann);
+    run(0.5);
+    assert.deepEqual([tim.session.phase, bo.session.phase], [PHASE.PLAYING, PHASE.PLAYING], 'each waits a while for the other to take over');
+    assert.equal(bo.lan.server, null, 'Bo, first in line, could not: what he holds is not a checkpoint of this match');
+
+    // Nobody does: the waiting runs out, down the line, to its end.
+    for (let round = 0; round < 3; round++) {
+        party.fireTimers();
+        run(0.2);
+    }
+    for (const each of [tim, bo]) {
+        assert.equal(each.session.phase, PHASE.MATCH_OVER);
+        assert.equal(each.ui.match.phase, 'disconnected');
+        assert.equal(each.lan.server, null);
+    }
+});
+
+test('the last device left takes the match over for itself', async () => {
+    const party = await measured(['Tim', 'Ann']);
+    const { host: tim, byName: { Ann: ann }, run, lose } = party;
+    await tim.lan.startMatch();
+    run(4);
+
+    lose(ann);
+    run(1);
+
+    assert.ok(tim.lan.server, 'nobody else to turn to: Tim\'s own device goes on');
+    assert.notEqual(tim.ui.match.phase, 'disconnected');
+    assert.deepEqual(tim.ui.match.players.map((player) => player.id), [tim.state.me.playerId]);
+});
+
+test('when the match is over its links are the lobby\'s again, and the next match picks its host afresh', async () => {
+    const party = await measured();
+    const { host: tim, byName: { Ann: ann, Bo: bo }, run, settle, fireTimers, network, lose } = party;
+    await tim.lan.startMatch();
+    run(4);
+    lose(ann);
+    run(1);
+    await ann.lan.lobby.leaveRoom();
+
+    await tim.lan.returnToLobby();
+    await settle();
+    assert.deepEqual([tim.session.phase, bo.session.phase], [PHASE.TITLE, PHASE.TITLE]);
+    assert.deepEqual([tim.lan.server, bo.lan.server, tim.lan.matchHostId], [null, null, null]);
+
+    network.clockMs += 5000;
+    fireTimers();
+    network.pump();
+    assert.ok(tim.lan.peerRtt.has(bo.state.me.playerId), 'the pings between the two are being answered again');
+
+    await bo.lan.setReady(true);
+    await tim.lan.startMatch();
+    run(1);
+    assert.ok(bo.lan.server, 'of the two, Bo\'s device is the faster');
+    assert.equal(tim.session.phase, PHASE.PLAYING);
 });

@@ -54,6 +54,31 @@ export const NET = Object.freeze({
     connectTimeout: 15,
     /** Seconds between pings on the reliable channel (latency read-out, and keeps the link warm). */
     pingInterval: 2,
+
+    // ---- Who runs the match, and what happens when that device is lost (net/README.md "The host") ----
+    /**
+     * Seconds of silence from the host after which a device that has somebody to turn to
+     * stops waiting and follows the order of succession. Shorter than `linkTimeout`: a match
+     * that can go on should not stand still for long.
+     */
+    hostLostTimeout: 4,
+    /** Seconds between the checkpoints of the whole match that the host sends to those next in line. */
+    checkpointInterval: 3,
+    /** How many of those next in line are kept supplied with checkpoints. */
+    checkpointCopies: 2,
+    /** A checkpoint is sent in pieces of at most this many characters (data channels dislike long messages). */
+    checkpointChunk: 12000,
+    /** Most pieces a checkpoint may come in; a longer one is not accepted. */
+    checkpointMaxChunks: 64,
+    /** Seconds a device waits for the next in line to take the match over before trying the one after. */
+    takeoverTimeout: 6,
+    /**
+     * Ranking hosts (the lobby server's LanRoomManager.RankHosts does the same before a match):
+     * a millisecond of simulation step counts like this many milliseconds of round trip...
+     */
+    stepCostWeight: 40,
+    /** ...and a device with no measured link to another counts as this round trip to it. */
+    unlinkedRtt: 2000,
 });
 
 /**

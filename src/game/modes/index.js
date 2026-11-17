@@ -17,6 +17,10 @@ import { BattleRoyalePresenter } from './battleRoyale/BattleRoyalePresenter.js';
  *   onPlayerLeft?(pilot)
  *   describeState(pilot)                the match state for that player (net/match/matchState.js);
  *                                       it may differ per player - only put in it what they may know
+ *   saveState?()                        everything the rules know, as plain data...
+ *   restoreState?(server, checkpoint)   ...and going on from it on another device instead of `setup`
+ *                                       (the server rebuilds the zones: server.restoreZone). A mode
+ *                                       with both survives the loss of the device hosting the match.
  *   dispose?()
  *
  * The PRESENTER runs on every device, beside its ClientMatch, and turns what the rules send

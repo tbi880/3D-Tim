@@ -532,6 +532,8 @@ export default {
     'mp.global.startsIn': '{seconds} 秒后开始',
     'mp.global.hostNote': '你是这局的房主：对局结束前请保持本页面打开。',
     'mp.global.cancel': '取消匹配',
+    'mp.host.lost': '主设备掉线了，正在切换到另一台设备…',
+    'mp.host.resumed': '已由另一台设备接管，对局从几秒前继续。',
     'mp.global.waitingReady': '等待所有飞行员准备',
     'mp.lan.kick': '移出',
     'lan.kicked': '你被房主移出了房间。',

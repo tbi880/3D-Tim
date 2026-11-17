@@ -532,6 +532,8 @@ export default {
     'mp.global.startsIn': 'Match starts in {seconds} s',
     'mp.global.hostNote': 'You are hosting this match: keep this page open until it is over.',
     'mp.global.cancel': 'Cancel',
+    'mp.host.lost': 'The device running the match was lost. Handing over to another…',
+    'mp.host.resumed': 'Another device has taken the match over. It goes on from a few seconds back.',
     'mp.global.waitingReady': 'Waiting for every pilot to be ready',
     'mp.lan.kick': 'Remove',
     'lan.kicked': 'The host removed you from the room.',

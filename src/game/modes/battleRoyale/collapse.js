@@ -40,6 +40,25 @@ export class CollapseClock {
         this.time = 0;
     }
 
+    /** The timetable, to be handed to another device (see `resume`). */
+    capture() {
+        return { schedule: this.schedule.map(({ startsAt, goneAt }) => [startsAt, goneAt]), finalStandEndsAt: this.finalStandEndsAt };
+    }
+
+    /**
+     * A clock that goes on from a captured timetable. Returns null if `data` is not one for
+     * `planets` planets.
+     */
+    static resume(data, planets, timing) {
+        const entries = data?.schedule;
+        if (!Array.isArray(entries) || entries.length !== planets - 1 || !Number.isFinite(data.finalStandEndsAt)) return null;
+        if (!entries.every((entry) => Array.isArray(entry) && Number.isFinite(entry[0]) && Number.isFinite(entry[1]) && entry[1] >= entry[0])) return null;
+        const clock = new CollapseClock({ planets, rng: () => 0, timing });
+        clock.schedule = entries.map(([startsAt, goneAt]) => ({ startsAt, goneAt }));
+        clock.finalStandEndsAt = data.finalStandEndsAt;
+        return clock;
+    }
+
     /** Moves the clock to `time` (seconds since the match started). */
     advanceTo(time) {
         this.time = time;

@@ -29,6 +29,8 @@ const PLACELESS_EVENTS = new Set([WORLD_EVENT.MATCH, WORLD_EVENT.MODE, WORLD_EVE
 /** Calls the host may make on this device's stage. */
 const STAGE_CALLS = new Set(['showTitleCard', 'setHint', 'playMusic', 'playCue']);
 const FACTIONS = new Set(Object.values(FACTION));
+/** Most devices a succession list is taken to hold. */
+const MAX_SUCCESSORS = 16;
 
 const defaultNow = () => performance.now() / 1000;
 const scratchStart = new Vector3();
@@ -51,6 +53,11 @@ const scratchEnd = new Vector3();
  *
  * It plugs into GameSession.beginMatch (see there for the interface). What the match is
  * about is shown by the game mode's presenter (modes/index.js).
+ *
+ * The host is a device like this one, and can be lost. A client that is told how to go on
+ * (`onHostLost`) does not end the match when its host falls silent: it stands still, keeps
+ * the last checkpoint and order of succession the host sent it, and is given a link to the
+ * device that takes the match over (`switchLink`) - see lobby/LanMultiplayer.js.
  */
 export class ClientMatch {
     /**
@@ -60,14 +67,29 @@ export class ClientMatch {
      * @param {object} params.link the link to the server (transport/MemoryLink.js describes the interface)
      * @param {object} [params.presenter] the game mode's presenter (modes/index.js)
      * @param {number} [params.interpolationDelay] seconds other ships are drawn behind the host's newest word (see NET)
+     * @param {() => boolean} [params.onHostLost] called when the host is lost; true if somebody will find this client
+     *        another host (it then waits for `switchLink` or `giveUp`), false to end the match here
+     * @param {() => { stepCost: number, rtt: Record<string, number> } | null} [params.linkReport] this device's
+     *        fitness to host, sent to the host with every ping so it can keep the order of succession
      * @param {() => number} [params.now] clock in seconds
      */
-    constructor({ info, localPlayerId, link, presenter = null, interpolationDelay = NET.interpolationDelay, now = defaultNow }) {
+    constructor({ info, localPlayerId, link, presenter = null, interpolationDelay = NET.interpolationDelay, onHostLost = null, linkReport = null, now = defaultNow }) {
         this.info = info;
         this.localPlayerId = localPlayerId;
         this.link = link;
         this.presenter = presenter;
+        this.onHostLost = onHostLost;
+        this.linkReport = linkReport;
         this.now = now;
+        /** True from losing the host until another one has sent its welcome: the picture stands still. */
+        this.migrating = false;
+        /** Who takes the match over, in order, as the host last said (player ids; this device may be among them). */
+        this.succession = info.succession.filter((id) => id !== info.hostPlayerId);
+        /** The host's term: 0 for the match's first host, one more for every takeover. */
+        this.term = 0;
+        /** The newest complete checkpoint the host sent (JSON text), if this device is high in the line; and one being received. */
+        this.latestCheckpoint = null;
+        this.incomingCheckpoint = null;
         /** Number of the welcome this device is showing; snapshots of any other are stale. */
         this.epoch = -1;
 
@@ -99,6 +121,11 @@ export class ClientMatch {
         this.world = session.world;
         this.predictor = new ShipPredictor(this.world);
         this.presenter?.begin(this, session);
+        this.listen();
+    }
+
+    /** Takes the link's packets and asks its other end for the world. */
+    listen() {
         this.lastHeardAt = this.now();
         const { link, inbox } = this;
         link.onMessage = (text) => { inbox.messages.push(text); };
@@ -107,8 +134,37 @@ export class ClientMatch {
             // A page that is not being drawn (in the background) is not reading these: keep the newest only.
             if (inbox.states.length > MAX_UNREAD_SNAPSHOTS) inbox.states.shift();
         };
-        link.onClose = () => this.disconnect();
+        link.onClose = () => { if (this.link === link) this.hostLost(); };
         link.sendMessage(JSON.stringify({ t: MSG.HELLO, v: NET.protocolVersion, m: this.info.matchId }));
+    }
+
+    /**
+     * Goes on with another host: lets go of the link to the old one (without closing it: the
+     * links are the lobby's) and asks the new one for the world. Until its welcome arrives
+     * the picture stands still.
+     */
+    switchLink(link) {
+        const old = this.link;
+        if (old !== link) {
+            old.onMessage = null;
+            old.onState = null;
+            old.onClose = null;
+        }
+        this.link = link;
+        this.inbox = { messages: [], states: [] };
+        this.migrating = true;
+        this.welcomed = false;
+        this.epoch = -1;
+        this.lastReconcileAt = null;
+        this.timeline.reset();
+        this.predictor?.reset();
+        this.listen();
+    }
+
+    /** Nobody could take the match over: it ends here after all. */
+    giveUp() {
+        this.migrating = false;
+        this.disconnect();
     }
 
     update(dt, controls) {
@@ -191,6 +247,9 @@ export class ClientMatch {
         if (now - this.lastPingAt >= NET.pingInterval) {
             this.lastPingAt = now;
             this.send({ t: MSG.PING, n: now });
+            // With the ping: how good a host this device would make, should it come to that.
+            const report = this.linkReport?.();
+            if (report) this.send({ t: MSG.LINKS, c: report.stepCost, r: report.rtt });
         }
     }
 
@@ -204,11 +263,31 @@ export class ClientMatch {
     }
 
     checkLink() {
-        if (this.state?.phase === MATCH_PHASE.DISCONNECTED) return;
-        if (!this.link.isOpen || this.now() - this.lastHeardAt > NET.linkTimeout) this.disconnect();
+        if (this.state?.phase === MATCH_PHASE.DISCONNECTED || this.migrating) return;
+        // With somebody to turn to there is no point in waiting long for a host that has gone quiet.
+        const patience = this.onHostLost ? NET.hostLostTimeout : NET.linkTimeout;
+        if (!this.link.isOpen || this.now() - this.lastHeardAt > patience) this.hostLost();
     }
 
-    /** The host is gone: nothing more will happen in this match. */
+    /**
+     * The host has fallen silent. If the match can go on under another device the picture
+     * stands still until that one's welcome; otherwise this is the end of it.
+     */
+    hostLost() {
+        if (this.state?.phase === MATCH_PHASE.DISCONNECTED || !this.session) return;
+        const already = this.migrating;
+        if (!isMatchOver(this.state?.phase) && this.onHostLost?.()) {
+            // (Whoever answered may already have given this client another link: `switchLink` stands.)
+            this.migrating = true;
+            this.welcomed = false;
+            if (!already) this.session.showToast('mp.host.lost');
+            return;
+        }
+        this.migrating = false;
+        this.disconnect();
+    }
+
+    /** The host is gone and nobody takes its place: nothing more will happen in this match. */
     disconnect() {
         if (this.state?.phase === MATCH_PHASE.DISCONNECTED || !this.session) return;
         this.setState({ ...(this.state ?? { mode: this.info.mode, players: [] }), phase: MATCH_PHASE.DISCONNECTED });
@@ -240,8 +319,31 @@ export class ClientMatch {
             case MSG.REFUSED:
                 this.disconnect();
                 break;
+            case MSG.SUCCESSION:
+                if (Array.isArray(message.o) && Number.isInteger(message.n)) {
+                    this.succession = message.o.filter((id) => typeof id === 'string').slice(0, MAX_SUCCESSORS);
+                    this.term = Math.max(this.term, message.n);
+                }
+                break;
+            case MSG.CHECKPOINT:
+                this.onCheckpointPiece(message);
+                break;
             default:
         }
+    }
+
+    /** Collects a checkpoint that arrives in pieces; only a complete one replaces the last. */
+    onCheckpointPiece({ id, i, n, d }) {
+        if (!Number.isInteger(id) || !Number.isInteger(i) || !Number.isInteger(n) || typeof d !== 'string') return;
+        if (n < 1 || n > NET.checkpointMaxChunks || i < 0 || i >= n || d.length > NET.checkpointChunk) return;
+        if (this.incomingCheckpoint?.id !== id) this.incomingCheckpoint = { id, pieces: new Array(n).fill(null), missing: n };
+        const incoming = this.incomingCheckpoint;
+        if (incoming.pieces.length !== n || incoming.pieces[i] !== null) return;
+        incoming.pieces[i] = d;
+        incoming.missing -= 1;
+        if (incoming.missing > 0) return;
+        this.latestCheckpoint = incoming.pieces.join('');
+        this.incomingCheckpoint = null;
     }
 
     onWelcome(message) {
@@ -272,6 +374,11 @@ export class ClientMatch {
         for (const description of ships) spawnReplicaShip(world, description, this.index, this.localPlayerId);
 
         this.welcomed = true;
+        if (this.migrating) {
+            // Another device has the match now: it goes on from that device's last checkpoint.
+            this.migrating = false;
+            this.session.showToast('mp.host.resumed');
+        }
         this.applyMatchState(message.match);
         this.presenter?.onZoneEntered?.(this.zoneId);
     }

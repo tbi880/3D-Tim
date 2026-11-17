@@ -8,10 +8,11 @@ export const FAKE_AUTO_START_SECONDS = 20;
 /**
  * A stand-in for the lobby server and for WebRTC, in memory, so several LanMultiplayer
  * controllers can meet in one test. It follows the real server's rules where the controller
- * depends on them (the host is ready, a match needs everybody ready, signals carry the real
- * sender, the room closes with its host, only network rooms are listed, quick match fills a
- * public room or opens one, a public room counts down once everybody is ready); the real
- * rules are tested in the backend.
+ * depends on them (the owner is ready, a match needs everybody ready, signals carry the real
+ * sender, a room passes to the next player when its owner leaves, only network rooms are
+ * listed, quick match fills a public room or opens one, a public room counts down once
+ * everybody is ready, the match goes to the device the reports favour); the real rules are
+ * tested in the backend.
  */
 export class FakeLobbyServer {
     constructor() {
@@ -21,6 +22,7 @@ export class FakeLobbyServer {
         this.nextId = 1;
         this.nextRoom = 0;
         this.signals = 0;
+        this.fitnessReports = 0;
         /** What GetIceServers answers. */
         this.iceServers = [{ urls: ['stun:stun.test:3478'] }];
     }
@@ -113,6 +115,11 @@ export class FakeLobbyServer {
                 if (!entry.isHost) entry.ready = ready;
                 server.broadcast(room);
             },
+            async reportFitness(fitness) {
+                const room = myRoom();
+                room.players.find((entry) => entry.playerId === me.playerId).fitness = JSON.parse(JSON.stringify(fitness));
+                server.fitnessReports += 1;
+            },
             async kickPlayer(playerId) {
                 const room = hostedRoom();
                 const index = room.players.findIndex((entry) => entry.playerId === playerId && !entry.isHost);
@@ -141,12 +148,16 @@ export class FakeLobbyServer {
                 const room = me && server.roomOf(me.playerId);
                 if (!room) return;
                 room.players.splice(room.players.findIndex((entry) => entry.playerId === me.playerId), 1);
-                if (room.hostPlayerId === me.playerId) {
+                if (room.players.length === 0) {
                     server.rooms.delete(room.code);
-                    for (const entry of room.players.splice(0)) server.clients.get(entry.playerId)?.handlers.onRoomClosed(room.code);
-                } else {
-                    server.broadcast(room);
+                    return;
                 }
+                // The owner has gone: the room is the next player's.
+                if (room.hostPlayerId === me.playerId) {
+                    room.hostPlayerId = room.players[0].playerId;
+                    Object.assign(room.players[0], { isHost: true, ready: true });
+                }
+                server.broadcast(room);
             },
             async sendSignal(toPlayerId, type, payload) {
                 myRoom();
@@ -161,12 +172,27 @@ export class FakeLobbyServer {
         if (room.players.some((entry) => !entry.ready)) throw new LobbyError('lan.playersNotReady');
         room.state = 'InMatch';
         room.matchId = `match-${this.nextId++}`;
+        const succession = this.rankHosts(room);
         const start = {
-            matchId: room.matchId, seed: 11, hostPlayerId: room.hostPlayerId, mode: room.mode, settings: room.settings,
+            matchId: room.matchId, seed: 11, hostPlayerId: succession[0], succession, mode: room.mode, settings: room.settings,
             players: room.players.map((entry) => ({ playerId: entry.playerId, displayName: entry.displayName, shipClassId: entry.shipClassId, loadout: { upgrades: {}, equipment: [] } })),
         };
         this.toRoom(room, (client) => client.handlers.onMatchStarted(start));
         this.broadcast(room);
+    }
+
+    /**
+     * Player ids, the best host first, as the backend's LanRoomManager.RankHosts orders them:
+     * linked to everybody first, then the lower "average round trip + 40 x step cost", then
+     * joining order (which, with nothing reported, leaves the owner first).
+     */
+    rankHosts(room) {
+        const rtt = (from, to) => from.fitness?.rttMs?.[to.playerId] ?? to.fitness?.rttMs?.[from.playerId] ?? null;
+        return room.players.map((player, index) => {
+            const others = room.players.filter((other) => other !== player).map((other) => rtt(player, other));
+            const average = others.length === 0 ? 0 : others.reduce((sum, ms) => sum + (ms ?? 2000), 0) / others.length;
+            return { id: player.playerId, index, unlinked: others.filter((ms) => ms === null).length, score: average + (player.fitness?.stepCostMs ?? 0) * 40 };
+        }).sort((a, b) => a.unlinked - b.unlinked || a.score - b.score || a.index - b.index).map((entry) => entry.id);
     }
 
     /** The countdowns run out: every public room that was counting starts (the backend's LanAutoStartService). */
@@ -182,6 +208,7 @@ export class FakeLobbyServer {
 
     snapshot(room) {
         const { removed, ...shown } = room;
+        shown.players = room.players.map(({ fitness, ...player }) => player);
         return JSON.parse(JSON.stringify({ ...shown, startsInSeconds: this.countingDown(room) ? FAKE_AUTO_START_SECONDS : null }));
     }
 

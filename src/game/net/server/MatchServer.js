@@ -1,14 +1,18 @@
 import { Vector3 } from 'three';
 import { WORLD } from '../../config/gameConfig.js';
+import { isPlayerShip } from '../../config/playerShips.js';
 import { applyPilotAction } from '../../core/systems/pilotActions.js';
 import { IDLE_CONTROLS } from '../../core/systems/playerFlight.js';
 import { ClientGuard } from '../ClientGuard.js';
 import { createControls } from '../codec/inputPacket.js';
 import { NET } from '../netConfig.js';
+import { cleanUpgrades } from '../match/matchInfo.js';
 import { MSG, WORLD_EVENT } from '../protocol.js';
+import { captureZone, restoreZone } from './checkpoint.js';
 import { Zone } from './Zone.js';
 
 const STATE_INTERVAL = 0.25;
+
 const scratchForward = new Vector3();
 const defaultNow = () => performance.now() / 1000;
 
@@ -42,6 +46,8 @@ class Pilot {
         this.needsWelcome = false;
         /** Counts welcomes, so their device can tell which place a snapshot belongs to. */
         this.epoch = 0;
+        /** What their device says of its fitness to host: { stepCost, rtt: { playerId: ms } }, or null (see MSG.LINKS). */
+        this.fitness = null;
         this.controls = createControls();
         this.autoFire = false;
         this.lastInputAt = -Infinity;
@@ -71,6 +77,11 @@ class Pilot {
  *
  * What the match is about - who is on which side, what they fight over, who wins - is the
  * game mode's (modes/index.js). The mode uses the services at the bottom of this class.
+ *
+ * Which device this runs on is chosen when the match starts, and it is not the match's only
+ * chance: every few seconds the server writes the whole match down (`capture`) for the
+ * devices next in line, and if this device is lost one of them makes a new MatchServer from
+ * that checkpoint and the match goes on (net/README.md, "The host").
  */
 export class MatchServer {
     /**
@@ -78,11 +89,24 @@ export class MatchServer {
      * @param {object} params.info the match as normalizeMatchInfo returns it
      * @param {object} params.mode the game mode's rules (see modes/index.js)
      * @param {() => number} [params.now] clock in seconds (for input timeouts and rate limits)
+     * @param {string} [params.hostPlayerId] the player whose device this is (default: the match's first host)
+     * @param {object} [params.checkpoint] a checkpoint of this match from its previous host (see `capture`):
+     *        the match goes on from it instead of starting
+     * @param {number} [params.term] 0 for the match's first host, one more for every device that has taken it over
      */
-    constructor({ info, mode, now = defaultNow }) {
+    constructor({ info, mode, now = defaultNow, hostPlayerId = info.hostPlayerId, checkpoint = null, term = 0 }) {
         this.info = info;
         this.mode = mode;
         this.now = now;
+        this.hostPlayerId = hostPlayerId;
+        this.checkpoint = checkpoint;
+        this.term = term;
+        /** Player ids, the next host first (see `rankSuccessors`); what was last told to the devices. */
+        this.succession = info.succession.filter((id) => id !== hostPlayerId);
+        this.checkpointTimer = 0;
+        this.checkpointSeq = 0;
+        /** Called with (fromPlayerId, term, hostPlayerId) when a device announces that it has taken the match over. */
+        this.onTakeover = null;
         /** @type {Map<string, Pilot>} */
         this.pilots = new Map(info.players.map((player) => [player.id, new Pilot(player)]));
         /** @type {Map<string, Zone>} */
@@ -98,7 +122,14 @@ export class MatchServer {
     start() {
         if (this.started) return;
         this.started = true;
-        this.mode.setup(this);
+        if (this.checkpoint) this.resume(this.checkpoint);
+        else this.mode.setup(this);
+        this.checkpoint = null;
+    }
+
+    /** True when the game mode can hand a match on to another device (it has `saveState` and `restoreState`). */
+    get canMigrate() {
+        return typeof this.mode.saveState === 'function' && typeof this.mode.restoreState === 'function';
     }
 
     update(frameSeconds) {
@@ -127,6 +158,11 @@ export class MatchServer {
         if (this.stateTimer <= 0) this.publishState();
         this.flush();
         this.sendSnapshots(dt);
+        this.checkpointTimer -= dt;
+        if (this.checkpointTimer <= 0) {
+            this.checkpointTimer = NET.checkpointInterval;
+            this.provideForSuccession();
+        }
     }
 
     dispose() {
@@ -213,6 +249,13 @@ export class MatchServer {
             case MSG.PING:
                 pilot.link.sendMessage(JSON.stringify({ t: MSG.PONG, n: message.n }));
                 return;
+            case MSG.LINKS:
+                pilot.fitness = { stepCost: message.stepCost, rtt: message.rtt };
+                return;
+            case MSG.TAKEOVER:
+                // Another device says it runs this match now. Whether to believe it is the controller's business.
+                this.onTakeover?.(pilot.id, message.n, message.h);
+                return;
             default:
         }
     }
@@ -271,6 +314,103 @@ export class MatchServer {
             }
             pilot.snapshotSeq += 1;
             pilot.link.sendState(zone.encoder.packetFor(pilot.epoch, pilot.snapshotSeq, pilot.guard.lastSeq, pilot.ship?.alive ? pilot.ship : null));
+        }
+    }
+
+    // ---- Handing the match on ----------------------------------------------------------------
+
+    /**
+     * The whole match as plain data: enough for another device to go on from if this one is
+     * lost (pass it to a new MatchServer as `checkpoint`).
+     */
+    capture() {
+        return {
+            v: NET.protocolVersion,
+            matchId: this.info.matchId,
+            time: this.time,
+            pilots: [...this.pilots.values()].map((pilot) => ({
+                id: pilot.id, name: pilot.name, classId: pilot.classId, upgrades: pilot.upgrades, bot: pilot.bot, gone: pilot.gone, zone: pilot.zone?.id ?? null,
+            })),
+            zones: Object.fromEntries([...this.zones].map(([id, zone]) => [id, captureZone(zone)])),
+            mode: this.mode.saveState(),
+        };
+    }
+
+    /** Goes on from a checkpoint: the pilots as they were, then the mode rebuilds its places and its own state. */
+    resume(checkpoint) {
+        if (checkpoint?.v !== NET.protocolVersion || checkpoint.matchId !== this.info.matchId) throw new Error('This checkpoint is not of this match');
+        this.time = Number.isFinite(checkpoint.time) ? Math.max(0, checkpoint.time) : 0;
+        for (const saved of Array.isArray(checkpoint.pilots) ? checkpoint.pilots : []) {
+            let pilot = this.pilots.get(saved?.id);
+            // Bots are not in the lobby's list of players: they come back from the checkpoint.
+            if (!pilot && saved?.bot === true && typeof saved.id === 'string' && isPlayerShip(saved.classId)) {
+                pilot = this.addBot({ id: saved.id, name: String(saved.name ?? '').slice(0, 40), classId: saved.classId });
+            }
+            if (!pilot) continue;
+            pilot.upgrades = cleanUpgrades(saved.upgrades);
+            pilot.gone = Boolean(saved.gone);
+        }
+        this.mode.restoreState(this, checkpoint);
+    }
+
+    /**
+     * Rebuilds a place from a checkpoint (for the game mode's `restoreState`): the zone as `addZone`
+     * makes it, with the checkpoint's ships in it and each pilot back in their own.
+     */
+    restoreZone(id, sectorId, options, data) {
+        const zone = this.addZone(id, sectorId, options);
+        for (const ship of restoreZone(zone, data)) {
+            const pilot = ship.pilotId != null ? this.pilots.get(ship.pilotId) : null;
+            if (!pilot || pilot.gone || pilot.ship) continue;
+            pilot.ship = ship;
+            this.moveToZone(pilot, zone);
+        }
+        return zone;
+    }
+
+    /**
+     * The devices that could take the match over, best first. A good next host is linked to
+     * all the others with short round trips and simulates fast (what each device reports with
+     * MSG.LINKS); devices that have reported nothing keep the order the lobby server gave them.
+     */
+    rankSuccessors() {
+        const candidates = [...this.pilots.values()].filter((pilot) => !pilot.bot && !pilot.gone && pilot.id !== this.hostPlayerId && pilot.link?.isOpen);
+        const rtt = (from, to) => from.fitness?.rtt[to.id] ?? to.fitness?.rtt[from.id] ?? null;
+        const scored = candidates.map((pilot) => {
+            const others = candidates.filter((other) => other !== pilot).map((other) => rtt(pilot, other));
+            const average = others.length === 0 ? 0 : others.reduce((sum, ms) => sum + (ms ?? NET.unlinkedRtt), 0) / others.length;
+            const given = this.info.succession.indexOf(pilot.id);
+            return {
+                id: pilot.id,
+                unlinked: others.filter((ms) => ms === null).length,
+                score: average + (pilot.fitness?.stepCost ?? 0) * NET.stepCostWeight,
+                given: given === -1 ? Infinity : given,
+            };
+        });
+        scored.sort((a, b) => a.unlinked - b.unlinked || a.score - b.score || a.given - b.given);
+        return scored.map((entry) => entry.id);
+    }
+
+    /**
+     * Tells every device who is next in line, and sends those at the head of the line a
+     * checkpoint to go on from. Without both a lost host is a lost match.
+     */
+    provideForSuccession() {
+        if (!this.canMigrate) return;
+        this.succession = this.rankSuccessors();
+        const order = JSON.stringify({ t: MSG.SUCCESSION, o: this.succession, n: this.term });
+        for (const pilot of this.pilots.values()) {
+            if (pilot.joined && pilot.link?.isOpen) pilot.link.sendMessage(order);
+        }
+        const heirs = this.succession.slice(0, NET.checkpointCopies).map((id) => this.pilots.get(id)).filter((pilot) => pilot.joined);
+        if (heirs.length === 0) return;
+        const text = JSON.stringify(this.capture());
+        const pieces = Math.ceil(text.length / NET.checkpointChunk);
+        if (pieces > NET.checkpointMaxChunks) return;
+        this.checkpointSeq += 1;
+        for (let piece = 0; piece < pieces; piece++) {
+            const message = JSON.stringify({ t: MSG.CHECKPOINT, id: this.checkpointSeq, i: piece, n: pieces, d: text.slice(piece * NET.checkpointChunk, (piece + 1) * NET.checkpointChunk) });
+            for (const heir of heirs) heir.link.sendMessage(message);
         }
     }
 

@@ -69,6 +69,18 @@ export class Station {
 }
 
 /**
+ * The station that already stands in a zone (one rebuilt from a checkpoint), as the rules
+ * use it; null if there is none.
+ * @param {import('../../net/server/Zone.js').Zone} zone
+ * @param {object} layout BATTLE_ROYALE.station
+ * @returns {Station | null}
+ */
+export function findStation(zone, layout) {
+    const ship = zone.world.findByTag(STATION_TAG);
+    return ship ? new Station(ship, stationPose(SECTORS[zone.sectorId].playerStart, layout).lane, layout) : null;
+}
+
+/**
  * Builds a zone's station (belonging to nobody: who holds it is the rules' business) and
  * clears the rocks out of its hull and its approach lane.
  * @param {import('../../net/server/Zone.js').Zone} zone

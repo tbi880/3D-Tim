@@ -6,6 +6,7 @@ import { STORAGE_KEYS } from '../../config/gameConfig.js';
 import { isTouchDevice } from '../../input/device.js';
 import { PeerLink } from '../transport/PeerLink.js';
 import { describeDevice } from './deviceInfo.js';
+import { measureStepCost } from './hostFitness.js';
 import { LanMultiplayer, initialLanState } from './LanMultiplayer.js';
 import { LobbyClient } from './LobbyClient.js';
 
@@ -78,5 +79,6 @@ export function createLanMultiplayer(session) {
         device: describeDevice(navigator.userAgent, isTouchDevice()),
         nameStore,
         loadoutStore,
+        measureStepCost,
     });
 }

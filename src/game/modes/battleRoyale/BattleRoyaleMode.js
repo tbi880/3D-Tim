@@ -16,7 +16,7 @@ import { CollapseClock, PLANET_STATUS } from './collapse.js';
 import { EQUIPMENT, Inventory } from './equipment.js';
 import { callReinforcements, planGarrisons, stationGarrison } from './garrisons.js';
 import { StarMap } from './starMap.js';
-import { buildStation } from './station.js';
+import { buildStation, findStation } from './station.js';
 
 const scratchOffset = new Vector3();
 const sumLevels = (upgrades) => Object.values(upgrades).reduce((sum, levels) => sum + levels, 0);
@@ -177,6 +177,129 @@ export class BattleRoyaleMode {
         const free = pool.filter((planet) => !taken.has(this.places.get(planet.id)));
         const choices = free.length > 0 ? free : pool;
         return this.places.get(choices[Math.floor(this.rng() * choices.length)].id);
+    }
+
+    // ---- Handing the match on (MatchServer.capture / its `checkpoint`) ------------------------
+    // (Not to be confused with `capture(place, faction)` below: that is a side taking a planet.)
+
+    /**
+     * Everything the rules know, as plain data. Times are written as "seconds from now", so
+     * they mean the same on a device whose match clock is a little off.
+     */
+    saveState() {
+        const { time } = this.server;
+        return {
+            introLeft: Math.max(0, this.introLeft),
+            startedAt: this.startedAt,
+            result: this.result,
+            sidesAtStart: [...this.sidesAtStart],
+            clock: this.clock.capture(),
+            places: [...this.places.values()].map((place) => ({
+                id: place.planet.id,
+                owner: place.owner,
+                scouts: [...place.scouts],
+                vote: place.vote && { faction: place.vote.faction, endsIn: place.vote.endsAt - time, ballots: [...place.vote.ballots] },
+            })),
+            contestants: [...this.contestants.values()].map((contestant) => ({
+                id: contestant.pilot.id,
+                faction: contestant.faction,
+                alive: contestant.alive,
+                score: contestant.score,
+                kills: contestant.kills,
+                deaths: contestant.deaths,
+                points: contestant.points,
+                summons: contestant.summons,
+                jumpReadyIn: contestant.jumpReadyAt - time,
+                jump: contestant.jump,
+                start: contestant.start?.planet.id ?? null,
+                loyalty: [contestant.loyalty.damage, contestant.loyalty.status],
+                dock: contestant.dock && { place: contestant.dock.place.planet.id, left: contestant.dock.left, seconds: contestant.dock.seconds },
+                picks: contestant.inventory.picks,
+                equipment: contestant.inventory.describe(),
+                gravityShieldLeft: contestant.gravityShieldUntil - time,
+                emergencyShieldLeft: contestant.emergencyShieldUntil - time,
+            })),
+        };
+    }
+
+    /**
+     * Goes on from another device's checkpoint instead of setting a match up: the places are
+     * rebuilt with the ships they had, and everything the rules knew is put back. What the
+     * checkpoint says is checked as it is read; what it leaves out gets a safe value.
+     * @param {object} checkpoint MatchServer.capture()'s, with this mode's own part under `mode`
+     */
+    restoreState(server, checkpoint) {
+        this.server = server;
+        const data = checkpoint.mode ?? {};
+        const { map, rng } = this;
+        const { time } = server;
+        const seconds = (value, fallback = 0) => (Number.isFinite(value) ? value : fallback);
+        const side = (value) => (PLAYER_FACTIONS.includes(value) ? value : null);
+        const planetId = (value) => (map.has(value) ? value : null);
+
+        this.introLeft = Math.max(0, seconds(data.introLeft));
+        this.startedAt = seconds(data.startedAt);
+        this.result = data.result && typeof data.result === 'object' ? { winner: side(data.result.winner) } : null;
+        this.sidesAtStart = new Set((Array.isArray(data.sidesAtStart) ? data.sidesAtStart : []).map(side).filter(Boolean));
+        this.clock = CollapseClock.resume(data.clock, map.count, BATTLE_ROYALE.collapse)
+            ?? new CollapseClock({ planets: map.count, rng, timing: BATTLE_ROYALE.collapse, timeScale: this.pace.timeScale });
+        this.clock.advanceTo(Math.max(0, time - this.startedAt));
+
+        const savedPlaces = new Map((Array.isArray(data.places) ? data.places : []).map((place) => [place?.id, place]));
+        map.planets.forEach((planet, orbit) => {
+            const zone = server.restoreZone(planet.id, planet.sectorId, {
+                seed: Math.floor(rng() * 0xffffffff), difficulty: BATTLE_ROYALE.difficulty, friendlyFire: BATTLE_ROYALE.friendlyFire,
+            }, checkpoint.zones?.[planet.id]);
+            // A checkpoint without the station (it never should be) gets a new one: the planet cannot be taken without it.
+            const station = findStation(zone, BATTLE_ROYALE.station) ?? buildStation(zone, BATTLE_ROYALE.station, Boolean(planet.gate));
+            const place = new Place(planet, orbit, zone, station);
+            const saved = savedPlaces.get(planet.id) ?? {};
+            place.owner = side(saved.owner);
+            place.scouts = new Set((Array.isArray(saved.scouts) ? saved.scouts : []).map(side).filter(Boolean));
+            place.status = this.clock.statusOf(orbit);
+            if (saved.vote && side(saved.vote.faction) && Array.isArray(saved.vote.ballots)) {
+                const ballots = saved.vote.ballots.filter((entry) => Array.isArray(entry) && server.pilots.has(entry[0]))
+                    .map(([id, choice]) => [id, choice === VOTE.REVIVE || choice === VOTE.REWARD ? choice : null]);
+                place.vote = { faction: saved.vote.faction, endsAt: time + seconds(saved.vote.endsIn), ballots: new Map(ballots) };
+            }
+            this.places.set(planet.id, place);
+        });
+
+        const savedContestants = new Map((Array.isArray(data.contestants) ? data.contestants : []).map((entry) => [entry?.id, entry]));
+        const count = (value) => (Number.isFinite(value) && value > 0 ? Math.floor(value) : 0);
+        for (const pilot of server.pilots.values()) {
+            const saved = savedContestants.get(pilot.id) ?? {};
+            const contestant = new Contestant(pilot, side(saved.faction) ?? PLAYER_FACTIONS[0]);
+            contestant.alive = Boolean(saved.alive) && Boolean(pilot.ship?.alive);
+            contestant.score = count(saved.score);
+            contestant.kills = count(saved.kills);
+            contestant.deaths = count(saved.deaths);
+            contestant.points = count(saved.points);
+            contestant.summons = count(saved.summons);
+            contestant.jumpReadyAt = time + seconds(saved.jumpReadyIn);
+            contestant.start = this.places.get(planetId(saved.start)) ?? null;
+            if (Array.isArray(saved.loyalty)) {
+                contestant.loyalty.damage = Math.max(0, seconds(saved.loyalty[0]));
+                if (Object.values(LOYALTY).includes(saved.loyalty[1])) contestant.loyalty.status = saved.loyalty[1];
+            }
+            contestant.inventory.picks = count(saved.picks);
+            for (const item of Object.keys(contestant.inventory.counts)) contestant.inventory.counts[item] = Math.min(contestant.inventory.stack, count(saved.equipment?.[item]));
+            contestant.gravityShieldUntil = time + seconds(saved.gravityShieldLeft, -1);
+            contestant.emergencyShieldUntil = time + seconds(saved.emergencyShieldLeft, -1);
+            if (contestant.alive) {
+                contestant.seenDamageAt = pilot.ship.lastDamagedAt;
+                if (saved.jump && planetId(saved.jump.to)) contestant.jump = { to: saved.jump.to, left: Math.max(0, seconds(saved.jump.left)), overdrive: Boolean(saved.jump.overdrive) };
+                const dockedAt = this.places.get(planetId(saved.dock?.place));
+                if (dockedAt && dockedAt.zone === pilot.zone) {
+                    contestant.dock = { place: dockedAt, left: Math.max(0, seconds(saved.dock.left)), seconds: Math.max(1, seconds(saved.dock.seconds, 1)) };
+                    pilot.helmHeld = true;
+                }
+                this.armEmergencyShield(contestant);
+            }
+            this.contestants.set(pilot.id, contestant);
+            if (pilot.bot) this.bots.push(new BotPilot(this, contestant, rng));
+        }
+        server.publishState();
     }
 
     /** Puts a contestant in a (new) ship at a planet, scattered around the far end of its station's approach lane. */

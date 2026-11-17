@@ -250,6 +250,14 @@ export class GameSession {
         this.setPhase(PHASE.PLAYING);
     }
 
+    /**
+     * Swaps the object that carries the match for another that carries the same one: a device
+     * that takes a match over as host, or hands it back, goes on playing without a break.
+     */
+    replaceMatch(match) {
+        if (this.match) this.match = match;
+    }
+
     /** The match is over: its results stay on screen until the player leaves (enterTitle). */
     showMatchResults() {
         if (!this.match) return;

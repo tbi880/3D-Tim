@@ -22,6 +22,8 @@ export function normalizeMatchInfo(start) {
         matchId: String(start?.matchId ?? ''),
         seed: Number.isInteger(start?.seed) ? start.seed : 1,
         hostPlayerId: String(start?.hostPlayerId ?? ''),
+        // Every player, the best host first; a lobby server that does not say leaves the host and then the rest.
+        succession: cleanSuccession(start?.succession, String(start?.hostPlayerId ?? ''), players),
         mode: IDENTIFIER.test(start?.mode ?? '') ? start.mode : '',
         settings: cleanSettings(start?.settings),
         players: players.map((player) => {
@@ -37,6 +39,17 @@ export function normalizeMatchInfo(start) {
             };
         }),
     };
+}
+
+/**
+ * The order in which devices take the match over: every player exactly once, starting with
+ * the host. Whatever the lobby server sent that is not a player of this match is dropped,
+ * and whoever it left out is added at the end.
+ */
+function cleanSuccession(order, hostPlayerId, players) {
+    const ids = players.map((player) => String(player?.playerId ?? ''));
+    const listed = Array.isArray(order) ? order.filter((id) => typeof id === 'string' && ids.includes(id)) : [];
+    return [...new Set([hostPlayerId, ...listed, ...ids])].filter((id) => ids.includes(id));
 }
 
 function cleanSettings(settings) {

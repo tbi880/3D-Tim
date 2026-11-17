@@ -105,6 +105,8 @@ export class LobbyClient {
     getIceServers() { return this.invoke('GetIceServers'); }
     updateProfile(profile) { return this.invoke('UpdateProfile', profile); }
     setReady(ready) { return this.invoke('SetReady', ready); }
+    /** How fit this device is to run the match: `{ stepCostMs, rttMs: { playerId: ms } }`. The server chooses the host from these. */
+    reportFitness(fitness) { return this.invoke('ReportFitness', fitness); }
     /** Host: puts a player out of the room. */
     kickPlayer(playerId) { return this.invoke('KickPlayer', playerId); }
     updateOptions(options) { return this.invoke('UpdateOptions', options); }
