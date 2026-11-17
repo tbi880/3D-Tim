@@ -10,7 +10,10 @@ const LOCK_REPEAT_MS = 650;
 /**
  * On-screen controls for phones and tablets (shown only where the pointer is a finger):
  *
- *   left thumb  - steering stick, with a throttle slider beside it
+ *   left thumb  - steering stick, with a throttle gauge beside it
+ *   any finger  - slid up or down anywhere on the open view: the throttle (read by
+ *                 input/InputController.js on the view under these controls; the gauge and the
+ *                 percentage that shows meanwhile only report it)
  *   right thumb - FIRE (hold), TORPEDO, BURN (hold), LOCK (tap: the hostile nearest the
  *                 crosshair, like R on a keyboard; held: steps through the others, like T)
  *   top left    - pause
@@ -25,9 +28,8 @@ export default function TouchControls({ input, session }) {
     const t = useT();
     const phase = useGameStore((state) => state.phase);
     const [knob, setKnob] = useState({ x: 0, y: 0 });
-    const [throttle, setThrottle] = useState(0.5);
-    /** True while a finger is on the throttle bar; otherwise the bar shows the ship's own throttle. */
-    const [settingThrottle, setSettingThrottle] = useState(false);
+    /** The throttle a finger sliding on the view is asking for right now, or null: then the gauge shows the ship's own. */
+    const [swipeThrottle, setSwipeThrottle] = useState(null);
     const shipThrottle = useGameStore((state) => state.hud?.throttle);
     const origin = useRef(null);
     const lockTimer = useRef(null);
@@ -38,6 +40,7 @@ export default function TouchControls({ input, session }) {
     };
     // The buttons go away with the flight (pause, a cutscene): a finger still down must not keep cycling.
     useEffect(() => stopLockCycle, [phase]);
+    useEffect(() => input.onThrottleSwipe(setSwipeThrottle), [input]);
 
     if (phase !== PHASE.PLAYING) return null;
 
@@ -61,18 +64,6 @@ export default function TouchControls({ input, session }) {
         origin.current = null;
         setKnob({ x: 0, y: 0 });
         input.setTouchStick(0, 0);
-    };
-
-    /** The slider's height maps straight onto 0..100% throttle. */
-    const dragThrottle = (event) => {
-        if (event.type === 'pointerdown') {
-            event.currentTarget.setPointerCapture(event.pointerId);
-            setSettingThrottle(true);
-        } else if (event.buttons === 0 && event.pointerType !== 'touch') return;
-        const rect = event.currentTarget.getBoundingClientRect();
-        const value = Math.max(0, Math.min(1, 1 - (event.clientY - rect.top) / rect.height));
-        setThrottle(value);
-        input.setThrottleTarget(value);
     };
 
     /** Pointer handlers for a button that maps to a held control. */
@@ -103,16 +94,14 @@ export default function TouchControls({ input, session }) {
 
     return (
         <div className="eod-touch">
-            <div
-                className="eod-touch-throttle"
-                onPointerDown={dragThrottle}
-                onPointerMove={dragThrottle}
-                onPointerUp={() => setSettingThrottle(false)}
-                onPointerCancel={() => setSettingThrottle(false)}
-            >
-                <div className="eod-touch-throttle-fill" style={{ height: `${(settingThrottle ? throttle : shipThrottle ?? throttle) * 100}%` }} />
+            {/* A gauge, not a control: a finger on it falls through to the view and swipes like anywhere else. */}
+            <div className={`eod-touch-throttle ${swipeThrottle !== null ? 'eod-touch-throttle--swiping' : ''}`}>
+                <div className="eod-touch-throttle-fill" style={{ height: `${(swipeThrottle ?? shipThrottle ?? 0) * 100}%` }} />
                 <span>{t('hud.throttle')}</span>
             </div>
+            {swipeThrottle !== null && (
+                <div className="eod-touch-throttle-readout">{t('hud.throttle')} {Math.round(swipeThrottle * 100)}%</div>
+            )}
             <div className="eod-touch-stick" onPointerDown={startStick} onPointerMove={moveStick} onPointerUp={endStick} onPointerCancel={endStick}>
                 <div className="eod-touch-knob" style={{ transform: `translate(${knob.x}px, ${knob.y}px)` }} />
             </div>

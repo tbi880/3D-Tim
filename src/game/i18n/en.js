@@ -52,7 +52,7 @@ export default {
     'ui.score.total': 'Final score',
     'ui.score.newRecord': 'New best on this difficulty!',
     'ui.score.best': 'Best on this difficulty: {score}',
-    'ui.touchHint': 'Touch controls: left thumb steers, right thumb fights. Hold FIRE for the beams.',
+    'ui.touchHint': 'Touch controls: left thumb steers, right thumb fights, swipe up or down anywhere for the throttle. Hold FIRE for the beams.',
     'ui.homeScreenHint': 'Safari on iPhone cannot show web pages fullscreen: tap Share → Add to Home Screen and open the game from its icon to play fullscreen.',
 
     // ---- Controls screen ----------------------------------------------------------------
@@ -309,7 +309,7 @@ export default {
     'forge.vega.cinder': 'Course for Cinder, Commander. This time, no detours.',
 
     // Touch-screen wording for hints that name keys (picked automatically on phones).
-    'hint.flight.touch': 'Left stick steers · slide THR for speed · hold BURN for the afterburner',
+    'hint.flight.touch': 'Left stick steers · swipe ↑ ↓ anywhere for speed · hold BURN for the afterburner',
     'hint.weapons.touch': 'LOCK takes the target nearest your crosshair, hold it to step through the rest · hold FIRE for the beam arrays — they track anything inside the ring',
     'hint.torpedoes.touch': 'TORP launches a torpedo at your lock · beams strip shields, torpedoes break hulls',
     'hint.power.touch': 'POWER cycles balanced · attack · defense — divert power to suit the moment',
@@ -766,8 +766,8 @@ export default {
     'tutorial.throttle.title': 'Throttle',
     'tutorial.throttle.text': 'The engines are idling. Hold W to throttle up, S to throttle down; let go and the throttle stays where it is. Speed and throttle are shown bottom right.',
     'tutorial.throttle.keys': 'W / S',
-    'tutorial.throttle.text.touch': 'The engines are idling. Drag the throttle bar on the left up or down to set your speed; it stays where you leave it.',
-    'tutorial.throttle.keys.touch': 'Drag the throttle bar',
+    'tutorial.throttle.text.touch': 'The engines are idling. Slide a finger up anywhere on the open screen to throttle up, down to throttle down; lift it and the throttle stays put. The THR bar bottom left shows it.',
+    'tutorial.throttle.keys.touch': 'Swipe ↑ ↓ on the screen',
     'tutorial.throttle.text.vr': 'The engines are idling. Push the left stick forward to throttle up, pull it back to throttle down; let go and the throttle stays where it is.',
     'tutorial.throttle.keys.vr': 'Left stick ↑ ↓',
 

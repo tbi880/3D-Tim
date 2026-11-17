@@ -5,7 +5,13 @@
  *
  * Steering uses the pointer position relative to the middle of the screen as a virtual
  * joystick, so no pointer lock is needed and the site's own overlay stays clickable.
+ *
+ * A finger is not a mouse: it does not steer or fire through the view (the on-screen stick and
+ * buttons of ui/TouchControls.jsx do that). What a finger on the view does is set the throttle,
+ * by sliding up or down anywhere on it (input/throttleSwipe.js).
  */
+
+import { ThrottleSwipe } from './throttleSwipe.js';
 
 /** Pointer distance from the centre (as a fraction of the shorter screen side) for full deflection. */
 const STICK_RADIUS = 0.36;
@@ -53,18 +59,24 @@ export class InputController {
      * @param {object} params
      * @param {(action: string) => void} params.onAction
      * @param {() => boolean} params.getInvertY
+     * @param {() => number | null} [params.getThrottle] the throttle (0..1) of the ship being flown
+     *   right now, or null when there is none to fly (a menu, a cutscene): a swipe starts from it
      */
-    constructor({ onAction, getInvertY }) {
+    constructor({ onAction, getInvertY, getThrottle = () => 0 }) {
         this.onAction = onAction;
         this.getInvertY = getInvertY;
+        this.getThrottle = getThrottle;
         this.held = new Set();
         /** Virtual stick from the mouse, -1..1 on each axis (y + = pointer above centre). */
         this.pointerStick = { x: 0, y: 0 };
         /** Virtual stick from the on-screen touch joystick. */
         this.touchStick = { x: 0, y: 0 };
         this.pointerButtons = { primary: false, secondary: false };
-        /** Absolute throttle (0..1) from the touch slider, or null when the keyboard is in charge. */
+        /** Absolute throttle (0..1) set by a finger sliding on the view, or null when the keyboard is in charge. */
         this.throttleTarget = null;
+        /** The finger on the view that is setting the throttle, if any. */
+        this.throttleSwipe = new ThrottleSwipe();
+        this.throttleSwipeListeners = new Set();
         /** Controls from the VR controllers (xr/XRGamepadInput.js), or null outside VR. */
         this.xrControls = null;
         this.controls = { yaw: 0, pitch: 0, roll: 0, throttle: 0, throttleTarget: null, boost: false, firePrimary: false, fireSecondary: false };
@@ -85,6 +97,7 @@ export class InputController {
         listen(window, 'pointermove', this.handlePointerMove);
         listen(surface, 'pointerdown', this.handlePointerDown);
         listen(window, 'pointerup', this.handlePointerUp);
+        listen(window, 'pointercancel', this.handlePointerUp);
         listen(surface, 'contextmenu', (event) => event.preventDefault());
     }
 
@@ -102,6 +115,7 @@ export class InputController {
         this.pointerStick.y = 0;
         this.touchStick.x = 0;
         this.touchStick.y = 0;
+        this.endThrottleSwipe();
     };
 
     handleKeyDown = (event) => {
@@ -120,7 +134,10 @@ export class InputController {
     };
 
     handlePointerMove = (event) => {
-        if (event.pointerType === 'touch') return;
+        if (event.pointerType === 'touch') {
+            this.moveThrottleSwipe(event);
+            return;
+        }
         const radius = Math.min(window.innerWidth, window.innerHeight) * STICK_RADIUS;
         let x = (event.clientX - window.innerWidth / 2) / radius;
         let y = (window.innerHeight / 2 - event.clientY) / radius;
@@ -139,26 +156,60 @@ export class InputController {
     };
 
     handlePointerDown = (event) => {
-        if (event.pointerType === 'touch') return;
+        if (event.pointerType === 'touch') {
+            // Only where there is a ship to fly: a finger on a cutscene must not leave a throttle behind.
+            if (this.getThrottle() != null) this.throttleSwipe.begin(event.pointerId, event.clientY);
+            return;
+        }
         if (event.button === 0) this.pointerButtons.primary = true;
         if (event.button === 2) this.pointerButtons.secondary = true;
     };
 
+    /** Also the end of a cancelled touch. */
     handlePointerUp = (event) => {
-        if (event.pointerType === 'touch') return;
+        if (event.pointerType === 'touch') {
+            if (event.pointerId === this.throttleSwipe.pointerId) this.endThrottleSwipe();
+            return;
+        }
         if (event.button === 0) this.pointerButtons.primary = false;
         if (event.button === 2) this.pointerButtons.secondary = false;
     };
+
+    // ---- Throttle by sliding a finger on the view (input/throttleSwipe.js) -------------------
+
+    moveThrottleSwipe(event) {
+        const height = typeof window === 'undefined' ? 0 : window.innerHeight;
+        // From the throttle last asked for if there is one (the ship may still be easing towards it), else the ship's own.
+        const value = this.throttleSwipe.move(event.pointerId, event.clientY, () => this.throttleTarget ?? this.getThrottle(), height);
+        if (value === null) return;
+        this.throttleTarget = value;
+        this.tellThrottleSwipe(value);
+    }
+
+    endThrottleSwipe() {
+        const wasSwiping = this.throttleSwipe.swiping;
+        this.throttleSwipe.reset();
+        if (wasSwiping) this.tellThrottleSwipe(null);
+    }
+
+    tellThrottleSwipe(value) {
+        for (const listener of this.throttleSwipeListeners) listener(value);
+    }
+
+    /**
+     * Calls `listener` with the throttle (0..1) a finger is asking for while it slides, and with
+     * null when it lifts (the on-screen gauge shows it). Returns a function that stops the calls.
+     */
+    onThrottleSwipe(listener) {
+        this.throttleSwipeListeners.add(listener);
+        return () => this.throttleSwipeListeners.delete(listener);
+    }
 
     // ---- Touch UI hooks (ui/TouchControls.jsx) ------------------------------------------
 
     setTouchStick(x, y) {
         this.touchStick.x = x;
         this.touchStick.y = y;
-    }
-
-    setThrottleTarget(value) {
-        this.throttleTarget = value;
     }
 
     /** VR controllers: their stick / trigger state this frame (already dead-zoned and inverted), or null. */

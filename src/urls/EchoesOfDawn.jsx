@@ -12,7 +12,7 @@ import { createLanMultiplayer } from '../game/net/lobby/lanStore.js';
 import { isTouchDevice } from '../game/input/device.js';
 import GameScene from '../game/scene/GameScene.jsx';
 import { canvasAntialias, headsetContextOptions } from '../game/xr/vrState.js';
-import { GameSession } from '../game/state/GameSession.js';
+import { GameSession, PHASE } from '../game/state/GameSession.js';
 import { gameStoreSink, useGameStore, useT } from '../game/state/gameStore.js';
 import GameHud from '../game/ui/GameHud.jsx';
 import Menus from '../game/ui/Menus.jsx';
@@ -36,6 +36,7 @@ function createGame() {
     const input = new InputController({
         onAction: (action) => session.handleAction(action),
         getInvertY: () => session.settings.invertY,
+        getThrottle: () => (session.phase === PHASE.PLAYING ? session.world?.player?.throttle ?? null : null),
     });
     const sound = new SoundEngine({ assetBaseUrl: bucketURL });
     sound.attach(session);

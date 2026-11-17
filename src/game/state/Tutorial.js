@@ -16,7 +16,7 @@ const NOTHING_TO_SHOW = Object.freeze({ finished: true });
  * true while the control is in use. `start` is what the controls were when the step appeared.
  */
 const TUTORIAL_SIGNALS = Object.freeze({
-    // W, the VR stick, or the touch slider dragged somewhere new.
+    // W, the VR stick, or a finger slid up or down on a touch screen (a throttle set somewhere new).
     throttle: (controls, start) => controls.throttle > 0.3
         || (controls.throttleTarget != null && (start.throttleTarget == null || Math.abs(controls.throttleTarget - start.throttleTarget) > 0.08)),
     roll: (controls) => Math.abs(controls.roll) > 0.3,

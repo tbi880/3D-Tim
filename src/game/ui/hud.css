@@ -494,8 +494,13 @@ html.eod-page-locked body {
 }
 .eod-touch-stick { position: absolute; left: calc(66px + env(safe-area-inset-left, 0px)); bottom: 14px; width: 128px; height: 128px; border-radius: 50%; border: 2px solid var(--eod-border); background: rgba(6, 16, 28, 0.3); pointer-events: auto; touch-action: none; display: grid; place-items: center; }
 .eod-touch-knob { width: 50px; height: 50px; border-radius: 50%; background: rgba(89, 208, 255, 0.4); border: 2px solid var(--eod-cyan); }
-.eod-touch-throttle { position: absolute; left: calc(16px + env(safe-area-inset-left, 0px)); bottom: 18px; width: 34px; height: 120px; border: 2px solid var(--eod-border); border-radius: 6px; background: rgba(6, 16, 28, 0.3); pointer-events: auto; touch-action: none; overflow: hidden; display: flex; align-items: flex-end; justify-content: center; }
+/* The throttle gauge. The throttle itself is set by sliding a finger up or down anywhere on the view (input/throttleSwipe.js), so the gauge takes no touches. */
+.eod-touch-throttle { position: absolute; left: calc(16px + env(safe-area-inset-left, 0px)); bottom: 18px; width: 34px; height: 120px; border: 2px solid var(--eod-border); border-radius: 6px; background: rgba(6, 16, 28, 0.3); overflow: hidden; display: flex; align-items: flex-end; justify-content: center; transition: border-color 0.15s; }
+.eod-touch-throttle--swiping { border-color: var(--eod-cyan); }
 .eod-touch-throttle-fill { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(185, 199, 255, 0.4); }
+.eod-touch-throttle--swiping .eod-touch-throttle-fill { background: rgba(89, 208, 255, 0.55); }
+/* Shown while a finger is setting the throttle: the number it is asking for, above the gauge. */
+.eod-touch-throttle-readout { position: absolute; left: calc(16px + env(safe-area-inset-left, 0px)); bottom: 146px; padding: 3px 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; white-space: nowrap; color: #dff4ff; background: rgba(6, 16, 28, 0.7); border: 1px solid var(--eod-cyan); border-radius: 4px; }
 .eod-touch-throttle span { position: relative; font-size: 7px; padding-bottom: 4px; }
 .eod-touch-buttons { position: absolute; right: calc(14px + env(safe-area-inset-right, 0px)); bottom: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; pointer-events: auto; }
 .eod-touch-button { width: 62px; height: 62px; border-radius: 50%; font: inherit; font-size: 10px; font-weight: 700; color: #dff4ff; background: rgba(6, 16, 28, 0.45); border: 2px solid var(--eod-border); touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; }

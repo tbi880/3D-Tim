@@ -54,7 +54,7 @@ function StatusPanel() {
 
 /**
  * Phones: one small panel in place of the two corner gauges (the thumbs own the lower corners,
- * the throttle slider shows speed, and the power mode is not offered on touch screens).
+ * the throttle gauge shows speed, and the power mode is not offered on touch screens).
  */
 function CompactShipPanel() {
     const hud = useGameStore((state) => state.hud);

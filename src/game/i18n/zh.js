@@ -52,7 +52,7 @@ export default {
     'ui.score.total': '综合得分',
     'ui.score.newRecord': '刷新本难度最高分！',
     'ui.score.best': '本难度最高分：{score}',
-    'ui.touchHint': '触屏操作：左手拇指转向，右手拇指作战，按住“开火”发射光束。',
+    'ui.touchHint': '触屏操作：左手拇指转向，右手拇指作战，在屏幕空白处上下滑动调油门，按住“开火”发射光束。',
     'ui.homeScreenHint': 'iPhone 的 Safari 不支持网页全屏：点「分享」→「添加到主屏幕」，从主屏幕图标打开即可全屏游玩。',
 
     // ---- 操作说明 -----------------------------------------------------------------------
@@ -309,7 +309,7 @@ export default {
     'forge.vega.cinder': '航向余烬星，指挥官。这一次，不绕路了。',
 
     // Touch-screen wording for hints that name keys (picked automatically on phones).
-    'hint.flight.touch': '左摇杆转向 · 滑动“油门”条调速 · 按住“加力”开启加力燃烧',
+    'hint.flight.touch': '左摇杆转向 · 在屏幕空白处上下滑动调油门 · 按住“加力”开启加力燃烧',
     'hint.weapons.touch': '点“锁定”锁住准星最近的目标，长按逐个切换 · 按住“开火”发射光束阵列——圆环内的目标会被自动追踪',
     'hint.torpedoes.touch': '“鱼雷”向锁定目标发射鱼雷 · 光束削护盾，鱼雷破船体',
     'hint.power.touch': '“能量”在均衡 · 攻击 · 防御之间切换 —— 视战况调配能量',
@@ -766,8 +766,8 @@ export default {
     'tutorial.throttle.title': '油门',
     'tutorial.throttle.text': '引擎现在是怠速。按住 W 加油门，S 减油门；松开按键后油门保持不变。速度和油门显示在右下角。',
     'tutorial.throttle.keys': 'W / S',
-    'tutorial.throttle.text.touch': '引擎现在是怠速。上下拖动左边的油门条来设定速度，拖到哪里就保持在哪里。',
-    'tutorial.throttle.keys.touch': '拖动油门条',
+    'tutorial.throttle.text.touch': '引擎现在是怠速。用一根手指在屏幕任意空白处向上滑加油门，向下滑减油门；松手后油门保持不变。左下角的油门条显示当前油门。',
+    'tutorial.throttle.keys.touch': '在屏幕上 ↑ ↓ 滑动',
     'tutorial.throttle.text.vr': '引擎现在是怠速。左摇杆向前推加油门，向后拉减油门；松手后油门保持不变。',
     'tutorial.throttle.keys.vr': '左摇杆 ↑ ↓',
 

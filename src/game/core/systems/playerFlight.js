@@ -69,7 +69,7 @@ export function updatePlayerFlight(world, ship, controls, dt) {
 
     // --- Throttle and boost --------------------------------------------------------------
     if (controls.throttleTarget != null) {
-        // A touch slider sets the throttle outright; ease towards it so it never jerks.
+        // A finger on a touch screen sets the throttle outright; ease towards it so it never jerks.
         ship.throttle = approach(ship.throttle, clamp(controls.throttleTarget, 0, 1), PLAYER.throttleRate * 2 * dt);
     } else {
         ship.throttle = clamp(ship.throttle + controls.throttle * PLAYER.throttleRate * dt, 0, 1);
