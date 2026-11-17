@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import AuthPanel from '../../../Tools/AuthPanel';
 import { useAuthStore } from '../../../hooks/useAuthStore';
 import { BATTLE_ROYALE } from '../../config/battleRoyale.js';
-import { PLAYER_SHIPS } from '../../config/playerShips.js';
 import { LAN_ERROR, LAN_STATUS, LOBBY_SCOPE, ROOM_STATE, ROOM_VISIBILITY } from '../../net/lobby/LanMultiplayer.js';
 import { useLanStore } from '../../net/lobby/lanStore.js';
 import { LINK_STATUS } from '../../net/transport/PeerLink.js';
 import { useGameStore, useT } from '../../state/gameStore.js';
 import { enterVR, useVRSupported } from '../../xr/vrState.js';
+import Hangar from '../Hangar.jsx';
+import { hangarImage } from '../hangarImages.js';
+import { shipAbilityText } from '../shipText.js';
 import { EquipmentList } from './EquipmentPanel.jsx';
 import './multiplayer.css';
 
@@ -15,7 +17,8 @@ import './multiplayer.css';
  * The multiplayer lobby, reached from the title screen in one of two scopes: one Wi-Fi (the
  * rooms on this network are listed) or anywhere (quick match, a private room, or a room's
  * code). Then, once in a room: everybody in it with their device, ship and readiness, and
- * the quartermaster's stores.
+ * the quartermaster's stores. The ship is chosen on a page of its own, the hangar the title
+ * screen uses (ui/Hangar.jsx), opened from the lobby before a room or from inside one.
  * It only shows the LAN store and calls LanMultiplayer; nothing is decided here.
  */
 
@@ -25,6 +28,8 @@ const BOT_SETTINGS = ['fill', 'none'];
 const SEATS = [2, 3, 4, 5, 6, 7, 8];
 const next = (list, current) => list[(list.indexOf(current) + 1) % list.length];
 const DEVICE_ICONS = { Desktop: '🖥', Mobile: '📱', VR: '🥽' };
+/** What a player's beams and torpedoes do to another player's ship in a match, as a share of their damage (config/battleRoyale.js). */
+const VERSUS_DAMAGE = BATTLE_ROYALE.difficulty.playerDamage ?? 1;
 
 /** The site's account, if the player is signed in: `{ name }` or null. */
 function useAccount() {
@@ -89,6 +94,34 @@ function useCountdown(startsAt) {
         return () => clearInterval(timer);
     }, [startsAt]);
     return startsAt === null ? null : Math.max(0, Math.ceil((startsAt - now) / 1000));
+}
+
+/**
+ * The ship this player flies - its picture, its name, what it is and its ability - and the
+ * way to the page where it is chosen.
+ */
+function ShipSummary({ disabled = false, onOpen }) {
+    const ship = useGameStore((state) => state.settings.playerShip);
+    const t = useT();
+    return (
+        <button type="button" className="eod-lan-ship" disabled={disabled} onClick={onOpen}>
+            <img src={hangarImage(ship, 'side')} alt="" draggable={false} />
+            <span className="eod-lan-ship-text">
+                <small>{t('mp.lan.ship')}</small>
+                <strong>{t(`ship.${ship}`)} <i>{t(`playerShip.${ship}.role`)}</i></strong>
+                <small>{shipAbilityText(t, ship).heading}</small>
+            </span>
+            <em>{t('mp.ship.open')}</em>
+        </button>
+    );
+}
+
+/** On the ship page: a public room's countdown, so the match does not start behind the player's back. */
+function ShipPageStatus() {
+    const startsIn = useCountdown(useLanStore((state) => state.startsAt));
+    const t = useT();
+    if (startsIn === null) return null;
+    return <p className="eod-lan-countdown eod-lan-countdown--on" role="status">{t('mp.global.startsIn', { seconds: startsIn })}</p>;
 }
 
 /** A room's code typed in: the way into any room from anywhere. */
@@ -253,13 +286,12 @@ function Loadout({ lan, editable }) {
 }
 
 /** Inside a room: the roster, this player's ship, equipment and readiness, and the host's start button. */
-function Room({ lan, session, onStart }) {
+function Room({ lan, onStart, onOpenShipPage }) {
     const room = useLanStore((state) => state.room);
     const me = useLanStore((state) => state.me);
     const links = useLanStore((state) => state.links);
     const error = useLanStore((state) => state.error);
     const startsIn = useCountdown(useLanStore((state) => state.startsAt));
-    const ship = useGameStore((state) => state.settings.playerShip);
     const vrSupported = useVRSupported();
     const t = useT();
     const self = room.players.find((player) => player.playerId === me?.playerId);
@@ -273,11 +305,6 @@ function Room({ lan, session, onStart }) {
     const linkOf = (player) => (player.playerId === me?.playerId ? null : links[player.playerId] ?? LINK_STATUS.CONNECTING);
     const linked = room.players.length === 1 || Object.values(links).includes(LINK_STATUS.OPEN);
     const ownLink = linked ? LINK_STATUS.OPEN : Object.values(links).includes(LINK_STATUS.CONNECTING) ? LINK_STATUS.CONNECTING : LINK_STATUS.CLOSED;
-    const changeShip = () => {
-        const classes = PLAYER_SHIPS.map((entry) => entry.classId);
-        session.updateSettings({ playerShip: next(classes, ship) });
-        lan.pushProfile();
-    };
     // Audio can only be unlocked inside a tap: the taps that lead into a match do it.
     const ready = () => { onStart(); lan.setReady(!self?.ready); };
     const start = () => { onStart(); lan.startMatch(); };
@@ -310,14 +337,11 @@ function Room({ lan, session, onStart }) {
                     />
                 ))}
             </ul>
+            <ShipSummary disabled={!inLobby} onOpen={onOpenShipPage} />
             {!isPublic && <RoomOptions lan={lan} room={room} />}
             <Loadout lan={lan} editable={inLobby} />
             {!inLobby && <p className="eod-lan-empty">{t('mp.lan.matchRunning')}</p>}
             <div className="eod-lan-actions">
-                <button type="button" className="eod-button" disabled={!inLobby} onClick={changeShip}>
-                    {t('mp.lan.ship')}
-                    <small>{t(`ship.${ship}`)} · {t(`playerShip.${ship}.role`)}</small>
-                </button>
                 {!isPublic && lan.isHost && (
                     <button type="button" className="eod-button eod-button--primary" disabled={!lan.canStart} onClick={start}>
                         {t('mp.lan.start')}
@@ -356,17 +380,49 @@ function Room({ lan, session, onStart }) {
 export default function LanLobby({ lan, session, scope = LOBBY_SCOPE.LAN, onStart, onBack }) {
     const status = useLanStore((state) => state.status);
     const inRoom = useLanStore((state) => Boolean(state.room));
+    // A room that is playing a match takes no change of ship.
+    const shipLocked = useLanStore((state) => Boolean(state.room) && state.room.state !== ROOM_STATE.LOBBY);
     const t = useT();
     const global = scope === LOBBY_SCOPE.GLOBAL;
+    /** While the ship page is open: the ship the player had on opening it, which Back gives them again. */
+    const [shipPage, setShipPage] = useState(null);
 
     useEffect(() => {
         lan.open(scope);
     }, [lan, scope]);
+    useEffect(() => {
+        if (shipLocked) setShipPage(null);
+    }, [shipLocked]);
 
     const leave = () => {
         lan.close();
         onBack();
     };
+
+    // The room is told of every ship the player tries (pushProfile; it does nothing outside a
+    // room): if the match starts while the page is open, they fly the one they are looking at.
+    const cancelShipPage = () => {
+        if (session.settings.playerShip !== shipPage.before) {
+            session.updateSettings({ playerShip: shipPage.before });
+            lan.pushProfile();
+        }
+        setShipPage(null);
+    };
+    if (shipPage && !shipLocked) {
+        return (
+            <Hangar
+                session={session}
+                title={t('mp.ship.title')}
+                status={<ShipPageStatus />}
+                note={VERSUS_DAMAGE < 1 ? t('mp.ship.versusNote', { percent: Math.round(VERSUS_DAMAGE * 100) }) : null}
+                confirmLabel={t('ui.hangar.confirm')}
+                onSelect={() => lan.pushProfile()}
+                onConfirm={() => setShipPage(null)}
+                onBack={cancelShipPage}
+            />
+        );
+    }
+    const openShipPage = () => setShipPage({ before: session.settings.playerShip });
 
     return (
         <div className="eod-lan">
@@ -382,10 +438,11 @@ export default function LanLobby({ lan, session, scope = LOBBY_SCOPE.LAN, onStar
                 <>
                     <p className="eod-lan-rules">{t('mp.lan.rules')}</p>
                     <Identity lan={lan} />
+                    <ShipSummary onOpen={openShipPage} />
                     {global ? <GlobalBrowser lan={lan} onStart={onStart} /> : <RoomBrowser lan={lan} />}
                 </>
             )}
-            {inRoom && <Room lan={lan} session={session} onStart={onStart} />}
+            {inRoom && <Room lan={lan} onStart={onStart} onOpenShipPage={openShipPage} />}
             {!inRoom && <button type="button" className="eod-button" onClick={leave}>{t('ui.back')}</button>}
         </div>
     );

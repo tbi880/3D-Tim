@@ -54,6 +54,16 @@
 .eod-lan-countdown { display: flex; flex-direction: column; align-items: center; gap: 3px; margin: 0; padding: 8px 12px; font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(225, 240, 255, 0.8); background: var(--eod-panel); border: 1px solid var(--eod-border); }
 .eod-lan-countdown--on { color: var(--eod-amber); border-color: var(--eod-amber); }
 .eod-lan-countdown small { font-size: 10px; font-weight: 400; letter-spacing: 0.06em; text-transform: none; color: rgba(225, 240, 255, 0.55); }
+/* The player's ship in the lobby: the way to the ship page (ui/Hangar.jsx). */
+.eod-lan-ship { display: grid; grid-template-columns: 124px minmax(0, 1fr) auto; align-items: center; gap: 12px; box-sizing: border-box; width: 100%; padding: 4px 14px 4px 8px; font: inherit; color: inherit; text-align: left; background: var(--eod-panel); border: 1px solid var(--eod-border); cursor: pointer; transition: border-color 0.15s; }
+.eod-lan-ship:not(:disabled):hover, .eod-lan-ship:focus-visible { border-color: var(--eod-cyan); outline: none; }
+.eod-lan-ship:disabled { opacity: 0.4; cursor: default; }
+.eod-lan-ship img { width: 100%; aspect-ratio: 16 / 9; object-fit: contain; pointer-events: none; }
+.eod-lan-ship-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.eod-lan-ship-text small { font-size: 10px; letter-spacing: 0.1em; color: rgba(225, 240, 255, 0.6); }
+.eod-lan-ship-text strong { font-size: 15px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--eod-amber); }
+.eod-lan-ship-text i { margin-left: 8px; font-style: normal; font-size: 11px; font-weight: 400; letter-spacing: 0.08em; text-transform: none; color: var(--eod-cyan); }
+.eod-lan-ship em { padding: 7px 12px; font-style: normal; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--eod-amber); border: 1px solid var(--eod-amber); }
 .eod-lan-loadout { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
 
 /* ---- Equipment (the quartermaster's stores: in the lobby and in the match) ----------------- */

@@ -331,6 +331,9 @@ html.eod-page-locked body {
 .eod-ship-card--selected .eod-rating-pip--on { background: var(--eod-amber); }
 .eod-hangar-actions { display: flex; gap: 10px; width: min(420px, 90vw); }
 .eod-hangar-actions .eod-button { flex: 1; }
+/* Back and the button that takes the ship stay in sight however far the page is scrolled. */
+.eod-hangar > .eod-hangar-actions { position: sticky; bottom: 0; z-index: 1; justify-content: center; width: 100%; padding: 6px 0 2px; background: rgba(3, 8, 16, 0.92); box-shadow: 0 -6px 10px 2px rgba(3, 8, 16, 0.92); }
+.eod-hangar > .eod-hangar-actions .eod-button { flex: 0 1 205px; }
 /* The chosen ship from three sides (pictures in ui/hangar/, see Menus.jsx). */
 .eod-hangar-views { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: 100%; }
 .eod-hangar-view {
@@ -342,6 +345,21 @@ html.eod-page-locked body {
     position: absolute; left: 8px; bottom: 5px; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(225, 240, 255, 0.6);
 }
 .eod-hangar-stats { display: none; }
+/* The chosen ship in numbers, between its pictures and the cards (Hangar.jsx ShipNumbers). */
+.eod-hangar-numbers { display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 0; }
+.eod-hangar-specs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; width: 100%; margin: 0; text-align: left; }
+.eod-hangar-specs div { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 5px 10px; background: rgba(6, 18, 32, 0.6); border: 1px solid rgba(120, 200, 255, 0.18); }
+.eod-hangar-specs dt { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(225, 240, 255, 0.6); }
+.eod-hangar-specs dd { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; color: var(--eod-amber); font-variant-numeric: tabular-nums; }
+.eod-hangar-weapons { margin: 0; font-size: 11px; line-height: 1.45; color: rgba(225, 240, 255, 0.6); }
+/* What the chosen ship is and what its ability does (Hangar.jsx ShipDetail): on its card, and
+   written out here only where the cards have no room for text (a phone, a narrow window). */
+.eod-hangar-detail { display: none; width: 100%; min-width: 0; text-align: left; }
+.eod-hangar-detail h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; font-weight: inherit; }
+.eod-hangar-detail h3 strong { font-size: 15px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--eod-amber); }
+.eod-hangar-detail h3 em { font-style: normal; font-size: 11px; letter-spacing: 0.08em; color: var(--eod-cyan); }
+.eod-hangar-detail p { margin: 4px 0 0; font-size: 12px; line-height: 1.45; color: rgba(225, 240, 255, 0.82); }
+.eod-hangar-detail .eod-ship-card-ability { margin-top: 6px; padding-top: 5px; border-top: 1px solid rgba(120, 200, 255, 0.2); font-size: 11px; }
 .eod-ship-card-image { width: 100%; aspect-ratio: 16 / 9; object-fit: contain; margin: -4px 0 2px; pointer-events: none; }
 
 /* Launching: the chosen ship's model loads before the flight starts. */
@@ -368,29 +386,54 @@ html.eod-page-locked body {
 .eod-refit-step { height: 30px; border: 1px solid var(--eod-border); background: rgba(10, 30, 50, 0.7); color: inherit; font-size: 18px; cursor: pointer; }
 .eod-refit-step:not(:disabled):hover { border-color: var(--eod-amber); color: var(--eod-amber); }
 .eod-refit-step:disabled, .eod-refit .eod-button:disabled { opacity: 0.35; cursor: default; }
+/* A laptop screen: the hangar takes the room of the game's title, and starts from the top of the
+   screen, so that where it still does not fit all of it can be scrolled to. */
+@media (max-height: 1160px) {
+    .eod-screen:has(.eod-hangar) { justify-content: flex-start; }
+    .eod-screen:has(.eod-hangar) .eod-title-block { display: none; }
+    .eod-screen:has(.eod-hangar) .eod-hangar { margin-block: auto; }
+    .eod-hangar-view { max-height: 22vh; }
+}
 @media (max-width: 900px) {
     .eod-hangar-ships { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     .eod-ship-card { padding: 9px 10px; gap: 3px; }
     .eod-ship-card strong { font-size: 14px; }
     .eod-ship-card p { display: none; }
+    .eod-hangar-detail { display: block; }
+    .eod-hangar-specs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .eod-hangar-weapons { text-align: left; }
 }
-/* A phone held sideways: no room for the title and full cards. The three views of the chosen
-   ship sit on top, all five ships in one row of picture-and-name cards under them. */
+/* A phone held sideways: no room for the title and full cards. All five ships in one row of
+   picture-and-name cards on top; under them the chosen ship - its three views and rating bars
+   on the left, what it is and its ability on the right, its numbers across the bottom. */
 @media (max-height: 520px) {
     .eod-screen--hangar { justify-content: flex-start; gap: 8px; padding: 10px 16px; }
     .eod-screen--hangar .eod-title-block { display: none; }
-    .eod-hangar { gap: 8px; }
-    .eod-hangar-title { font-size: 12px; }
-    .eod-hangar-views { gap: 6px; }
-    .eod-hangar-view { max-height: 30vh; }
-    .eod-hangar-ships { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
-    .eod-ship-card { padding: 4px 6px 6px; gap: 0; align-items: center; text-align: center; }
+    .eod-hangar {
+        display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: start; justify-items: center; gap: 6px 14px;
+        grid-template-areas: "title title" "status status" "ships ships" "views detail" "stats detail" "numbers numbers" "actions actions";
+    }
+    .eod-hangar-title { grid-area: title; font-size: 12px; }
+    .eod-hangar > .eod-lan-countdown { grid-area: status; padding: 3px 12px; font-size: 11px; }
+    .eod-hangar-views { grid-area: views; gap: 4px; }
+    .eod-hangar-view figcaption { left: 4px; bottom: 2px; font-size: 8px; letter-spacing: 0.1em; }
+    .eod-hangar-ships { grid-area: ships; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+    .eod-ship-card { padding: 3px 6px 5px; gap: 0; align-items: center; text-align: center; }
     .eod-ship-card strong { font-size: 11px; letter-spacing: 0.08em; }
     .eod-ship-card em, .eod-ship-card p, .eod-ship-card .eod-rating { display: none; }
-    .eod-ship-card-image { margin: 0; max-height: 15vh; }
+    .eod-ship-card-image { margin: 0; max-height: 12vh; }
+    .eod-hangar > .eod-hangar-actions { grid-area: actions; }
     .eod-hangar-actions .eod-button { padding: 8px 12px; }
-    .eod-hangar-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px 18px; width: 100%; }
+    .eod-hangar-stats { grid-area: stats; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 14px; width: 100%; }
     .eod-hangar-stats .eod-rating-pip--on { background: var(--eod-amber); }
+    .eod-hangar-detail { grid-area: detail; display: block; }
+    .eod-hangar-detail p { margin-top: 3px; font-size: 11px; line-height: 1.4; }
+    .eod-hangar-numbers { grid-area: numbers; gap: 4px; }
+    .eod-hangar-specs { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px 4px; }
+    .eod-hangar-specs div { flex-direction: row; align-items: baseline; gap: 6px; padding: 3px 8px; }
+    .eod-hangar-specs dt { flex: none; font-size: 9px; }
+    .eod-hangar-specs dd { font-size: 11px; }
+    .eod-hangar-weapons { font-size: 10px; text-align: center; }
 }
 
 .eod-menu { display: flex; flex-direction: column; align-items: stretch; gap: 10px; width: min(380px, 86vw); }

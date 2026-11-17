@@ -41,7 +41,8 @@ export function isMatchMenuOpen(state) {
  * @param {object} game { session, sound, lan }
  * @param {object} state the game store
  * @param {(key: string, params?: object) => string} t
- * @param {{ lobbyOpen: boolean, setLobbyOpen: (open: boolean) => void }} view whether the player opened the LAN lobby from the VR title menu
+ * @param {{ lobbyOpen: boolean, setLobbyOpen: (open: boolean) => void, openShipPage: () => void }} view whether the player opened
+ *   the LAN lobby from the VR title menu, and the way to the ship page (VRMenu.buildShipPage)
  */
 export function buildMatchMenu(game, state, t, view) {
     const { session, lan } = game;
@@ -49,8 +50,8 @@ export function buildMatchMenu(game, state, t, view) {
     const exitItem = { label: t('ui.vr.exit'), select: () => exitVR() };
 
     if (session.phase === PHASE.TITLE) {
-        if (lanState.room) return lobbyRoom(game, state, lanState, t, exitItem);
-        if (view.lobbyOpen) return lobbyBrowser(game, lanState, t, view, exitItem);
+        if (lanState.room) return lobbyRoom(game, state, lanState, t, view, exitItem);
+        if (view.lobbyOpen) return lobbyBrowser(game, state, lanState, t, view, exitItem);
         return null;
     }
     const match = state.match;
@@ -82,7 +83,26 @@ export function buildMatchMenu(game, state, t, view) {
 
 // ---- The lobby --------------------------------------------------------------------------------
 
-function lobbyBrowser(game, lanState, t, view, exitItem) {
+/**
+ * The player's ship as a row: left and right change it, the trigger opens the ship page with
+ * everything about it. `editable` false (the room is playing a match): it only shows.
+ */
+function shipRow(game, state, t, view, editable = true) {
+    const { session, lan } = game;
+    const ships = PLAYER_SHIPS.map((entry) => entry.classId);
+    const ship = state.settings.playerShip;
+    const change = (step) => () => {
+        if (!editable) return;
+        session.updateSettings({ playerShip: cycle(ships, ship, step) });
+        lan.pushProfile();
+    };
+    return {
+        id: 'ship', label: t('mp.lan.ship'), sub: `${t(`playerShip.${ship}.role`)} · ${t('ui.vr.shipDetails')}`, value: t(`ship.${ship}`),
+        left: change(-1), right: change(1), select: () => { if (editable) view.openShipPage(); },
+    };
+}
+
+function lobbyBrowser(game, state, lanState, t, view, exitItem) {
     const { lan, sound } = game;
     const global = lanState.scope === LOBBY_SCOPE.GLOBAL;
     const lines = [t('mp.lan.rules')];
@@ -106,12 +126,14 @@ function lobbyBrowser(game, lanState, t, view, exitItem) {
         }
         items.push({ label: t('mp.lan.create'), sub: lanState.rooms.length === 0 ? t('mp.lan.noRooms') : null, select: () => lan.createRoom() });
     }
+    // The ship to go in with, chosen before a room is: a quick match may start soon after it is found.
+    if (lanState.status === LAN_STATUS.ONLINE && !lanState.matching) items.push(shipRow(game, state, t, view));
     items.push({ label: t('ui.back'), select: () => { lan.close(); view.setLobbyOpen(false); } }, exitItem);
     return { key: `lan:browser:${lanState.scope}`, title: t(global ? 'mp.global.title' : 'mp.lan.title'), lines, items };
 }
 
-function lobbyRoom(game, state, lanState, t, exitItem) {
-    const { session, lan, sound } = game;
+function lobbyRoom(game, state, lanState, t, view, exitItem) {
+    const { lan, sound } = game;
     const { room, me, links } = lanState;
     const self = room.players.find((player) => player.playerId === me?.playerId);
     const inLobby = room.state === ROOM_STATE.LOBBY;
@@ -133,14 +155,7 @@ function lobbyRoom(game, state, lanState, t, exitItem) {
     if (lanState.error) lines.push(t(lanState.error));
     if (!inLobby) lines.push(t('mp.lan.matchRunning'));
 
-    const ships = PLAYER_SHIPS.map((ship) => ship.classId);
-    const ship = state.settings.playerShip;
-    const shipRow = (step) => () => {
-        if (!inLobby) return;
-        session.updateSettings({ playerShip: cycle(ships, ship, step) });
-        lan.pushProfile();
-    };
-    const items = [{ label: t('mp.lan.ship'), sub: t(`playerShip.${ship}.role`), value: t(`ship.${ship}`), left: shipRow(-1), right: shipRow(1), select: shipRow(1) }];
+    const items = [shipRow(game, state, t, view, inLobby)];
     // The quartermaster: one piece to take along, or none yet (it can be chosen in the match).
     const pieces = [null, ...EQUIPMENT_ORDER];
     const piece = lanState.loadout.equipment;

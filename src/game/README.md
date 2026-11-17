@@ -212,7 +212,11 @@ it a model: either write a builder in `tools/game-models/build_models.py`, regis
 each is an ordinary class in `config/shipClasses.js` with two extra fields: `handling`
 (multipliers for turn rate, acceleration, afterburner duration and afterburner speed) and
 `weaponDamage`. Names and descriptions are `ship.<id>` and `playerShip.<id>.*` in the i18n
-files. `weaponRange` stretches beam reach and torpedo flight time. Each has its own model in `MODEL_OVERRIDES` (`scene/models/ShipModel.jsx`); those
+files. The hangar is one page (`ui/Hangar.jsx`) for the title screen and for the multiplayer
+lobby, which opens it before or inside a room (`ui/multiplayer/LanLobby.jsx`); in a headset it is
+a ship sheet on the menu panel (`xr/VRShipSheet.js`, `VRMenu.buildShipPage`). Besides the rating
+bars it shows the ship in numbers, worked out from the class by `shipSpecs` (`config/playerShips.js`),
+so they follow a rebalanced class by themselves (its rating bars are still set by hand). `weaponRange` stretches beam reach and torpedo flight time. Each has its own model in `MODEL_OVERRIDES` (`scene/models/ShipModel.jsx`); those
 marked `exhaust` carry their own animated flames, a model that lists `engines` instead gets
 the simple `EnginePlumes` from `ShipsLayer.jsx`. Only the ship picked in the hangar is
 downloaded.

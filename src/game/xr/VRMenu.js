@@ -1,3 +1,4 @@
+import { BATTLE_ROYALE } from '../config/battleRoyale.js';
 import { DIFFICULTY_ORDER } from '../config/gameConfig.js';
 import { PLAYER_SHIPS, RATING_MAX, RATING_ORDER } from '../config/playerShips.js';
 import { UPGRADE_PER_LEVEL } from '../config/refit.js';
@@ -7,8 +8,10 @@ import { playerModelFile, requestShipModel } from '../scene/models/ShipModel.jsx
 import { PHASE } from '../state/GameSession.js';
 import { loadSave } from '../state/saveGame.js';
 import { roundRect, wrapText } from './canvasPanel.js';
-import { LOBBY_SCOPE } from '../net/lobby/LanMultiplayer.js';
+import { LOBBY_SCOPE, ROOM_STATE } from '../net/lobby/LanMultiplayer.js';
+import { useLanStore } from '../net/lobby/lanStore.js';
 import { buildMatchMenu, isMatchMenuOpen } from './VRMatchMenu.js';
+import { drawShipSheet, shipSheetKey } from './VRShipSheet.js';
 import { vrBenchmark } from './vrBenchmark.js';
 import { vrPerformance } from './vrPerformance.js';
 import { VR_DIAGNOSTICS, exitVR, vr } from './vrState.js';
@@ -41,6 +44,8 @@ export class VRMenu {
         this.lobbyOpen = false;
         /** Title screen: the game being started while its ship model loads ({ classId, start }). */
         this.launch = null;
+        /** Title screen: the ship page is open ({ before }: the ship the player had on opening it, which Back gives them again). */
+        this.shipPage = null;
         this.confirmingNewGame = false;
         /** Refit window: levels added so far ({ rating: levels }). */
         this.refitAdded = {};
@@ -80,8 +85,16 @@ export class VRMenu {
         if (state.refit && session.phase === PHASE.PLAYING) return this.buildRefit(state, t);
         if (!state.refit) this.refitAdded = {};
 
+        // The ship page, opened from the title menu or from a lobby, until it is closed or the game moves on.
+        if (this.shipPage && (session.phase !== PHASE.TITLE || this.launch || shipLocked())) this.shipPage = null;
+        if (this.shipPage) return this.buildShipPage(state, t);
+
         // Multiplayer has menus of its own: the lobby, and in a match the map, the vote and the result.
-        const matchMenu = buildMatchMenu(this.game, state, t, { lobbyOpen: this.lobbyOpen, setLobbyOpen: (open) => { this.lobbyOpen = open; } });
+        const matchMenu = buildMatchMenu(this.game, state, t, {
+            lobbyOpen: this.lobbyOpen,
+            setLobbyOpen: (open) => { this.lobbyOpen = open; },
+            openShipPage: () => this.openShipPage(),
+        });
         if (matchMenu) return matchMenu;
 
         switch (session.phase) {
@@ -128,7 +141,11 @@ export class VRMenu {
                 });
                 const ships = PLAYER_SHIPS.map((ship) => ship.classId);
                 const shipRow = (step) => () => session.updateSettings({ playerShip: cycle(ships, settings.playerShip, step) });
-                items.push({ label: t('ui.vr.ship'), sub: t(`playerShip.${settings.playerShip}.role`), value: t(`ship.${settings.playerShip}`), left: shipRow(-1), right: shipRow(1), select: shipRow(1) });
+                // Left and right change ship; the trigger opens the ship page, with everything about it.
+                items.push({
+                    id: 'ship', label: t('ui.vr.ship'), sub: `${t(`playerShip.${settings.playerShip}.role`)} · ${t('ui.vr.shipDetails')}`, value: t(`ship.${settings.playerShip}`),
+                    left: shipRow(-1), right: shipRow(1), select: () => this.openShipPage(),
+                });
                 const difficultyRow = (step) => () => session.updateSettings({ difficulty: cycle(DIFFICULTY_ORDER, settings.difficulty, step) });
                 items.push({ label: t('ui.difficulty'), value: t(`ui.difficulty.${settings.difficulty}`), left: difficultyRow(-1), right: difficultyRow(1), select: difficultyRow(1) });
                 // Multiplayer: one row here, LAN or global on the screen behind it (buildMultiplayer).
@@ -225,6 +242,55 @@ export class VRMenu {
         this.focusId = 'multiplayer';
     }
 
+    /**
+     * The ship page (ui/Hangar.jsx in the headset): the chosen ship as a sheet (xr/VRShipSheet.js)
+     * over a row that changes it. A lobby room is told of every ship tried (pushProfile; it
+     * does nothing outside a room), so a match that starts meanwhile has the one on the sheet.
+     */
+    buildShipPage(state, t) {
+        const { session, lan } = this.game;
+        const classId = state.settings.playerShip;
+        const ships = PLAYER_SHIPS.map((ship) => ship.classId);
+        const change = (step) => () => {
+            session.updateSettings({ playerShip: cycle(ships, classId, step) });
+            lan?.pushProfile();
+        };
+        // A public room counts down to its start whatever page its players are on.
+        const { startsAt, room } = useLanStore.getState();
+        const lines = startsAt == null ? [] : [t('mp.global.startsIn', { seconds: Math.max(0, Math.ceil((startsAt - Date.now()) / 1000)) })];
+        // Opened from a lobby: what the guns on the sheet do to another player's ship in a match.
+        const versusDamage = BATTLE_ROYALE.difficulty.playerDamage ?? 1;
+        if ((this.lobbyOpen || room) && versusDamage < 1) lines.push(t('mp.ship.versusShort', { percent: Math.round(versusDamage * 100) }));
+        return {
+            key: 'ship',
+            title: t('ui.hangar.title'),
+            lines,
+            diagram: (ctx, x, y, width) => drawShipSheet(ctx, x, y, width, classId, t),
+            diagramKey: shipSheetKey(classId),
+            footer: t('ui.vr.shipHint'),
+            items: [
+                { label: t('ui.vr.ship'), value: t(`ship.${classId}`), left: change(-1), right: change(1), select: change(1) },
+                { label: t('ui.hangar.confirm'), select: () => this.closeShipPage(true) },
+                { label: t('ui.back'), select: () => this.closeShipPage(false) },
+            ],
+        };
+    }
+
+    openShipPage() {
+        this.shipPage = { before: this.game.session.settings.playerShip };
+    }
+
+    /** Back to the menu the page was opened from, on its ship row; without `keep`, in the ship the player came with. */
+    closeShipPage(keep) {
+        const { session, lan } = this.game;
+        if (!keep && this.shipPage && session.settings.playerShip !== this.shipPage.before) {
+            session.updateSettings({ playerShip: this.shipPage.before });
+            lan?.pushProfile();
+        }
+        this.shipPage = null;
+        this.focusId = 'ship';
+    }
+
     commonSettings(settings, t) {
         const { session } = this.game;
         const language = (step) => () => session.updateSettings({ locale: cycle(LOCALES, settings.locale, step) });
@@ -319,6 +385,7 @@ export class VRMenu {
             case 'pause':
                 if (this.game.session.phase === PHASE.PAUSED) this.game.session.resume();
                 else if (this.launch) this.launch = null;
+                else if (menu.key === 'ship') this.closeShipPage(false);
                 else if (menu.key === 'multiplayer') this.closeMultiplayer();
                 // In a match: closes the star map (a vote has to be answered, or it runs out).
                 else if (state.matchPanel) this.game.session.match?.presenter?.setPanel(null);
@@ -346,6 +413,12 @@ export class VRMenu {
         drawMenu(panel, menu, this.index, t);
         return true;
     }
+}
+
+/** A room that is playing a match takes no change of ship. */
+function shipLocked() {
+    const { room } = useLanStore.getState();
+    return Boolean(room) && room.state !== ROOM_STATE.LOBBY;
 }
 
 const ACCENT = '#59d0ff';

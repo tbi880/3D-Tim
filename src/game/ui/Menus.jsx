@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react';
-import { abilityOf, passiveOf } from '../config/abilities.js';
 import { DIFFICULTY_ORDER } from '../config/gameConfig.js';
 import { GRAPHICS_ORDER } from '../config/graphics.js';
-import { PLAYER_SHIPS, RATING_MAX, RATING_ORDER } from '../config/playerShips.js';
 import { FINAL_SCORE } from '../config/scoring.js';
-import { SHIP_CLASSES } from '../config/shipClasses.js';
 import { LOCALES, LOCALE_LABELS } from '../i18n/index.js';
 import { isTouchDevice } from '../input/device.js';
 import { PHASE } from '../state/GameSession.js';
@@ -15,7 +12,6 @@ import {
     enterFullscreen, exitFullscreen, FULLSCREEN_CHANGE_EVENTS, getFullscreenElement, isFullscreenSupported, setAutoFullscreenOff,
 } from '../../utils/fullscreen.js';
 import { VR_DIAGNOSTICS, enterVR, useVRActive, useVRSupported } from '../xr/vrState.js';
-import { bucketURL } from '../../Settings';
 import { MATCH_PANEL } from '../modes/battleRoyale/BattleRoyalePresenter.js';
 import { LOBBY_SCOPE } from '../net/lobby/LanMultiplayer.js';
 import { useLanStore } from '../net/lobby/lanStore.js';
@@ -24,9 +20,11 @@ import LanLobby from './multiplayer/LanLobby.jsx';
 import MatchCinematic from './multiplayer/MatchCinematic.jsx';
 import MatchResults from './multiplayer/MatchResults.jsx';
 import StarMapPanel from './multiplayer/StarMapPanel.jsx';
+import Hangar from './Hangar.jsx';
+import { hangarImage } from './hangarImages.js';
 import RefitPanel from './RefitPanel.jsx';
 
-/** Title screen, pause menu, game-over and ending screens, and the refit window. */
+/** Title screen, pause menu, game-over and ending screens, and the refit window. (The hangar is ui/Hangar.jsx.) */
 
 /** Phones fly in chase view only and have no keyboard, so their menus drop those rows. */
 const IS_TOUCH = isTouchDevice();
@@ -43,20 +41,6 @@ const CONTROL_ROWS = ['steer', 'throttle', 'roll', 'boost', 'beam', 'torpedo', '
 function formatDuration(seconds) {
     const minutes = Math.floor(seconds / 60);
     return `${minutes}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
-}
-
-/** A ship's ability on its hangar card (config/abilities.js): its name and what it does. A ship has an active one or a passive one. */
-function ShipAbility({ classId }) {
-    const t = useT();
-    const cls = SHIP_CLASSES[classId];
-    const active = abilityOf(cls);
-    const ability = active ?? passiveOf(cls);
-    return (
-        <p className="eod-ship-card-ability">
-            <b>{t(active || !ability ? 'ui.ability' : 'ui.passive')} · {ability ? t(`ability.${ability.id}.name`) : t('ui.ability.none')}</b>
-            {ability && t(`ability.${ability.id}.text`)}
-        </p>
-    );
 }
 
 function ControlsList() {
@@ -217,97 +201,6 @@ function SettingsRows({ session }) {
     );
 }
 
-/** One row of a ship card: a label and a bar of 1-5 pips. */
-function Rating({ label, value }) {
-    return (
-        <div className="eod-rating">
-            <span>{label}</span>
-            <div className="eod-rating-pips">
-                {Array.from({ length: RATING_MAX }, (_, index) => (
-                    <i key={index} className={index < value ? 'eod-rating-pip eod-rating-pip--on' : 'eod-rating-pip'} />
-                ))}
-            </div>
-        </div>
-    );
-}
-
-/**
- * Hangar pictures: every player ship from three views, rendered from the game's models by
- * tools/game-models/player-ships/render_previews.mjs and hosted in the asset bucket.
- */
-const HANGAR_VIEWS = ['front', 'side', 'rear'];
-const hangarImage = (classId, view) => `${bucketURL}game/player/${classId}-${view}.webp`;
-
-/** Starts fetching every hangar picture, so switching ships shows the next one at once. */
-function usePreloadHangarImages() {
-    useEffect(() => {
-        for (const ship of PLAYER_SHIPS) {
-            for (const view of HANGAR_VIEWS) {
-                const image = new Image();
-                image.src = hangarImage(ship.classId, view);
-            }
-        }
-    }, []);
-}
-
-/** The chosen ship from three sides. */
-function ShipViews({ classId }) {
-    const t = useT();
-    return (
-        <div className="eod-hangar-views">
-            {HANGAR_VIEWS.map((view) => {
-                const src = hangarImage(classId, view);
-                return (
-                    <figure key={view} className="eod-hangar-view">
-                        {src && <img src={src} alt={`${t(`ship.${classId}`)} - ${t(`ui.hangar.view.${view}`)}`} draggable={false} />}
-                        <figcaption>{t(`ui.hangar.view.${view}`)}</figcaption>
-                    </figure>
-                );
-            })}
-        </div>
-    );
-}
-
-/** The hangar: pick the ship to fly before a new game starts. */
-function Hangar({ session, onLaunch, onBack }) {
-    const selected = useGameStore((state) => state.settings.playerShip);
-    const t = useT();
-    usePreloadHangarImages();
-    return (
-        <div className="eod-hangar">
-            <h2 className="eod-hangar-title">{t('ui.hangar.title')}</h2>
-            <ShipViews classId={selected} />
-            {/* Phones held sideways show the chosen ship's ratings here instead of on every card. */}
-            <div className="eod-hangar-stats">
-                {RATING_ORDER.map((rating) => (
-                    <Rating key={rating} label={t(`ui.rating.${rating}`)} value={PLAYER_SHIPS.find((ship) => ship.classId === selected)?.ratings[rating] ?? 0} />
-                ))}
-            </div>
-            <div className="eod-hangar-ships">
-                {PLAYER_SHIPS.map(({ classId, ratings }) => (
-                    <button
-                        key={classId}
-                        type="button"
-                        className={`eod-ship-card ${classId === selected ? 'eod-ship-card--selected' : ''}`}
-                        onClick={() => session.updateSettings({ playerShip: classId })}
-                    >
-                        <img className="eod-ship-card-image" src={hangarImage(classId, 'front')} alt="" draggable={false} />
-                        <strong>{t(`ship.${classId}`)}</strong>
-                        <em>{t(`playerShip.${classId}.role`)}</em>
-                        <p>{t(`playerShip.${classId}.text`)}</p>
-                        <ShipAbility classId={classId} />
-                        {RATING_ORDER.map((rating) => <Rating key={rating} label={t(`ui.rating.${rating}`)} value={ratings[rating]} />)}
-                    </button>
-                ))}
-            </div>
-            <div className="eod-hangar-actions">
-                <button type="button" className="eod-button" onClick={onBack}>{t('ui.back')}</button>
-                <button type="button" className="eod-button eod-button--primary" onClick={onLaunch}>{t('ui.hangar.launch')}</button>
-            </div>
-        </div>
-    );
-}
-
 /**
  * Between "Launch" and the first frame of flight: makes sure the chosen ship's model is in
  * (see requestShipModel; normally instant, the loading screen already fetched it), then
@@ -389,7 +282,7 @@ function TitleScreen({ session, lan, onStart }) {
                 <p className="eod-touch-hint">{t('ui.touchHint')}</p>
                 {NEEDS_HOME_SCREEN && <p className="eod-touch-hint eod-home-screen-hint">{t('ui.homeScreenHint')}</p>}
             </div>
-            {view === 'hangar' && <Hangar session={session} onLaunch={launch} onBack={() => setView('main')} />}
+            {view === 'hangar' && <Hangar session={session} onConfirm={launch} onBack={() => setView('main')} />}
             {/* Back from a lobby is the screen it was picked on: LAN or global. */}
             {view === 'lan' && <LanLobby lan={lan} session={session} onStart={onStart} onBack={() => setView('multiplayer')} />}
             {view === 'global' && <LanLobby lan={lan} session={session} scope={LOBBY_SCOPE.GLOBAL} onStart={onStart} onBack={() => setView('multiplayer')} />}
