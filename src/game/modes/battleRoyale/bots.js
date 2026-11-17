@@ -202,7 +202,8 @@ export class BotPilot {
         let bestScore = Infinity;
         for (const other of world.ships) {
             if (!isValidTarget(other) || other.invulnerable || other.cls.kind === 'module' || !areHostile(ship, other)) continue;
-            const distance = other.distanceToPoint(ship.position);
+            // Whoever shot this ship last counts at any distance; anybody else only within reach.
+            const distance = other.distanceToPoint(ship.position, ship.lastAttacker === other ? Infinity : TUNING.engageRange);
             if (distance > TUNING.engageRange && ship.lastAttacker !== other) continue;
             const small = other.cls.kind === 'fighter' && distance < TUNING.fighterFirstRange;
             const score = small ? distance : distance + TUNING.engageRange;

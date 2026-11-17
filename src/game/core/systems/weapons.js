@@ -57,13 +57,18 @@ function leadPoint(origin, target, projectileSpeed, out) {
     return out.copy(target.position).addScaledVector(target.velocity, time);
 }
 
-function distanceToSurface(target, point) {
-    return target.isProjectile ? target.position.distanceTo(point) - target.radius : target.distanceToPoint(point);
+/** `limit`: only whether the gap is within this matters (see Ship.distanceToPoint). */
+function distanceToSurface(target, point, limit = Infinity) {
+    return target.isProjectile ? target.position.distanceTo(point) - target.radius : target.distanceToPoint(point, limit);
 }
 
-/** Approximate gap between a ship's hull and a target (its hull or a projectile). */
-function hullSeparation(ship, target) {
-    return ship.distanceToPoint(target.position) - (target.isProjectile ? target.radius : target.boundingRadius);
+/**
+ * Approximate gap between a ship's hull and a target (its hull or a projectile).
+ * `limit`: only whether the gap is within this matters (see Ship.distanceToPoint).
+ */
+function hullSeparation(ship, target, limit = Infinity) {
+    const targetRadius = target.isProjectile ? target.radius : target.boundingRadius;
+    return ship.distanceToPoint(target.position, limit + targetRadius) - targetRadius;
 }
 
 function impactPoint(target, origin, out) {
@@ -81,7 +86,7 @@ function nearestInRange(candidates, ship, range, filter) {
     for (const candidate of candidates) {
         if (!isValidTarget(candidate) || !areHostile(ship, candidate)) continue;
         if (candidate.invulnerable || (filter && !filter(candidate))) continue;
-        const distance = hullSeparation(ship, candidate);
+        const distance = hullSeparation(ship, candidate, bestDistance);
         if (distance < bestDistance) {
             bestDistance = distance;
             best = candidate;
@@ -114,7 +119,7 @@ function selectTurretTarget(world, ship, def) {
 function refreshTurretTarget(world, ship, weapon, dt) {
     weapon.retargetTimer -= dt;
     const target = weapon.target;
-    const stillGood = isValidTarget(target) && !target.invulnerable && hullSeparation(ship, target) < weapon.def.range;
+    const stillGood = isValidTarget(target) && !target.invulnerable && hullSeparation(ship, target, weapon.def.range) < weapon.def.range;
     if (stillGood && weapon.retargetTimer > 0) return;
     weapon.target = selectTurretTarget(world, ship, weapon.def);
     weapon.retargetTimer = TURRET_RETARGET_INTERVAL;
@@ -185,7 +190,7 @@ function pickPlayerBeamTarget(world, ship, def, origin, forward) {
         // The guns pick hostiles by themselves; anything else is only fired on when the pilot locked it.
         if (!isValidTarget(candidate) || !(deliberate ? mayAttack(world, ship, candidate) : areHostile(ship, candidate))) return Infinity;
         aimPointOn(candidate, origin, forward, scratchAim);
-        if (distanceToSurface(candidate, origin) > range) return Infinity;
+        if (distanceToSurface(candidate, origin, range) > range) return Infinity;
         const angle = angleOffAxis(candidate, origin, forward, scratchAim);
         return angle <= maxAngle ? angle : Infinity;
     };
@@ -446,7 +451,7 @@ function updateAiTorpedo(world, ship, weapon, dt) {
         target = ship.ai.wantsFire ? ship.target : null;
     }
     if (!isValidTarget(target) || weapon.cooldown > 0) return;
-    if (hullSeparation(ship, target) > def.range) return;
+    if (hullSeparation(ship, target, def.range) > def.range) return;
 
     forwardOf(ship.quaternion, scratchForward);
     scratchDirection.copy(target.position).sub(ship.position).normalize();
@@ -485,7 +490,7 @@ function applyLanceDamage(world, ship, weapon, origin, dt) {
             const along = scratchSample.sub(origin).dot(weapon.lanceDirection);
             if (along < 0 || along > def.range) continue;
             scratchSample.copy(origin).addScaledVector(weapon.lanceDirection, along);
-            hit = other.distanceToPoint(scratchSample) < def.corridorRadius;
+            hit = other.distanceToPoint(scratchSample, def.corridorRadius) < def.corridorRadius;
         }
         if (hit) {
             applyDamage(world, other, def.dps * dt, {

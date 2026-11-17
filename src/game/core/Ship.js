@@ -8,6 +8,8 @@ let nextShipId = 1;
 const scratchLocal = new Vector3();
 const scratchCandidate = new Vector3();
 const AXES = ['x', 'y', 'z'];
+/** Metres a bounding-sphere shortcut must clear a caller's limit by (see Ship.distanceToPoint). */
+const BOUND_MARGIN = 0.01;
 
 /** Builds the list of hit boxes ({ centre, half } in the ship's own axes) from a class definition. */
 function createBoxes(cls) {
@@ -41,10 +43,13 @@ function createCollisionSpheres(boxes, radius) {
     return spheres;
 }
 
-function clampToBox(point, box, out) {
-    for (const axis of AXES) {
-        out[axis] = clamp(point[axis], box.centre[axis] - box.half[axis], box.centre[axis] + box.half[axis]);
-    }
+// The box helpers below spell the three axes out: they run for every ship near every shot,
+// pilot and turret each frame, and `point[axis]` lookups by name cost several times as much.
+
+function clampToBox(point, { centre, half }, out) {
+    out.x = clamp(point.x, centre.x - half.x, centre.x + half.x);
+    out.y = clamp(point.y, centre.y - half.y, centre.y + half.y);
+    out.z = clamp(point.z, centre.z - half.z, centre.z + half.z);
     return out;
 }
 
@@ -263,9 +268,23 @@ export class Ship {
         return out.applyQuaternion(this.quaternion).add(this.position);
     }
 
-    /** Signed distance from `point` to the hull surface (negative when inside). */
-    distanceToPoint(point) {
+    /**
+     * Signed distance from `point` to the hull surface (negative when inside).
+     *
+     * `limit` is for callers that only care whether the point is within some distance: a point
+     * plainly further than that from the whole ship gets the cheap distance to its bounding
+     * sphere instead (still more than `limit`, never less than the true distance would be), and
+     * the hull's boxes are not looked at. Comparisons against `limit` come out exactly as with
+     * the true distance; the margin keeps rounding from ever deciding one.
+     * @param {Vector3} point
+     * @param {number} [limit]
+     */
+    distanceToPoint(point, limit = Infinity) {
         if (!this.boxes) return this.position.distanceTo(point) - this.radius;
+        if (limit !== Infinity) {
+            const outside = this.position.distanceTo(point) - this.boundingRadius;
+            if (outside > limit + BOUND_MARGIN) return outside;
+        }
         this.worldToLocal(point, scratchLocal);
         let best = Infinity;
         for (const box of this.boxes) {

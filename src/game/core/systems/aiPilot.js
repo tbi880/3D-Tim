@@ -79,7 +79,7 @@ export function avoidObstacles(world, ship, desired) {
     for (const other of world.ships) {
         if (other === ship || !other.alive || other.arriving || !SOLID_KINDS.has(other.cls.kind)) continue;
         const margin = AVOID_MARGIN + ship.boundingRadius;
-        const distance = other.distanceToPoint(ship.position);
+        const distance = other.distanceToPoint(ship.position, margin);
         if (distance > margin) continue;
         other.closestPoint(ship.position, scratchAxisPoint);
         scratchAway.copy(ship.position).sub(scratchAxisPoint).normalize();

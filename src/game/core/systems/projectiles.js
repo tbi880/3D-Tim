@@ -56,7 +56,7 @@ export function detonateBreach(world, torpedo) {
     for (const ship of world.ships) {
         if (!ship.alive || ship.arriving) continue;
         if (!breach.hitsAllies && ship !== torpedo.target && !areHostile(torpedo, ship)) continue;
-        if (ship.distanceToPoint(torpedo.position) > breach.radius) continue;
+        if (ship.distanceToPoint(torpedo.position, breach.radius) > breach.radius) continue;
         stripShield(world, ship, breach.shieldDownSeconds, {
             source: torpedo.owner, weapon: torpedo.def, point: ship.closestPoint(torpedo.position, scratchNearest),
         });
@@ -76,7 +76,7 @@ function findHit(world, projectile) {
         // also hits what it was locked on, whoever that is (multiplayer friendly fire).
         if (!areHostile(projectile, ship) && ship.faction !== FACTION.NEUTRAL && ship !== projectile.target) continue;
         const reach = projectile.radius;
-        if (ship.distanceToPoint(projectile.position) <= reach || ship.distanceToPoint(scratchMidpoint) <= reach) {
+        if (ship.distanceToPoint(projectile.position, reach) <= reach || ship.distanceToPoint(scratchMidpoint, reach) <= reach) {
             return ship;
         }
     }

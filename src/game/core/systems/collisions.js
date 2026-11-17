@@ -66,10 +66,10 @@ function resolveCollisionsOf(world, player) {
 
     for (const ship of world.ships) {
         if (ship === player || !ship.alive || ship.arriving || !SOLID_KINDS.has(ship.cls.kind)) continue;
-        if (ship.distanceToPoint(player.position) > player.boundingRadius) continue;
+        if (ship.distanceToPoint(player.position, player.boundingRadius) > player.boundingRadius) continue;
         for (const sphere of player.collisionSpheres) {
             sphereCentre(player, sphere, scratchOwn);
-            if (ship.distanceToPoint(scratchOwn) > sphere.radius) continue;
+            if (ship.distanceToPoint(scratchOwn, sphere.radius) > sphere.radius) continue;
             ship.closestPoint(scratchOwn, scratchCentre);
             // Deep inside a hull the closest point is the sphere's own centre: push out from the ship's centre instead.
             if (scratchCentre.distanceToSquared(scratchOwn) < 1e-6) scratchCentre.copy(ship.position);

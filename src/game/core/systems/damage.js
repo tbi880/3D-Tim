@@ -116,7 +116,7 @@ function deathBlast(world, ship, passive) {
         if (other === ship || !other.alive || other.arriving || other.faction === FACTION.NEUTRAL) continue;
         const hostile = areHostile(ship, other);
         if (!hostile && !passive.hitsAllies) continue;
-        if (other.distanceToPoint(position) > passive.radius) continue;
+        if (other.distanceToPoint(position, passive.radius) > passive.radius) continue;
         // Whatever keeps a ship's fire off it keeps this off it too, whose side it is on.
         if (shrugsOff(other, ship)) continue;
         const { damage } = passive;
