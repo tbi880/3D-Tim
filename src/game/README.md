@@ -327,3 +327,9 @@ crosshair (R on a keyboard); kept down, it steps through the others (T). Holding
 inside the aiming ring. The top bar has pause,
 skip, view and power. The HUD needs the long side of the screen, so portrait shows a
 "turn your phone" notice. Hints that name keys have a `.touch` twin in the i18n files.
+
+While the game is open the page under it holds still (`input/pageLock.js`): no double-tap or
+pinch zoom, no scrolling of the page, no rubber band or pull-to-refresh. Touches on the flight
+controls and the 3D view are cancelled outright (they are read through pointer events); a list
+that scrolls - `.eod-screen`, `.eod-lan`, `.eod-map-orbits` - still scrolls inside itself. A new
+scrolling list needs `touch-action: pan-x pan-y` like those (hud.css) and nothing else.

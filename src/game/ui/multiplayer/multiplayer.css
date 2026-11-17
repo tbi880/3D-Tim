@@ -20,6 +20,8 @@
 .eod-lan-field small { font-size: 10px; line-height: 1.5; color: rgba(225, 240, 255, 0.5); }
 .eod-lan input { box-sizing: border-box; width: 100%; padding: 6px 8px; font: inherit; font-size: 14px; color: #fff; background: rgba(4, 12, 22, 0.8); border: 1px solid var(--eod-border); outline: none; }
 .eod-lan input:focus { border-color: var(--eod-cyan); }
+/* Safari on an iPhone zooms the page into any text field with smaller type than this. */
+@media (pointer: coarse) { .eod-lan input { font-size: 16px; } }
 
 .eod-lan-browser, .eod-lan-room-view { display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 100%; }
 .eod-lan-room { display: grid; grid-template-columns: 1.2fr 1.4fr auto auto; align-items: center; gap: 12px; padding: 10px 14px; font: inherit; font-size: 12px; color: inherit; text-align: left; background: var(--eod-panel); border: 1px solid var(--eod-border); cursor: pointer; }

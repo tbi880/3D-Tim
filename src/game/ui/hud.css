@@ -18,6 +18,34 @@
     color: #dff4ff;
     font-family: 'Orbitron', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
     cursor: crosshair;
+    /* No double-tap zoom anywhere in the game (input/pageLock.js backs this up for browsers that zoom regardless). */
+    touch-action: manipulation;
+    overscroll-behavior: none;
+}
+
+/*
+ * While the game is open the page under it does not move (input/pageLock.js adds the class):
+ * nothing to scroll, no rubber band at the edges, no pull-to-refresh.
+ */
+html.eod-page-locked,
+html.eod-page-locked body {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+html.eod-page-locked body {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+}
+
+/* The lists that do scroll (menus, the lobby, the star map) scroll inside themselves and pass nothing on to the page. */
+.eod-screen,
+.eod-lan,
+.eod-map-orbits {
+    touch-action: pan-x pan-y;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
 }
 
 .eod-canvas-container {

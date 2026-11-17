@@ -6,6 +6,7 @@ import { CanvasProvider } from '../sharedContexts/CanvasProvider';
 import { SoundEngine } from '../game/audio/SoundEngine.js';
 import { graphicsDpr } from '../game/config/graphics.js';
 import { InputController } from '../game/input/InputController.js';
+import { lockPage } from '../game/input/pageLock.js';
 import { startHostHeartbeat } from '../game/net/lobby/hostHeartbeat.js';
 import { createLanMultiplayer } from '../game/net/lobby/lanStore.js';
 import { isTouchDevice } from '../game/input/device.js';
@@ -83,6 +84,8 @@ function EchoesOfDawn() {
     // a phone always (also when testing a dev build there). Safari on iPhone has no fullscreen
     // for pages at all: there the title screen suggests opening the game from the home screen.
     useGameManifest();
+    // The page under the game holds still: no double-tap or pinch zoom, no scrolling, no rubber band.
+    useEffect(() => lockPage(), []);
     useClickToFullscreen({ enabled: stageOfENV === 'prod' || isTouchDevice(), once: false, skipPortrait: false });
 
     useEffect(() => {
