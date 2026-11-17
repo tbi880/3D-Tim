@@ -70,6 +70,17 @@ export const hint = (textKey) => ({
     begin(ctx) { ctx.stage.setHint(textKey); },
 });
 
+/**
+ * Walks a new pilot through tutorial steps (config/tutorial.js): each stops the game until the
+ * pilot has tried the control it names. Blocks the script until the last one is done; passes
+ * at once when the tutorial is off, already done, or the stage has none (the headless simulation).
+ */
+export const tutorial = (...stepIds) => ({
+    type: 'tutorial',
+    begin(ctx, state) { state.run = ctx.stage.beginTutorial?.(stepIds) ?? null; },
+    tick(ctx, dt, state) { return !state.run || state.run.finished; },
+});
+
 /** Shows a labelled progress bar driven by `getValue(ctx)` (0..1); pass null to hide it. */
 export const progress = (labelKey, getValue = null) => ({
     type: 'progress',

@@ -89,6 +89,8 @@ export function defaultSettings() {
         autoFire: isTouchDevice(),
         /** Rendering preset (config/graphics.js). */
         graphics: DEFAULT_GRAPHICS,
+        /** The first-flight tutorial in the prologue: on until it has been finished or skipped (state/Tutorial.js). */
+        tutorial: true,
     };
 }
 
@@ -101,6 +103,7 @@ export function loadSettings() {
     // The cockpit view is too cramped on a phone screen: touch devices are locked to chase view.
     if (isTouchDevice()) settings.cameraMode = 'chase';
     if (!GRAPHICS[settings.graphics]) settings.graphics = DEFAULT_GRAPHICS;
+    settings.tutorial = Boolean(settings.tutorial);
     return settings;
 }
 

@@ -203,8 +203,11 @@ export class VRMenu {
         const sound = () => session.updateSettings({ muted: !settings.muted });
         const invert = () => session.updateSettings({ invertY: !settings.invertY });
         const autoFire = () => session.updateSettings({ autoFire: !settings.autoFire });
+        // The prologue's first-flight tutorial: off here is also how a pilot in a headset skips it.
+        const tutorial = () => session.updateSettings({ tutorial: !settings.tutorial });
         return [
             { label: t('ui.autoFire'), value: t(settings.autoFire ? 'ui.on' : 'ui.off'), left: autoFire, right: autoFire, select: autoFire },
+            { label: t('ui.tutorial'), value: t(settings.tutorial ? 'ui.on' : 'ui.off'), left: tutorial, right: tutorial, select: tutorial },
             { label: t('ui.language'), value: LOCALE_LABELS[settings.locale], left: language(-1), right: language(1), select: language(1) },
             { label: t('ui.sound'), value: t(settings.muted ? 'ui.off' : 'ui.on'), left: sound, right: sound, select: sound },
             { label: t('ui.invertY'), value: t(settings.invertY ? 'ui.on' : 'ui.off'), left: invert, right: invert, select: invert },

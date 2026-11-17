@@ -7,7 +7,9 @@ import { translate } from '../i18n/index.js';
 import { isHullHitOnPlayer, playerFeedback } from '../scene/effects/playerFeedback.js';
 import { PHASE, SESSION_EVENTS } from '../state/GameSession.js';
 import { useGameStore } from '../state/gameStore.js';
+import { TUTORIAL_STATE } from '../state/Tutorial.js';
 import { drawMarkers, drawRadar } from '../ui/markerRenderer.js';
+import { tutorialKeys, tutorialText } from '../ui/tutorialText.js';
 import { CABIN_SCALE } from './VRCockpitShell.jsx';
 import { createCanvasPanel, drawMeter, roundRect, wrapText } from './canvasPanel.js';
 import layout from './cockpitLayout.json';
@@ -22,8 +24,8 @@ import layout from './cockpitLayout.json';
  *        waypoint), drawn through a virtual camera whose frustum is exactly the pane, so every
  *        marker sits on the line from the eye to its ship. Redrawn every frame: anything
  *        slower and the brackets trail behind their ships in a turn.
- *      - text: objective, alerts, title cards, the comms line and the points for each kill
- *        (beside the reticle). Text is what shows a soft
+ *      - text: objective, alerts, title cards, the comms line, the points for each kill
+ *        (beside the reticle) and the tutorial's card. Text is what shows a soft
  *        texture first, so this pane has the headset's own angular resolution; it only changes
  *        slowly, so it is redrawn TEXT_RATE times a second, and uploaded to the GPU (1.8
  *        million pixels) only when the redrawn picture differs from the last one.
@@ -157,6 +159,90 @@ function drawScoreFeed(ctx, feed, t, now, lowest) {
         ctx.font = `600 11px ${FONT}`;
         drawShadowedText(ctx, t(`ship.${popup.classId}`).toUpperCase(), pointsWidth + 7, 0, 'rgba(235, 245, 255, 0.9)');
     }));
+}
+
+const TUTORIAL_CARD_WIDTH = 460;
+const TUTORIAL_CARD_TOP = 84;
+const TUTORIAL_AMBER = '#ffb648';
+
+/**
+ * The first-flight tutorial's card (state/Tutorial.js), as ui/TutorialOverlay.jsx shows it on
+ * the page: what the step is about, the control to use, named for the VR controllers, and how
+ * to go on. The game stands still behind it. A step just done leaves a green tick for a moment.
+ * No pointing in here: an info card goes on with A, and the tutorial is switched off in the
+ * pause menu.
+ */
+export function drawTutorialCard(ctx, tutorial, t) {
+    const centre = VIEW_LOGICAL[0] / 2;
+    const title = t(`tutorial.${tutorial.id}.title`);
+    ctx.textBaseline = 'alphabetic';
+    if (tutorial.state !== TUTORIAL_STATE.ASK) {
+        const label = `✓ ${title} · ${t('tutorial.done')}`;
+        ctx.font = `700 14px ${FONT}`;
+        const width = ctx.measureText(label).width + 28;
+        roundRect(ctx, centre - width / 2, 132, width, 28, 4);
+        ctx.fillStyle = 'rgba(125, 255, 168, 0.92)';
+        ctx.fill();
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#04160b';
+        ctx.fillText(label, centre, 151);
+        return;
+    }
+    const { platform } = tutorial;
+    const left = centre - TUTORIAL_CARD_WIDTH / 2;
+    const inner = TUTORIAL_CARD_WIDTH - 36;
+    ctx.font = `400 14px ${FONT}`;
+    const lines = wrapText(ctx, tutorialText(t, `tutorial.${tutorial.id}.text`, platform) ?? '', inner);
+    const keys = tutorialKeys(t, tutorial.id, platform).join('  /  ');
+    const height = 64 + lines.length * 20 + (keys ? 30 : 0) + (tutorial.needsTarget ? 20 : 0) + 42;
+    const top = TUTORIAL_CARD_TOP;
+
+    roundRect(ctx, left, top, TUTORIAL_CARD_WIDTH, height, 8);
+    ctx.fillStyle = 'rgba(5, 15, 27, 0.93)';
+    ctx.fill();
+    ctx.strokeStyle = TUTORIAL_AMBER;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    let y = top + 22;
+    ctx.font = `600 10px ${FONT}`;
+    ctx.fillStyle = TUTORIAL_AMBER;
+    ctx.textAlign = 'left';
+    ctx.fillText(`❚❚ ${t('tutorial.header')}`, left + 18, y);
+    ctx.textAlign = 'right';
+    ctx.fillText(`${tutorial.index} / ${tutorial.total}`, left + TUTORIAL_CARD_WIDTH - 18, y);
+    y += 28;
+    ctx.textAlign = 'left';
+    ctx.font = `700 19px ${FONT}`;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(title, left + 18, y);
+    y += 6;
+    ctx.font = `400 14px ${FONT}`;
+    ctx.fillStyle = '#e6f3ff';
+    for (const line of lines) {
+        y += 20;
+        ctx.fillText(line, left + 18, y);
+    }
+    if (keys) {
+        y += 30;
+        ctx.font = `700 16px ${FONT}`;
+        ctx.fillStyle = TUTORIAL_AMBER;
+        ctx.fillText(`▶  ${keys}`, left + 18, y);
+    }
+    if (tutorial.needsTarget) {
+        y += 20;
+        const locked = tutorial.hasTarget;
+        ctx.font = `700 12px ${FONT}`;
+        ctx.fillStyle = locked ? '#7dffa8' : TUTORIAL_AMBER;
+        ctx.fillText(locked ? t('tutorial.targetLocked') : tutorialText(t, 'tutorial.needTarget', platform), left + 18, y);
+    }
+    ctx.textAlign = 'center';
+    ctx.font = `600 11px ${FONT}`;
+    ctx.fillStyle = 'rgba(215, 238, 255, 0.85)';
+    ctx.fillText(tutorial.kind === 'info' ? tutorialText(t, 'tutorial.nextHint', platform) : t('tutorial.waiting'), centre, top + height - 28);
+    ctx.font = `400 10px ${FONT}`;
+    ctx.fillStyle = 'rgba(200, 225, 240, 0.55)';
+    ctx.fillText(t('tutorial.skipHint.vr'), centre, top + height - 12);
 }
 
 /** Text overlays on the head-up pane (logical pixels). `scoreFeed`: see drawScoreFeed. */
@@ -334,6 +420,9 @@ function drawPaneText(ctx, state, t, now, scoreFeed) {
 
     // Beside the reticle: the points for the latest kills, kept clear of whatever is below.
     drawScoreFeed(ctx, scoreFeed, t, now, bottom - 8);
+
+    // Over everything else: the tutorial's card, while one is up.
+    if (state.tutorial) drawTutorialCard(ctx, { ...state.tutorial, hasTarget: Boolean(state.target) }, t);
 }
 
 const RADAR_SIZE = 300;

@@ -9,7 +9,8 @@ export default function GameLoop({ game }) {
     useFrame((state, delta) => {
         const { session, input, sound } = game;
         session.update(delta, input.getControls());
-        sound.update(session.world, session.phase === PHASE.PLAYING);
+        // A tutorial card stops the game without pausing it: the engines fall silent then too.
+        sound.update(session.world, session.phase === PHASE.PLAYING && !session.tutorial.frozen);
     }, SIMULATION_PRIORITY);
     return null;
 }

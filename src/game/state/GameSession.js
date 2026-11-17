@@ -13,6 +13,7 @@ import { StoryDirector } from '../story/StoryDirector.js';
 import { CommsQueue, estimateReadingTime } from './CommsQueue.js';
 import { computeFinalScore, killPoints } from '../config/scoring.js';
 import { CAMERA_MODES, clearSave, loadSave, recordFinalScore, saveSettings, writeSave } from './saveGame.js';
+import { Tutorial } from './Tutorial.js';
 
 export const PHASE = Object.freeze({
     TITLE: 'title',
@@ -102,6 +103,8 @@ export class GameSession {
         this.director = new StoryDirector({ world: this.world, stage: this, beats: CAMPAIGN });
         /** The multiplayer match being played (see beginMatch), or null in single player. */
         this.match = null;
+        /** The first-flight tutorial: it can stop the game until the pilot has tried a control (state/Tutorial.js). */
+        this.tutorial = new Tutorial(this);
 
         this.phase = PHASE.TITLE;
         this.stats = emptyStats();
@@ -284,6 +287,7 @@ export class GameSession {
         this.titleCardTimer = 0;
         this.toastTimer = 0;
         this.pendingRefit = null;
+        this.tutorial.cancel();
         this.ui.set({
             refit: null,
             objective: null, hint: null, titleCard: null, toast: null, progress: null,
@@ -302,6 +306,8 @@ export class GameSession {
         saveSettings(this.settings);
         this.ui.set({ settings: { ...this.settings } });
         this.events.emit(SESSION_EVENTS.SETTINGS, { settings: this.settings });
+        // Switched off, the tutorial lets go of the game at once; switched on, it starts over.
+        if ('tutorial' in partial) this.tutorial.settingChanged(Boolean(partial.tutorial));
     }
 
     /**
@@ -322,9 +328,12 @@ export class GameSession {
             if (isTouchDevice()) return;
             const next = (CAMERA_MODES.indexOf(this.settings.cameraMode) + 1) % CAMERA_MODES.length;
             this.updateSettings({ cameraMode: CAMERA_MODES[next] });
+            if (this.phase === PHASE.PLAYING) this.tutorial.noteAction(action);
             return;
         }
         if (this.phase !== PHASE.PLAYING) return;
+        // While a tutorial card has the game stopped, only what it asks for goes through.
+        if (!this.match && this.tutorial.intercept(action)) return;
         if (action === 'skip') {
             this.comms.skip();
             return;
@@ -391,6 +400,14 @@ export class GameSession {
 
     setHint(textKey) {
         this.ui.set({ hint: textKey });
+    }
+
+    /**
+     * Walks a new pilot through the given tutorial steps (config/tutorial.js). The story waits
+     * on the returned object's `finished`: true at once when the tutorial is off or done.
+     */
+    beginTutorial(stepIds) {
+        return this.tutorial.begin(stepIds);
     }
 
     /** A short notice that fades by itself (`params` fill the text's placeholders). */
@@ -462,8 +479,11 @@ export class GameSession {
      */
     update(dt, controls) {
         this.updates += 1;
+        // A tutorial card stops the story's world until the pilot has done what it asks; the
+        // controls still reach it, so it can tell when they have.
+        const tutorialHold = this.phase === PHASE.PLAYING && !this.match && this.tutorial.update(dt, controls);
         // A match cannot be frozen: "paused" there only means this player has the menu open.
-        const frozen = this.phase === PHASE.PAUSED && !this.match;
+        const frozen = (this.phase === PHASE.PAUSED && !this.match) || tutorialHold;
         this.effectsDelta = frozen ? 0 : Math.min(dt, WORLD.maxStep);
         if (this.phase === PHASE.TITLE) {
             this.updateTitleDrift(dt);
@@ -478,6 +498,11 @@ export class GameSession {
             return;
         }
         if (this.phase !== PHASE.PLAYING && this.phase !== PHASE.ENDING) return;
+        if (tutorialHold) {
+            // Nothing moves, but the HUD still follows what the pilot does (a lock made on the card's asking).
+            this.publishHud(dt);
+            return;
+        }
 
         this.world.update(dt, controls);
         if (this.phase === PHASE.PLAYING) {

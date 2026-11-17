@@ -275,6 +275,17 @@ the checkpoint. Add a `checkpoint.<id>` label to both i18n files.
 
 **Add a language** – copy `i18n/en.js`, register it in `i18n/index.js`.
 
+**First-flight tutorial** – the prologue stops at `tutorial('steer', 'throttle', ...)` beats
+(`story/beats.js`). Each step is a card that freezes the world and the story until the pilot
+really uses the control it names (or presses Next on an explanation); the input that answers
+it goes on to the ship. Steps are data in `config/tutorial.js` (which platforms have them,
+what completes them, which HUD element is lit up), their words are `tutorial.<step>.title`,
+`.text` and `.keys` in the i18n files with `.touch` and `.vr` twins, and the state machine is
+`state/Tutorial.js` (drawn by `ui/TutorialOverlay.jsx`, and by `xr/VRHud.jsx` in a headset).
+It is the `tutorial` setting: on for a new pilot, switched off by the last step or by Skip,
+and back on from the settings menu. To teach a new control, add a step to `TUTORIAL_STEPS`
+and `TUTORIAL_ORDER`, its texts, and its id to a `tutorial(...)` beat in `story/campaign.js`.
+
 ## Testing
 
 ```
@@ -289,7 +300,7 @@ In development (`stageOfENV = "dev"`) the running game is exposed as `window.__e
 (`{ session, input, sound }`) for poking at from the browser console.
 
 `npm run game:test` runs the unit tests (`tests/game/`): mostly multiplayer, played
-headlessly the same way.
+headlessly the same way (`tutorial.test.js` flies the first-flight tutorial like that).
 
 ## Controls
 

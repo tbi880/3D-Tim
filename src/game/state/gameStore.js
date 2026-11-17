@@ -25,6 +25,8 @@ export const useGameStore = create(() => ({
     toast: null,
     /** The open refit window ({ points, classId, upgrades }, GameSession.openRefit) or null. */
     refit: null,
+    /** The tutorial card on screen ({ id, kind, state, index, total, platform, needsTarget }, state/Tutorial.js) or null. */
+    tutorial: null,
 
     /** The multiplayer match on the HUD and the results screen (net/match/matchState.js), or null in single player. */
     match: null,

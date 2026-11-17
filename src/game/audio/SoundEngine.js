@@ -251,6 +251,11 @@ export class SoundEngine {
             case 'power':
                 this.tone({ from: 500, to: 900, duration: 0.12, gain: 0.1, type: 'triangle' });
                 break;
+            // A tutorial step done: two soft rising notes.
+            case 'tutorialStep':
+                this.tone({ from: 740, to: 740, duration: 0.09, gain: 0.09, type: 'triangle' });
+                this.tone({ from: 1110, to: 1110, duration: 0.14, gain: 0.09, type: 'triangle', delay: 0.09 });
+                break;
             // Multiplayer: the story before a match, and its two endings.
             case 'matchIntro':
                 // A low swell under the opening lines.

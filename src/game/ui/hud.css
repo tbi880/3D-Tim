@@ -477,6 +477,127 @@
 .eod-touch-button--torpedo { border-color: var(--eod-cyan); color: var(--eod-cyan); }
 .eod-touch-pause { position: absolute; top: 8px; left: calc(8px + env(safe-area-inset-left, 0px)); width: 40px; height: 34px; padding: 0; font: inherit; font-size: 12px; font-weight: 700; color: #dff4ff; background: rgba(6, 16, 28, 0.55); border: 1px solid var(--eod-border); border-radius: 4px; pointer-events: auto; touch-action: none; }
 
+/* ---- First-flight tutorial (ui/TutorialOverlay.jsx) --------------------------------------- */
+
+/* Above the HUD and the touch controls, below the menus. It never takes the pointer itself:
+   the pilot answers on the real controls underneath; only the card's buttons are clickable. */
+.eod-tutorial { position: absolute; inset: 0; z-index: 6; pointer-events: none; overflow: hidden; }
+.eod-tutorial-veil { position: absolute; inset: 0; background: rgba(2, 8, 16, 0.5); animation: eod-tutorial-fade 0.25s ease-out; }
+/* The hole in the veil: the veil is this box's own shadow, so whatever is under the box stays bright (and touchable). */
+.eod-tutorial-spot {
+    position: absolute;
+    border: 2px solid var(--eod-amber);
+    border-radius: 10px;
+    box-shadow: 0 0 0 200vmax rgba(2, 8, 16, 0.5), 0 0 18px 2px rgba(255, 182, 72, 0.65), inset 0 0 14px rgba(255, 182, 72, 0.25);
+    animation: eod-tutorial-pulse 1.2s ease-in-out infinite;
+    transition: left 0.2s, top 0.2s, width 0.2s, height 0.2s;
+}
+.eod-tutorial-spot--round { border-radius: 50%; }
+.eod-tutorial-card {
+    position: absolute;
+    left: 50%;
+    top: 46%;
+    transform: translate(-50%, -50%);
+    box-sizing: border-box;
+    width: min(500px, 92vw);
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    padding: 14px 18px 12px;
+    background: rgba(5, 15, 27, 0.94);
+    border: 1px solid var(--eod-amber);
+    border-top-width: 3px;
+    border-radius: 2px 2px 14px 2px;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+    cursor: default;
+    animation: eod-tutorial-card 0.25s ease-out;
+}
+.eod-tutorial-card--top { top: 12%; transform: translate(-50%, 0); animation-name: eod-tutorial-card-top; }
+.eod-tutorial-head { display: flex; justify-content: space-between; gap: 12px; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--eod-amber); }
+.eod-tutorial-title { margin: 0; font-size: 19px; font-weight: 800; letter-spacing: 0.12em; color: #fff; }
+.eod-tutorial-text {
+    margin: 0;
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-size: 14.5px;
+    line-height: 1.6;
+    letter-spacing: 0.01em;
+    color: #e6f3ff;
+}
+.eod-tutorial-keys { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.eod-tutorial-keys kbd {
+    padding: 5px 12px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #06131f;
+    background: var(--eod-amber);
+    border-radius: 4px;
+    box-shadow: 0 2px 0 rgba(140, 90, 10, 0.9);
+    animation: eod-tutorial-key 1.2s ease-in-out infinite;
+}
+.eod-tutorial-check { margin: 0; font-size: 12px; font-weight: 700; color: var(--eod-amber); }
+.eod-tutorial-check--ok { color: var(--eod-green); }
+.eod-tutorial-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 2px; }
+.eod-tutorial-waiting { flex: 1; font-size: 10px; letter-spacing: 0.08em; color: rgba(215, 238, 255, 0.6); text-align: center; }
+.eod-tutorial-button {
+    pointer-events: auto;
+    padding: 7px 12px;
+    font: inherit;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(215, 238, 255, 0.7);
+    background: rgba(8, 22, 38, 0.7);
+    border: 1px solid rgba(110, 205, 255, 0.3);
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.eod-tutorial-button:hover { color: #fff; border-color: var(--eod-cyan); }
+.eod-tutorial-button--primary { padding: 9px 20px; font-size: 13px; font-weight: 700; color: #06131f; background: var(--eod-amber); border-color: var(--eod-amber); }
+.eod-tutorial-button--primary:hover { color: #06131f; background: #ffd08a; border-color: #ffd08a; }
+/* A step just done: a tick that rises away while the pilot tries the control out. */
+.eod-tutorial-done {
+    position: absolute;
+    left: 50%;
+    top: 22%;
+    transform: translateX(-50%);
+    padding: 7px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    color: #04160b;
+    background: var(--eod-green);
+    border-radius: 2px;
+    animation: eod-tutorial-done 1.6s ease-out forwards;
+}
+@media (pointer: coarse) {
+    /* Phones: the card fits between the thumbs, as the comms line does. */
+    /* A little right of centre: the left edge of a small phone holds the objective, the status bars and the stick. */
+    .eod-tutorial-card { top: 44%; left: 53%; width: min(370px, calc(100vw - 520px)); min-width: 250px; gap: 5px; padding: 8px 11px 8px; }
+    .eod-tutorial-card--top { top: 6px; }
+    .eod-tutorial-head { font-size: 8px; }
+    .eod-tutorial-title { font-size: 13px; }
+    .eod-tutorial-text { font-size: 11.5px; line-height: 1.45; }
+    .eod-tutorial-keys kbd { padding: 3px 9px; font-size: 11px; }
+    .eod-tutorial-check { font-size: 10px; }
+    .eod-tutorial-waiting { font-size: 8px; }
+    .eod-tutorial-button { padding: 7px 9px; font-size: 9px; }
+    .eod-tutorial-button--primary { padding: 8px 14px; font-size: 11px; }
+    .eod-tutorial-done { top: 30%; font-size: 11px; padding: 5px 12px; }
+}
+@keyframes eod-tutorial-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes eod-tutorial-pulse { 50% { border-color: #fff; box-shadow: 0 0 0 200vmax rgba(2, 8, 16, 0.5), 0 0 26px 6px rgba(255, 182, 72, 0.9), inset 0 0 18px rgba(255, 182, 72, 0.4); } }
+@keyframes eod-tutorial-key { 50% { background: #ffe0a8; transform: translateY(1px); box-shadow: 0 1px 0 rgba(140, 90, 10, 0.9); } }
+@keyframes eod-tutorial-card { from { opacity: 0; transform: translate(-50%, calc(-50% + 12px)); } to { opacity: 1; transform: translate(-50%, -50%); } }
+@keyframes eod-tutorial-card-top { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes eod-tutorial-done {
+    0% { opacity: 0; transform: translate(-50%, 8px); }
+    12%, 70% { opacity: 1; transform: translate(-50%, 0); }
+    100% { opacity: 0; transform: translate(-50%, -14px); }
+}
+
 /* Phones held upright: the HUD needs the long side. */
 .eod-rotate-hint { display: none; }
 @media (pointer: coarse) and (orientation: portrait) {

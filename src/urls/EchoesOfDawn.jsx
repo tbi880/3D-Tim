@@ -16,6 +16,7 @@ import { gameStoreSink, useGameStore, useT } from '../game/state/gameStore.js';
 import GameHud from '../game/ui/GameHud.jsx';
 import Menus from '../game/ui/Menus.jsx';
 import TouchControls from '../game/ui/TouchControls.jsx';
+import TutorialOverlay from '../game/ui/TutorialOverlay.jsx';
 import '../game/ui/hud.css';
 
 /**
@@ -153,6 +154,7 @@ function EchoesOfDawn() {
                         <div ref={inputSurfaceRef} className="eod-input-surface" />
                         <GameHud session={game.session} markerCanvasRef={markerCanvasRef} radarCanvasRef={radarCanvasRef} />
                         <TouchControls input={game.input} session={game.session} />
+                        <TutorialOverlay session={game.session} />
                         <Menus session={game.session} lan={game.lan} onStart={() => game.sound.unlock()} />
                         <RotateHint />
                     </>

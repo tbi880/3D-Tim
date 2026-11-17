@@ -154,7 +154,7 @@ function FullscreenSetting() {
     );
 }
 
-/** Language, difficulty, sound and pitch-inversion switches (shared by title and pause menus). */
+/** Language, difficulty, sound, pitch-inversion and tutorial switches (shared by title and pause menus). */
 function SettingsRows({ session }) {
     const settings = useGameStore((state) => state.settings);
     const t = useT();
@@ -193,6 +193,10 @@ function SettingsRows({ session }) {
                 onClick={() => session.updateSettings({ graphics: next(GRAPHICS_ORDER, settings.graphics) })}
             >
                 <span>{t('ui.graphics')}</span><strong>{t(`ui.graphics.${settings.graphics}`)}</strong>
+            </button>
+            {/* The prologue's first-flight tutorial: it switches itself off once done, and back on here. */}
+            <button type="button" className="eod-setting" onClick={() => session.updateSettings({ tutorial: !settings.tutorial })}>
+                <span>{t('ui.tutorial')}</span><strong>{settings.tutorial ? t('ui.on') : t('ui.off')}</strong>
             </button>
             {!IS_TOUCH && isFullscreenSupported() && <FullscreenSetting />}
             <p className="eod-setting-hint">{t(`ui.difficultyHint.${settings.difficulty}`)}</p>
