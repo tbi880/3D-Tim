@@ -321,15 +321,18 @@ headlessly the same way (`tutorial.test.js` flies the first-flight tutorial like
 | Multiplayer: star map / refit / call reinforcements | G / U / B |
 
 **Phones and tablets** (`ui/TouchControls.jsx`, shown when the primary pointer is a
-finger): a stick under the left thumb steers and the right thumb has LOCK, BURN, TORP and
-FIRE. The throttle is one finger slid up or down anywhere else on the screen
+finger): a stick under the left thumb steers and the right thumb has four buttons in a
+diamond, like a gamepad's face buttons: FIRE below, TORP to the left, BURN to the right, LOCK
+above. Stick and buttons keep clear of the screen edges, so a thumb at full reach stays on the
+glass. The throttle is one finger slid up or down anywhere else on the screen
 (`input/throttleSwipe.js`, read by `InputController` on the view under the controls): the
 swipe is relative, starting from the throttle the ship has, half a screen height from idle to
 full, and lifting the finger leaves it there; a tap or a sideways drag sets nothing. It cannot
 collide with steering, which on a touch screen is the stick alone - nothing else reads a finger
 on the view - and the stick, the buttons and the comms line take their own touches first, so
-any of them can be held while another finger swipes. The bar beside the stick is the gauge
-(a percentage shows above it during a swipe), not a control. A tap on LOCK takes the hostile nearest the
+any of them can be held while another finger swipes. The throttle shows as a bar and a
+percentage in the status panel top left (it lights up during a swipe, showing what the finger
+asks for); there is no throttle control to hit on the screen. A tap on LOCK takes the hostile nearest the
 crosshair (R on a keyboard); kept down, it steps through the others (T). Holding FIRE plays the beams on whatever is
 inside the aiming ring. The top bar has pause,
 skip, view and power. The HUD needs the long side of the screen, so portrait shows a

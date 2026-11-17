@@ -10,11 +10,12 @@ const LOCK_REPEAT_MS = 650;
 /**
  * On-screen controls for phones and tablets (shown only where the pointer is a finger):
  *
- *   left thumb  - steering stick, with a throttle gauge beside it
+ *   left thumb  - steering stick
  *   any finger  - slid up or down anywhere on the open view: the throttle (read by
- *                 input/InputController.js on the view under these controls; the gauge and the
- *                 percentage that shows meanwhile only report it)
- *   right thumb - FIRE (hold), TORPEDO, BURN (hold), LOCK (tap: the hostile nearest the
+ *                 input/InputController.js on the view under these controls; shown as a bar and
+ *                 a percentage in the status panel top left, GameHud.jsx)
+ *   right thumb - four buttons in a diamond, like a gamepad's: FIRE (hold) below, TORPEDO to
+ *                 the left, BURN (hold) to the right, LOCK above (tap: the hostile nearest the
  *                 crosshair, like R on a keyboard; held: steps through the others, like T)
  *   top left    - pause
  *
@@ -28,9 +29,6 @@ export default function TouchControls({ input, session }) {
     const t = useT();
     const phase = useGameStore((state) => state.phase);
     const [knob, setKnob] = useState({ x: 0, y: 0 });
-    /** The throttle a finger sliding on the view is asking for right now, or null: then the gauge shows the ship's own. */
-    const [swipeThrottle, setSwipeThrottle] = useState(null);
-    const shipThrottle = useGameStore((state) => state.hud?.throttle);
     const origin = useRef(null);
     const lockTimer = useRef(null);
 
@@ -40,7 +38,15 @@ export default function TouchControls({ input, session }) {
     };
     // The buttons go away with the flight (pause, a cutscene): a finger still down must not keep cycling.
     useEffect(() => stopLockCycle, [phase]);
-    useEffect(() => input.onThrottleSwipe(setSwipeThrottle), [input]);
+    // What a sliding finger asks for goes to the store: the throttle bar in the status panel shows
+    // it at once, ahead of the ship easing towards it.
+    useEffect(() => {
+        const stop = input.onThrottleSwipe((value) => useGameStore.setState({ throttleSwipe: value }));
+        return () => {
+            stop();
+            useGameStore.setState({ throttleSwipe: null });
+        };
+    }, [input]);
 
     if (phase !== PHASE.PLAYING) return null;
 
@@ -94,22 +100,15 @@ export default function TouchControls({ input, session }) {
 
     return (
         <div className="eod-touch">
-            {/* A gauge, not a control: a finger on it falls through to the view and swipes like anywhere else. */}
-            <div className={`eod-touch-throttle ${swipeThrottle !== null ? 'eod-touch-throttle--swiping' : ''}`}>
-                <div className="eod-touch-throttle-fill" style={{ height: `${(swipeThrottle ?? shipThrottle ?? 0) * 100}%` }} />
-                <span>{t('hud.throttle')}</span>
-            </div>
-            {swipeThrottle !== null && (
-                <div className="eod-touch-throttle-readout">{t('hud.throttle')} {Math.round(swipeThrottle * 100)}%</div>
-            )}
             <div className="eod-touch-stick" onPointerDown={startStick} onPointerMove={moveStick} onPointerUp={endStick} onPointerCancel={endStick}>
                 <div className="eod-touch-knob" style={{ transform: `translate(${knob.x}px, ${knob.y}px)` }} />
             </div>
             <div className="eod-touch-buttons">
-                <button type="button" className="eod-touch-button" data-tutorial="lock" {...lock}>{t('hud.lock')}</button>
-                <button type="button" className="eod-touch-button" data-tutorial="boost" {...hold('boost')}>{t('hud.boost')}</button>
-                <button type="button" className="eod-touch-button eod-touch-button--torpedo" data-tutorial="torpedo" {...hold('fireSecondary')}>{t('hud.torp')}</button>
-                <button type="button" className="eod-touch-button eod-touch-button--fire" data-tutorial="fire" {...hold('firePrimary')}>{t('hud.fire')}</button>
+                {/* A diamond, like a gamepad's face buttons (hud.css places them by these names). */}
+                <button type="button" className="eod-touch-button eod-touch-button--top" data-tutorial="lock" {...lock}>{t('hud.lock')}</button>
+                <button type="button" className="eod-touch-button eod-touch-button--left eod-touch-button--torpedo" data-tutorial="torpedo" {...hold('fireSecondary')}>{t('hud.torp')}</button>
+                <button type="button" className="eod-touch-button eod-touch-button--right" data-tutorial="boost" {...hold('boost')}>{t('hud.boost')}</button>
+                <button type="button" className="eod-touch-button eod-touch-button--bottom eod-touch-button--fire" data-tutorial="fire" {...hold('firePrimary')}>{t('hud.fire')}</button>
             </div>
             <button type="button" className="eod-touch-pause" aria-label={t('controls.pause')} {...tap('pause')}>II</button>
         </div>

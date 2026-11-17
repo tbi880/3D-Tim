@@ -18,9 +18,9 @@ const IS_TOUCH = isTouchDevice();
 
 const percent = (fraction) => `${Math.round(Math.max(0, Math.min(1, fraction)) * 100)}%`;
 
-function Meter({ label, value, tone, warning = false }) {
+function Meter({ label, value, tone, warning = false, live = false }) {
     return (
-        <div className={`eod-meter eod-meter--${tone} ${warning ? 'eod-meter--warning' : ''}`}>
+        <div className={`eod-meter eod-meter--${tone} ${warning ? 'eod-meter--warning' : ''} ${live ? 'eod-meter--live' : ''}`}>
             <span className="eod-meter-label">{label}</span>
             <div className="eod-meter-track"><div className="eod-meter-fill" style={{ width: percent(value) }} /></div>
             <span className="eod-meter-value">{percent(value)}</span>
@@ -54,10 +54,13 @@ function StatusPanel() {
 
 /**
  * Phones: one small panel in place of the two corner gauges (the thumbs own the lower corners,
- * the throttle gauge shows speed, and the power mode is not offered on touch screens).
+ * and the power mode is not offered on touch screens). The throttle row is the only place the
+ * throttle shows: while a finger is sliding to set it (input/throttleSwipe.js) the row lights
+ * up and shows what the finger asks for, otherwise what the ship has.
  */
 function CompactShipPanel() {
     const hud = useGameStore((state) => state.hud);
+    const throttleSwipe = useGameStore((state) => state.throttleSwipe);
     const t = useT();
     if (!hud) return null;
     return (
@@ -65,6 +68,7 @@ function CompactShipPanel() {
             <Meter label={t('hud.shields')} value={hud.shield} tone="shield" warning={hud.shield <= 0.01} />
             <Meter label={t('hud.hull')} value={hud.hull} tone="hull" warning={hud.hull < 0.3} />
             <Meter label={t('hud.energy')} value={hud.energy} tone="energy" warning={hud.beamDepleted} />
+            <Meter label={t('hud.throttle')} value={throttleSwipe ?? hud.throttle} tone="throttle" live={throttleSwipe !== null} />
             <div className="eod-torpedo-tubes">
                 {Array.from({ length: hud.torpedoCapacity }, (_, index) => (
                     <span key={index} className={`eod-torpedo ${index < hud.torpedoes ? 'eod-torpedo--loaded' : ''}`} />

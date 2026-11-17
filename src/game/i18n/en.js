@@ -766,7 +766,7 @@ export default {
     'tutorial.throttle.title': 'Throttle',
     'tutorial.throttle.text': 'The engines are idling. Hold W to throttle up, S to throttle down; let go and the throttle stays where it is. Speed and throttle are shown bottom right.',
     'tutorial.throttle.keys': 'W / S',
-    'tutorial.throttle.text.touch': 'The engines are idling. Slide a finger up anywhere on the open screen to throttle up, down to throttle down; lift it and the throttle stays put. The THR bar bottom left shows it.',
+    'tutorial.throttle.text.touch': 'The engines are idling. Slide a finger up anywhere on the open screen to throttle up, down to throttle down; lift it and the throttle stays put. The THR bar and percentage top left show it.',
     'tutorial.throttle.keys.touch': 'Swipe ↑ ↓ on the screen',
     'tutorial.throttle.text.vr': 'The engines are idling. Push the left stick forward to throttle up, pull it back to throttle down; let go and the throttle stays where it is.',
     'tutorial.throttle.keys.vr': 'Left stick ↑ ↓',

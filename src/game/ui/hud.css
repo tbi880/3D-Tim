@@ -109,6 +109,10 @@ html.eod-page-locked body {
 .eod-meter--hull .eod-meter-fill { background: var(--eod-green); }
 .eod-meter--energy .eod-meter-fill { background: var(--eod-amber); }
 .eod-meter--boost .eod-meter-fill { background: #b9c7ff; }
+.eod-meter--throttle .eod-meter-fill { background: #b9c7ff; }
+/* A finger is setting it right now (the phone throttle, input/throttleSwipe.js). */
+.eod-meter--live .eod-meter-fill { background: var(--eod-cyan); box-shadow: 0 0 6px var(--eod-cyan); }
+.eod-meter--live .eod-meter-label, .eod-meter--live .eod-meter-value { color: #fff; }
 .eod-meter--hostile .eod-meter-fill { background: var(--eod-red); }
 .eod-meter--locked .eod-meter-fill { background: var(--eod-violet); }
 .eod-meter--warning .eod-meter-fill { background: var(--eod-red); }
@@ -455,7 +459,7 @@ html.eod-page-locked body {
     .eod-ship-compact { left: calc(56px + env(safe-area-inset-left, 0px)); top: 8px; width: 160px; border-radius: 4px 4px 12px 4px; }
     .eod-ship-compact .eod-torpedo-tubes { gap: 4px; padding-left: 47px; }
     .eod-ship-compact .eod-torpedo { width: 6px; height: 10px; }
-    .eod-objective { left: calc(8px + env(safe-area-inset-left, 0px)); top: 80px; width: min(220px, 27vw); border-radius: 4px 4px 12px 4px; }
+    .eod-objective { left: calc(8px + env(safe-area-inset-left, 0px)); top: 96px; width: min(220px, 27vw); border-radius: 4px 4px 12px 4px; }
     .eod-objective-text { font-size: 11px; line-height: 1.35; }
 
     /* Top right: target, the radar under it. */
@@ -492,18 +496,25 @@ html.eod-page-locked body {
     .eod-comms-text { font-size: 11.5px; line-height: 1.4; min-height: 0; margin: 3px 0 8px; }
     .eod-comms-skip { font-size: 8px; color: rgba(200, 225, 240, 0.55); }
 }
-.eod-touch-stick { position: absolute; left: calc(66px + env(safe-area-inset-left, 0px)); bottom: 14px; width: 128px; height: 128px; border-radius: 50%; border: 2px solid var(--eod-border); background: rgba(6, 16, 28, 0.3); pointer-events: auto; touch-action: none; display: grid; place-items: center; }
+/*
+ * The thumbs' corners. Everything a thumb presses or drags keeps clear of the screen edges: a
+ * thumb pushing the stick left or down, or reaching for the lowest button, must not slide off
+ * the glass (where the touch is lost, and where a phone has its own edge gestures).
+ */
+.eod-touch-stick { position: absolute; left: calc(76px + env(safe-area-inset-left, 0px)); bottom: calc(36px + env(safe-area-inset-bottom, 0px)); width: 128px; height: 128px; border-radius: 50%; border: 2px solid var(--eod-border); background: rgba(6, 16, 28, 0.3); pointer-events: auto; touch-action: none; display: grid; place-items: center; }
 .eod-touch-knob { width: 50px; height: 50px; border-radius: 50%; background: rgba(89, 208, 255, 0.4); border: 2px solid var(--eod-cyan); }
-/* The throttle gauge. The throttle itself is set by sliding a finger up or down anywhere on the view (input/throttleSwipe.js), so the gauge takes no touches. */
-.eod-touch-throttle { position: absolute; left: calc(16px + env(safe-area-inset-left, 0px)); bottom: 18px; width: 34px; height: 120px; border: 2px solid var(--eod-border); border-radius: 6px; background: rgba(6, 16, 28, 0.3); overflow: hidden; display: flex; align-items: flex-end; justify-content: center; transition: border-color 0.15s; }
-.eod-touch-throttle--swiping { border-color: var(--eod-cyan); }
-.eod-touch-throttle-fill { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(185, 199, 255, 0.4); }
-.eod-touch-throttle--swiping .eod-touch-throttle-fill { background: rgba(89, 208, 255, 0.55); }
-/* Shown while a finger is setting the throttle: the number it is asking for, above the gauge. */
-.eod-touch-throttle-readout { position: absolute; left: calc(16px + env(safe-area-inset-left, 0px)); bottom: 146px; padding: 3px 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; white-space: nowrap; color: #dff4ff; background: rgba(6, 16, 28, 0.7); border: 1px solid var(--eod-cyan); border-radius: 4px; }
-.eod-touch-throttle span { position: relative; font-size: 7px; padding-bottom: 4px; }
-.eod-touch-buttons { position: absolute; right: calc(14px + env(safe-area-inset-right, 0px)); bottom: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; pointer-events: auto; }
-.eod-touch-button { width: 62px; height: 62px; border-radius: 50%; font: inherit; font-size: 10px; font-weight: 700; color: #dff4ff; background: rgba(6, 16, 28, 0.45); border: 2px solid var(--eod-border); touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+/*
+ * The right thumb's four buttons sit in a diamond, like the face buttons of a gamepad: one each
+ * way from where the thumb rests, the two it keeps down longest (FIRE below, BURN to the right)
+ * nearest its root. Each is 50 px from the middle of a 162 px box, which leaves 8 px between
+ * neighbours. The box itself takes no touches: a finger in one of its empty corners is on the view.
+ */
+.eod-touch-buttons { position: absolute; right: calc(20px + env(safe-area-inset-right, 0px)); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); width: 162px; height: 162px; }
+.eod-touch-button { position: absolute; pointer-events: auto; width: 62px; height: 62px; border-radius: 50%; font: inherit; font-size: 10px; font-weight: 700; color: #dff4ff; background: rgba(6, 16, 28, 0.45); border: 2px solid var(--eod-border); touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.eod-touch-button--top { left: 50px; top: 0; }
+.eod-touch-button--left { left: 0; top: 50px; }
+.eod-touch-button--right { left: 100px; top: 50px; }
+.eod-touch-button--bottom { left: 50px; top: 100px; }
 .eod-touch-button--fire { border-color: var(--eod-amber); color: var(--eod-amber); }
 .eod-touch-button--torpedo { border-color: var(--eod-cyan); color: var(--eod-cyan); }
 .eod-touch-pause { position: absolute; top: 8px; left: calc(8px + env(safe-area-inset-left, 0px)); width: 40px; height: 34px; padding: 0; font: inherit; font-size: 12px; font-weight: 700; color: #dff4ff; background: rgba(6, 16, 28, 0.55); border: 1px solid var(--eod-border); border-radius: 4px; pointer-events: auto; touch-action: none; }

@@ -55,7 +55,7 @@ export const TUTORIAL_STEPS = Object.freeze({
     throttle: {
         kind: 'action', practice: 2.5,
         signal: 'throttle',
-        target: { [DESKTOP]: '.eod-speed', [TOUCH]: '.eod-touch-throttle' },
+        target: { [DESKTOP]: '.eod-speed', [TOUCH]: '.eod-ship-compact' },
     },
     roll: {
         kind: 'action', platforms: STICKS, practice: 2.5,

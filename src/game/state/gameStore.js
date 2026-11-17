@@ -14,6 +14,8 @@ export const useGameStore = create(() => ({
 
     // In-flight HUD
     hud: null,
+    /** The throttle (0..1) a finger sliding on a touch screen is asking for right now, or null (ui/TouchControls.jsx). */
+    throttleSwipe: null,
     target: null,
     escort: null,
     boss: null,

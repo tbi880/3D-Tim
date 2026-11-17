@@ -198,7 +198,7 @@ export class InputController {
 
     /**
      * Calls `listener` with the throttle (0..1) a finger is asking for while it slides, and with
-     * null when it lifts (the on-screen gauge shows it). Returns a function that stops the calls.
+     * null when it lifts (the HUD's throttle bar shows it). Returns a function that stops the calls.
      */
     onThrottleSwipe(listener) {
         this.throttleSwipeListeners.add(listener);
