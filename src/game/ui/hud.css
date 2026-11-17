@@ -39,6 +39,14 @@ html.eod-page-locked body {
     width: 100%;
 }
 
+/*
+ * The site's own buttons over every page - its menu on the left edge (Tools/Menu.jsx), the
+ * graphics settings on the right (Tools/GraphicSetting.jsx) - are hidden while a mission or a
+ * match is under way (ui/siteButtons.js adds the class; the title screen takes it away).
+ */
+html.eod-in-game .site-menu-toggle,
+html.eod-in-game .site-settings-toggle { display: none; }
+
 /* The lists that do scroll (menus, the lobby, the star map) scroll inside themselves and pass nothing on to the page. */
 .eod-screen,
 .eod-lan,
@@ -108,36 +116,27 @@ html.eod-page-locked body {
  *   right   top right: the target, the toast under it
  *   and at the bottom centre the dock prompt and the comms line (.eod-centre-stack).
  * The docks are sized to keep clear of one another and of the corners: the two gauge panels on
- * a desktop, the stick and the buttons on a touch screen. The site's own two buttons (Tools/
- * Menu.jsx on the left edge, Tools/GraphicSetting.jsx on the right, both halfway down) stay
- * uncovered: no dock reaches the middle of a side edge.
+ * a desktop, the stick and the buttons on a touch screen. (The site's own two buttons halfway
+ * down the side edges are hidden while the HUD is up: see html.eod-in-game above.)
  */
 .eod-hud {
     /* Gap to the screen edge, and the width of the left column (the centre dock keeps that much clear on both sides). */
     --eod-edge: 22px;
     --eod-side: min(340px, 30vw);
-    /* How far the left column steps in from the edge (see below). */
-    --eod-side-shift: 0px;
 }
 .eod-dock { position: absolute; display: flex; flex-direction: column; gap: 10px; }
 .eod-dock > * { flex: none; }
 .eod-dock .eod-panel { box-sizing: border-box; }
 /* Above the status panel in the lower left corner (about 100 px tall): what does not fit is cut, the objective first. */
-.eod-dock--left { left: calc(var(--eod-edge) + var(--eod-side-shift)); top: var(--eod-edge); width: var(--eod-side); max-height: calc(100% - 2 * var(--eod-edge) - 120px); }
+.eod-dock--left { left: var(--eod-edge); top: var(--eod-edge); width: var(--eod-side); max-height: calc(100% - 2 * var(--eod-edge) - 120px); }
 .eod-dock--left > .eod-panel { width: 100%; }
 .eod-dock--left > .eod-objective { flex: 0 1 auto; min-height: 0; overflow: hidden; }
-/* In a match on a short screen the column (objective + match status) comes down to the middle of
-   the left edge, where the site's menu button is (34 px wide): it steps in to clear it, and the
-   centre dock narrows to match. */
-@media (max-height: 720px) {
-    .eod-hud--desktop:has(.eod-match-status) { --eod-side-shift: 24px; }
-}
 .eod-dock--right { right: var(--eod-edge); top: var(--eod-edge); align-items: flex-end; }
 /* No wider than the left column: the centre dock keeps that much clear on both sides. */
 .eod-hud--desktop .eod-dock--right > * { max-width: var(--eod-side); box-sizing: border-box; }
 .eod-dock--centre {
     top: 18px; left: 50%; transform: translateX(-50%); align-items: center; gap: 8px;
-    width: min(560px, calc(100% - 2 * (var(--eod-side) + var(--eod-side-shift) + var(--eod-edge) + 18px)));
+    width: min(560px, calc(100% - 2 * (var(--eod-side) + var(--eod-edge) + 18px)));
     /* The warnings sit at the foot of this: a third of the way down, above the reticle's ring. */
     min-height: calc(30% - 18px);
 }

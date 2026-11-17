@@ -16,6 +16,7 @@ import { GameSession, PHASE } from '../game/state/GameSession.js';
 import { gameStoreSink, useGameStore, useT } from '../game/state/gameStore.js';
 import GameHud from '../game/ui/GameHud.jsx';
 import Menus from '../game/ui/Menus.jsx';
+import { useSiteButtonsHiddenInGame } from '../game/ui/siteButtons.js';
 import TouchControls from '../game/ui/TouchControls.jsx';
 import TutorialOverlay from '../game/ui/TutorialOverlay.jsx';
 import '../game/ui/hud.css';
@@ -85,6 +86,8 @@ function EchoesOfDawn() {
     // a phone always (also when testing a dev build there). Safari on iPhone has no fullscreen
     // for pages at all: there the title screen suggests opening the game from the home screen.
     useGameManifest();
+    // The site's menu and settings buttons are hidden once a mission or a match starts (back on the title screen).
+    useSiteButtonsHiddenInGame();
     // The page under the game holds still: no double-tap or pinch zoom, no scrolling, no rubber band.
     useEffect(() => lockPage(), []);
     useClickToFullscreen({ enabled: stageOfENV === 'prod' || isTouchDevice(), once: false, skipPortrait: false });

@@ -237,7 +237,7 @@ const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, r
 
     return (
         <div style={{ fontFamily: 'Orbitron, sans-serif' }}>
-            <button style={buttonStyle} onClick={toggleMenu} ref={refMenu}>
+            <button className="site-menu-toggle" style={buttonStyle} onClick={toggleMenu} ref={refMenu}>
                 <FontAwesomeIcon icon={showMenu ? faChevronLeft : faChevronRight} size="2x" color="black" />
             </button>
 

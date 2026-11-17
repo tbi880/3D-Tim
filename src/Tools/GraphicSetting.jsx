@@ -191,7 +191,7 @@ const GraphicSetting = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCal
         <div style={{
             fontFamily: 'Orbitron, sans-serif', // 显式设置字体
         }}>      {contextHolder}
-            <button style={buttonStyle} onClick={toggleSettings} ref={refGraphicSetting}>
+            <button className="site-settings-toggle" style={buttonStyle} onClick={toggleSettings} ref={refGraphicSetting}>
                 <FontAwesomeIcon icon={showSettings ? faCheck : faCog} size="2x" color="black" />
             </button>
             <div style={menuStyle}>
