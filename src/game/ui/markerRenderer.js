@@ -69,9 +69,13 @@ function project(position, camera, width, height, out) {
     return out;
 }
 
+/** The four corners of a target bracket, and the four ticks of the reticle (drawn every frame: made once). */
+const BRACKET_CORNERS = Object.freeze([[-1, -1], [1, -1], [1, 1], [-1, 1]]);
+const RETICLE_TICKS = Object.freeze([[1, 0], [-1, 0], [0, 1], [0, -1]]);
+
 function drawBrackets(ctx, x, y, half, corner) {
     ctx.beginPath();
-    for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+    for (const [sx, sy] of BRACKET_CORNERS) {
         ctx.moveTo(x + sx * half, y + sy * (half - corner));
         ctx.lineTo(x + sx * half, y + sy * half);
         ctx.lineTo(x + sx * (half - corner), y + sy * half);
@@ -231,7 +235,7 @@ function drawReticle(ctx, session, camera, width, height, stick) {
     ctx.strokeStyle = COLORS.reticle;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    for (const [dx, dy] of RETICLE_TICKS) {
         ctx.moveTo(centreX + dx * 7, centreY + dy * 7);
         ctx.lineTo(centreX + dx * 16, centreY + dy * 16);
     }

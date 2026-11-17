@@ -18,6 +18,9 @@ import { createWeaponState, updateShipWeapons } from './systems/weapons.js';
 
 const scratchVector = new Vector3();
 
+/** A story beam is over once its time is up or either ship it joins is gone. */
+const beamEnded = (beam) => !(beam.remaining > 0 && beam.from.alive && beam.to.alive);
+
 function toVector3(value, out = new Vector3()) {
     if (!value) return out.set(0, 0, 0);
     return Array.isArray(value) ? out.fromArray(value) : out.copy(value);
@@ -371,16 +374,19 @@ export class World {
             }
         }
         // A beam also ends when either ship it joins is gone.
-        this.scriptedBeams = this.scriptedBeams.filter((beam) => beam.remaining > 0 && beam.from.alive && beam.to.alive);
+        if (this.scriptedBeams.some(beamEnded)) this.scriptedBeams = this.scriptedBeams.filter((beam) => !beamEnded(beam));
     }
 
     /** Ships that were told to leave disappear when their timer runs out. */
     removeDeparted(dt) {
-        for (const ship of [...this.ships]) {
+        // Collected first and removed after, so the list is not changed while it is walked.
+        let leaving = null;
+        for (const ship of this.ships) {
             if (ship.despawnTimer == null) continue;
             ship.despawnTimer -= dt;
-            if (ship.despawnTimer <= 0) this.removeShip(ship, { flash: true });
+            if (ship.despawnTimer <= 0) (leaving ??= []).push(ship);
         }
+        if (leaving) for (const ship of leaving) this.removeShip(ship, { flash: true });
     }
 
     prune() {
