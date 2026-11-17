@@ -12,6 +12,7 @@ import PlayerCamera from './PlayerCamera.jsx';
 import PostEffects from './PostEffects.jsx';
 import ProjectilesLayer from './ProjectilesLayer.jsx';
 import SectorBackdrop from './SectorBackdrop.jsx';
+import Singularity from './Singularity.jsx';
 import ShipsLayer from './ShipsLayer.jsx';
 import { PlayerShipLoader, ShipModelPreloader } from './models/ShipModel.jsx';
 import SpaceDust from './SpaceDust.jsx';
@@ -57,6 +58,7 @@ export default function GameScene({ game, markerCanvasRef, radarCanvasRef }) {
                     <VRCameraRig game={game} />
                 </PlayerCamera>
                 <SectorBackdrop />
+                <Singularity session={session} />
                 <AsteroidField session={session} />
                 {/* Late-loading models must never bring the full-screen loader back. */}
                 <Suspense fallback={null}>

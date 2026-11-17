@@ -2,7 +2,8 @@ import { Quaternion, Vector3 } from 'three';
 import { lookRotation } from '../../core/math.js';
 
 /**
- * The ending of a battle royale, as each device stages it at the stargate.
+ * The first act of a battle royale's ending, as each device stages it at the stargate
+ * (the second is systemFall.js).
  *
  * Whoever is on the winning side flies it: a run straight at the gate, faster and faster,
  * with the rest of the side's pilots in a wedge just ahead, and through as the ending runs

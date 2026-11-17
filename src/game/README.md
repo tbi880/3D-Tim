@@ -36,9 +36,14 @@ The stargate everybody is fighting towards is a real thing at the last planet: a
 `stargate`) hanging over that planet's station, with a field across its opening drawn by a
 shader (`scene/models/GatePortal.jsx`, driven by `world.gateField`): a faint film while
 the match is fought, charging through the last stand in the colour of whoever holds the
-station. When the match is decided every device cuts to it for the ending
-(`modes/battleRoyale/gateCeremony.js`): the winners fly through, everybody else watches it
-close.
+station. When the match is decided every device cuts to it for the ending, in two acts
+(`BATTLE_ROYALE.outro`). At the gate (`modes/battleRoyale/gateCeremony.js`) the winners fly
+through and everybody else watches it close. Then the black hole takes the system
+(`modes/battleRoyale/systemFall.js`, drawn by `scene/Singularity.jsx` from
+`world.singularity`): the fleets of every side that lost - players' ships and computer-flown
+ones - are dragged in, drawn out (`ship.tidal`) and torn apart with the game's ordinary
+explosions, the station breaks up, and the dark fills the sky. The winners see it from
+outside, everybody else from their cockpit until their own ship goes. Only then the result.
 
 ## Architecture
 

@@ -162,6 +162,8 @@ export class Ship {
         this.hitEffectTimer = 0;
         /** Set when the ship is told to leave; it is removed once this reaches zero. */
         this.despawnTimer = null;
+        /** 0..1 how far a black hole's tide has drawn the hull out, nose to tail. Only drawn (scene/ShipsLayer.jsx). */
+        this.tidal = 0;
 
         // Player-only state.
         /**

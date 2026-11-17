@@ -1,4 +1,5 @@
 import { BATTLE_ROYALE } from '../../config/battleRoyale.js';
+import { OUTRO_ACT } from '../../modes/battleRoyale/BattleRoyalePresenter.js';
 import { rosterBySide } from '../../modes/battleRoyale/battleRoyaleState.js';
 import { useGameStore, useT } from '../../state/gameStore.js';
 
@@ -7,9 +8,10 @@ import { useGameStore, useT } from '../../state/gameStore.js';
  *
  *  - the introduction (about ten seconds, before anybody is in the system): what is
  *    happening here, why everybody wants the stargate, and the three sides with their pilots;
- *  - the ending (a few seconds, between the deciding moment and the result screen): the
- *    3D view shows the stargate - the winners go through it, everybody else watches it
- *    close - and this puts the words under it.
+ *  - the ending (between the deciding moment and the result screen), in two acts that the
+ *    3D view plays: at the stargate the winners go through it and everybody else watches it
+ *    close; then the black hole takes the system and the fleets left in it. This puts the
+ *    words under each.
  *
  * Both are timed by the match itself (`match.intro` counts down on the host; the presenter
  * holds `matchOutro` for as long as the ending plays), so every device shows them together.
@@ -69,10 +71,15 @@ function MatchOutro({ outro }) {
     const t = useT();
     const kind = !outro.winner ? 'none' : outro.won ? 'won' : 'lost';
     const faction = outro.winner ? t(`mp.faction.${outro.winner}`) : '';
+    // The second act has its own words: what the black hole does to what is left.
+    const fall = outro.act === OUTRO_ACT.FALL;
+    const words = fall ? `mp.outro.fall.${kind}` : `mp.outro.${kind}`;
+    const seconds = fall ? BATTLE_ROYALE.outro.fall.seconds : BATTLE_ROYALE.outro.seconds;
     return (
-        <div className={`eod-cinematic eod-outro eod-outro--${kind}`} style={{ '--eod-outro-seconds': `${BATTLE_ROYALE.outro.seconds}s` }}>
-            <h2 className={`eod-cinematic-title ${outro.winner ? `eod-side--${outro.winner}` : ''}`}>{t(`mp.outro.${kind}.title`)}</h2>
-            <p className="eod-outro-text">{t(`mp.outro.${kind}.text`, { faction })}</p>
+        // Keyed by the act, so the words of each come in afresh.
+        <div key={outro.act} className={`eod-cinematic eod-outro eod-outro--${kind} eod-outro--${fall ? 'fall' : 'gate'}`} style={{ '--eod-outro-seconds': `${seconds}s` }}>
+            <h2 className={`eod-cinematic-title ${outro.winner && !fall ? `eod-side--${outro.winner}` : ''}`}>{t(`${words}.title`)}</h2>
+            <p className="eod-outro-text">{t(`${words}.text`, { faction })}</p>
         </div>
     );
 }

@@ -75,6 +75,11 @@ export class World {
          * ship has gone through, `faction` whose colour it wears (null: its own).
          */
         this.gateField = { charge: 0, open: 0, shut: 0, pulse: 0, faction: null };
+        /**
+         * The black hole as it bears down on this place (scene/Singularity.jsx), driven by the
+         * game mode: `size` 0 (not there) .. 1 (it fills the sky), and the `direction` it comes from.
+         */
+        this.singularity = { size: 0, direction: new Vector3(0, 0, -1) };
     }
 
     // ---- Lifecycle ----------------------------------------------------------------------
@@ -96,6 +101,7 @@ export class World {
         this.warpFactor = 0;
         this.screenFade = 0;
         Object.assign(this.gateField, { charge: 0, open: 0, shut: 0, pulse: 0, faction: null });
+        this.singularity.size = 0;
     }
 
     /** Whether the local player is past the sector's edge (the HUD's warning). */

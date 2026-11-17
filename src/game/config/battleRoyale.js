@@ -69,6 +69,40 @@ export const BATTLE_ROYALE = Object.freeze({
         fade: Object.freeze([0.68, 0.85]),
         /** Seconds the picture takes to come up on the gate. */
         cut: 0.5,
+
+        /**
+         * And then what the winners left behind (modes/battleRoyale/systemFall.js): the black
+         * hole takes the system. Seen from beside the dead gate, looking back down the approach:
+         * the fleets of every side that did not get through - computer-flown and players'
+         * alike - are dragged in, drawn out and torn apart, the station breaks up, and the dark
+         * fills the sky. The winners watch it from outside; everybody else from their own
+         * cockpit, until their ship goes too. Only then does the result come up.
+         */
+        fall: Object.freeze({
+            seconds: 8,
+            /** Where it is seen from, in the gate's axes: [sideways, above, back down the approach] in metres. */
+            seat: Object.freeze([1300, -250, 700]),
+            /** Where the black hole comes from, in the gate's axes: back down the approach, a little to one side and high. */
+            from: Object.freeze([-0.18, 0.1, -1]),
+            /** Most computer-flown ships of each losing side shown, and most players' ships. */
+            fleet: 7,
+            pilots: 8,
+            /** How deep in front of the view the ships are spread: nearest and farthest (metres). */
+            depth: Object.freeze([300, 2400]),
+            /** None of them waits closer than this to the gate's axis: that is the winners' road (metres). */
+            road: 350,
+            /** Shares of `seconds` between which they are torn apart: the farthest first, the nearest last. */
+            tearing: Object.freeze([0.2, 0.84]),
+            /** Seconds a ship is drawn out before it bursts, and how hard everything is dragged in (m/s2). */
+            stretch: 1.4,
+            pull: 240,
+            /** Shares of `seconds` at which the station starts to break up, and a watcher's own ship is torn apart. */
+            station: 0.1,
+            own: 0.9,
+            /** Seconds the picture takes to come up, and to go black at the end. */
+            cut: 0.5,
+            dark: 0.8,
+        }),
     }),
 
     jump: Object.freeze({

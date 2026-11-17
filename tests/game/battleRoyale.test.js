@@ -29,6 +29,8 @@ const FOURTH = PLANETS[3];
 const GATE = PLANETS.at(-1);
 const NEXT_TO_GATE = PLANETS.at(-2);
 const { station: STATION, equipment: GEAR } = BATTLE_ROYALE;
+/** The whole ending: through the gate, then the system's fall. */
+const ENDING_SECONDS = BATTLE_ROYALE.outro.seconds + BATTLE_ROYALE.outro.fall.seconds;
 
 /**
  * A match with every pilot put on a chosen side at a chosen planet, engines stopped:
@@ -1869,7 +1871,7 @@ test('every device learns its side, the map and the result', () => {
     }
 
     mode.finish(DAWN);
-    match.run(BATTLE_ROYALE.outro.seconds + 0.5);
+    match.run(ENDING_SECONDS + 0.5);
     for (const device of match.devices) {
         assert.equal(device.ui.match.phase, MATCH_PHASE.OVER);
         assert.equal(device.ui.match.winner, DAWN);
@@ -2060,11 +2062,17 @@ test('a decided match plays its ending before the result', () => {
     for (const device of match.devices) {
         assert.equal(device.ui.match.phase, MATCH_PHASE.OVER);
         assert.equal(device.session.phase, 'playing', 'the result screen is not up yet');
-        assert.deepEqual(device.ui.matchOutro, { winner, won: device.ui.match.you.faction === winner });
+        assert.deepEqual(device.ui.matchOutro, { winner, won: device.ui.match.you.faction === winner, act: 'gate' });
         assert.equal(device.world.controlsLocked, true, 'nobody flies during it');
     }
 
     match.run(BATTLE_ROYALE.outro.seconds);
+    for (const device of match.devices) {
+        assert.equal(device.session.phase, 'playing', 'the gate was only the first act');
+        assert.deepEqual(device.ui.matchOutro, { winner, won: device.ui.match.you.faction === winner, act: 'fall' });
+    }
+
+    match.run(BATTLE_ROYALE.outro.fall.seconds);
     for (const device of match.devices) {
         assert.equal(device.session.phase, 'matchover');
         assert.equal(device.ui.matchOutro, null);
@@ -2129,10 +2137,10 @@ test('the ending is played at the stargate, wherever each player was', () => {
     for (const device of losers) assert.ok(device.world.player.position.distanceTo(before.get(device)) < 300);
     for (const device of match.devices) assert.ok(device.world.gateField.open > 0.99, 'the way through is open');
 
-    match.run(BATTLE_ROYALE.outro.seconds * 0.5);
+    match.run(BATTLE_ROYALE.outro.seconds * 0.5 - 0.35);
     for (const device of winners) {
         const gate = device.world.findByTag(GATE_TAG);
-        assert.ok(device.world.player.position.distanceTo(gate.position) < 5, 'through the middle of the gate');
+        assert.ok(device.world.player.position.distanceTo(gate.position) < 100, 'into the middle of the gate');
         assert.equal(device.world.gateField.open, 1);
         assert.equal(device.world.gateField.shut, 0);
     }
@@ -2157,16 +2165,129 @@ test('the rest of the winning side is seen going through the gate, by friend and
     for (const device of match.devices) {
         const won = device.ui.match.you.faction === first.faction;
         const expected = device.ui.match.players.filter((player) => player.faction === first.faction && player.id !== device.id).length;
-        const others = device.world.ships.filter((ship) => ship.isPlayer && ship !== device.world.player);
+        const others = device.world.ships.filter((ship) => ship.isPlayer && ship !== device.world.player && ship.faction === first.faction);
         assert.equal(others.length, expected, `${device.id} sees every other winner`);
-        assert.ok(others.every((ship) => ship.faction === first.faction));
         assert.equal(expected, won ? 1 : 2);
     }
 
-    match.run(BATTLE_ROYALE.outro.seconds);
+    match.run(BATTLE_ROYALE.outro.seconds - 0.4);
     for (const device of match.devices) {
-        const others = device.world.ships.filter((ship) => ship.isPlayer && ship !== device.world.player);
+        const others = device.world.ships.filter((ship) => ship.isPlayer && ship !== device.world.player && ship.faction === first.faction);
         assert.equal(others.length, 0, 'they are through, and gone');
+        // Those who lost are still there, at the gate that did not open for them.
+        const left = device.ui.match.players.filter((player) => player.faction !== first.faction && player.id !== device.id).length;
+        assert.equal(device.world.ships.filter((ship) => ship.isPlayer && ship !== device.world.player).length, left);
+    }
+});
+
+/** Runs a decided match to `into` seconds of its second act. */
+function intoTheFall(game, into) {
+    game.match.run(BATTLE_ROYALE.outro.seconds + into);
+    return game;
+}
+/** The ships on a device's stage that the black hole is there for: every one but the eye's own, the station and the gate. */
+const fleetOf = (device) => device.world.ships.filter((ship) => ship.alive && ship !== device.world.player && !ship.tags.has(STATION_TAG) && !ship.tags.has(GATE_TAG));
+
+test('the fleets that lost are at the gate from the start of the ending, clear of the winners\' road', () => {
+    const { match, winner, winners } = decided();
+    match.run(0.3);
+    for (const device of match.devices) {
+        const fleet = fleetOf(device).filter((ship) => ship.faction !== winner);
+        assert.ok(fleet.length >= 4);
+        assert.equal(device.world.singularity.size, 0, 'the hole is not here yet');
+        assert.ok(fleet.every((ship) => ship.tidal === 0));
+    }
+    // A winner's run goes through none of them.
+    const device = winners[0];
+    const fleet = fleetOf(device).filter((ship) => ship.faction !== winner);
+    let closest = Infinity;
+    for (let elapsed = 0.3; elapsed < BATTLE_ROYALE.outro.seconds - 0.1; elapsed += 0.1) {
+        match.run(0.1);
+        for (const ship of fleet) closest = Math.min(closest, ship.distanceToPoint(device.world.player.position));
+    }
+    assert.ok(closest > 150, `a ship ${Math.round(closest)} m from the winners' road`);
+});
+
+test('after the gate the black hole comes for the system, and for every side that lost', () => {
+    const { match, winner, winners, losers } = intoTheFall(decided(), 0.5);
+
+    for (const device of match.devices) {
+        const { world } = device;
+        assert.ok(world.singularity.size > 0, 'the hole is in the sky');
+        assert.deepEqual([world.gateField.open, world.gateField.shut], [0, 1], 'the gate is dead');
+        assert.equal(world.warpFactor, 0);
+        const fleet = fleetOf(device);
+        assert.ok(fleet.length >= 4);
+        assert.ok(fleet.every((ship) => ship.faction !== winner), 'nobody of the winning side is left here');
+        // The computer-flown fleets of the sides that lost, and the other players who lost.
+        for (const faction of NPC_FACTIONS.filter((side) => side !== winner)) {
+            assert.ok(fleet.some((ship) => !ship.isPlayer && ship.faction === faction), `${faction}'s fleet`);
+        }
+        const others = device.ui.match.players.filter((player) => player.faction !== winner && player.id !== device.id);
+        assert.deepEqual(fleet.filter((ship) => ship.isPlayer).map((ship) => ship.pilotId).sort(), others.map((player) => player.id).sort());
+        // Everything in front of the eye, and the eye looks the way the hole is coming.
+        const nose = new Vector3(0, 0, -1).applyQuaternion(world.player.quaternion);
+        assert.ok(nose.dot(world.singularity.direction) > 0.8);
+        for (const ship of fleet) assert.ok(ship.position.clone().sub(world.player.position).dot(nose) > 0, `${ship.classId} is in view`);
+    }
+    for (const device of winners) assert.equal(device.world.player.alive, false, 'the winners are out of it: only the eye is here');
+    for (const device of losers) assert.equal(device.world.player.alive, true, 'everybody else is in their cockpit');
+});
+
+test('the ships are drawn out and torn apart one after another, the station breaks up, and the dark takes the rest', () => {
+    const game = decided();
+    const { match, losers } = game;
+    const { fall } = BATTLE_ROYALE.outro;
+    intoTheFall(game, 0.3);
+    const device = losers[0];
+    const { world } = device;
+    const fleet = fleetOf(device);
+    const station = world.findByTag(STATION_TAG);
+    const blasts = [];
+    world.events.on('explosion', ({ ship }) => blasts.push(ship));
+    const startSize = world.singularity.size;
+    assert.equal(station.alive, true);
+
+    let alive = fleet.length;
+    let stretched = 0;
+    const stillStanding = [];
+    for (let elapsed = 0.3; elapsed < fall.seconds * fall.tearing[1] + 0.2; elapsed += 0.25) {
+        match.run(0.25);
+        const now = fleet.filter((ship) => ship.alive).length;
+        assert.ok(now <= alive);
+        alive = now;
+        stillStanding.push(now);
+        stretched = Math.max(stretched, ...fleet.filter((ship) => ship.alive).map((ship) => ship.tidal));
+    }
+    assert.equal(alive, 0, 'every one of them is gone');
+    assert.ok(new Set(stillStanding).size >= 4, 'not all at once');
+    assert.ok(stretched > 0.5, 'each is drawn out before it bursts');
+    assert.equal(station.alive, false, 'the station has broken up');
+    assert.ok(fleet.every((ship) => blasts.includes(ship)) && blasts.includes(station), 'every one went with a blast');
+    assert.ok(world.singularity.size > startSize + 0.3, 'the hole has grown');
+    assert.equal(world.player.alive, true, 'the watcher is the last to go');
+
+    match.run(fall.seconds * (fall.own - fall.tearing[1]));
+    assert.equal(world.player.alive, false, 'and goes');
+    assert.ok(blasts.includes(world.player));
+
+    match.run(fall.seconds * (1 - fall.own) + 0.1);
+    assert.equal(world.screenFade, 1, 'nothing is left to see');
+    assert.equal(device.session.phase, 'matchover', 'only now the result');
+});
+
+test('a match nobody won ends the same way: no gate for anybody, then the fall takes every side', () => {
+    const match = createTestMatch(['host', 'ann']);
+    match.run(0.5);
+    match.server.mode.finish(null);
+    match.run(BATTLE_ROYALE.outro.seconds + 0.5);
+
+    for (const device of match.devices) {
+        assert.deepEqual(device.ui.matchOutro, { winner: null, won: false, act: 'fall' });
+        assert.equal(device.world.player.alive, true);
+        const fleet = fleetOf(device);
+        for (const faction of NPC_FACTIONS) assert.ok(fleet.some((ship) => ship.faction === faction));
+        assert.equal(fleet.filter((ship) => ship.isPlayer).length, 1, 'the other player is in it too');
     }
 });
 
@@ -2190,10 +2311,10 @@ test('a match nobody won ends in the dark for everyone', () => {
     match.run(2.2);
 
     for (const device of match.devices) {
-        assert.deepEqual(device.ui.matchOutro, { winner: null, won: false });
+        assert.deepEqual(device.ui.matchOutro, { winner: null, won: false, act: 'gate' });
         assert.equal(device.world.gateField.open, 0, 'the gate opens for nobody');
         assert.ok(device.world.gateField.shut > 0, 'it is dying');
-        assert.equal(device.world.ships.filter((ship) => ship.isPlayer && ship !== device.world.player).length, 0);
+        assert.equal(device.world.ships.filter((ship) => ship.isPlayer && ship !== device.world.player).length, 1, 'the other player waits at it too');
     }
 
     match.run(BATTLE_ROYALE.outro.seconds - 2.4);
@@ -2231,15 +2352,16 @@ test('losing the link skips the ending: there is nothing to celebrate or mourn',
 });
 
 test('leaving during the ending leaves nothing of it behind', () => {
-    const { match, losers } = decided();
-    match.run(2);
+    const { match, losers } = intoTheFall(decided(), 2);
     const device = losers[0];
+    assert.ok(device.world.singularity.size > 0);
 
     device.session.enterTitle();
 
     assert.equal(device.world.screenFade, 0);
     assert.equal(device.world.warpFactor, 0);
     assert.deepEqual(device.world.gateField, { charge: 0, open: 0, shut: 0, pulse: 0, faction: null });
+    assert.equal(device.world.singularity.size, 0);
     assert.equal(device.ui.matchOutro, null);
     assert.equal(device.session.phase, 'title');
 });

@@ -84,7 +84,7 @@ class Place {
  * Tuning is in config/battleRoyale.js. The pieces: StarMap (who can jump where), CollapseClock
  * (what falls in when), allegiance (sides and treason), station (the docks, and where the
  * stargate stands), garrisons (the computer-flown ships), equipment (what pilots carry).
- * The ending at the gate is the presenter's (gateCeremony.js): the rules only say who won.
+ * The ending is the presenter's (gateCeremony.js, then systemFall.js): the rules only say who won.
  */
 export class BattleRoyaleMode {
     /**

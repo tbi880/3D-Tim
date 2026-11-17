@@ -180,13 +180,16 @@
 /* The ending is played in the 3D view, at the stargate: the words stand under it, out of its way. */
 .eod-outro { justify-content: flex-end; padding-bottom: 11vh; }
 .eod-outro-text { margin: 0; max-width: 640px; font-size: clamp(14px, 1.9vw, 19px); line-height: 1.6; text-shadow: 0 0 12px #000; animation: eod-cine-in 0.9s ease-out 0.7s both; }
-.eod-outro--won .eod-cinematic-title { color: #ffe9a8; text-shadow: 0 0 18px #ffb648, 0 0 60px #ff8a1f; animation: eod-outro-rise var(--eod-outro-seconds, 8s) ease-out both; }
+.eod-outro--gate.eod-outro--won .eod-cinematic-title { color: #ffe9a8; text-shadow: 0 0 18px #ffb648, 0 0 60px #ff8a1f; animation: eod-outro-rise var(--eod-outro-seconds, 8s) ease-out both; }
 .eod-outro--lost, .eod-outro--none { background: radial-gradient(ellipse at 50% 38%, rgba(20, 0, 6, 0) 30%, rgba(10, 0, 4, 0.6) 100%); }
 .eod-outro--lost .eod-cinematic-title, .eod-outro--none .eod-cinematic-title { color: var(--eod-red); }
 .eod-outro--lost .eod-outro-text, .eod-outro--none .eod-outro-text { color: rgba(255, 215, 220, 0.9); }
 /* Those words are about the gate closing: they wait until it does (config outro.close). */
-.eod-outro--lost .eod-cinematic-title { animation-delay: calc(var(--eod-outro-seconds, 8s) * 0.6); }
-.eod-outro--lost .eod-outro-text { animation-delay: calc(var(--eod-outro-seconds, 8s) * 0.6 + 0.7s); }
+.eod-outro--gate.eod-outro--lost .eod-cinematic-title { animation-delay: calc(var(--eod-outro-seconds, 8s) * 0.6); }
+.eod-outro--gate.eod-outro--lost .eod-outro-text { animation-delay: calc(var(--eod-outro-seconds, 8s) * 0.6 + 0.7s); }
+/* The second act - the black hole takes the system - is nobody's triumph: the same pale words for every side. */
+.eod-outro--fall .eod-cinematic-title { color: #ffd9c2; text-shadow: 0 0 16px #000, 0 0 44px rgba(255, 120, 60, 0.55); animation-delay: 0.8s; }
+.eod-outro--fall .eod-outro-text { color: rgba(255, 232, 220, 0.92); animation-delay: 1.5s; }
 @keyframes eod-outro-rise { from { opacity: 0; transform: scale(0.8); letter-spacing: 0.05em; } 18% { opacity: 1; transform: scale(1); } to { opacity: 1; transform: scale(1.08); letter-spacing: 0.26em; } }
 
 @media (pointer: coarse) {

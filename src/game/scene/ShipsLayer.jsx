@@ -25,6 +25,10 @@ const FACTION_COLORS = Object.freeze({
 
 const scratchForward = new THREE.Vector3();
 
+/** A ship in a black hole's tide (`ship.tidal` = 1): this many times longer, and this much of its width gone. */
+const TIDAL_STRETCH = 3.2;
+const TIDAL_THINNING = 0.6;
+
 // A unit cone with its base at the origin and its tip at +Z: scaled into an exhaust plume.
 let plumeGeometry = null;
 function getPlumeGeometry() {
@@ -139,7 +143,9 @@ function applyWarpTransform(group, streak, ship) {
     const displacement = warpDisplacement(ship);
     group.position.copy(ship.position);
     if (displacement === 0) {
-        group.scale.setScalar(1);
+        // A black hole's tide draws the hull out along its length, and thin.
+        if (ship.tidal > 0) group.scale.set(1 - TIDAL_THINNING * ship.tidal, 1 - TIDAL_THINNING * ship.tidal, 1 + TIDAL_STRETCH * ship.tidal);
+        else group.scale.setScalar(1);
         streak.visible = false;
         return;
     }

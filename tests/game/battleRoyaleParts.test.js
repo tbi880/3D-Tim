@@ -16,6 +16,7 @@ import { planGarrisons, stationGarrison } from '../../src/game/modes/battleRoyal
 import { StarMap } from '../../src/game/modes/battleRoyale/starMap.js';
 import { GateCeremony } from '../../src/game/modes/battleRoyale/gateCeremony.js';
 import { GATE_TAG, STATION_TAG, buildGate, buildStation, gatePose } from '../../src/game/modes/battleRoyale/station.js';
+import { SystemFall } from '../../src/game/modes/battleRoyale/systemFall.js';
 import { Zone } from '../../src/game/net/server/Zone.js';
 
 // ---- Configuration ---------------------------------------------------------------------------
@@ -611,4 +612,94 @@ test('the ending - when nobody won the gate opens for nobody', () => {
     assert.equal(field.charge, 0);
     // A side cannot have "won" a match nobody won.
     assert.equal(new GateCeremony({ gate: gateZone().pose, timing: OUTRO, won: true, opens: false, others: 0 }).warp(OUTRO.seconds), 0);
+});
+
+// ---- The system's fall -----------------------------------------------------------------------
+
+const { fall: FALL } = BATTLE_ROYALE.outro;
+function systemFall(ships = 9) {
+    const { pose, station } = gateZone();
+    return { pose, station, show: new SystemFall({ gate: pose, station: station.ship.position, timing: FALL, ships }) };
+}
+
+test('the fall - it is seen from beside the gate, looking back at what is coming, the ships all in view', () => {
+    const { pose, station, show } = systemFall();
+    const eye = new Vector3();
+    const view = new Quaternion();
+    show.placeViewer(0, eye, view);
+    const nose = forwardOf(view, new Vector3());
+
+    assert.ok(show.pull.dot(pose.lane) < -0.9, 'the hole comes up the way everybody came');
+    assert.ok(Math.abs(show.pull.length() - 1) < 1e-9);
+    assert.ok(nose.dot(show.pull) > Math.cos(Math.PI / 6), 'the view is on the hole');
+    assert.ok(nose.dot(station.ship.position.clone().sub(eye).normalize()) > Math.cos(Math.PI / 5), 'with the station in it');
+    assert.ok(eye.distanceTo(pose.position) < 2500, 'from beside the gate');
+    assert.ok(pose.position.clone().sub(eye).dot(nose) < 0, 'which is behind the eye: nothing left to look at there');
+
+    const position = new Vector3();
+    const quaternion = new Quaternion();
+    for (let index = 0; index < show.ships.length; index++) {
+        const { tidal, torn } = show.placeShip(index, 0, position, quaternion);
+        assert.deepEqual([tidal, torn], [0, false]);
+        const offset = position.clone().sub(eye);
+        const ahead = offset.dot(nose);
+        assert.ok(ahead >= FALL.depth[0] * 0.8 && ahead <= FALL.depth[1] * 1.2);
+        assert.ok(offset.normalize().dot(nose) > Math.cos(Math.PI / 5), 'inside the picture');
+        // Nose straight out of the hole: still trying to get away.
+        assert.ok(forwardOf(quaternion, new Vector3()).dot(show.pull) < -0.9999);
+        assert.ok(station.ship.distanceToPoint(position) > 100, 'not inside the station');
+    }
+});
+
+test('the fall - everything is dragged in; ships are drawn out and torn apart, the farthest first', () => {
+    const { show } = systemFall();
+    const position = new Vector3();
+    const quaternion = new Quaternion();
+    const starts = show.ships.map((ship) => ship.start.clone());
+    const eye = new Vector3();
+    show.placeViewer(0, eye, quaternion);
+
+    // Later in the list is farther away, and goes sooner.
+    const times = show.ships.map((ship) => ship.tornAt);
+    assert.deepEqual(times, [...times].sort((a, b) => b - a));
+    assert.ok(Math.abs(times.at(-1) - FALL.seconds * FALL.tearing[0]) < 1e-9);
+    assert.ok(Math.abs(times[0] - FALL.seconds * FALL.tearing[1]) < 1e-9);
+    const depths = starts.map((start) => start.distanceTo(eye));
+    assert.ok(depths.at(-1) > depths[0] * 3);
+    assert.ok(show.ownAt > times[0], 'the watcher goes after all of them');
+    assert.ok(show.stationAt < times.at(-1), 'the station starts to go first');
+
+    show.ships.forEach((ship, index) => {
+        let fallen = 0;
+        let drawn = 0;
+        for (let elapsed = 0; elapsed <= FALL.seconds; elapsed += 0.2) {
+            const { tidal, torn } = show.placeShip(index, elapsed, position, quaternion);
+            const moved = position.clone().sub(starts[index]);
+            assert.ok(moved.dot(show.pull) >= fallen - 1e-6, 'only ever towards the hole');
+            fallen = moved.dot(show.pull);
+            assert.ok(tidal >= drawn - 1e-9);
+            drawn = tidal;
+            assert.equal(torn, elapsed >= ship.tornAt);
+            if (elapsed < ship.tornAt - FALL.stretch) assert.equal(tidal, 0);
+        }
+        assert.equal(show.placeShip(index, ship.tornAt, position, quaternion).tidal, 1, 'fully drawn out as it bursts');
+    });
+    assert.ok(show.speed(FALL.seconds) > show.speed(1));
+});
+
+test('the fall - the hole grows from a spot in the sky to all of it, and the picture ends in the dark', () => {
+    const { show } = systemFall(0);
+    assert.equal(show.ships.length, 0);
+    let last = 0;
+    for (let elapsed = 0; elapsed <= FALL.seconds + 1e-9; elapsed += 0.25) {
+        const size = show.size(elapsed);
+        assert.ok(size > last, 'it only grows');
+        last = size;
+    }
+    assert.ok(show.size(0) > 0 && show.size(0) < 0.1);
+    assert.ok(show.size(FALL.seconds / 2) < 0.4, 'slowly at first');
+    assert.equal(show.size(FALL.seconds), 1);
+    assert.equal(show.fade(0), 1);
+    assert.equal(show.fade(FALL.seconds / 2), 0);
+    assert.equal(show.fade(FALL.seconds), 1);
 });

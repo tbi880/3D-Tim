@@ -1,8 +1,9 @@
 import { Vector3 } from 'three';
-import { BATTLE_ROYALE, STAR_SYSTEM } from '../../config/battleRoyale.js';
-import { FACTION } from '../../config/gameConfig.js';
+import { BATTLE_ROYALE, NPC_FACTIONS, STAR_SYSTEM } from '../../config/battleRoyale.js';
+import { FACTION, WORLD } from '../../config/gameConfig.js';
 import { SECTORS } from '../../config/sectors.js';
 import { SHIP_CLASSES } from '../../config/shipClasses.js';
+import { destroyShip } from '../../core/systems/damage.js';
 import { t } from '../../i18n/index.js';
 import { MATCH_PHASE } from '../../net/match/matchState.js';
 import { sanitizeBattleRoyaleState } from './battleRoyaleState.js';
@@ -11,12 +12,16 @@ import { PLANET_STATUS } from './collapse.js';
 import { isEquipment } from './equipment.js';
 import { GateCeremony } from './gateCeremony.js';
 import { STATION_TAG, buildGate, gatePose, stationPose } from './station.js';
+import { SystemFall } from './systemFall.js';
 
 /** The mode's own keys and buttons (bound in input/InputController.js, shown by ui/multiplayer). */
 export const MATCH_ACTION = Object.freeze({
     MAP: 'match:map', REFIT: 'match:refit', SUMMON: 'match:summon', DOCK: 'match:dock', EQUIPMENT: 'match:equipment',
 });
 export const MATCH_PANEL = Object.freeze({ MAP: 'map', EQUIPMENT: 'equipment' });
+
+/** The two acts of the ending, in order: through the gate, then the system's fall. */
+export const OUTRO_ACT = Object.freeze({ GATE: 'gate', FALL: 'fall' });
 
 /** Sounds of the match's ceremonies (audio/SoundEngine.js playCue). */
 export const CUE = Object.freeze({ INTRO: 'matchIntro', VICTORY: 'victory', DEFEAT: 'defeat' });
@@ -62,7 +67,7 @@ export class BattleRoyalePresenter {
         this.refitOpen = false;
         /** Whether the introduction is on screen (null before the first state has said). */
         this.introShowing = null;
-        /** The ending being played: { elapsed, seconds, won, showResults, stage }, or null. */
+        /** The ending being played: { act, elapsed, seconds, won, state, showResults, stage }, or null. */
         this.outro = null;
         /** True from the moment the match is decided: the picture is the ending's from then on. */
         this.decided = false;
@@ -99,8 +104,9 @@ export class BattleRoyalePresenter {
     }
 
     /**
-     * The match is decided. Plays the ending at the stargate - the winners go through it,
-     * everybody else watches it close - and only then lets the result screen up.
+     * The match is decided. Plays the ending - at the stargate the winners go through and
+     * everybody else watches it close; then the black hole takes the system and everything
+     * left in it - and only then lets the result screen up.
      */
     onMatchOver(state, showResults) {
         if (this.outro) return true;
@@ -110,9 +116,12 @@ export class BattleRoyalePresenter {
         this.refitOpen = false;
         this.decided = true;
         session.setWaypoint(null);
-        session.ui.set({ refit: null, matchOutro: { winner: state.winner, won } });
+        session.ui.set({ refit: null, matchOutro: { winner: state.winner, won, act: OUTRO_ACT.GATE } });
         this.warp = null;
-        this.outro = { elapsed: 0, seconds: BATTLE_ROYALE.outro.seconds, won, showResults, stage: this.stageEnding(state, won) };
+        this.outro = {
+            act: OUTRO_ACT.GATE, elapsed: 0, seconds: BATTLE_ROYALE.outro.seconds, won, state, showResults,
+            stage: this.stageEnding(state, won),
+        };
         session.playCue(won ? CUE.VICTORY : CUE.DEFEAT);
         if (won) session.playMusic('finale');
         return true;
@@ -122,7 +131,7 @@ export class BattleRoyalePresenter {
      * Sets the ending's stage: wherever the player was (or was not: they may be dead), this
      * device now shows the stargate, the station it stands off, the player's own ship and
      * the rest of the winning side's. The ceremony says where each of them goes.
-     * @returns {{ ceremony: GateCeremony, own: object, flyers: object[] }}
+     * @returns {{ ceremony: GateCeremony, own: object, flyers: object[], gate: object, station: object, fall: object }}
      */
     stageEnding(state, won) {
         const { client, session } = this;
@@ -131,22 +140,20 @@ export class BattleRoyalePresenter {
         const start = SECTORS[sectorId].playerStart;
         client.takeStage(sectorId);
 
-        const station = stationPose(start, BATTLE_ROYALE.station);
-        world.spawnShip(BATTLE_ROYALE.station.classId, {
-            faction: FACTION.NEUTRAL, position: station.position, quaternion: station.quaternion.toArray(),
+        const stationAt = stationPose(start, BATTLE_ROYALE.station);
+        const station = world.spawnShip(BATTLE_ROYALE.station.classId, {
+            faction: FACTION.NEUTRAL, position: stationAt.position, quaternion: stationAt.quaternion.toArray(),
             tags: [STATION_TAG], invulnerable: true, targetable: false,
         });
         buildGate(world, sectorId, BATTLE_ROYALE.station, BATTLE_ROYALE.gate);
         world.gateField.faction = state.winner;
+        const gate = gatePose(start, BATTLE_ROYALE.station, BATTLE_ROYALE.gate);
 
         const me = state.players.find((player) => player.id === client.localPlayerId);
         const others = state.winner
             ? state.players.filter((player) => player.faction === state.winner && player !== me).slice(0, MAX_FLYERS)
             : [];
-        const ceremony = new GateCeremony({
-            gate: gatePose(start, BATTLE_ROYALE.station, BATTLE_ROYALE.gate), timing: BATTLE_ROYALE.outro,
-            won, opens: Boolean(state.winner), others: others.length,
-        });
+        const ceremony = new GateCeremony({ gate, timing: BATTLE_ROYALE.outro, won, opens: Boolean(state.winner), others: others.length });
         // Whoever goes through is under full burn; a watcher's engines idle.
         const fly = (ship, burning) => {
             ship.speed = burning ? ship.cls.maxSpeed : 0;
@@ -159,9 +166,93 @@ export class BattleRoyalePresenter {
         const flyers = others.map((player) => fly(world.spawnShip(playerClass(player.classId), {
             faction: player.faction, pilotId: player.id, callsign: player.name, local: false,
         }), true));
-        const stage = { ceremony, own, flyers };
+        const stage = { ceremony, own, flyers, gate, station, fall: this.stageFleets(state, gate, station) };
         this.playEnding(stage, 0);
         return stage;
+    }
+
+    /**
+     * The ships of every side that did not get through - the other players' and the
+     * computer-flown fleets' - crowding at the gate, engines burning. They are on the stage
+     * from the start (the winners fly past them); the second act is what happens to them.
+     * @returns {{ show: SystemFall, ships: object[] }}
+     */
+    stageFleets(state, gate, station) {
+        const { client, session } = this;
+        const { world } = session;
+        const timing = BATTLE_ROYALE.outro.fall;
+        const lost = (faction) => faction !== state.winner;
+        const cast = state.players
+            .filter((player) => lost(player.faction) && player.id !== client.localPlayerId)
+            .slice(0, timing.pilots)
+            .map((player) => ({ classId: playerClass(player.classId), options: { faction: player.faction, pilotId: player.id, callsign: player.name, local: false } }));
+        for (const faction of NPC_FACTIONS.filter(lost)) {
+            const fleet = BATTLE_ROYALE.garrisons.gate[faction].flatMap(([classId, count]) => Array(count).fill(classId));
+            for (const classId of fleet.slice(0, timing.fleet)) cast.push({ classId, options: { faction } });
+        }
+        // Small craft near the eye, big hulls behind them: where there is room, and where the ruin starts.
+        cast.sort((a, b) => SHIP_CLASSES[a.classId].radius - SHIP_CLASSES[b.classId].radius);
+
+        const show = new SystemFall({ gate, station: station.position, timing, ships: cast.length });
+        const ships = cast.map(({ classId, options }, index) => {
+            const ship = world.spawnShip(classId, options);
+            show.placeShip(index, 0, ship.position, ship.quaternion);
+            // Engines at full burn, for all the good it does them.
+            ship.speed = ship.cls.maxSpeed;
+            ship.boosting = ship.isPlayer;
+            return ship;
+        });
+        return { show, ships };
+    }
+
+    /**
+     * The ending's second act begins: the gate is dead and the black hole is in the sky.
+     * Whoever won is out of it by now and only looks on (their ship is gone from the stage;
+     * the eye stays); everybody else is in their cockpit, among the fleets it has come for.
+     */
+    stageFall() {
+        const { outro, session } = this;
+        const { world } = session;
+        const { state, stage, won } = outro;
+        for (const ship of stage.flyers) world.removeShip(ship);
+        world.warpFactor = 0;
+        Object.assign(world.gateField, { charge: 0, open: 0, shut: 1, pulse: 0 });
+
+        const { own } = stage;
+        if (won) {
+            own.alive = false;
+            session.publishRoster();
+        } else {
+            own.speed = own.cls.maxSpeed;
+            own.boosting = true;
+        }
+        world.singularity.direction.copy(stage.fall.show.pull);
+        Object.assign(outro, { act: OUTRO_ACT.FALL, elapsed: 0, seconds: BATTLE_ROYALE.outro.fall.seconds });
+        session.ui.set({ matchOutro: { winner: state.winner, won, act: OUTRO_ACT.FALL } });
+        this.playFall(0);
+    }
+
+    /** Puts everything in the second act where it belongs `elapsed` seconds in, and tears apart what is due. */
+    playFall(elapsed) {
+        const { outro, session } = this;
+        const { world } = session;
+        const { own, station, fall: { show, ships } } = outro.stage;
+        // A wreck keeps falling the way it was going.
+        const wreck = (ship) => {
+            ship.velocity.copy(show.pull).multiplyScalar(show.speed(elapsed));
+            destroyShip(world, ship);
+        };
+        ships.forEach((ship, index) => {
+            if (!ship.alive) return;
+            const { tidal, torn } = show.placeShip(index, elapsed, ship.position, ship.quaternion);
+            ship.tidal = tidal;
+            if (torn) wreck(ship);
+        });
+        if (station.alive && elapsed >= show.stationAt) wreck(station);
+        show.placeViewer(elapsed, own.position, own.quaternion);
+        if (!outro.won && own.alive && elapsed >= show.ownAt) wreck(own);
+        world.singularity.size = show.size(elapsed);
+        world.screenFade = show.fade(elapsed);
     }
 
     /** Puts everything on the ending's stage where it belongs `elapsed` seconds in. */
@@ -179,15 +270,20 @@ export class BattleRoyalePresenter {
 
     updateOutro(dt) {
         const { outro, session } = this;
-        outro.elapsed += dt;
-        this.playEnding(outro.stage, Math.min(outro.elapsed, outro.seconds));
+        // A frame that took long (the stage being set) must not swallow a piece of the show.
+        outro.elapsed += Math.min(dt, WORLD.maxStep);
+        const elapsed = Math.min(outro.elapsed, outro.seconds);
+        if (outro.act === OUTRO_ACT.GATE) {
+            this.playEnding(outro.stage, elapsed);
+            if (outro.elapsed < outro.seconds) return;
+            // Through the gate: the flash of arrival. What they left behind comes next.
+            if (outro.won) session.onWarp('arrive');
+            this.stageFall();
+            return;
+        }
+        this.playFall(elapsed);
         if (outro.elapsed < outro.seconds) return;
         this.outro = null;
-        if (outro.won) {
-            // Through the gate: the flash of arrival, and the streaks let go behind the result.
-            session.onWarp('arrive');
-            this.warp = { phase: 'exit', elapsed: 0, seconds: WARP_EXIT_SECONDS };
-        }
         session.ui.set({ matchOutro: null });
         outro.showResults();
     }
@@ -429,6 +525,7 @@ export class BattleRoyalePresenter {
             this.session.world.warpFactor = 0;
             this.session.world.screenFade = 0;
             Object.assign(this.session.world.gateField, { charge: 0, open: 0, shut: 0, pulse: 0, faction: null });
+            this.session.world.singularity.size = 0;
             this.session.setWaypoint(null);
         }
         this.warp = null;
