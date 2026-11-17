@@ -31,7 +31,9 @@ export const WEAPONS = Object.freeze({
         mounts: [[-3.6, -0.9, -8], [3.6, -0.9, -8]],
     },
     playerTorpedo: {
-        type: 'torpedo', speed: 420, turnRate: 1.9, damage: 150, shieldMult: 0.55, hullMult: 1.5,
+        // Poor against shields on purpose (0.4: a Kestrel's warhead takes 60 off a shield, 225 off
+        // bare hull): the beams have to open the way first.
+        type: 'torpedo', speed: 420, turnRate: 1.9, damage: 150, shieldMult: 0.4, hullMult: 1.5,
         // 420 m/s for 4.3 s: about 1.8 km of fuel, well short of the beams' 3 km.
         lifetime: 4.3, cooldown: 0.7, capacity: 6, reloadTime: 4.5, lockConeDeg: 40,
         radius: 2.2, hp: 30, color: DAWN_TORPEDO, mount: [0, -1.2, -9],
