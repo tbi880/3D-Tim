@@ -2,13 +2,16 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { BATTLE_ROYALE } from '../../src/game/config/battleRoyale.js';
 import { ALLIES, DIFFICULTY, FACTION, POWER_MODES } from '../../src/game/config/gameConfig.js';
-import { applyDamage, isEnemyFleet } from '../../src/game/core/systems/damage.js';
+import { ABILITIES, PASSIVES } from '../../src/game/config/abilities.js';
+import { WEAPONS } from '../../src/game/config/weapons.js';
+import { applyDamage, destroyShip, isEnemyFleet } from '../../src/game/core/systems/damage.js';
+import { applyPilotAction } from '../../src/game/core/systems/pilotActions.js';
 import { World } from '../../src/game/core/World.js';
 
 /**
  * How strong the computer-flown ships of a multiplayer match are (BATTLE_ROYALE.difficulty,
- * a `versus` difficulty): the story's Admiral level, for the fleets of both sides alike, and
- * nothing of it between one player and another.
+ * a `versus` difficulty): the story's Admiral level, for the fleets of both sides alike. Between
+ * one player and another the guns do a quarter of their damage, and abilities all of theirs.
  */
 
 const STEP = 1 / 60;
@@ -46,6 +49,7 @@ test('a match\'s computer-flown ships fight at the story\'s Admiral level', () =
         assert.equal(VERSUS[key], ADMIRAL[key], key);
     }
     assert.equal(VERSUS.shieldRegen, 1, 'players\' shields recharge as usual');
+    assert.equal(VERSUS.playerDamage, 0.25, 'and their guns do a quarter to each other');
 });
 
 test('in a match the fleets of both sides are the enemy fleet; players and scenery never are', () => {
@@ -80,14 +84,70 @@ test('a computer-flown ship of either side hurts a player as much as the story\'
     close(dealt(world, braced, put(world, 'raider', UMBRA)), 10 * ADMIRAL.damageTaken * POWER_MODES.defense.damageTaken, 'defense mode');
 });
 
-test('what players do to each other is not scaled, nor what nobody fired', () => {
+test('a player\'s guns do a quarter of their damage to another player\'s ship, and all of it to anything else', () => {
     const world = worldAt(VERSUS);
-    close(dealt(world, put(world, 'kestrel', UMBRA), put(world, 'kestrel', DAWN)), 10, 'pilot on pilot');
-    close(dealt(world, put(world, 'bulwark', DAWN), put(world, 'shrike', PIRATE)), 10, 'pirate on pilot');
-    close(dealt(world, put(world, 'kestrel', DAWN), null), 10, 'a rammed rock');
+    close(dealt(world, put(world, 'kestrel', UMBRA), put(world, 'kestrel', DAWN)), 2.5, 'pilot on pilot');
+    close(dealt(world, put(world, 'bulwark', DAWN), put(world, 'shrike', PIRATE)), 2.5, 'pirate on pilot');
+    close(dealt(world, put(world, 'kestrel', PIRATE), put(world, 'kestrel', PIRATE)), 2.5, 'pirate on pirate');
     const attacking = put(world, 'kestrel', UMBRA);
     attacking.powerMode = 'attack';
-    close(dealt(world, attacking, put(world, 'kestrel', DAWN)), 10 * POWER_MODES.attack.damageTaken, 'only the power mode');
+    close(dealt(world, attacking, put(world, 'kestrel', DAWN)), 2.5 * POWER_MODES.attack.damageTaken, 'the target\'s power mode counts on top');
+    close(dealt(world, put(world, 'kestrel', DAWN), null), 10, 'a rammed rock is nobody\'s gun');
+    close(dealt(world, put(world, 'raider', UMBRA), put(world, 'kestrel', DAWN)), 10 / ADMIRAL.enemyToughness, 'a computer-flown ship gets all of it');
+});
+
+test('a duel between two pilots is fought with the real guns at a quarter: beams and torpedoes alike', () => {
+    /** Shield an attacker 600 m astern takes off a pilot (a shield too big to give out) in `seconds` of holding `triggers`. */
+    const fire = (difficulty, triggers, seconds) => {
+        const world = worldAt(difficulty);
+        const attacker = world.spawnShip('kestrel', { position: [0, 0, 0], facing: [0, 0, -1], faction: DAWN });
+        const target = world.spawnShip('kestrel', { position: [0, 0, -600], facing: [0, 0, -1], faction: UMBRA, local: false, maxShield: 1e6 });
+        attacker.throttle = 0;
+        target.throttle = 0;
+        attacker.target = target;
+        for (let elapsed = 0; elapsed < seconds - 1e-9; elapsed += STEP) world.update(STEP, { ...idle(), ...triggers });
+        return 1e6 - target.shield;
+    };
+    const full = { ...VERSUS, playerDamage: 1 };
+    for (const triggers of [{ firePrimary: true }, { fireSecondary: true }]) {
+        const unscaled = fire(full, triggers, 4);
+        assert.ok(unscaled > 0, 'the guns reach');
+        assert.ok(Math.abs(fire(VERSUS, triggers, 4) / unscaled - 0.25) < 1e-6, JSON.stringify(triggers));
+    }
+});
+
+test('abilities are not turned down between pilots: the lance, the breach and the reactor', () => {
+    // The Shrike's lance burns a pilot's ship down in the seconds its ability says, whatever the scale.
+    const world = worldAt(VERSUS);
+    const shrike = world.spawnShip('shrike', { position: [0, 0, 0], facing: [0, 0, -1], faction: DAWN });
+    const target = world.spawnShip('bulwark', { position: [0, 0, -4000], facing: [0, 0, -1], faction: UMBRA, local: false });
+    shrike.throttle = 0;
+    target.throttle = 0;
+    shrike.target = target;
+    applyPilotAction(world, shrike, 'ability');
+    let seconds = 0;
+    for (; target.alive && seconds < 20; seconds += STEP) world.update(STEP, { ...idle(), firePrimary: true });
+    assert.ok(Math.abs(seconds - ABILITIES.focusLance.shieldedKillSeconds) < 0.1, `the lance took ${seconds} s`);
+
+    // The Kestrel's breach torpedo still takes the whole shield; only its own impact is a torpedo's.
+    const breach = worldAt(VERSUS);
+    const kestrel = breach.spawnShip('kestrel', { position: [0, 0, 0], facing: [0, 0, -1], faction: DAWN });
+    const victim = breach.spawnShip('bulwark', { position: [0, 0, -500], facing: [0, 0, -1], faction: UMBRA, local: false });
+    kestrel.throttle = 0;
+    victim.throttle = 0;
+    kestrel.target = victim;
+    applyPilotAction(breach, kestrel, 'ability');
+    for (let elapsed = 0; elapsed < 3; elapsed += STEP) breach.update(STEP, idle());
+    assert.equal(victim.shield, 0, 'the shield is gone');
+    const warhead = WEAPONS.breachTorpedo;
+    assert.ok(victim.maxHull - victim.hull <= warhead.damage * warhead.hullMult * VERSUS.playerDamage + 1e-6, 'and the hull took no more than a quarter of a warhead');
+
+    // A dying Bulwark's reactor takes its share of a pilot's ship as ever.
+    const blast = worldAt(VERSUS);
+    const bulwark = put(blast, 'bulwark', DAWN, { position: [0, 0, 0] });
+    const near = put(blast, 'kestrel', UMBRA, { position: [0, 0, 400] });
+    destroyShip(blast, bulwark, near);
+    close(near.maxShield + near.maxHull - near.shield - near.hull, (near.maxShield + near.maxHull) * PASSIVES.reactorBlast.damage.player, 'the blast');
 });
 
 test('the fleets of both sides are as tough as each other, to players and to one another', () => {

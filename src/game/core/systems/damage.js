@@ -160,10 +160,12 @@ export function applyDamage(world, target, amount, options = {}) {
     let remaining = amount;
     if (world.difficulty.versus) {
         // Multiplayer: every side's computer-flown ships are as tough as each other and hurt a
-        // player's ship alike; what one player does to another is left as it is.
+        // player's ship alike; what one player's guns do to another has a scale of its own.
         if (target.isPlayer) {
-            const fromFleet = Boolean(source) && isEnemyFleet(world, source);
-            remaining *= (fromFleet ? world.difficulty.damageTaken : 1) * POWER_MODES[target.powerMode].damageTaken;
+            let scale = 1;
+            if (source?.isPlayer) scale = world.difficulty.playerDamage ?? 1;
+            else if (source && isEnemyFleet(world, source)) scale = world.difficulty.damageTaken;
+            remaining *= scale * POWER_MODES[target.powerMode].damageTaken;
         } else if (isEnemyFleet(world, target)) {
             remaining /= world.difficulty.enemyToughness;
         }

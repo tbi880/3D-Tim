@@ -68,8 +68,11 @@ export const POWER_MODE_ORDER = ['balanced', 'attack', 'defense'];
  *                      player's". The computer-flown ships of every side are the enemy fleet -
  *                      `enemyToughness`, `enemyFireRate` and `enemyBeamDamage` apply to all of
  *                      them alike - and `damageTaken` scales only what they do to a player's
- *                      ship: what players do to each other is never scaled. The ally entries
- *                      are not read.
+ *                      ship. What one player's guns do to another player's ship is scaled by
+ *                      `playerDamage` instead. The ally entries are not read.
+ *   playerDamage     - with `versus`: damage of a player's beams and torpedoes on another
+ *                      player's ship (0.25 = a quarter). What is true damage is not touched: a
+ *                      lance, a breach blast's shield strip, a dying Bulwark's reactor.
  */
 export const DIFFICULTY = Object.freeze({
     cadet: {

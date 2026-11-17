@@ -344,7 +344,10 @@ export const BATTLE_ROYALE = Object.freeze({
      * `NPC_LEVEL` - against players of every side, and against each other, where the same
      * numbers on both sides cancel out evenly. A player's ship takes from them what it would
      * from the story's Umbra at that level (`damageTaken`), whichever fleet is shooting.
-     * Between players nothing is scaled, and shields recharge at their ordinary rate.
+     * Between players the guns are turned down (`playerDamage`): beams and torpedoes - a breach
+     * torpedo's own impact included - do a quarter of what they do to anything else, so a duel
+     * is not over in the flight time of two torpedoes and the abilities, which are not turned
+     * down, decide it. Shields recharge at their ordinary rate.
      */
     difficulty: Object.freeze({
         id: 'versus', versus: true,
@@ -352,6 +355,7 @@ export const BATTLE_ROYALE = Object.freeze({
         enemyToughness: NPC_LEVEL.enemyToughness,
         enemyFireRate: NPC_LEVEL.enemyFireRate,
         enemyBeamDamage: NPC_LEVEL.enemyBeamDamage,
+        playerDamage: 0.25,
         shieldRegen: 1,
     }),
 });
