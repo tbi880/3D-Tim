@@ -212,6 +212,6 @@ royale's rules, the lobby flow against stand-ins for the lobby server and WebRTC
 1. Start the backend (`dotnet run` in `3D_Tim_backend/Main`; it listens on 5133).
 2. `npm run dev`, with `stageOfENV = "dev"`: the dev server passes `/connect/echoes-lan` on
    to the backend, so phones and headsets on the Wi-Fi can use `https://<this-machine>:5173`.
-3. Open the game in two tabs (or two devices), *Multiplayer (LAN)*, create a room in one,
-   join in the other. "Quick" match length makes the collapse and the jump drive about three
-   times as fast.
+3. Open the game in two tabs (or two devices), *Multiplayer* on the title menu and then
+   *LAN*, create a room in one, join in the other. "Quick" match length makes the collapse
+   and the jump drive about three times as fast.

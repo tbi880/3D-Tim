@@ -394,6 +394,14 @@ html.eod-page-locked body {
 }
 
 .eod-menu { display: flex; flex-direction: column; align-items: stretch; gap: 10px; width: min(380px, 86vw); }
+/* The multiplayer screen (Menus.jsx: LAN or global) on a phone held sideways: no title, the
+   two side by side with Back under them, so nothing has to scroll. */
+@media (max-height: 520px) {
+    .eod-screen--modes .eod-title-block { display: none; }
+    .eod-menu--modes { display: grid; grid-template-columns: 1fr 1fr; width: min(640px, 92vw); }
+    .eod-menu--modes .eod-hangar-title, .eod-menu--modes .eod-button:last-child { grid-column: 1 / -1; }
+    .eod-menu--modes .eod-button { justify-content: center; }
+}
 .eod-button {
     display: flex;
     flex-direction: column;

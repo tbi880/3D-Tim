@@ -35,6 +35,8 @@ export class VRMenu {
     constructor(game) {
         this.game = game;
         this.index = 0;
+        /** Title screen: the player is on the multiplayer screen, choosing LAN or global (or in the lobby picked there). */
+        this.multiplayerOpen = false;
         /** Title screen: the player has opened a multiplayer lobby (xr/VRMatchMenu.js). */
         this.lobbyOpen = false;
         /** Title screen: the game being started while its ship model loads ({ classId, start }). */
@@ -43,6 +45,8 @@ export class VRMenu {
         /** Refit window: levels added so far ({ rating: levels }). */
         this.refitAdded = {};
         this.lastKey = null;
+        /** The row (by its `id`) the next screen opens on, in place of its first. */
+        this.focusId = null;
         this.dirty = true;
     }
 
@@ -96,6 +100,7 @@ export class VRMenu {
                         ],
                     };
                 }
+                if (this.multiplayerOpen) return this.buildMultiplayer(t, exitItem);
                 const begin = (classId, start) => {
                     this.game.sound.unlock();
                     requestShipModel(classId);
@@ -126,13 +131,8 @@ export class VRMenu {
                 items.push({ label: t('ui.vr.ship'), sub: t(`playerShip.${settings.playerShip}.role`), value: t(`ship.${settings.playerShip}`), left: shipRow(-1), right: shipRow(1), select: shipRow(1) });
                 const difficultyRow = (step) => () => session.updateSettings({ difficulty: cycle(DIFFICULTY_ORDER, settings.difficulty, step) });
                 items.push({ label: t('ui.difficulty'), value: t(`ui.difficulty.${settings.difficulty}`), left: difficultyRow(-1), right: difficultyRow(1), select: difficultyRow(1) });
-                // Multiplayer: with pilots anywhere, or with whoever is on this Wi-Fi (xr/VRMatchMenu.js draws the lobby).
-                const openLobby = (scope) => () => {
-                    this.lobbyOpen = true;
-                    this.game.lan.open(scope);
-                };
-                items.push({ label: t('mp.global.open'), sub: t('mp.global.openHint'), select: openLobby(LOBBY_SCOPE.GLOBAL) });
-                items.push({ label: t('mp.lan.open'), sub: t('mp.lan.openHint'), select: openLobby(LOBBY_SCOPE.LAN) });
+                // Multiplayer: one row here, LAN or global on the screen behind it (buildMultiplayer).
+                items.push({ id: 'multiplayer', label: t('mp.open'), sub: t('mp.openHint'), select: () => { this.multiplayerOpen = true; } });
                 items.push(...this.commonSettings(settings, t));
                 items.push(exitItem);
                 return { key: 'title', title: t('ui.title'), lines: [t('ui.tagline')], items };
@@ -195,6 +195,34 @@ export class VRMenu {
             default:
                 return { key: 'none', title: '', lines: [], items: [exitItem] };
         }
+    }
+
+    /**
+     * The multiplayer screen of the title menu: with pilots anywhere, or with whoever is on this
+     * Wi-Fi (xr/VRMatchMenu.js draws the lobby; its Back comes back here).
+     */
+    buildMultiplayer(t, exitItem) {
+        const openLobby = (scope) => () => {
+            this.lobbyOpen = true;
+            this.game.lan.open(scope);
+        };
+        return {
+            key: 'multiplayer',
+            title: t('mp.open'),
+            lines: [t('mp.choose')],
+            items: [
+                { label: t('mp.global.open'), sub: t('mp.global.openHint'), select: openLobby(LOBBY_SCOPE.GLOBAL) },
+                { label: t('mp.lan.open'), sub: t('mp.lan.openHint'), select: openLobby(LOBBY_SCOPE.LAN) },
+                { label: t('ui.back'), select: () => this.closeMultiplayer() },
+                exitItem,
+            ],
+        };
+    }
+
+    /** Back to the title menu, on the row that opened the multiplayer screen. */
+    closeMultiplayer() {
+        this.multiplayerOpen = false;
+        this.focusId = 'multiplayer';
     }
 
     commonSettings(settings, t) {
@@ -291,6 +319,7 @@ export class VRMenu {
             case 'pause':
                 if (this.game.session.phase === PHASE.PAUSED) this.game.session.resume();
                 else if (this.launch) this.launch = null;
+                else if (menu.key === 'multiplayer') this.closeMultiplayer();
                 // In a match: closes the star map (a vote has to be answered, or it runs out).
                 else if (state.matchPanel) this.game.session.match?.presenter?.setPanel(null);
                 break;
@@ -303,9 +332,10 @@ export class VRMenu {
     draw(panel, state, t) {
         const menu = this.build(state, t);
         if (menu.key !== this.lastKey) {
-            // A different screen starts at its first row.
+            // A different screen starts at its first row, or on the row it was left by (focusId).
             this.lastKey = menu.key;
-            this.index = 0;
+            this.index = Math.max(0, menu.items.findIndex((item) => item.id && item.id === this.focusId));
+            this.focusId = null;
             this.confirmingNewGame = menu.key === 'title' ? this.confirmingNewGame : false;
         }
         this.index = Math.min(this.index, Math.max(0, menu.items.length - 1));

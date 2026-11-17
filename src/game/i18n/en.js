@@ -481,7 +481,11 @@ export default {
     'hint.modules.vr': 'Emitters, generators and turrets are separate targets — cycle to them with A',
 
     // ---- Multiplayer: the LAN lobby --------------------------------------------------------
-    'mp.lan.open': 'Multiplayer (LAN)',
+    // The one multiplayer entry of the title menu, and the screen behind it (LAN or global).
+    'mp.open': 'Multiplayer',
+    'mp.openHint': 'Battle royale on your Wi-Fi, or with pilots anywhere',
+    'mp.choose': 'Choose how to connect',
+    'mp.lan.open': 'LAN',
     'mp.lan.openHint': 'Battle royale with everyone on your Wi-Fi: computers, phones and headsets together',
     'mp.lan.title': 'LAN multiplayer',
     'mp.lan.connecting': 'Looking for the lobby…',
@@ -546,7 +550,7 @@ export default {
     'lan.versionMismatch': 'That room is running another version of the game. Reload the page to update, then try again.',
     'lan.notEnoughPlayers': 'A public match needs at least two pilots.',
     'lan.noHostReachable': 'Could not connect to any host from this network. Try again, or try from another network.',
-    'mp.global.open': 'Global multiplayer',
+    'mp.global.open': 'Global',
     'mp.global.openHint': 'Quick match with pilots anywhere, or join a friend by room code',
     'mp.global.title': 'Global multiplayer',
     'mp.global.quickMatch': 'Quick match',

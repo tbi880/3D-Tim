@@ -381,7 +381,7 @@ function TitleScreen({ session, lan, onStart }) {
     const continueGame = () => beginLoading(savedShipClass(session.settings.playerShip), () => session.continueGame(), 'main');
 
     return (
-        <div className={`eod-screen eod-screen--title ${view === 'hangar' || view === 'loading' || view === 'lan' || view === 'global' ? 'eod-screen--hangar' : ''}`}>
+        <div className={`eod-screen eod-screen--title ${view === 'hangar' || view === 'loading' || view === 'lan' || view === 'global' ? 'eod-screen--hangar' : ''} ${view === 'multiplayer' ? 'eod-screen--modes' : ''}`}>
             <div className="eod-title-block">
                 <p className="eod-title-kicker">{t('ui.subtitle')}</p>
                 <h1 className="eod-title">{t('ui.title')}</h1>
@@ -390,8 +390,9 @@ function TitleScreen({ session, lan, onStart }) {
                 {NEEDS_HOME_SCREEN && <p className="eod-touch-hint eod-home-screen-hint">{t('ui.homeScreenHint')}</p>}
             </div>
             {view === 'hangar' && <Hangar session={session} onLaunch={launch} onBack={() => setView('main')} />}
-            {view === 'lan' && <LanLobby lan={lan} session={session} onStart={onStart} onBack={() => setView('main')} />}
-            {view === 'global' && <LanLobby lan={lan} session={session} scope={LOBBY_SCOPE.GLOBAL} onStart={onStart} onBack={() => setView('main')} />}
+            {/* Back from a lobby is the screen it was picked on: LAN or global. */}
+            {view === 'lan' && <LanLobby lan={lan} session={session} onStart={onStart} onBack={() => setView('multiplayer')} />}
+            {view === 'global' && <LanLobby lan={lan} session={session} scope={LOBBY_SCOPE.GLOBAL} onStart={onStart} onBack={() => setView('multiplayer')} />}
             {view === 'loading' && launching && (
                 <ShipLoading classId={launching.classId} onReady={launching.start} onBack={() => setView(launching.backTo)} />
             )}
@@ -407,6 +408,19 @@ function TitleScreen({ session, lan, onStart }) {
                         {t('ui.newGame')}
                         {confirmingNewGame && <small>{t('ui.confirmNewGame')}</small>}
                     </button>
+                    {/* One way in to multiplayer; LAN or global is chosen on the next screen. */}
+                    <button type="button" className="eod-button" onClick={() => setView('multiplayer')}>
+                        {t('mp.open')}
+                        <small>{t('mp.openHint')}</small>
+                    </button>
+                    <VRButton onStart={onStart} />
+                    {!IS_TOUCH && <button type="button" className="eod-button" onClick={() => setView('controls')}>{t('ui.controls')}</button>}
+                    <SettingsRows session={session} />
+                </div>
+            )}
+            {view === 'multiplayer' && (
+                <div className="eod-menu eod-menu--modes">
+                    <h2 className="eod-hangar-title">{t('mp.open')}</h2>
                     <button type="button" className="eod-button" onClick={() => setView('global')}>
                         {t('mp.global.open')}
                         <small>{t('mp.global.openHint')}</small>
@@ -415,9 +429,7 @@ function TitleScreen({ session, lan, onStart }) {
                         {t('mp.lan.open')}
                         <small>{t('mp.lan.openHint')}</small>
                     </button>
-                    <VRButton onStart={onStart} />
-                    {!IS_TOUCH && <button type="button" className="eod-button" onClick={() => setView('controls')}>{t('ui.controls')}</button>}
-                    <SettingsRows session={session} />
+                    <button type="button" className="eod-button" onClick={() => setView('main')}>{t('ui.back')}</button>
                 </div>
             )}
             {view === 'controls' && (

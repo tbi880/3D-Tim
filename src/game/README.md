@@ -24,11 +24,11 @@ frigates 280 m, the warden 520 m, the Dawnbreaker 1.4 km, the Forge 3 km, the Ec
 its older Penumbra-class sisters 3.4 km, and Lantern Station's ring 4.7 km. Fights with the
 big ones happen along their hulls, not at a point.
 
-There is also a multiplayer mode - for devices on one Wi-Fi, or for players anywhere by
-quick match or room code: a battle royale across a collapsing star system, where sides take
-planets by docking at their stations - described
-in `net/README.md` (the machinery) and `modes/battleRoyale/` (the rules, starting at
-`BattleRoyaleMode.js`; tuning in `config/battleRoyale.js`). Its own keys: G star map,
+There is also a multiplayer mode - one "Multiplayer" entry on the title menu, then LAN
+(devices on one Wi-Fi) or global (players anywhere, by quick match or room code): a battle
+royale across a collapsing star system, where sides take planets by docking at their
+stations - described in `net/README.md` (the machinery) and `modes/battleRoyale/` (the rules,
+starting at `BattleRoyaleMode.js`; tuning in `config/battleRoyale.js`). Its own keys: G star map,
 E dock / let go, I equipment, U refit, B reinforcements.
 
 The stargate everybody is fighting towards is a real thing at the last planet: a ring
