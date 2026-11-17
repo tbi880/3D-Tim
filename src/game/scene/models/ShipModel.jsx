@@ -55,7 +55,7 @@ const MODEL_OVERRIDES = Object.freeze({
         engines: [],
         guideLights: true,
         // Over the dock mouths (build/layout.json), just in front of the tower's face. The story
-        // flies docking ships through them (ARRIVAL_HANGAR / DEPARTURE_HANGAR in story/campaign.js).
+        // flies docking ships through them (ARRIVAL_HANGAR / DEPARTURE_HANGAR in story/chapters/lantern.js).
         dockGates: [
             { centre: [0, -120, 1678], size: [280, 124], color: '#ffb04a' },
             { centre: [0, 300, 1653], size: [280, 124], color: '#bfe6ff' },

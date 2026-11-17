@@ -240,7 +240,7 @@ export const SHIP_CLASSES = Object.freeze({
         hitBoxes: ECLIPSE_HIT_BOXES,
         hull: 4000, shield: 0, shieldRegen: 0, shieldDelay: 0,
         maxSpeed: 0, turnRate: 0, acceleration: 0,
-        // Its guns are separate, destructible cannon modules (see spawnEclipse in story/campaign.js).
+        // Its guns are separate, destructible cannon modules (see spawnEclipse in story/chapters/eclipse.js).
         weapons: ['eclipseLance', 'cruiserBeam'],
         ai: { mode: 'hold', prefers: ['capital'] },
     },

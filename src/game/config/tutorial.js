@@ -1,6 +1,6 @@
 /**
  * The first-flight tutorial: the steps the prologue walks a new pilot through
- * (`tutorial(...)` beats in story/campaign.js, played by state/Tutorial.js).
+ * (`tutorial(...)` beats in story/chapters/prologue.js, played by state/Tutorial.js).
  *
  * Each step stops the game with a card on screen and waits for the pilot:
  *  - an `info` step explains part of the HUD and waits for "Next";

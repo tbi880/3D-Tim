@@ -156,7 +156,7 @@ export const HUD_REFRESH_INTERVAL = 0.1;
  * Ceilings for the big fleet battles (the Barrens chapters), so a melee of carriers, cruisers
  * and two fleets stays inside what the renderer can draw smoothly: every ship is at least two
  * draw calls plus its exhaust and shield, and every gun adds projectiles. Reinforcement waves
- * wait until the sector is back under both limits (`underBattleBudget` in story/campaign.js).
+ * wait until the sector is back under both limits (`underBattleBudget` in story/chapters/common.js).
  */
 export const BATTLE = Object.freeze({
     /** Ships of every faction in the sector, mounted modules included. */

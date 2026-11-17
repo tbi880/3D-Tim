@@ -54,8 +54,8 @@ about React or WebGL, which is what makes the headless test (below) possible.
 config/   Tuning tables: ships, weapons, sectors, characters, difficulty. No logic.
 core/     The simulation. World + Ship/Projectile data, and systems/ that move them
           (player flight, AI pilots, weapons, damage, projectiles, collisions, targeting).
-story/    The campaign script (campaign.js) written with beat factories (beats.js) and
-          played by StoryDirector / BeatRunner.
+story/    The campaign script (campaign.js, one module per chapter in chapters/) written
+          with beat factories (beats.js) and played by StoryDirector / BeatRunner.
 state/    GameSession (owns world + story + comms, implements the "stage" the story talks
           to, publishes HUD snapshots), checkpoint saves, and the zustand store for the UI.
 input/    Keyboard / mouse / touch -> held controls + one-shot actions.
@@ -233,7 +233,7 @@ big that looks.
 **Gun batteries** – a module class whose weapon has a `lockTime` (see `eclipseCannon`) must
 track its target that long before firing and loses the lock outside its `range`. While one
 is on the player the HUD shows a warning (`world.playerCannonLock`). The Eclipse's are
-mounted in `spawnEclipse` (`story/campaign.js`) and die to a single torpedo.
+mounted in `spawnEclipse` (`story/chapters/eclipse.js`) and die to a single torpedo.
 
 **Scoring** – `config/scoring.js`. `KILL_POINTS` is what each Umbra class is worth when the
 player destroys it (allies' kills score nothing); every scoring kill shows a "+points" line
@@ -252,7 +252,7 @@ the ship is docked; hull and shields are refilled as it undocks.
 
 **Big battles** – `BATTLE` in `config/gameConfig.js` caps the ships in a sector and the Umbra
 fighters in the air; the Barrens chapters only send reinforcements (carrier launches, cruiser
-waves) while both are under their limits (`underBattleBudget` in `story/campaign.js`), and
+waves) while both are under their limits (`underBattleBudget` in `story/chapters/common.js`), and
 each carrier battle has a fixed number of hangar flights (`ctx.vars.carrierFlights`).
 
 **Docking** – `glide({ to, facing, seconds, release })` in `story/beats.js` takes the helm and
@@ -269,7 +269,9 @@ are there, whichever side they fly for. Between one player and another the beams
 do a quarter of their damage (`playerDamage`), so that duels last and the abilities - true
 damage, never scaled - matter.
 
-**Change the story** – edit `story/campaign.js`. It reads top to bottom:
+**Change the story** – edit the chapter's module in `story/chapters/` (`story/campaign.js` puts
+the chapters in order; what several chapters share is in `chapters/common.js` and
+`chapters/fleet.js`). Each reads top to bottom:
 
 ```js
 say('tim', 'hold.tim.fighters', { wait: false }),          // comms line (text in i18n)
@@ -320,7 +322,7 @@ what completes them, which HUD element is lit up), their words are `tutorial.<st
 `state/Tutorial.js` (drawn by `ui/TutorialOverlay.jsx`, and by `xr/VRHud.jsx` in a headset).
 It is the `tutorial` setting: on for a new pilot, switched off by the last step or by Skip,
 and back on from the settings menu. To teach a new control, add a step to `TUTORIAL_STEPS`
-and `TUTORIAL_ORDER`, its texts, and its id to a `tutorial(...)` beat in `story/campaign.js`.
+and `TUTORIAL_ORDER`, its texts, and its id to a `tutorial(...)` beat in `story/chapters/prologue.js`.
 
 ## Testing
 
