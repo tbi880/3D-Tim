@@ -361,6 +361,10 @@ export default {
     'ui.hangar.loading': '{ship} 正在整备出港…',
     'ui.hangar.loadFailed': '{ship} 没能从机库调出。请检查网络后重试。',
     'ui.hangar.retry': '重试',
+    // A menu screen that failed to draw (ui/ScreenErrorBoundary.jsx).
+    'ui.screenError.title': '这个页面出了点问题',
+    'ui.screenError.text': '页面没能显示出来，游戏的其他部分不受影响。可以重试，或者返回上一页。',
+    'ui.screenError.retry': '重试',
     'ui.rating.speed': '速度',
     'ui.rating.agility': '机动',
     'ui.rating.firepower': '火力',

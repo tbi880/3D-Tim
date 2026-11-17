@@ -361,6 +361,10 @@ export default {
     'ui.hangar.loading': 'Readying the {ship} for launch…',
     'ui.hangar.loadFailed': 'The {ship} could not be brought out of the hangar. Check your connection and try again.',
     'ui.hangar.retry': 'Try again',
+    // A menu screen that failed to draw (ui/ScreenErrorBoundary.jsx).
+    'ui.screenError.title': 'This screen ran into a problem',
+    'ui.screenError.text': 'It could not be shown. The rest of the game is not affected: try again, or go back.',
+    'ui.screenError.retry': 'Try again',
     'ui.rating.speed': 'Speed',
     'ui.rating.agility': 'Agility',
     'ui.rating.firepower': 'Firepower',

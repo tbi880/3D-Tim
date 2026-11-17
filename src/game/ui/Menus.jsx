@@ -23,6 +23,7 @@ import StarMapPanel from './multiplayer/StarMapPanel.jsx';
 import Hangar from './Hangar.jsx';
 import { hangarImage } from './hangarImages.js';
 import RefitPanel from './RefitPanel.jsx';
+import ScreenErrorBoundary from './ScreenErrorBoundary.jsx';
 
 /** Title screen, pause menu, game-over and ending screens, and the refit window. (The hangar is ui/Hangar.jsx.) */
 
@@ -272,6 +273,11 @@ function TitleScreen({ session, lan, onStart }) {
     };
     const launch = () => beginLoading(session.settings.playerShip, () => session.newGame(), 'hangar');
     const continueGame = () => beginLoading(savedShipClass(session.settings.playerShip), () => session.continueGame(), 'main');
+    // Out of a lobby that failed to draw: leaving the room as well, since a room holds this screen on the lobby.
+    const leaveBrokenLobby = () => {
+        lan.close();
+        setView('multiplayer');
+    };
 
     return (
         <div className={`eod-screen eod-screen--title ${view === 'hangar' || view === 'loading' || view === 'lan' || view === 'global' ? 'eod-screen--hangar' : ''} ${view === 'multiplayer' ? 'eod-screen--modes' : ''}`}>
@@ -283,9 +289,21 @@ function TitleScreen({ session, lan, onStart }) {
                 {NEEDS_HOME_SCREEN && <p className="eod-touch-hint eod-home-screen-hint">{t('ui.homeScreenHint')}</p>}
             </div>
             {view === 'hangar' && <Hangar session={session} onConfirm={launch} onBack={() => setView('main')} />}
-            {/* Back from a lobby is the screen it was picked on: LAN or global. */}
-            {view === 'lan' && <LanLobby lan={lan} session={session} onStart={onStart} onBack={() => setView('multiplayer')} />}
-            {view === 'global' && <LanLobby lan={lan} session={session} scope={LOBBY_SCOPE.GLOBAL} onStart={onStart} onBack={() => setView('multiplayer')} />}
+            {/*
+              * Back from a lobby is the screen it was picked on: LAN or global. A lobby that fails to
+              * draw says so and offers the same way back, instead of taking the whole page down.
+              */}
+            {(view === 'lan' || view === 'global') && (
+                <ScreenErrorBoundary key={view} onBack={leaveBrokenLobby}>
+                    <LanLobby
+                        lan={lan}
+                        session={session}
+                        scope={view === 'global' ? LOBBY_SCOPE.GLOBAL : LOBBY_SCOPE.LAN}
+                        onStart={onStart}
+                        onBack={() => setView('multiplayer')}
+                    />
+                </ScreenErrorBoundary>
+            )}
             {view === 'loading' && launching && (
                 <ShipLoading classId={launching.classId} onReady={launching.start} onBack={() => setView(launching.backTo)} />
             )}

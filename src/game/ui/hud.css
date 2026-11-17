@@ -303,6 +303,12 @@ html.eod-page-locked body {
 .eod-screen-heading { margin: 0; font-size: clamp(26px, 4.5vw, 56px); font-weight: 800; letter-spacing: 0.2em; }
 .eod-screen--failure .eod-screen-heading { color: var(--eod-red); }
 .eod-screen-text { margin: 0; max-width: 560px; font-size: 15px; line-height: 1.6; color: rgba(225, 240, 255, 0.85); }
+/* A menu screen that failed to draw (ui/ScreenErrorBoundary.jsx): the error's own words, which can be selected and copied. */
+.eod-screen-error-detail {
+    display: block; max-width: 560px; padding: 8px 12px; border: 1px solid rgba(255, 130, 130, 0.45); border-radius: 6px;
+    background: rgba(70, 12, 12, 0.55); color: #ffc2c2; font: 12px/1.5 ui-monospace, Menlo, Consolas, monospace;
+    word-break: break-word; user-select: text; -webkit-user-select: text;
+}
 .eod-screen-footnote { margin: 0; font-size: 11px; color: rgba(225, 240, 255, 0.5); letter-spacing: 0.2em; }
 
 /* Hangar: ship selection before a new game. */

@@ -384,14 +384,19 @@ export default function LanLobby({ lan, session, scope = LOBBY_SCOPE.LAN, onStar
     const shipLocked = useLanStore((state) => Boolean(state.room) && state.room.state !== ROOM_STATE.LOBBY);
     const t = useT();
     const global = scope === LOBBY_SCOPE.GLOBAL;
-    /** While the ship page is open: the ship the player had on opening it, which Back gives them again. */
-    const [shipPage, setShipPage] = useState(null);
+    /**
+     * While the ship page is open: the ship the player had on opening it, which Back gives them
+     * again; null while the page is closed. A plain value, not an object holding it: the React
+     * Compiler reads what a handler depends on during render, so a handler that reads
+     * `page.before` makes every render read it, also the ones where `page` is still null.
+     */
+    const [shipBefore, setShipBefore] = useState(null);
 
     useEffect(() => {
         lan.open(scope);
     }, [lan, scope]);
     useEffect(() => {
-        if (shipLocked) setShipPage(null);
+        if (shipLocked) setShipBefore(null);
     }, [shipLocked]);
 
     const leave = () => {
@@ -402,13 +407,13 @@ export default function LanLobby({ lan, session, scope = LOBBY_SCOPE.LAN, onStar
     // The room is told of every ship the player tries (pushProfile; it does nothing outside a
     // room): if the match starts while the page is open, they fly the one they are looking at.
     const cancelShipPage = () => {
-        if (session.settings.playerShip !== shipPage.before) {
-            session.updateSettings({ playerShip: shipPage.before });
+        if (shipBefore !== null && session.settings.playerShip !== shipBefore) {
+            session.updateSettings({ playerShip: shipBefore });
             lan.pushProfile();
         }
-        setShipPage(null);
+        setShipBefore(null);
     };
-    if (shipPage && !shipLocked) {
+    if (shipBefore !== null && !shipLocked) {
         return (
             <Hangar
                 session={session}
@@ -417,12 +422,12 @@ export default function LanLobby({ lan, session, scope = LOBBY_SCOPE.LAN, onStar
                 note={VERSUS_DAMAGE < 1 ? t('mp.ship.versusNote', { percent: Math.round(VERSUS_DAMAGE * 100) }) : null}
                 confirmLabel={t('ui.hangar.confirm')}
                 onSelect={() => lan.pushProfile()}
-                onConfirm={() => setShipPage(null)}
+                onConfirm={() => setShipBefore(null)}
                 onBack={cancelShipPage}
             />
         );
     }
-    const openShipPage = () => setShipPage({ before: session.settings.playerShip });
+    const openShipPage = () => setShipBefore(session.settings.playerShip);
 
     return (
         <div className="eod-lan">
