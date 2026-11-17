@@ -113,9 +113,10 @@ export const NET = Object.freeze({
     /**
      * Seconds between a device's attempts to get back to the lobby server after its connection
      * dropped during a match (it takes its place back with its resume token; the server keeps
-     * it for 60 seconds).
+     * it for 60 seconds, about as long as these last). Tried at once, too, when the browser
+     * says the network is back.
      */
-    lobbyRetryDelays: Object.freeze([1, 2, 4, 8, 15, 30]),
+    lobbyRetryDelays: Object.freeze([1, 2, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]),
 });
 
 /**

@@ -8,12 +8,15 @@ class PerSecondBudget {
         this.limit = limit;
         this.windowStart = -Infinity;
         this.used = 0;
+        /** True once a take has been refused in this window. */
+        this.overflowed = false;
     }
 
     take(now) {
         if (now - this.windowStart >= 1) {
             this.windowStart = now;
             this.used = 0;
+            this.overflowed = false;
         }
         if (this.used >= this.limit) return false;
         this.used += 1;
@@ -26,7 +29,8 @@ class PerSecondBudget {
  * before it can touch the simulation:
  *  - inputs must be exactly an input packet, newer than the last one, and within the rate budget;
  *  - reliable messages must be one of the three kinds a client may send, well formed, within budget.
- * Anything else is dropped and counted as a strike; a client that keeps it up is `banned`
+ * Anything else is dropped and counted as a strike (going over the message budget: one a second);
+ * a client that keeps it up is `banned`
  * and the host disconnects it.
  */
 export class ClientGuard {
@@ -74,7 +78,15 @@ export class ClientGuard {
      * @returns {object | null} the validated message (protocol.js), or null if it was dropped
      */
     acceptMessage(raw) {
-        if (!this.eventBudget.take(this.now())) return this.strike();
+        const budget = this.eventBudget;
+        if (!budget.take(this.now())) {
+            // Too many in a second is one strike for that second, not one a message: a link coming back after a
+            // silence delivers everything that waited at once, and that is a network catching up, not an attack.
+            // A client that keeps flooding is still banned, a strike a second.
+            if (budget.overflowed) return null;
+            budget.overflowed = true;
+            return this.strike();
+        }
         try {
             return parseClientMessage(raw);
         } catch {

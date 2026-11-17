@@ -146,6 +146,20 @@ test('messages are validated and rate limited', () => {
     assert.ok(guard.acceptMessage('{"t":"ping","n":1}'));
 });
 
+test('a burst of messages is one strike a second, not one a message; a flood that goes on is still banned', () => {
+    const { guard, clock } = guardAt();
+    // A link back after a silence delivers all that waited at once.
+    for (let i = 0; i < 10 * NET.maxEventsPerSecond; i++) guard.acceptMessage('{"t":"ping","n":1}');
+    assert.equal(guard.strikes, 1);
+    assert.equal(guard.banned, false);
+
+    for (let second = 1; second < NET.maxStrikes; second++) {
+        clock.now += 1;
+        for (let i = 0; i < 2 * NET.maxEventsPerSecond; i++) guard.acceptMessage('{"t":"ping","n":1}');
+    }
+    assert.equal(guard.banned, true);
+});
+
 test('a client that keeps sending rubbish is banned', () => {
     const { guard } = guardAt();
     for (let i = 0; i < NET.maxStrikes - 1; i++) guard.acceptInput(new ArrayBuffer(1));

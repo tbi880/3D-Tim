@@ -93,14 +93,17 @@ export class FakeLobbyServer {
                 server.clients.set(me.playerId, lobby);
                 return { playerId: me.playerId, isGuest: true, accountName: null };
             },
-            /** As LobbyClient.resume: a new connection, back in the place the last one held if the server still keeps it. */
+            /**
+             * As LobbyClient.resume: a new connection, back in the place the last one held if the server still keeps it -
+             * also when the server has not noticed the old connection go yet (it replaces it, as the backend does).
+             */
             async resume() {
                 const pending = hang('resume');
                 if (pending) return pending;
                 if (server.offline) throw new LobbyError('lan.offline');
                 const token = me?.token;
                 const seat = token && [...server.rooms.values()].flatMap((room) => room.players.map((entry) => ({ room, entry })))
-                    .find(({ entry }) => entry.token === token && !entry.connected);
+                    .find(({ entry }) => entry.token === token);
                 const fresh = await lobby.connect();
                 if (!seat || seat.room.state !== 'InMatch') return { me: fresh, room: null, match: null };
                 server.clients.delete(fresh.playerId);

@@ -149,6 +149,11 @@ export class ClientMatch {
      * Still no welcome: asks again every so often. A device taking a match over may not have
      * been listening on this link when the first request reached it.
      */
+    /** True if the host has been heard from in the last `seconds` (by this client's clock). */
+    heardWithin(seconds) {
+        return this.lastHeardAt !== null && this.now() - this.lastHeardAt <= seconds;
+    }
+
     askAgain() {
         const now = this.now();
         if (now - this.lastHelloAt < HELLO_RETRY_SECONDS) return;

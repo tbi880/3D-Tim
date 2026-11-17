@@ -202,6 +202,7 @@ function device(server, network, name, ship = 'kestrel') {
         timers: { setTimeout: (callback) => { network.timers.push(callback); return callback; }, clearTimeout: (callback) => { network.timers = network.timers.filter((timer) => timer !== callback); } },
         now: () => network.clockMs,
         measureStepCost: () => STEP_COSTS[name] ?? 0.5,
+        networkEvents: network.events,
     });
     return { lan, session, ui, controls: idle(), get state() { return state; }, get savedName() { return saved; }, get savedLoadout() { return savedLoadout; } };
 }
@@ -210,6 +211,8 @@ function lanParty(names) {
     const server = new FakeLobbyServer();
     const network = new FakeNetwork();
     network.timers = [];
+    /** What the browser window says of the devices' network ('online'). */
+    network.events = new EventTarget();
     /** The wall clock every device reads (milliseconds). */
     network.clockMs = 1_000_000;
     const devices = names.map((name) => device(server, network, name));
@@ -1119,6 +1122,22 @@ async function refereedMatch(names) {
 
 const humans = (each) => each.ui.match.players.filter((player) => !player.bot).map((player) => player.name).sort();
 
+/**
+ * The network under a link is gone (a device moved from Wi-Fi to mobile data, say): nothing gets through either way,
+ * and neither end hears of the other closing it - each still takes it to be open until it closes its own end.
+ */
+function killQuietly(link) {
+    for (const end of [link.end, link.end.peer]) {
+        end.deliver = () => { end.inbox.length = 0; };
+        end.close = () => {
+            if (!end.isOpen) return;
+            end.isOpen = false;
+            end.onClose?.();
+        };
+    }
+    return link.end;
+}
+
 test('across the internet the host sends the lobby server a snapshot of the match every second', async () => {
     const { server, idOf, byName: { Tim: tim }, play } = await refereedMatch(['Tim', 'Ann']);
     const before = server.snapshots.length;
@@ -1226,6 +1245,112 @@ test('a host that dropped off the network comes back as a client of the device t
     assert.equal(server.roomOf(idOf('Tim')).players.find((player) => player.playerId === idOf('Tim')).connected, true);
 });
 
+test('a host whose links went silent without closing (it moved network) does not wait on them when it comes back', async () => {
+    const party = await refereedMatch(['Tim', 'Ann']);
+    const { server, idOf, byName: { Tim: tim, Ann: ann }, play, fireTimers } = party;
+    await play(4);
+
+    // Tim's phone moves from Wi-Fi to mobile data: the lobby connection drops; his link to Ann still looks open, but nothing gets through.
+    server.drop(idOf('Tim'));
+    const dead = killQuietly(tim.lan.links.get(idOf('Ann')));
+    await play(9);
+    // (Her device's silence timer runs on the real clock: here it is told the host went quiet.)
+    ann.lan.client.hostLost();
+    await play(1);
+    assert.ok(ann.lan.server, 'Ann took over');
+    assert.ok(tim.lan.server, 'Tim, cut off, does not know yet');
+    assert.equal(tim.lan.links.get(idOf('Ann'))?.end, dead);
+
+    // He is back on the lobby: told Ann runs the match, he calls her afresh at once rather than waiting on the dead link.
+    fireTimers();
+    await play(1.5);
+    assert.equal(tim.lan.server, null);
+    assert.equal(tim.lan.matchHostId, idOf('Ann'));
+    assert.notEqual(tim.lan.links.get(idOf('Ann'))?.end, dead);
+    assert.equal(tim.lan.client.migrating, false, 'welcomed by the new host');
+    assert.deepEqual(humans(tim), ['Ann', 'Tim']);
+    assert.ok(ann.lan.server.pilots.get(idOf('Tim')).link?.isOpen);
+});
+
+test('a client cut off from everybody waits for the server instead of starting a match of its own', async () => {
+    const { server, idOf, byName: { Tim: tim, Ann: ann }, play, fireTimers } = await refereedMatch(['Tim', 'Ann']);
+    await play(4);
+
+    // Ann's network goes: no lobby, and her link to Tim (the host) carries nothing any more.
+    server.drop(idOf('Ann'));
+    killQuietly(ann.lan.links.get(idOf('Tim')));
+    await play(9);
+    ann.lan.client.hostLost();
+    await play(1);
+    assert.equal(ann.lan.server, null, 'next in line, but with nobody to reach she does not take over');
+    assert.equal(ann.lan.client.migrating, true);
+    assert.ok(tim.lan.server);
+
+    // Back: the server says Tim still runs the match; she calls him afresh and is in it again.
+    fireTimers();
+    await play(1.5);
+    assert.equal(ann.state.status, LAN_STATUS.ONLINE);
+    assert.equal(ann.lan.server, null);
+    assert.equal(ann.lan.matchHostId, idOf('Tim'));
+    assert.equal(ann.lan.client.migrating, false);
+    assert.ok(tim.lan.server.pilots.get(idOf('Ann')).link?.isOpen);
+    assert.equal(server.roomOf(idOf('Tim')).hosting.term, 0);
+});
+
+test('a device that went on with the match alone while it could not ask the server stands down when the server says otherwise', async () => {
+    const { server, idOf, byName: { Tim: tim, Ann: ann }, play, fireTimers } = await refereedMatch(['Tim', 'Ann']);
+    await play(4);
+
+    server.drop(idOf('Ann'));
+    killQuietly(ann.lan.links.get(idOf('Tim')));
+    await play(2);
+    // (As after a takeover the devices settled among themselves: a later term than the server's.)
+    assert.equal(ann.lan.takeOver(), true);
+    assert.equal(ann.lan.client.term, 1);
+
+    fireTimers();
+    await play(1.5);
+    assert.equal(ann.lan.server, null, 'the server\'s word stands, though its term is older');
+    assert.equal(ann.lan.matchHostId, idOf('Tim'));
+    assert.equal(ann.lan.client.migrating, false);
+    assert.ok(tim.lan.server, 'one host again');
+    assert.ok(tim.lan.server.pilots.get(idOf('Ann')).link?.isOpen);
+});
+
+test('while the lobby server can be asked, one device\'s word that it took over does not make the host stand down', async () => {
+    const { server, idOf, byName: { Tim: tim, Ann: ann }, play } = await refereedMatch(['Tim', 'Ann']);
+    await play(4);
+
+    // Ann's device claims the match (as one that went on alone would); Tim's is fine and still sending to the server.
+    const before = tim.lan.server;
+    assert.equal(ann.lan.takeOver(), true);
+    await play(2);
+
+    assert.equal(tim.lan.server, before, 'Tim runs the match still - he never let go of it');
+    assert.equal(ann.lan.server, null, 'the server told Ann otherwise');
+    assert.equal(ann.lan.matchHostId, idOf('Tim'));
+    assert.equal(ann.lan.client.migrating, false);
+    assert.equal(server.roomOf(idOf('Tim')).hosting.term, 0);
+    assert.ok(tim.lan.server.pilots.get(idOf('Ann')).link?.isOpen);
+});
+
+test('a host cut off from the lobby that hears of the takeover on its link turns to the new host over it at once', async () => {
+    const { server, idOf, byName: { Tim: tim, Ann: ann }, play } = await refereedMatch(['Tim', 'Ann']);
+    await play(4);
+
+    server.drop(idOf('Tim'));
+    const link = tim.lan.links.get(idOf('Ann'));
+    ann.lan.client.hostLost();
+    await play(1.5);
+
+    assert.ok(ann.lan.server, 'the server gave Ann the match');
+    assert.equal(tim.state.status, LAN_STATUS.OFFLINE, 'Tim is still without the lobby');
+    assert.equal(tim.lan.server, null, 'but heard of it from Ann');
+    assert.equal(tim.lan.links.get(idOf('Ann')), link, 'over the link he had: none can be made without the lobby');
+    assert.equal(tim.lan.client.migrating, false);
+    assert.deepEqual(humans(tim), ['Ann', 'Tim']);
+});
+
 test('a device whose lobby connection drops during a match gets its place back; one that took too long plays on without', async () => {
     const { server, idOf, byName: { Tim: tim, Ann: ann }, play, fireTimers } = await refereedMatch(['Tim', 'Ann']);
 
@@ -1251,6 +1376,43 @@ test('a device whose lobby connection drops during a match gets its place back; 
     assert.equal(ann.state.me.playerId, idOf('Ann'));
     assert.equal(ann.ui.match.phase, 'playing', 'which goes on over the links');
     assert.equal(tim.lan.server.pilots.get(idOf('Ann')).link?.isOpen, true);
+});
+
+test('a device whose network is back tries the lobby at once, not at its next try', async () => {
+    const { server, network, idOf, byName: { Tim: tim, Ann: ann }, play } = await refereedMatch(['Tim', 'Ann']);
+
+    server.drop(idOf('Ann'));
+    await play(0.5);
+    assert.equal(ann.state.status, LAN_STATUS.OFFLINE);
+    const waiting = network.timers.length;
+
+    network.events.dispatchEvent(new Event('online'));
+    await play(0.5);
+    assert.equal(ann.state.status, LAN_STATUS.ONLINE);
+    assert.equal(ann.state.me.playerId, idOf('Ann'));
+    assert.equal(tim.state.room.players.find((player) => player.playerId === idOf('Ann')).connected, true);
+    assert.ok(network.timers.length < waiting, 'and the try it was waiting for is off');
+    // Once back, the browser's word changes nothing.
+    network.events.dispatchEvent(new Event('online'));
+    await play(0.5);
+    assert.equal(ann.state.status, LAN_STATUS.ONLINE);
+});
+
+test('a device that sees its lobby connection drop before the server does still gets its place back', async () => {
+    const { server, idOf, byName: { Tim: tim, Ann: ann }, play, fireTimers } = await refereedMatch(['Tim', 'Ann']);
+
+    // Her phone moved to another network: its end of the connection is gone; the server will take a while to notice.
+    server.clients.get(idOf('Ann')).handlers.onDisconnected();
+    await play(0.5);
+    assert.equal(ann.state.status, LAN_STATUS.OFFLINE);
+    assert.equal(tim.state.room.players.find((player) => player.playerId === idOf('Ann')).connected, true, 'as far as the server knows');
+
+    fireTimers();
+    await play(0.5);
+    assert.equal(ann.state.status, LAN_STATUS.ONLINE);
+    assert.equal(ann.state.me.playerId, idOf('Ann'));
+    assert.equal(ann.lan.matchHostId, idOf('Tim'));
+    assert.equal(ann.ui.match.phase, 'playing');
 });
 
 test('without the lobby server the devices settle who takes over among themselves, as on one Wi-Fi', async () => {

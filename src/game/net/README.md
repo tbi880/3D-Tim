@@ -223,7 +223,25 @@ had left, so this side won on the spot. There the lobby server rules who runs th
   player whose connection dropped for 60 seconds (shown as not connected); the device
   reconnects (`NET.lobbyRetryDelays`) and takes it back with the resume token its last
   connection was given (`LobbyClient.resume`, the hub's `ResumeSession`): the same player id,
-  so the others can link to it again and the server can be asked.
+  so the others can link to it again and the server can be asked. That works even before the
+  server has noticed the old connection go (a phone that moved from Wi-Fi to mobile data
+  sees its end close at once; the server may take its keep-alive timeout): the token proves
+  it is the same device, and the old connection is replaced. The device tries every few
+  seconds, and at once when the browser says the network is back (`online`).
+* **The server's word stands.** While it can be asked, a device's own news that it took the
+  match over (`MSG.TAKEOVER`) is only a claim and changes nothing; and a device that went on
+  alone while it could not ask - so its own term ran ahead of the server's - stands down
+  when the server names another host. A device that can reach nobody at all (no lobby, no
+  link heard from lately) takes itself to be the one cut off: it does not start a match of
+  its own, but waits to hear from the server again.
+* **Links that went quiet are made again.** A link can die without closing (the network
+  under it changed). A device turns to a new host over the link it has only if that was
+  heard from lately; otherwise it calls for a new one (none can be made without the lobby,
+  which carries the offers: it waits for that). A device that takes over lets go of a link to
+  the old host that has gone quiet, so what waited on it - the old host's own traffic among
+  it - never reaches the new match. And a link back from a silence delivers all that waited
+  at once: the host's `ClientGuard` counts going over its message budget as one strike a
+  second, not one a message.
 
 A device that cannot reach the server falls back on the devices' own succession above. The
 server never reads a snapshot; the devices check it like any checkpoint.
