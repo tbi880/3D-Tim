@@ -1,4 +1,4 @@
-import { ABILITIES, ABILITY_DENIED_CUE, ABILITY_PHASE } from '../config/abilities.js';
+import { ABILITIES, ABILITY_DENIED_CUE, ABILITY_PHASE, PASSIVES } from '../config/abilities.js';
 import { MUSIC_TRACKS } from '../config/gameConfig.js';
 import { GAME_EVENTS } from '../core/EventBus.js';
 import { SESSION_EVENTS } from '../state/GameSession.js';
@@ -237,6 +237,14 @@ export class SoundEngine {
             const inside = player && position && player.position.distanceTo(position) <= radius;
             const loudness = Math.max(this.attenuation(position), inside ? 0.45 : 0);
             if (loudness <= 0) return;
+            if (PASSIVES[ability]?.kind === 'deathBlast') {
+                // A reactor going up: lower and longer than any warhead, with the crack of the flash first.
+                this.noise({ duration: 0.25, frequency: 3000, gain: 0.3 * loudness });
+                this.noise({ duration: 2.8, frequency: 240, gain: 0.85 * loudness });
+                this.tone({ from: 70, to: 18, duration: 2.6, gain: 0.55 * loudness });
+                this.tone({ from: 150, to: 40, duration: 1.2, gain: 0.25 * loudness, type: 'sawtooth', delay: 0.12 });
+                return;
+            }
             this.noise({ duration: 1.5, frequency: 420, gain: 0.7 * loudness });
             this.tone({ from: 95, to: 24, duration: 1.3, gain: 0.45 * loudness });
             this.tone({ from: 2400, to: 300, duration: 0.5, gain: 0.12 * loudness, type: 'sawtooth' });

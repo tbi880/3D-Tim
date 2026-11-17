@@ -240,7 +240,7 @@ export class BattleRoyalePresenter {
         // A wreck keeps falling the way it was going.
         const wreck = (ship) => {
             ship.velocity.copy(show.pull).multiplyScalar(show.speed(elapsed));
-            destroyShip(world, ship);
+            destroyShip(world, ship, null, { shown: true });
         };
         ships.forEach((ship, index) => {
             if (!ship.alive) return;

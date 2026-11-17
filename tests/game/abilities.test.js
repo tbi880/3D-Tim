@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ABILITIES, ABILITY_COOLDOWN, ABILITY_DENIED_CUE, ABILITY_PHASE, abilityOf } from '../../src/game/config/abilities.js';
+import { ABILITIES, ABILITY_COOLDOWN, ABILITY_DENIED_CUE, ABILITY_PHASE, PASSIVES, abilityOf, passiveOf } from '../../src/game/config/abilities.js';
 import { FACTION, PLAYER } from '../../src/game/config/gameConfig.js';
 import { PLAYER_SHIPS } from '../../src/game/config/playerShips.js';
 import { SHIP_CLASSES } from '../../src/game/config/shipClasses.js';
 import { WEAPONS } from '../../src/game/config/weapons.js';
 import { GAME_EVENTS } from '../../src/game/core/EventBus.js';
-import { applyDamage } from '../../src/game/core/systems/damage.js';
+import { applyDamage, destroyShip } from '../../src/game/core/systems/damage.js';
 import { applyPilotAction } from '../../src/game/core/systems/pilotActions.js';
 import { isValidTarget } from '../../src/game/core/systems/targeting.js';
 import { playerBeamRange, playerTorpedoRange } from '../../src/game/core/systems/weapons.js';
@@ -63,6 +63,11 @@ test('every player ship but the Bulwark has an ability, on one of three lengths 
     assert.equal(abilityStatus(bulwark.ship), null, 'and the HUD shows none');
     // Nothing but a pilot's ship has one.
     assert.equal(bulwark.put('raider', [0, 0, -900]).ability, null);
+
+    // What the Bulwark has is a passive one, and it is the only ship that does.
+    assert.deepEqual(PLAYER_SHIPS.filter(({ classId }) => passiveOf(SHIP_CLASSES[classId])).map(({ classId }) => classId), ['bulwark']);
+    assert.equal(bulwark.ship.passive, PASSIVES.reactorBlast);
+    assert.equal(scene('kestrel').ship.passive, null);
 });
 
 test('Swift: the overdrive is a two-second dash that nothing can hurt, on a short cooldown', () => {
@@ -293,6 +298,124 @@ test('an ability is not for a ship the story has the helm of, or one that is gon
     assert.equal(game.events.length, 0);
 });
 
+// ---- The Bulwark's passive: its reactor goes with it ------------------------------------------
+
+const whole = (ship) => ship.maxHull + ship.maxShield;
+const left = (ship) => (ship.hull + ship.shield) / whole(ship);
+const near = (actual, expected) => Math.abs(actual - expected) < 1e-6;
+
+test('Bulwark: destroyed, its reactor takes every fighter within a kilometre with it, most of a pilot\'s ship and half a ship of the line', () => {
+    const game = scene('bulwark');
+    const { ship, world } = game;
+    const { radius, damage } = PASSIVES.reactorBlast;
+    assert.equal(radius, 1000);
+    assert.deepEqual({ ...damage }, { fighter: 1, player: 0.7, capital: 0.5 });
+
+    const raider = game.put('raider', [0, 0, -900]);
+    const drone = game.put('drone', [300, 0, 0]);
+    const outside = game.put('raider', [0, 1100, 0]);
+    const frigate = game.put('harrier', [-700, 0, 0], { faction: UMBRA });
+    const pilot = enemyPilot(game, [0, -500, 0]);
+    const hurtPilot = enemyPilot(game, [0, 500, 0]);
+    hurtPilot.shield = 0;
+    const friend = game.put('dart', [0, 0, 400]);
+    const ownFrigate = game.put('harrier', [0, 0, 800]);
+    const wreck = game.put('raider', [200, 200, 0], { invulnerable: true });
+    const buoy = game.put('raider', [-200, 200, 0], { faction: FACTION.NEUTRAL });
+    const dashing = enemyPilot(game, [0, 200, -200], 'swift');
+    applyPilotAction(world, dashing, 'ability');
+    const cloaked = enemyPilot(game, [0, -200, -200], 'peregrine');
+    applyPilotAction(world, cloaked, 'ability');
+    assert.ok(dashing.effect('overdrive') && cloaked.cloaked);
+
+    const reported = [];
+    world.onDamage = (target, source) => reported.push([target, source]);
+    const destroyed = new Map();
+    world.events.on(GAME_EVENTS.SHIP_DESTROYED, (event) => destroyed.set(event.ship, event.killer));
+    const where = ship.position.clone();
+    applyDamage(world, ship, 1e6, { source: outside });
+
+    assert.equal(ship.alive, false);
+    const blasts = game.events.filter((event) => event.phase === ABILITY_PHASE.BLAST);
+    assert.deepEqual(blasts.map((event) => [event.ship, event.ability, event.radius]), [[ship, 'reactorBlast', radius]]);
+    assert.ok(blasts[0].position.equals(where));
+
+    // Computer-flown fighters: gone, and they are the dead pilot's kills.
+    assert.equal(raider.alive, false);
+    assert.equal(drone.alive, false);
+    assert.equal(destroyed.get(raider), ship);
+    assert.equal(destroyed.get(drone), ship);
+    assert.ok(reported.some(([target, source]) => target === raider && source === ship), 'whoever keeps the rules is told who did it');
+    // A step past the kilometre: not a scratch.
+    assert.equal(left(outside), 1);
+
+    // A pilot's ship loses 70% of all it is: a fresh one lives on what is left, one already hurt does not.
+    assert.equal(pilot.alive, true);
+    assert.equal(pilot.shield, 0);
+    assert.ok(near(left(pilot), 1 - damage.player), `${left(pilot)}`);
+    assert.equal(hurtPilot.alive, false);
+    assert.equal(destroyed.get(hurtPilot), ship);
+    // A ship of the line loses half.
+    assert.equal(frigate.alive, true);
+    assert.ok(near(left(frigate), 1 - damage.capital), `${left(frigate)}`);
+
+    // Its own side is caught as well - but by nobody: no kill, and no report of a pilot turning on their own.
+    assert.equal(friend.alive, false);
+    assert.equal(destroyed.get(friend), null);
+    assert.ok(near(left(ownFrigate), 1 - damage.capital));
+    assert.ok(!reported.some(([target]) => target === friend || target === ownFrigate));
+
+    // What cannot be hurt is not: scenery, an indestructible hull, a ship in its dash or under its cloak.
+    assert.equal(left(wreck), 1);
+    assert.equal(left(buoy), 1);
+    assert.equal(left(dashing), 1);
+    assert.equal(left(cloaked), 1);
+});
+
+test('Bulwark: the blast spares its own side when told to, and only happens where the ship is simulated', () => {
+    const game = scene('bulwark');
+    const { ship, world } = game;
+    ship.passive = { ...PASSIVES.reactorBlast, hitsAllies: false };
+    const friend = game.put('dart', [0, 0, 400]);
+    const raider = game.put('raider', [0, 0, -400]);
+    applyDamage(world, ship, 1e6);
+    assert.equal(left(friend), 1);
+    assert.equal(raider.alive, false);
+
+    // A device that is only told the ship is gone works nothing out: the host has.
+    const shown = scene('bulwark');
+    const bystander = shown.put('raider', [0, 0, -400]);
+    destroyShip(shown.world, shown.ship, null, { shown: true });
+    assert.equal(shown.ship.alive, false);
+    assert.equal(left(bystander), 1);
+    assert.equal(shown.events.length, 0);
+
+    // A ship that leaves, or is taken off the stage, does not go up.
+    const leaving = scene('bulwark');
+    const witness = leaving.put('raider', [0, 0, -400]);
+    leaving.world.removeShip(leaving.ship);
+    assert.equal(left(witness), 1);
+    assert.equal(leaving.events.length, 0);
+});
+
+test('Bulwark: one reactor can set off the next', () => {
+    const game = scene('bulwark');
+    const { ship, world } = game;
+    // A second Bulwark on the other side, already hurt, 800 m off; and a fighter only it can reach.
+    const second = enemyPilot(game, [0, 0, -800], 'bulwark');
+    second.shield = 0;
+    const dart = game.put('dart', [0, 0, -1700]);
+    const destroyed = new Map();
+    world.events.on(GAME_EVENTS.SHIP_DESTROYED, (event) => destroyed.set(event.ship, event.killer));
+    applyDamage(world, ship, 1e6);
+
+    assert.equal(second.alive, false);
+    assert.equal(destroyed.get(second), ship);
+    assert.equal(dart.alive, false);
+    assert.equal(destroyed.get(dart), second);
+    assert.deepEqual(game.events.map((event) => event.ship), [ship, second], 'two blasts, one each');
+});
+
 // ---- In a match: the host decides, every device is told ---------------------------------------
 
 const flying = (classes) => ({
@@ -356,4 +479,39 @@ test('in a match a cloaked ship is shown as cloaked on every device, and a breac
     assert.ok(bo.ui.hud.shieldDown >= 9, `Bo is told how long: ${bo.ui.hud.shieldDown}`);
     assert.equal(serverShipOf(match.server, 'ann').shield, serverShipOf(match.server, 'ann').maxShield, 'the host\'s own side is spared');
     assert.equal(match.host.ui.hud.ability.state, 'cooldown');
+});
+
+test('in a match a Bulwark\'s death blast is worked out by the host, and every device sees it once', () => {
+    const match = createTestMatch(['host', 'ann', 'bo'], { rules: arenaRules({ spacing: 300 }), start: flying({ host: 'bulwark', ann: 'kestrel', bo: 'kestrel' }) });
+    match.run(0.5);
+    const [ann, bo] = match.clients;
+    assert.equal(match.host.ui.hud.passive, 'reactorBlast', 'named on its pilot\'s HUD');
+    assert.equal(match.host.ui.hud.ability, null);
+    assert.equal(ann.ui.hud.passive, null);
+
+    // The arena puts everybody on one side: turn Bo's coat, so the blast has a friend and a foe to catch.
+    const bulwark = serverShipOf(match.server, 'host');
+    const annOnServer = serverShipOf(match.server, 'ann');
+    const boOnServer = serverShipOf(match.server, 'bo');
+    boOnServer.faction = UMBRA;
+    const blasts = { host: [], ann: [], bo: [] };
+    for (const [name, seat] of [['host', match.host], ['ann', ann], ['bo', bo]]) {
+        seat.world.events.on(GAME_EVENTS.ABILITY, (event) => event.phase === ABILITY_PHASE.BLAST && blasts[name].push(event));
+    }
+    applyDamage(match.server.zones.values().next().value.world, bulwark, 1e6);
+    match.run(0.5);
+
+    assert.equal(bulwark.alive, false);
+    for (const [name, seen] of Object.entries(blasts)) {
+        assert.equal(seen.length, 1, `${name}: drawn once`);
+        assert.equal(seen[0].ability, 'reactorBlast');
+        assert.equal(seen[0].radius, PASSIVES.reactorBlast.radius);
+    }
+    // Friend and foe alike, and each pilot's own HUD says what the host worked out - once, not twice.
+    for (const [seat, onServer] of [[ann, annOnServer], [bo, boOnServer]]) {
+        assert.equal(onServer.alive, true);
+        assert.equal(onServer.shield, 0);
+        assert.ok(Math.abs(onServer.hull / onServer.maxHull - seat.ui.hud.hull) < 0.02, `${seat.ui.hud.hull}`);
+        assert.ok(onServer.hull / onServer.maxHull < 0.7 && onServer.hull > 0);
+    }
 });

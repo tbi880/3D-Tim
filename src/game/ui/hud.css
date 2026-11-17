@@ -140,6 +140,7 @@ html.eod-page-locked body {
 .eod-ability--active .eod-meter-fill, .eod-ability--armed .eod-meter-fill { background: var(--eod-amber); box-shadow: 0 0 6px var(--eod-amber); }
 .eod-ability--active .eod-ability-state, .eod-ability--armed .eod-ability-state { color: var(--eod-amber); }
 .eod-ability--armed .eod-ability-state { animation: eod-blink 0.5s steps(2) infinite; }
+.eod-ability--passive { grid-template-columns: 1fr auto; }
 .eod-speed-value { font-size: 22px; font-weight: 700; min-width: 48px; text-align: right; }
 .eod-speed-unit { font-size: 10px; margin-right: auto; }
 

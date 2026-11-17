@@ -284,6 +284,16 @@ event (`GAME_EVENTS.ABILITY`) for effects and sound. Bots press the button too
 where the effect bites, its texts, and its look in `scene/ExplosionsLayer.jsx` and sound in
 `audio/SoundEngine.js`.
 
+The Bulwark has a passive one instead (`passive: 'reactorBlast'`, `PASSIVES` in the same
+file): when it is destroyed, every ship within 1 km loses a share of its full shield and hull
+as true damage - computer-flown fighters all of it, pilots' ships 70%, capital ships, turrets
+and modules half - friend and foe alike (`hitsAllies`). It is worked out in `destroyShip`
+(`core/systems/damage.js`) wherever the ship is simulated, so in a match by the host; other
+devices are told (`destroyShip(..., { shown: true })`) and get the blast as the same world
+event. What it kills on the other side is its pilot's kill; what it catches on its own side
+was hit by nobody, so it cannot make a traitor of a dead pilot. The HUD and the hangar card
+name it; there is no button.
+
 Rules for checkpoints: enemies are never saved, so place checkpoints at lulls; ships that
 must survive a reload need `persistent: true` and a tag; anything non-serialisable
 (background sequences, progress bars, objective counters) is declared again right after

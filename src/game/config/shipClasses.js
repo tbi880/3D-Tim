@@ -78,7 +78,8 @@ export const SHIP_CLASSES = Object.freeze({
     //   weaponDamage - multiplier on beam and torpedo damage
     //   weaponRange  - multiplier on beam reach (3 km) and torpedo flight time (about 1.8 km);
     //                  beams always outreach torpedoes on the same ship
-    //   ability      - the ship's active ability (config/abilities.js); the Bulwark has none
+    //   ability      - the ship's active ability (config/abilities.js); the Bulwark has none, it has a passive one
+    //   passive      - what the ship does by itself (config/abilities.js PASSIVES); only the Bulwark has one
     // `radius` is the hit sphere: bigger hulls are easier to hit and to scrape on rocks.
     // Models: MODEL_OVERRIDES in scene/models/ShipModel.jsx.
     kestrel: {
@@ -136,6 +137,7 @@ export const SHIP_CLASSES = Object.freeze({
         weaponDamage: 1.85,
         weaponRange: 1.7,
         weapons: ['playerBeam', 'playerTorpedo'],
+        passive: 'reactorBlast',
     },
     peregrine: {
         // Spaceship: a flat, wide racer that is mostly engine grilles. Fastest in a line, off the

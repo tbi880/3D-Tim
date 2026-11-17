@@ -91,6 +91,17 @@ function AbilityRow({ ability }) {
     );
 }
 
+/** The ship's passive ability: only its name - there is nothing to press and nothing to wait for. */
+function PassiveRow({ id }) {
+    const t = useT();
+    return (
+        <div className="eod-ability eod-ability--passive">
+            <span className="eod-meter-label">{t(`ability.${id}.name`)}</span>
+            <span className="eod-ability-state">{t('hud.ability.passive')}</span>
+        </div>
+    );
+}
+
 function WeaponsPanel() {
     const hud = useGameStore((state) => state.hud);
     const t = useT();
@@ -114,6 +125,7 @@ function WeaponsPanel() {
                 <span className="eod-meter-label">{t('hud.throttle')} {percent(hud.throttle)}</span>
             </div>
             {hud.ability && <AbilityRow ability={hud.ability} />}
+            {hud.passive && <PassiveRow id={hud.passive} />}
         </div>
     );
 }

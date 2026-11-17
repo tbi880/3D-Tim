@@ -1,5 +1,9 @@
+import { Vector3 } from 'three';
+import { ABILITY_PHASE } from '../../config/abilities.js';
 import { ALLIES, FACTION, POWER_MODES, WORLD } from '../../config/gameConfig.js';
 import { GAME_EVENTS } from '../EventBus.js';
+
+const scratchNearest = new Vector3();
 
 /**
  * Two things fight each other on sight when they belong to different, non-neutral factions.
@@ -63,7 +67,14 @@ export function destroyProjectile(world, projectile, withExplosion) {
     }
 }
 
-export function destroyShip(world, ship, killer = null) {
+/**
+ * The end of a ship: its wreck, whatever was bolted onto it, and what it does as it dies (a
+ * 'deathBlast' passive, config/abilities.js).
+ * @param {object} [options]
+ * @param {boolean} [options.shown] the ship's end is only being shown here - a device told
+ *   by the host, a staged ending: nothing is worked out from it, the host has done that
+ */
+export function destroyShip(world, ship, killer = null, { shown = false } = {}) {
     if (!ship.alive) return;
     ship.alive = false;
     ship.hull = 0;
@@ -77,7 +88,33 @@ export function destroyShip(world, ship, killer = null) {
     world.events.emit(GAME_EVENTS.SHIP_DESTROYED, { ship, killer });
     // Anything bolted onto the ship goes down with it.
     for (const other of world.ships) {
-        if (other.parent === ship) destroyShip(world, other, killer);
+        if (other.parent === ship) destroyShip(world, other, killer, { shown });
+    }
+    if (!shown && ship.passive?.kind === 'deathBlast') deathBlast(world, ship, ship.passive);
+}
+
+/**
+ * A dying ship's reactor goes up (a 'deathBlast' passive): every ship within its radius loses
+ * a share of all it is, shield first. What is hostile to the dead ship was hit by it - its
+ * pilot is credited with what dies; what is caught on its own side was hit by nobody, so no
+ * rule about turning on one's own is broken by dying in the wrong place.
+ */
+function deathBlast(world, ship, passive) {
+    const position = ship.position.clone();
+    world.events.emit(GAME_EVENTS.ABILITY, { ship, ability: passive.id, phase: ABILITY_PHASE.BLAST, position, radius: passive.radius });
+    // The blast can set off another (two Bulwarks side by side), which destroys ships while this one is still counting.
+    for (const other of [...world.ships]) {
+        if (other === ship || !other.alive || other.arriving || other.faction === FACTION.NEUTRAL) continue;
+        const hostile = areHostile(ship, other);
+        if (!hostile && !passive.hitsAllies) continue;
+        if (other.distanceToPoint(position) > passive.radius) continue;
+        // Whatever keeps a ship's fire off it keeps this off it too, whose side it is on.
+        if (shrugsOff(other, ship)) continue;
+        const { damage } = passive;
+        const share = other.isPlayer ? damage.player : other.cls.kind === 'fighter' ? damage.fighter : damage.capital;
+        // All of it is all of it: no rounding leaves a fighter flying on a sliver of hull.
+        const amount = share >= 1 ? Infinity : (other.maxShield + other.maxHull) * share;
+        applyTrueDamage(world, other, amount, amount, { source: hostile ? ship : null, point: other.closestPoint(position, scratchNearest) });
     }
 }
 

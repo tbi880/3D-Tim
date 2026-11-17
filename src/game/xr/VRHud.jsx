@@ -522,6 +522,13 @@ function drawPanel(panel, session, state, t, glitch = 0) {
         ctx.fillText(name, right, 182);
         ctx.fillStyle = ABILITY_TONES[hud.ability.state];
         ctx.fillText(abilityStateText(t, hud.ability), right + ctx.measureText(name).width, 182);
+    } else if (hud.passive) {
+        // A passive one has nothing to wait for: its name, and that it is one.
+        const name = `${t(`ability.${hud.passive}.name`)}  `;
+        ctx.fillStyle = 'rgba(190, 225, 255, 0.85)';
+        ctx.fillText(name, right, 182);
+        ctx.fillStyle = ABILITY_TONES.cooldown;
+        ctx.fillText(t('hud.ability.passive'), right + ctx.measureText(name).width, 182);
     }
 
     const target = state.target;

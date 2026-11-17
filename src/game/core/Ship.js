@@ -1,5 +1,5 @@
 import { Vector3, Quaternion } from 'three';
-import { abilityOf } from '../config/abilities.js';
+import { abilityOf, passiveOf } from '../config/abilities.js';
 import { PLAYER } from '../config/gameConfig.js';
 import { clamp } from './math.js';
 
@@ -202,6 +202,8 @@ export class Ship {
          */
         const ability = abilityOf(cls);
         this.ability = ability ? { def: ability, cooldown: 0, active: 0, armed: false, projectile: null } : null;
+        /** The definition of the ship's passive ability (config/abilities.js PASSIVES), or null. */
+        this.passive = passiveOf(cls);
     }
 
     /** The definition of the ship's ability while its effect of `kind` is running, else null. */

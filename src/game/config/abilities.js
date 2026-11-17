@@ -4,6 +4,8 @@
  * ability with `ability: '<id>'` (config/shipClasses.js); a class without one (the Bulwark)
  * simply has no such button. The rules are in core/systems/abilities.js.
  *
+ * The Bulwark has a passive one instead (PASSIVES, below): no button, it happens by itself.
+ *
  * Every number a designer may want to change is here.
  *
  * Fields shared by all of them:
@@ -55,13 +57,39 @@ export const ABILITIES = Object.freeze({
     },
 });
 
+/**
+ * Passive abilities: what a ship does by itself, with no button and no cooldown. A class names
+ * its own with `passive: '<id>'`.
+ *
+ * kind:
+ *   'deathBlast' - when the ship is destroyed, every ship within `radius` metres is caught in
+ *                  the blast. It is true damage (no shield or hull multiplier, no difficulty,
+ *                  no power mode), shield first and then hull, and how much depends on what
+ *                  is hit: `damage` is the share of all it is (its full shield plus its full
+ *                  hull) that it loses.
+ *                    fighter - computer-flown small craft: 1 destroys them whatever state they are in
+ *                    player  - a pilot's ship: 0.7 leaves a fresh one alive on under a third,
+ *                              and kills one that was already hurt
+ *                    capital - ships of the line, stations' and ships' turrets and modules
+ *                  `hitsAllies`: its own side is caught too (false: only what is hostile to it).
+ *                  What cannot be hurt still is not: invulnerable hulls, a hull's floor, a ship
+ *                  in its overdrive dash.
+ */
+export const PASSIVES = Object.freeze({
+    /** Bulwark: its reactor goes with it - nothing within a kilometre comes away whole. */
+    reactorBlast: {
+        id: 'reactorBlast', kind: 'deathBlast',
+        radius: 1000, damage: Object.freeze({ fighter: 1, player: 0.7, capital: 0.5 }), hitsAllies: true,
+    },
+});
+
 /** What an ability reports as it happens (GAME_EVENTS.ABILITY `phase`). */
 export const ABILITY_PHASE = Object.freeze({
     /** The effect began (the torpedo left its tube). */
     START: 'start',
     /** The effect ran out, or was ended early. */
     END: 'end',
-    /** The torpedo's warhead went off: the event carries `position` and `radius`. */
+    /** A blast: the torpedo's warhead went off, or a ship with a 'deathBlast' passive died. The event carries `position` and `radius`. */
     BLAST: 'blast',
 });
 
@@ -69,6 +97,11 @@ export const ABILITY_PHASES = Object.freeze(Object.values(ABILITY_PHASE));
 
 /** Cue for the pilot who pressed the button while the ability was still recharging (the session's `playCue`). */
 export const ABILITY_DENIED_CUE = 'abilityDenied';
+
+/** The passive ability of a ship class, or null. */
+export function passiveOf(cls) {
+    return PASSIVES[cls?.passive] ?? null;
+}
 
 /** The ability of a ship class, or null. */
 export function abilityOf(cls) {

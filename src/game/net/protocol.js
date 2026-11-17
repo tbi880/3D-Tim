@@ -98,8 +98,8 @@ export const WORLD_EVENT = Object.freeze({
     /** Something only the game mode understands: `[kind, name, data]` (see the mode's client). */
     MODE: 'mode',
     /**
-     * A ship's active ability (GAME_EVENTS.ABILITY): `[kind, shipId, abilityId, phase]`, and for
-     * a warhead's blast `x, y, z, radius` after them.
+     * A ship's ability, active or passive (GAME_EVENTS.ABILITY): `[kind, shipId, abilityId, phase]`,
+     * and for a blast (a warhead's, a dying Bulwark's) `x, y, z, radius` after them.
      */
     ABILITY: 'ability',
 });

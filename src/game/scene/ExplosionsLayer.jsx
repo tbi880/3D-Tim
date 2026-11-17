@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { ABILITIES, ABILITY_PHASE } from '../config/abilities.js';
+import { ABILITIES, ABILITY_PHASE, PASSIVES } from '../config/abilities.js';
 import { EFFECTS, FACTION } from '../config/gameConfig.js';
 import { GAME_EVENTS } from '../core/EventBus.js';
 import { areHostile } from '../core/systems/damage.js';
@@ -68,6 +68,9 @@ const WHITE = new THREE.Color(1, 1, 1);
 /** A breach warhead's blast (the colour of the torpedo, config/weapons.js) and a cloak switching on or off. */
 const BREACH_COLOR = new THREE.Color('#ffa24a');
 const CLOAK_COLOR = new THREE.Color('#8ff2ff');
+/** A reactor going up (the Bulwark's passive): the blue-white of its first flash, and the size (metres) of the fireball that follows. */
+const REACTOR_COLOR = new THREE.Color('#cfe6ff');
+const REACTOR_FIREBALL = 90;
 
 const FLASH_VERTEX_SHADER = /* glsl */ `
     #include <common>
@@ -336,9 +339,25 @@ function Effects({ session, textures }) {
                 sparks.emit(position, { count: 36, speed: size * 1.6, life: 0.7, size: Math.min(30, size * 0.08), colors: [WARP_COLOR] });
             }),
             // Abilities (config/abilities.js). A breach warhead: a hard flash, and a ring that races out
-            // to exactly where its blast reaches. A cloak going on or off and a dash starting: a
-            // small flash and ring at the ship. All from the pools above, so they cost nothing new.
+            // to exactly where its blast reaches. A dying Bulwark's reactor: a blue-white flash, a
+            // fireball the size of a frigate's and two rings out to where it reaches. A cloak going
+            // on or off and a dash starting: a small flash and ring at the ship. All from the pools
+            // above, so they cost nothing new.
             world.events.on(GAME_EVENTS.ABILITY, ({ ship, ability, phase, position, radius }) => {
+                if (phase === ABILITY_PHASE.BLAST && PASSIVES[ability]?.kind === 'deathBlast') {
+                    startFlash(position, MAX_FLASH, 0.7, REACTOR_COLOR);
+                    startLight(position, REACTOR_FIREBALL, REACTOR_COLOR);
+                    startRing(position, radius, 1.3, REACTOR_COLOR);
+                    // The fire comes a beat after the flash, with the second, slower ring.
+                    pending.current.push({
+                        delay: 0.12,
+                        run: () => {
+                            blast(position, REACTOR_FIREBALL, { lit: false });
+                            startRing(position, radius, 2, FIRE);
+                        },
+                    });
+                    return;
+                }
                 if (phase === ABILITY_PHASE.BLAST) {
                     startFlash(position, MAX_FLASH, 0.5, BREACH_COLOR);
                     startLight(position, 60, BREACH_COLOR);

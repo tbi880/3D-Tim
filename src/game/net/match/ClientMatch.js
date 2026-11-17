@@ -1,5 +1,5 @@
 import { Vector3 } from 'three';
-import { ABILITIES, ABILITY_PHASES } from '../../config/abilities.js';
+import { ABILITIES, ABILITY_PHASES, PASSIVES } from '../../config/abilities.js';
 import { FACTION } from '../../config/gameConfig.js';
 import { SECTORS } from '../../config/sectors.js';
 import { GAME_EVENTS } from '../../core/EventBus.js';
@@ -502,7 +502,8 @@ export class ClientMatch {
             case WORLD_EVENT.DESTROY: {
                 const ship = index.ships.get(a);
                 index.ships.delete(a);
-                if (ship) destroyShip(world, ship, index.ships.get(b) ?? null);
+                // The host has worked out what the ship's end did to those around it.
+                if (ship) destroyShip(world, ship, index.ships.get(b) ?? null, { shown: true });
                 break;
             }
             case WORLD_EVENT.HIT: {
@@ -554,7 +555,7 @@ export class ClientMatch {
                 break;
             }
             case WORLD_EVENT.ABILITY: {
-                if (!Object.hasOwn(ABILITIES, b) || !ABILITY_PHASES.includes(c)) break;
+                if (!(Object.hasOwn(ABILITIES, b) || Object.hasOwn(PASSIVES, b)) || !ABILITY_PHASES.includes(c)) break;
                 const blast = [d, e, f, entry[7]].every(Number.isFinite);
                 world.events.emit(GAME_EVENTS.ABILITY, {
                     ship: index.ships.get(a) ?? null, ability: b, phase: c,

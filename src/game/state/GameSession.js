@@ -626,6 +626,8 @@ export class GameSession {
                 outOfBounds: world.outOfBounds,
                 cannonLock: world.playerCannonLock,
                 ability: abilityStatus(player),
+                /** The id of the ship's passive ability (config/abilities.js PASSIVES), or null. */
+                passive: player.passive?.id ?? null,
                 /** Seconds the shield is still held down by a breach blast (0: it is its own again). */
                 shieldDown: Math.ceil(player.shieldDown),
                 cloaked: player.cloaked,

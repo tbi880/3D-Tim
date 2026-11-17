@@ -111,12 +111,14 @@ export default {
     'hud.ability.armed': '引爆',
     'hud.ability.active': '{seconds} 秒',
     'hud.ability.cooldown': '{seconds} 秒',
+    'hud.ability.passive': '被动',
     'hud.shieldsBreached': '护盾被击穿 —— {seconds} 秒后恢复',
     'hud.cloaked': '隐身中',
 
     // ---- 舰船技能（config/abilities.js）--------------------------------------------------
     'ui.ability': '技能',
     'ui.ability.none': '没有主动技能',
+    'ui.passive': '被动技能',
     'ability.breachTorpedo.name': '破甲高爆鱼雷',
     'ability.breachTorpedo.short': '破甲',
     'ability.breachTorpedo.text': '发射一枚会追踪目标的重型鱼雷，射程是普通鱼雷的 1.5 倍，飞行途中再按一次可以提前引爆。爆炸让 1.5 公里内的所有敌舰失去护盾 10 秒。',
@@ -129,6 +131,8 @@ export default {
     'ability.focusLance.name': '聚能光炮',
     'ability.focusLance.short': '光炮',
     'ability.focusLance.text': '15 秒内光束换成聚能光炮：射程 20 公里，造成无视护盾的真实伤害，有护盾的战机 5 秒击毁，没护盾的 3 秒。',
+    'ability.reactorBlast.name': '反应堆殉爆',
+    'ability.reactorBlast.text': '被击毁时反应堆殉爆：1 公里内的战机当场炸毁，玩家座舰失去七成护盾和船体，主力舰失去一半。不分敌我。',
 
     // ---- 名称 ---------------------------------------------------------------------------
     'ship.kestrel': '红隼号',

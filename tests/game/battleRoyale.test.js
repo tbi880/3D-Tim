@@ -1640,6 +1640,23 @@ test('a bot uses its ship\'s ability as a pilot would: the dash and the cloak to
     }
 });
 
+test('a bot\'s Bulwark goes up like anybody\'s: its kills are scored, and catching its own side brands nobody', () => {
+    const { game, bot, ship, world, enemy } = botIn('bulwark', 'raider', { x: 0, y: 0, z: -600 }, { aiMode: 'hold' });
+    assert.equal(ship.passive?.id, 'reactorBlast');
+    const friend = world.spawnShip(bot.faction === DAWN ? 'dart' : 'raider', { faction: bot.faction, position: ship.position.clone().add({ x: 0, y: 0, z: 500 }), aiMode: 'hold' });
+    const { kills, score } = bot;
+    applyDamage(world, ship, 1e6, { source: enemy });
+    game.run(0.1);
+
+    assert.equal(ship.alive, false);
+    assert.equal(enemy.alive, false, 'the raider beside it went with it');
+    assert.equal(bot.kills, kills + 1);
+    assert.equal(bot.score, score + BATTLE_ROYALE.score.ships.raider);
+    assert.equal(friend.alive, false, 'and so did its own wingman');
+    assert.equal(bot.loyalty.status, LOYALTY.TRUSTED);
+    assert.notEqual(bot.faction, PIRATE);
+});
+
 test('a bot never fires on its own side, and is never branded for it', () => {
     const game = withBots(['ann']);
     const bot = game.bots.find((contestant) => contestant.faction !== PIRATE);

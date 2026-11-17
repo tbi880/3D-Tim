@@ -111,12 +111,14 @@ export default {
     'hud.ability.armed': 'DETONATE',
     'hud.ability.active': '{seconds} S',
     'hud.ability.cooldown': '{seconds} S',
+    'hud.ability.passive': 'PASSIVE',
     'hud.shieldsBreached': 'SHIELDS BREACHED — BACK IN {seconds} S',
     'hud.cloaked': 'CLOAKED',
 
     // ---- Ship abilities (config/abilities.js) -------------------------------------------
     'ui.ability': 'Ability',
     'ui.ability.none': 'No active ability',
+    'ui.passive': 'Passive',
     'ability.breachTorpedo.name': 'Breach torpedo',
     'ability.breachTorpedo.short': 'BREACH',
     'ability.breachTorpedo.text': 'A heavy homing torpedo with 1.5 times the range of a standard one; press again while it flies to set it off early. Its blast takes down the shields of every enemy within 1.5 km for 10 seconds.',
@@ -129,6 +131,8 @@ export default {
     'ability.focusLance.name': 'Focus lance',
     'ability.focusLance.short': 'LANCE',
     'ability.focusLance.text': 'For 15 seconds your beams become one focused lance: 20 km of range and true damage that ignores shields. A shielded fighter dies in 5 seconds, a bare one in 3.',
+    'ability.reactorBlast.name': 'Reactor blast',
+    'ability.reactorBlast.text': 'Destroyed, its reactor goes up: fighters within 1 km die outright, pilots\' ships lose 70% of shield and hull, capital ships half. Friend and foe alike.',
 
     // ---- Names --------------------------------------------------------------------------
     'ship.kestrel': 'Kestrel',

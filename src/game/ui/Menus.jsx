@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { abilityOf } from '../config/abilities.js';
+import { abilityOf, passiveOf } from '../config/abilities.js';
 import { DIFFICULTY_ORDER } from '../config/gameConfig.js';
 import { GRAPHICS_ORDER } from '../config/graphics.js';
 import { PLAYER_SHIPS, RATING_MAX, RATING_ORDER } from '../config/playerShips.js';
@@ -45,13 +45,15 @@ function formatDuration(seconds) {
     return `${minutes}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
 }
 
-/** A ship's ability on its hangar card (config/abilities.js): its name and what it does. */
+/** A ship's ability on its hangar card (config/abilities.js): its name and what it does. A ship has an active one or a passive one. */
 function ShipAbility({ classId }) {
     const t = useT();
-    const ability = abilityOf(SHIP_CLASSES[classId]);
+    const cls = SHIP_CLASSES[classId];
+    const active = abilityOf(cls);
+    const ability = active ?? passiveOf(cls);
     return (
         <p className="eod-ship-card-ability">
-            <b>{t('ui.ability')} · {ability ? t(`ability.${ability.id}.name`) : t('ui.ability.none')}</b>
+            <b>{t(active || !ability ? 'ui.ability' : 'ui.passive')} · {ability ? t(`ability.${ability.id}.name`) : t('ui.ability.none')}</b>
             {ability && t(`ability.${ability.id}.text`)}
         </p>
     );
