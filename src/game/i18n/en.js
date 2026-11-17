@@ -310,11 +310,11 @@ export default {
 
     // Touch-screen wording for hints that name keys (picked automatically on phones).
     'hint.flight.touch': 'Left stick steers · slide THR for speed · hold BURN for the afterburner',
-    'hint.weapons.touch': 'LOCK picks the next target · hold FIRE for the beam arrays — they track anything inside the ring',
+    'hint.weapons.touch': 'LOCK takes the target nearest your crosshair, hold it to step through the rest · hold FIRE for the beam arrays — they track anything inside the ring',
     'hint.torpedoes.touch': 'TORP launches a torpedo at your lock · beams strip shields, torpedoes break hulls',
     'hint.power.touch': 'POWER cycles balanced · attack · defense — divert power to suit the moment',
-    'hint.paintTarget.touch': 'LOCK the Eclipse and keep your nose on it',
-    'hint.modules.touch': 'Emitters, generators and turrets are separate targets — tap LOCK to cycle to them',
+    'hint.paintTarget.touch': 'Point at the Eclipse, tap LOCK and keep your nose on it',
+    'hint.modules.touch': 'Emitters, generators and turrets are separate targets — point at one and tap LOCK, or hold LOCK to step through them',
 
     // Selectable player ships and the Eclipse's gun batteries.
     'ship.swift': 'Swift',
@@ -798,7 +798,7 @@ export default {
     'tutorial.lock.title': 'Locking a target',
     'tutorial.lock.text': 'T locks the next hostile, R the one nearest your crosshair. The locked target gets a turning dashed ring, and its shields and hull show top right.',
     'tutorial.lock.keys': 'T / R',
-    'tutorial.lock.text.touch': 'Tap LOCK to pick the next hostile. The locked target gets a turning dashed ring, and its shields and hull show top right.',
+    'tutorial.lock.text.touch': 'Tap LOCK to lock the hostile nearest your crosshair; keep it held to step through the others. The locked target gets a turning dashed ring, and its shields and hull show top right.',
     'tutorial.lock.keys.touch': 'Tap LOCK',
     'tutorial.lock.text.vr': 'A locks the next hostile; or look at a ship and squeeze the right grip. The locked target gets a turning dashed ring, and its state shows on the right of the instrument panel.',
     'tutorial.lock.keys.vr': 'A / right grip',
@@ -823,7 +823,7 @@ export default {
     'tutorial.torpedo.title': 'Torpedoes',
     'tutorial.torpedo.text': 'Beams strip shields, torpedoes break hulls. Lock a target (T), point roughly at it, then press the right mouse button or Space: the torpedo homes by itself. You carry six, and spent ones slowly reload.',
     'tutorial.torpedo.keys': 'Right mouse / Space',
-    'tutorial.torpedo.text.touch': 'Beams strip shields, torpedoes break hulls. Tap LOCK to pick a target, point roughly at it, then tap TORP: the torpedo homes by itself. You carry six, and spent ones slowly reload.',
+    'tutorial.torpedo.text.touch': 'Beams strip shields, torpedoes break hulls. Point at a target and tap LOCK, then tap TORP: the torpedo homes by itself. You carry six, and spent ones slowly reload.',
     'tutorial.torpedo.keys.touch': 'Tap TORP',
     'tutorial.torpedo.text.vr': 'Beams strip shields, torpedoes break hulls. Lock a target (A), point roughly at it, then pull the left trigger: the torpedo homes by itself. You carry six, and spent ones slowly reload.',
     'tutorial.torpedo.keys.vr': 'Left trigger',

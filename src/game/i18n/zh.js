@@ -310,11 +310,11 @@ export default {
 
     // Touch-screen wording for hints that name keys (picked automatically on phones).
     'hint.flight.touch': '左摇杆转向 · 滑动“油门”条调速 · 按住“加力”开启加力燃烧',
-    'hint.weapons.touch': '“锁定”切换下一个目标 · 按住“开火”发射光束阵列——圆环内的目标会被自动追踪',
+    'hint.weapons.touch': '点“锁定”锁住准星最近的目标，长按逐个切换 · 按住“开火”发射光束阵列——圆环内的目标会被自动追踪',
     'hint.torpedoes.touch': '“鱼雷”向锁定目标发射鱼雷 · 光束削护盾，鱼雷破船体',
     'hint.power.touch': '“能量”在均衡 · 攻击 · 防御之间切换 —— 视战况调配能量',
-    'hint.paintTarget.touch': '用“锁定”选中“日蚀”号，并让机头始终对准它',
-    'hint.modules.touch': '发射器、发生器和炮塔都是独立目标——点“锁定”逐个切换',
+    'hint.paintTarget.touch': '机头对准“日蚀”号点“锁定”，并让机头始终对准它',
+    'hint.modules.touch': '发射器、发生器和炮塔都是独立目标——对准后点“锁定”，或长按“锁定”逐个切换',
 
     // Selectable player ships and the Eclipse's gun batteries.
     'ship.swift': '雨燕号',
@@ -798,7 +798,7 @@ export default {
     'tutorial.lock.title': '锁定目标',
     'tutorial.lock.text': '按 T 锁定下一个敌人，按 R 锁定最靠近准星的敌人。被锁定的目标会套上一圈旋转的虚线，它的护盾和船体显示在右上角。',
     'tutorial.lock.keys': 'T / R',
-    'tutorial.lock.text.touch': '点“锁定”选中下一个敌人。被锁定的目标会套上一圈旋转的虚线，它的护盾和船体显示在右上角。',
+    'tutorial.lock.text.touch': '点“锁定”锁住最靠近准星的敌人；按住不放会逐个切换到其他敌人。被锁定的目标会套上一圈旋转的虚线，它的护盾和船体显示在右上角。',
     'tutorial.lock.keys.touch': '点“锁定”',
     'tutorial.lock.text.vr': '按 A 锁定下一个敌人，或者看着一艘船按一下右握把。被锁定的目标会套上一圈旋转的虚线，它的状态显示在仪表板右侧。',
     'tutorial.lock.keys.vr': 'A / 右握把',
@@ -823,7 +823,7 @@ export default {
     'tutorial.torpedo.title': '鱼雷',
     'tutorial.torpedo.text': '光束削护盾，鱼雷破船体。先锁定目标（T），机头大致朝向它，再按鼠标右键或空格发射，鱼雷会自己追上去。鱼雷一共 6 枚，打出去后会慢慢重新装填。',
     'tutorial.torpedo.keys': '鼠标右键 / 空格',
-    'tutorial.torpedo.text.touch': '光束削护盾，鱼雷破船体。先点“锁定”选好目标，机头大致朝向它，再点“鱼雷”，鱼雷会自己追上去。鱼雷一共 6 枚，打出去后会慢慢重新装填。',
+    'tutorial.torpedo.text.touch': '光束削护盾，鱼雷破船体。先把机头朝向目标点“锁定”，再点“鱼雷”，鱼雷会自己追上去。鱼雷一共 6 枚，打出去后会慢慢重新装填。',
     'tutorial.torpedo.keys.touch': '点“鱼雷”',
     'tutorial.torpedo.text.vr': '光束削护盾，鱼雷破船体。先锁定目标（A），机头大致朝向它，再按左扳机发射，鱼雷会自己追上去。鱼雷一共 6 枚，打出去后会慢慢重新装填。',
     'tutorial.torpedo.keys.vr': '左扳机',
