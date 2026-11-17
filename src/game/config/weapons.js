@@ -26,7 +26,8 @@ export const WEAPONS = Object.freeze({
     // ---- Player -------------------------------------------------------------------------
     playerBeam: {
         type: 'beam', range: 3000, dps: 36, arcDeg: 26, energyPerSecond: 21,
-        shieldMult: 1.3, hullMult: 0.8, color: DAWN_BEAM, width: 0.34,
+        // Weak against bare hull on purpose: once the shield is down the torpedoes finish the job.
+        shieldMult: 1.3, hullMult: 0.4, color: DAWN_BEAM, width: 0.34,
         // Twin emitters under the Kestrel's nose (see build_kestrel); both beams converge on the target.
         mounts: [[-3.6, -0.9, -8], [3.6, -0.9, -8]],
     },

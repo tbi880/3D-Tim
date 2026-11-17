@@ -140,6 +140,8 @@ test('enemies, damage and kills come from the server', () => {
     match.run(0.5);
     assert.ok(droneOnHost.hullFraction < 1, 'another device sees the hull going down');
     assert.ok(match.host.world.beams.length > 0, 'and the beams doing it');
+    // Beams are weak against bare hull: a torpedo finishes it.
+    ann.controls.fireSecondary = true;
     match.run(4);
 
     assert.equal(umbra(arenaWorld(match)).length, 0, 'destroyed on the server');
