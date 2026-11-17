@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { DEVICE_KIND, describeDevice } from '../../src/game/net/lobby/deviceInfo.js';
 import { LAN_ERROR, LAN_STATUS, LOBBY_SCOPE, LanMultiplayer, ROOM_STATE, ROOM_VISIBILITY, cleanName, initialLanState } from '../../src/game/net/lobby/LanMultiplayer.js';
 import { LOBBY_ERROR, LobbyClient, LobbyError } from '../../src/game/net/lobby/LobbyClient.js';
+import { unpackSnapshot } from '../../src/game/net/lobby/matchSnapshot.js';
 import { ICE_SERVERS, NET, cleanIceServers } from '../../src/game/net/netConfig.js';
 import { LINK_STATUS } from '../../src/game/net/transport/PeerLink.js';
 import { PHASE } from '../../src/game/state/GameSession.js';
@@ -75,7 +76,7 @@ test('the client connects as a guest without a token, and with one when signed i
     assert.equal(guest.log.url, '/hub');
     assert.equal(guest.log.options.accessTokenFactory, undefined);
     assert.deepEqual(guest.log.invoked, [['GetSession']]);
-    assert.deepEqual(guest.log.events.sort(), ['Kicked', 'MatchStarted', 'RoomClosed', 'RoomListChanged', 'RoomUpdated', 'Signal']);
+    assert.deepEqual(guest.log.events.sort(), ['Kicked', 'MatchHostChanged', 'MatchStarted', 'RoomClosed', 'RoomListChanged', 'RoomUpdated', 'Signal']);
 
     const account = fakeSignalR();
     await new LobbyClient({ url: '/hub', getToken: () => 'jwt', signalR: account.signalR, handlers: {} }).connect();
@@ -118,6 +119,42 @@ test('the server\'s refusals come back as codes the UI can translate', async () 
 
     await assert.rejects(client.joinRoom('ABCDE', {}), (error) => error instanceof LobbyError && error.code === 'lan.roomFull');
     await assert.rejects(client.startMatch(), (error) => error.code === LOBBY_ERROR.UNKNOWN);
+});
+
+test('the resume token stays with the client, and takes the place back after a drop', async () => {
+    let session = 1;
+    const { signalR, log } = fakeSignalR({
+        invoke: async (method, ...args) => {
+            if (method === 'GetSession') return { playerId: `p${session++}`, isGuest: true, resumeToken: `secret-${session}` };
+            if (method === 'ResumeSession') {
+                if (args[0] !== 'secret-2') throw new Error('HubException: lan.resumeFailed');
+                return { session: { playerId: 'p1', isGuest: true, resumeToken: 'secret-new' }, room: { code: 'ABCDE' }, match: { matchId: 'm', term: 1, hostPlayerId: 'p9' } };
+            }
+            return null;
+        },
+    });
+    const client = new LobbyClient({ url: '/hub', getToken: () => null, signalR, handlers: {} });
+    assert.deepEqual(await client.connect(), { playerId: 'p1', isGuest: true }, 'nobody else gets to see it');
+
+    const back = await client.resume();
+    assert.deepEqual(back, { me: { playerId: 'p1', isGuest: true }, room: { code: 'ABCDE' }, match: { matchId: 'm', term: 1, hostPlayerId: 'p9' } });
+    assert.deepEqual(log.invoked.at(-1), ['ResumeSession', 'secret-2']);
+    assert.equal(client.resumeToken, 'secret-new');
+
+    // A token the server no longer knows: a new player.
+    client.resumeToken = 'stale';
+    assert.deepEqual(await client.resume(), { me: { playerId: 'p3', isGuest: true }, room: null, match: null });
+});
+
+test('the host\'s snapshots and a lost host go to the hub under its method names', async () => {
+    const { signalR, log } = fakeSignalR();
+    const client = new LobbyClient({ url: '/hub', getToken: () => null, signalR, handlers: {} });
+    await client.connect();
+
+    await client.putMatchSnapshot('m', 2, 'H4sI', ['p2', 'p3']);
+    await client.reportHostLost('m', 2);
+
+    assert.deepEqual(log.invoked.slice(1), [['PutMatchSnapshot', 'm', 2, 'H4sI', ['p2', 'p3']], ['ReportHostLost', 'm', 2]]);
 });
 
 test('no server, or no connection yet, is "offline"', async () => {
@@ -1048,4 +1085,185 @@ test('when the match is over its links are the lobby\'s again, and the next matc
     run(1);
     assert.ok(bo.lan.server, 'of the two, Bo\'s device is the faster');
     assert.equal(tim.session.phase, PHASE.PLAYING);
+});
+
+// ---- Across the internet the lobby server is the referee -------------------------------------
+
+/**
+ * Strangers in one public room, its match started: the first of them runs it (nothing has been
+ * reported, so the lobby's line is the joining order). `play` runs the devices and lets what
+ * goes to and from the lobby server arrive.
+ */
+async function refereedMatch(names) {
+    const party = await strangers(names);
+    const { server, network, devices } = party;
+    server.now = () => network.clockMs;
+    for (const each of devices) await each.lan.quickMatch();
+    await party.settle();
+    [...server.rooms.values()][0].settings = { pace: 'quick', intro: 'skip', bots: 'none' };
+    for (const each of devices.slice(1)) await each.lan.setReady(true);
+    server.startDueRooms();
+    party.byName = Object.fromEntries(devices.map((each) => [each.state.pilotName, each]));
+    party.idOf = (name) => party.byName[name].state.me.playerId;
+    party.play = async (seconds) => {
+        for (let elapsed = 0; elapsed < seconds; elapsed += 0.25) {
+            party.run(0.25);
+            network.clockMs += 250;
+            // (Packing and unpacking snapshots runs on the thread pool: give it a moment of real time.)
+            for (let round = 0; round < 4; round++) await new Promise((resolve) => { setTimeout(resolve, 1); });
+        }
+    };
+    await party.play(2);
+    return party;
+}
+
+const humans = (each) => each.ui.match.players.filter((player) => !player.bot).map((player) => player.name).sort();
+
+test('across the internet the host sends the lobby server a snapshot of the match every second', async () => {
+    const { server, idOf, byName: { Tim: tim }, play } = await refereedMatch(['Tim', 'Ann']);
+    const before = server.snapshots.length;
+    await play(3);
+
+    assert.ok(tim.lan.server);
+    const sent = server.snapshots.slice(before);
+    assert.ok(sent.length >= 2 && sent.length <= 4, `${sent.length} in three seconds`);
+    assert.ok(sent.every((entry) => entry.playerId === idOf('Tim') && entry.term === 0 && typeof entry.snapshot === 'string'));
+    const checkpoint = JSON.parse(await unpackSnapshot(sent.at(-1).snapshot));
+    assert.equal(checkpoint.matchId, tim.lan.server.info.matchId);
+});
+
+test('a host that is gone is replaced by the device the server names, from the server\'s snapshot', async () => {
+    const party = await refereedMatch(['Tim', 'Ann', 'Bo']);
+    const { server, idOf, byName: { Tim: tim, Ann: ann, Bo: bo }, play, lose } = party;
+    // Neither of the others holds a checkpoint of its own: the server's snapshot is all there is to go on from.
+    ann.lan.client.latestCheckpoint = null;
+    bo.lan.client.latestCheckpoint = null;
+
+    // Tim's device is gone: the lobby server loses it, and its links close.
+    server.drop(idOf('Tim'));
+    lose(tim);
+    await play(1);
+
+    assert.ok(ann.lan.server, 'Ann, next in line, runs the match now');
+    assert.equal(ann.lan.server.term, 1);
+    assert.equal(bo.lan.server, null);
+    for (const each of [ann, bo]) {
+        assert.equal(each.lan.matchHostId, idOf('Ann'));
+        assert.equal(each.lan.client.migrating, false, 'with the new host\'s picture');
+        assert.equal(each.session.phase, PHASE.PLAYING);
+        assert.equal(each.session.world.player?.alive, true);
+        assert.deepEqual(humans(each), ['Ann', 'Bo', 'Tim'], 'Tim\'s ship waits for him');
+    }
+    const away = ann.lan.server.pilots.get(idOf('Tim'));
+    assert.equal(away.gone, false);
+    assert.ok(away.awayUntil > 0);
+    assert.equal(server.snapshots.at(-1).playerId, idOf('Ann'), 'and the new host sends its snapshots in its turn');
+});
+
+test('a client whose link broke to a host that is still there links up again: nobody takes the match over', async () => {
+    const { idOf, byName: { Tim: tim, Ann: ann }, play } = await refereedMatch(['Tim', 'Ann']);
+
+    ann.lan.links.get(idOf('Tim')).close();
+    await play(1);
+
+    assert.ok(tim.lan.server, 'Tim still runs it');
+    assert.equal(ann.lan.server, null);
+    assert.equal(ann.lan.links.get(idOf('Tim'))?.isOpen, true, 'a new link');
+    assert.equal(ann.lan.client.migrating, false);
+    assert.equal(ann.lan.client.term, 0);
+    const pilot = tim.lan.server.pilots.get(idOf('Ann'));
+    assert.equal(pilot.gone, false);
+    assert.ok(pilot.link?.isOpen);
+    assert.equal(ann.session.world.player?.pilotId, idOf('Ann'), 'in her own ship');
+    assert.equal(tim.ui.match.phase, 'playing', 'nobody won for it');
+});
+
+test('a host most players have lost is replaced even if it still sends, and stands down at its next snapshot to play on as a client', async () => {
+    const { idOf, byName: { Tim: tim, Ann: ann, Bo: bo }, play } = await refereedMatch(['Tim', 'Ann', 'Bo']);
+
+    // Tim is cut off from both of the others (his links fail); his lobby connection is fine.
+    for (const link of [...tim.lan.links.values()]) link.close();
+    await play(3);
+
+    assert.equal(tim.lan.server, null, 'Tim let go of his own copy of the match');
+    assert.ok(ann.lan.server);
+    for (const each of [tim, ann, bo]) {
+        assert.equal(each.lan.matchHostId, idOf('Ann'));
+        assert.equal(each.lan.client.migrating, false);
+        assert.equal(each.session.phase, PHASE.PLAYING);
+        assert.deepEqual(humans(each), ['Ann', 'Bo', 'Tim']);
+    }
+    assert.equal(tim.session.world.player?.pilotId, idOf('Tim'), 'in his own ship, now from the new host');
+    assert.ok(ann.lan.server.pilots.get(idOf('Tim')).link?.isOpen);
+});
+
+test('a host that dropped off the network comes back as a client of the device that took over', async () => {
+    const party = await refereedMatch(['Tim', 'Ann', 'Bo']);
+    const { server, idOf, byName: { Tim: tim, Ann: ann, Bo: bo }, play, fireTimers } = party;
+
+    // Tim's network goes: lobby connection and links both. His page keeps running.
+    server.drop(idOf('Tim'));
+    for (const link of [...tim.lan.links.values()]) link.close();
+    await play(1);
+    assert.ok(ann.lan.server, 'Ann took over');
+    assert.ok(tim.lan.server, 'Tim, alone, does not know yet');
+    assert.equal(tim.state.status, LAN_STATUS.OFFLINE);
+
+    // It comes back: his device gets its place in the lobby back, hears who runs the match, and joins it.
+    fireTimers();
+    await play(2);
+
+    assert.equal(tim.state.status, LAN_STATUS.ONLINE);
+    assert.equal(tim.state.me.playerId, idOf('Tim'), 'the same player as before');
+    assert.equal(tim.lan.server, null);
+    for (const each of [tim, ann, bo]) {
+        assert.equal(each.lan.matchHostId, idOf('Ann'));
+        assert.equal(each.lan.client.migrating, false);
+        assert.deepEqual(humans(each), ['Ann', 'Bo', 'Tim']);
+    }
+    assert.equal(tim.session.world.player?.pilotId, idOf('Tim'));
+    assert.ok(ann.lan.server.pilots.get(idOf('Tim')).link?.isOpen);
+    assert.equal(server.roomOf(idOf('Tim')).players.find((player) => player.playerId === idOf('Tim')).connected, true);
+});
+
+test('a device whose lobby connection drops during a match gets its place back; one that took too long plays on without', async () => {
+    const { server, idOf, byName: { Tim: tim, Ann: ann }, play, fireTimers } = await refereedMatch(['Tim', 'Ann']);
+
+    server.drop(idOf('Ann'));
+    await play(1);
+    assert.equal(ann.state.status, LAN_STATUS.OFFLINE);
+    assert.equal(tim.state.room.players.find((player) => player.playerId === idOf('Ann')).connected, false, 'shown as away, still in the room');
+    assert.equal(ann.ui.match.phase, 'playing');
+
+    fireTimers();
+    await play(0.5);
+    assert.equal(ann.state.status, LAN_STATUS.ONLINE);
+    assert.equal(ann.state.me.playerId, idOf('Ann'));
+    assert.equal(tim.state.room.players.find((player) => player.playerId === idOf('Ann')).connected, true);
+
+    // Again, and this time the server has given her place up by the time she is back.
+    server.drop(idOf('Ann'));
+    const room = server.roomOf(idOf('Tim'));
+    room.players = room.players.filter((player) => player.playerId !== idOf('Ann'));
+    fireTimers();
+    await play(0.5);
+    assert.equal(ann.state.status, LAN_STATUS.OFFLINE, 'a stranger to the server is no use to a match in progress');
+    assert.equal(ann.state.me.playerId, idOf('Ann'));
+    assert.equal(ann.ui.match.phase, 'playing', 'which goes on over the links');
+    assert.equal(tim.lan.server.pilots.get(idOf('Ann')).link?.isOpen, true);
+});
+
+test('without the lobby server the devices settle who takes over among themselves, as on one Wi-Fi', async () => {
+    const party = await refereedMatch(['Tim', 'Ann', 'Bo']);
+    const { server, idOf, byName: { Tim: tim, Ann: ann, Bo: bo }, play, lose } = party;
+    server.offline = true;
+    server.crash();
+    await play(0.25);
+
+    lose(tim);
+    await play(1);
+
+    assert.ok(ann.lan.server, 'Ann was next in line, and held a checkpoint');
+    assert.equal(bo.lan.matchHostId, idOf('Ann'));
+    assert.equal(bo.lan.client.migrating, false);
 });

@@ -7,6 +7,7 @@ import { MSG } from '../protocol.js';
 import { MatchServer } from '../server/MatchServer.js';
 import { LINK_STATUS } from '../transport/PeerLink.js';
 import { LOBBY_ERROR } from './LobbyClient.js';
+import { packSnapshot, unpackSnapshot } from './matchSnapshot.js';
 
 /** Values of the backend's LanRoomState. */
 export const ROOM_STATE = Object.freeze({ LOBBY: 'Lobby', IN_MATCH: 'InMatch' });
@@ -96,7 +97,9 @@ export const initialLanState = () => ({
  * gives the match to the best of them. And because every device is linked to every other,
  * the match can outlive that device: if it is lost, the next in the line it kept (it also
  * kept them supplied with checkpoints of the whole match) builds a server from the last
- * checkpoint, tells the others, and they turn to it ("Who runs the match" below).
+ * checkpoint, tells the others, and they turn to it ("Who runs the match" below). Across the
+ * internet the lobby server is the referee of that: the host sends it a snapshot every second,
+ * and a device that has lost the host asks it what to do ("The lobby server as referee").
  *
  * It has no React in it; the menus read its state from a store (`store.set` / `store.get`).
  */
@@ -146,6 +149,12 @@ export class LanMultiplayer {
         this.matchHostId = null;
         /** While looking for a new host: { tried: Set of player ids, timer }. */
         this.succession = null;
+        /** While this device's client has lost its host and the lobby server is asked about it: { since, timer, asking, renewedAt }. */
+        this.hostSearch = null;
+        /** True while a snapshot is on its way to the lobby server (the next waits for it). */
+        this.uploading = false;
+        /** While trying to get back to the lobby server during a match: { attempt, timer }. */
+        this.lobbyRetry = null;
         this.lobby = createLobby({
             onRoomUpdated: (room) => this.onRoomUpdated(room),
             onRoomClosed: () => this.onRoomClosed(),
@@ -153,6 +162,7 @@ export class LanMultiplayer {
             onMatchStarted: (start) => this.onMatchStarted(start),
             onSignal: (signal) => this.onSignal(signal),
             onKicked: () => this.onKicked(),
+            onMatchHostChanged: (ruling) => this.onMatchHost(ruling),
             onDisconnected: () => this.onDisconnected(),
         });
         store.set({ pilotName: cleanName(nameStore.load()), loadout: cleanLoadout(loadoutStore?.load()) });
@@ -196,6 +206,7 @@ export class LanMultiplayer {
 
     /** Leaves the room and the lobby server. */
     async close() {
+        this.stopLobbyRetry();
         this.dropLinks();
         this.unreachableRooms = [];
         await this.lobby.disconnect();
@@ -379,11 +390,69 @@ export class LanMultiplayer {
 
     /**
      * The lobby server is gone. A match in progress does not need it - the devices talk to
-     * each other - so it plays on; the lobby is over.
+     * each other - so it plays on, and this device tries to get its place back (the server
+     * keeps it for a while; see `rejoinLobby`). Otherwise the lobby is over.
      */
     onDisconnected() {
         if (!this.inMatch) this.dropLinks();
         this.store.set({ status: LAN_STATUS.OFFLINE, me: this.inMatch ? this.state.me : null, room: this.inMatch ? this.state.room : null, rooms: [], error: LOBBY_ERROR.OFFLINE });
+        if (this.inMatch) this.retryLobbySoon();
+    }
+
+    retryLobbySoon() {
+        if (this.lobbyRetry) return;
+        this.lobbyRetry = { attempt: 0, timer: null };
+        this.scheduleLobbyRetry();
+    }
+
+    scheduleLobbyRetry() {
+        const retry = this.lobbyRetry;
+        const delay = NET.lobbyRetryDelays[retry.attempt];
+        if (delay === undefined) {
+            this.lobbyRetry = null;
+            return;
+        }
+        retry.attempt += 1;
+        retry.timer = this.timers.setTimeout(() => this.rejoinLobby(retry), delay * 1000);
+    }
+
+    stopLobbyRetry() {
+        if (this.lobbyRetry) this.timers.clearTimeout(this.lobbyRetry.timer);
+        this.lobbyRetry = null;
+    }
+
+    /**
+     * Connects to the lobby server again and takes back this device's place: the same player,
+     * in the same room, in the same match - so the others can reach it again (links are made
+     * through the server) and, across the internet, the server can be asked who runs the match.
+     * A place that is gone (too long away) is not replaced by a new one: a match in progress
+     * has no use for a stranger, so the device plays on without the lobby.
+     */
+    async rejoinLobby(retry) {
+        if (this.lobbyRetry !== retry) return;
+        if (!this.inMatch || this.state.status !== LAN_STATUS.OFFLINE) {
+            this.lobbyRetry = null;
+            return;
+        }
+        let back = null;
+        try {
+            back = await this.lobby.resume();
+        } catch {
+            back = null;
+        }
+        if (this.lobbyRetry !== retry) return;
+        if (!back) {
+            this.scheduleLobbyRetry();
+            return;
+        }
+        this.lobbyRetry = null;
+        if (!back.room || !this.inMatch || back.me?.playerId !== this.state.me?.playerId) {
+            await this.lobby.disconnect();
+            return;
+        }
+        this.store.set({ status: LAN_STATUS.ONLINE, error: null, me: back.me });
+        this.onRoomUpdated(back.room);
+        if (back.match) await this.onMatchHost(back.match);
     }
 
     onMatchStarted(start) {
@@ -427,9 +496,12 @@ export class LanMultiplayer {
     }
 
     createServer(info, options) {
-        const server = new MatchServer({ info, mode: gameModeOf(info).createRules(info), ...options });
+        // Across the internet a player whose link breaks keeps their ship for a while, to come back to.
+        const rejoinGrace = this.global ? NET.rejoinGrace : 0;
+        const server = new MatchServer({ info, mode: gameModeOf(info).createRules(info), rejoinGrace, ...options });
         // A device that has taken the match over says so on every link; one that hears of a later takeover stands down.
         server.onTakeover = (fromPlayerId, term, hostPlayerId) => this.onTakeoverNotice(fromPlayerId, term, hostPlayerId);
+        if (this.global) server.onSnapshotDue = () => { this.sendSnapshot(server); };
         return server;
     }
 
@@ -438,6 +510,8 @@ export class LanMultiplayer {
         this.client = null;
         this.matchHostId = null;
         this.clearSuccession();
+        this.stopHostSearch();
+        this.stopLobbyRetry();
         this.session.enterTitle();
         // The match had the links' packets; in the lobby they are this controller's again.
         for (const [playerId, link] of this.links) this.watchLink(playerId, link);
@@ -467,8 +541,10 @@ export class LanMultiplayer {
         for (const playerId of [...this.relinks.keys()]) {
             if (!order.includes(playerId)) this.forgetRelink(playerId);
         }
+        // (A player whose connection to the server is lost cannot be signalled until they are back.)
+        const away = new Set(room.players.filter((player) => player.connected === false).map((player) => player.playerId));
         order.slice(0, Math.max(0, mine)).forEach((playerId) => {
-            if (!this.links.has(playerId) && !this.relinks.has(playerId)) this.openLink(playerId, true);
+            if (!this.links.has(playerId) && !this.relinks.has(playerId) && !away.has(playerId)) this.openLink(playerId, true);
         });
         this.keepPinging();
     }
@@ -512,6 +588,9 @@ export class LanMultiplayer {
             this.unreachableRooms = [];
             // A device that linked up late (or again) joins the match that is running.
             if (this.server && this.inMatch) this.server.attachLink(playerId, link);
+            // The new link to the host this device's client was waiting for: it turns to it.
+            const { client } = this;
+            if (!this.server && this.inMatch && client?.migrating && playerId === this.matchHostId && client.link !== link) client.switchLink(link);
         } else if (status === LINK_STATUS.CLOSED) {
             this.links.delete(playerId);
             this.peerRtt.delete(playerId);
@@ -586,8 +665,11 @@ export class LanMultiplayer {
         if (!room || typeof from !== 'string' || typeof signal.type !== 'string' || typeof signal.payload !== 'string') return;
         if (from === me?.playerId || !room.players.some((player) => player.playerId === from)) return;
         // An offer starts a link (again, if that player's device is retrying) - but only from a player who is the one to call.
+        // During a match either may call (a client whose link to its host broke calls it again): then an offer is taken
+        // unless this device has an offer of its own on the way to that player - of two at once, the caller's wins.
         if (signal.type === 'offer') {
-            if (this.calls(from)) return;
+            const mine = this.links.get(from);
+            if (this.calls(from) && !(this.inMatch && mine?.status !== LINK_STATUS.CONNECTING)) return;
             this.openLink(from, false);
         }
         this.links.get(from)?.handleSignal(signal.type, signal.payload);
@@ -682,13 +764,19 @@ export class LanMultiplayer {
      */
     onHostLost() {
         if (!this.inMatch || !this.client || this.server) return false;
+        // Across the internet, with the lobby server there to ask, it is the referee.
+        if (this.refereed) this.askReferee();
+        else this.walkSuccession();
+        return true;
+    }
+
+    walkSuccession() {
         // (Called again if the device this one turned to is lost as well: that one is crossed off too.)
         const tried = this.succession?.tried ?? new Set();
         tried.add(this.matchHostId);
         this.clearSuccession();
         this.succession = { tried, timer: null };
         this.followSuccession();
-        return true;
     }
 
     /**
@@ -738,20 +826,24 @@ export class LanMultiplayer {
      * sent it, takes every link it has for it, and tells the others. The match goes on from
      * the checkpoint - a few seconds back. Returns false if it cannot (it has no checkpoint).
      */
-    takeOver() {
+    takeOver({ term = null, snapshot = null } = {}) {
         const { client, session } = this;
         const me = this.state.me.playerId;
-        // Without a checkpoint there is nothing to go on from (a server made without one would start the match afresh).
-        if (!client.latestCheckpoint) return false;
-        let server;
-        try {
-            const checkpoint = JSON.parse(client.latestCheckpoint);
-            server = this.createServer(client.info, { hostPlayerId: me, checkpoint, term: client.term + 1 });
-            server.start();
-        } catch {
-            // A checkpoint this device cannot read: the next in line may have a better one.
-            return false;
+        // What there is to go on from - the old host's last checkpoint, the lobby server's last snapshot (JSON text) -
+        // newest first. Without either there is nothing (a server made without one would start the match afresh).
+        const candidates = [client.latestCheckpoint, snapshot].map(readCheckpoint).filter(Boolean).sort((a, b) => b.time - a.time);
+        let server = null;
+        for (const { checkpoint } of candidates) {
+            try {
+                server = this.createServer(client.info, { hostPlayerId: me, checkpoint, term: term ?? client.term + 1 });
+                server.start();
+                break;
+            } catch {
+                // One this device cannot read: the other may do (and the next in line may have a better one).
+                server = null;
+            }
         }
+        if (!server) return false;
         // First this device's own client turns to the new server (letting go of the link it had
         // to the old host); only then are the links given to the server - that one among them.
         this.server = server;
@@ -762,15 +854,29 @@ export class LanMultiplayer {
         for (const [playerId, link] of this.links) {
             if (link.isOpen) server.attachLink(playerId, link);
         }
-        // Whoever cannot be reached from here is out of the match - the device that was lost, first of all.
+        // Whoever cannot be reached from here is out of the match - the device that was lost, first of all. (Across the
+        // internet they are away instead: back in their ship if their device comes back in time.)
         for (const pilot of [...server.pilots.values()]) {
-            if (!pilot.bot && pilot.id !== me && !pilot.link) server.removePlayer(pilot.id);
+            if (!pilot.bot && pilot.id !== me && !pilot.link) server.linkLost(pilot.id);
         }
         const notice = JSON.stringify({ t: MSG.TAKEOVER, n: server.term, h: me });
         for (const link of this.links.values()) {
             if (link.isOpen) link.sendMessage(notice);
         }
+        this.stopHostSearch();
+        // The server hears of the new host at once: its first snapshot.
+        if (this.refereed) this.sendSnapshot(server);
         return true;
+    }
+
+    /** This device was running the match and another one does now: its own copy is thrown away, and it plays on as a client. */
+    standDown() {
+        const { server } = this;
+        if (!server) return;
+        this.server = null;
+        server.dispose();
+        this.session.replaceMatch(this.client);
+        for (const [playerId, other] of this.links) this.watchLink(playerId, other);
     }
 
     /**
@@ -796,15 +902,16 @@ export class LanMultiplayer {
 
         if (this.server) {
             // Stand down: the server here is a match nobody is in any more.
-            const server = this.server;
-            this.server = null;
-            server.dispose();
-            this.session.replaceMatch(client);
-            for (const [playerId, other] of this.links) this.watchLink(playerId, other);
+            this.standDown();
         } else if (previousHost && previousHost !== hostPlayerId && previousHost !== fromPlayerId) {
             // The old host may not have heard (it is why it was replaced): pass the news on.
             const old = this.links.get(previousHost);
             if (old?.isOpen) old.sendMessage(JSON.stringify({ t: MSG.TAKEOVER, n: term, h: hostPlayerId }));
+        }
+        // Across the internet a link that is not there is made.
+        if (this.global) {
+            this.followHost(hostPlayerId);
+            return;
         }
         if (!link?.isOpen) {
             client.giveUp();
@@ -816,6 +923,170 @@ export class LanMultiplayer {
             if (old) this.watchLink(previousHost, old);
         }
         this.turnTo(hostPlayerId);
+    }
+
+    // ---- The lobby server as referee (across the internet) -----------------------------------
+    //
+    // Across the internet a device cannot tell a host that is gone from a link to it that is
+    // broken, and devices that guess differently each go on with a match of their own. So there
+    // the lobby server rules: the host sends it a snapshot of the whole match every second (its
+    // sign of life, and what another device goes on from), and a client that has lost the host
+    // asks it. If the host is still sending, the client's link to it is what broke, and is made
+    // again; if not, the server gives the match to the next in line, in a new term, with its
+    // snapshot, and tells the room. A host that was replaced meanwhile hears it in the answer to
+    // its next snapshot, stands down, and joins the new host as a client - its player's ship has
+    // been kept for it (NET.rejoinGrace). Without the server (this device cannot reach it) the
+    // devices settle it among themselves, as on one Wi-Fi.
+
+    /** True for a match among players anywhere. */
+    get global() {
+        return this.state.scope === LOBBY_SCOPE.GLOBAL;
+    }
+
+    /** True when the lobby server can be asked who runs the match: across the internet, while connected to it. */
+    get refereed() {
+        return this.global && this.state.status === LAN_STATUS.ONLINE;
+    }
+
+    /**
+     * The host's snapshot for the lobby server (MatchServer.onSnapshotDue), with its line of
+     * succession. It goes without the snapshot if that cannot be packed small enough: it is
+     * the host's sign of life all the same. The answer says who runs the match.
+     */
+    async sendSnapshot(server) {
+        if (this.uploading || this.server !== server || !this.refereed) return;
+        this.uploading = true;
+        try {
+            let packed = server.canMigrate ? await packSnapshot(JSON.stringify(server.capture())) : null;
+            if (packed && packed.length > NET.serverSnapshotMaxChars) packed = null;
+            const ruling = await this.lobby.putMatchSnapshot(server.info.matchId, server.term, packed, server.succession);
+            if (this.server === server) await this.onMatchHost(ruling);
+        } catch {
+            // Not this time (the server is out of reach for a moment): the next snapshot goes in a second.
+        } finally {
+            this.uploading = false;
+        }
+    }
+
+    /** This device's client has lost its host: the server is asked who runs the match (if it cannot be, the devices settle it). */
+    async askReferee() {
+        const { client } = this;
+        if (!client || this.server) return;
+        this.searchForHost();
+        const search = this.hostSearch;
+        if (search.asking) return;
+        search.asking = true;
+        let ruling = null;
+        try {
+            ruling = await this.lobby.reportHostLost(client.info.matchId, client.term);
+        } catch {
+            ruling = null;
+        }
+        search.asking = false;
+        if (this.client !== client || this.server || !this.inMatch) return;
+        if (ruling) await this.onMatchHost(ruling);
+        else this.walkSuccession();
+    }
+
+    /**
+     * Keeps after the match's host until one welcomes this client: the server is asked again
+     * every NET.takeoverTimeout seconds (the device it named may not be able to take over, or
+     * the link to it may not come up), for NET.rejoinGrace seconds - then the match ends here.
+     */
+    searchForHost() {
+        if (this.hostSearch) return;
+        const search = { since: this.now(), timer: null, asking: false, renewedAt: -Infinity };
+        this.hostSearch = search;
+        const check = () => {
+            if (this.hostSearch !== search) return;
+            const { client } = this;
+            if (!client || this.server || !client.migrating) {
+                this.hostSearch = null;
+                return;
+            }
+            if (this.now() - search.since > NET.rejoinGrace * 1000) {
+                this.hostSearch = null;
+                client.giveUp();
+                return;
+            }
+            if (this.refereed) this.askReferee();
+            search.timer = this.timers.setTimeout(check, NET.takeoverTimeout * 1000);
+        };
+        search.timer = this.timers.setTimeout(check, NET.takeoverTimeout * 1000);
+    }
+
+    stopHostSearch() {
+        if (this.hostSearch) this.timers.clearTimeout(this.hostSearch.timer);
+        this.hostSearch = null;
+    }
+
+    /**
+     * The lobby server's word on who runs the match: its answer to a snapshot or to a lost
+     * host, or news to the whole room. Older news than this device has is ignored. If it names
+     * this device, it takes the match over (from the server's snapshot, or its own checkpoint
+     * if that is newer); if it names another, a host here stands down, and the client turns
+     * to that one.
+     */
+    async onMatchHost(ruling) {
+        const { client } = this;
+        if (!this.inMatch || !client || !ruling || ruling.matchId !== client.info.matchId) return;
+        const { term, hostPlayerId } = ruling;
+        if (!Number.isInteger(term) || typeof hostPlayerId !== 'string') return;
+        if (term < (this.server ? this.server.term : client.term)) return;
+        if (hostPlayerId === this.state.me?.playerId) {
+            if (this.server) return;
+            const snapshot = await unpackSnapshot(ruling.snapshot);
+            // (Things may have moved on while it was unpacked.)
+            if (this.client !== client || this.server || client.term > term) return;
+            this.takeOver({ term, snapshot });
+            return;
+        }
+        this.standDown();
+        client.term = Math.max(client.term, term);
+        this.followHost(hostPlayerId);
+    }
+
+    /**
+     * Makes `playerId`'s device this client's host. Over the link there is to it - or, if there
+     * is none, or it is the one that went quiet, over a new one this device calls for (the
+     * client stands still until it opens and the host's welcome comes). A host that is the same
+     * and still heard is left alone.
+     */
+    followHost(playerId) {
+        const { client } = this;
+        const previous = this.matchHostId;
+        if (playerId === previous && !client.migrating) return;
+        const link = this.links.get(playerId);
+        const quiet = playerId === previous && link === client.link;
+        this.matchHostId = playerId;
+        this.searchForHost();
+        const search = this.hostSearch;
+        if (link?.isOpen && !quiet) {
+            client.switchLink(link);
+        } else if (link?.status === LINK_STATUS.CONNECTING) {
+            client.awaitHost();
+        } else if (!quiet || this.now() - search.renewedAt >= NET.internetHostLostTimeout * 1000) {
+            // (A link made again is given a while to show it works before it is made again.)
+            search.renewedAt = this.now();
+            client.awaitHost();
+            this.openLink(playerId, true);
+        }
+        if (previous && previous !== playerId) {
+            const old = this.links.get(previous);
+            if (old) this.watchLink(previous, old);
+        }
+    }
+}
+
+/** A checkpoint's JSON text as `{ checkpoint, time }`, or null if it is not JSON of an object. */
+function readCheckpoint(text) {
+    if (typeof text !== 'string') return null;
+    try {
+        const checkpoint = JSON.parse(text);
+        if (!checkpoint || typeof checkpoint !== 'object') return null;
+        return { checkpoint, time: Number.isFinite(checkpoint.time) ? checkpoint.time : -1 };
+    } catch {
+        return null;
     }
 }
 

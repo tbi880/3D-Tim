@@ -28,8 +28,13 @@ class Pilot {
         this.ship = null;
         /** The zone they are in (and are told about), or null before the mode has placed them. */
         this.zone = null;
-        /** True once they have left the match (left the room, lost the link, or were dropped). */
+        /** True once they have left the match (left the room, lost the link for good, or were dropped). */
         this.gone = false;
+        /**
+         * While their link is lost but their place is kept (see MatchServer's `rejoinGrace`): the
+         * time (server clock) at which they are out of the match unless their device is back. Null otherwise.
+         */
+        this.awayUntil = null;
         /** Set by the game mode while it has their ship in hand (docked, say): their controls are ignored. */
         this.helmHeld = false;
         /**
@@ -92,8 +97,10 @@ export class MatchServer {
      * @param {object} [params.checkpoint] a checkpoint of this match from its previous host (see `capture`):
      *        the match goes on from it instead of starting
      * @param {number} [params.term] 0 for the match's first host, one more for every device that has taken it over
+     * @param {number} [params.rejoinGrace] seconds a player whose link closes keeps their ship and their place, for
+     *        their device to come back on a new link (NET.rejoinGrace across the internet); 0: they are out at once
      */
-    constructor({ info, mode, now = defaultNow, hostPlayerId = info.hostPlayerId, checkpoint = null, term = 0 }) {
+    constructor({ info, mode, now = defaultNow, hostPlayerId = info.hostPlayerId, checkpoint = null, term = 0, rejoinGrace = 0 }) {
         this.info = info;
         this.mode = mode;
         this.now = now;
@@ -104,6 +111,13 @@ export class MatchServer {
         this.succession = info.succession.filter((id) => id !== hostPlayerId);
         this.checkpointTimer = 0;
         this.checkpointSeq = 0;
+        this.rejoinGrace = rejoinGrace;
+        /**
+         * Called every NET.serverSnapshotInterval seconds when set: the device sends the lobby
+         * server a snapshot (`capture`) - across the internet the server is the referee of who runs the match.
+         */
+        this.onSnapshotDue = null;
+        this.snapshotDueTimer = 0;
         /** Called with (fromPlayerId, term, hostPlayerId) when a device announces that it has taken the match over. */
         this.onTakeover = null;
         /** @type {Map<string, Pilot>} */
@@ -161,6 +175,14 @@ export class MatchServer {
             this.checkpointTimer = NET.checkpointInterval;
             this.provideForSuccession();
         }
+        if (this.onSnapshotDue) {
+            this.snapshotDueTimer -= dt;
+            if (this.snapshotDueTimer <= 0) {
+                this.snapshotDueTimer = NET.serverSnapshotInterval;
+                this.onSnapshotDue();
+            }
+        }
+        this.dropOverdue(now);
     }
 
     dispose() {
@@ -177,11 +199,39 @@ export class MatchServer {
         if (!pilot || pilot.gone || pilot.bot) return false;
         this.releaseLink(pilot);
         pilot.link = link;
+        pilot.awayUntil = null;
         pilot.guard = new ClientGuard(this.now);
         link.onState = (data) => this.onInput(pilot, data);
         link.onMessage = (text) => this.onMessage(pilot, text);
-        link.onClose = () => this.removePlayer(pilot.id);
+        link.onClose = () => this.linkLost(pilot.id);
         return true;
+    }
+
+    /**
+     * A player's link is gone. Without `rejoinGrace` that is the end of them in this match.
+     * With it they are away: their ship stays where it is, flying on with nobody at the helm,
+     * and a new link from their device (`attachLink`) puts them back in it - unless the grace
+     * runs out first. Across the internet a link that breaks is far more often a network
+     * catching its breath than a player gone, and a side that loses its player for a moment
+     * should not lose the match for it.
+     */
+    linkLost(playerId) {
+        const pilot = this.pilots.get(playerId);
+        if (!pilot || pilot.gone) return;
+        if (this.rejoinGrace <= 0) {
+            this.removePlayer(playerId);
+            return;
+        }
+        this.releaseLink(pilot);
+        pilot.awayUntil ??= this.now() + this.rejoinGrace;
+    }
+
+    /** Players away longer than the grace are out. */
+    dropOverdue(now) {
+        if (this.rejoinGrace <= 0) return;
+        for (const pilot of this.pilots.values()) {
+            if (pilot.awayUntil !== null && !pilot.link && now >= pilot.awayUntil) this.removePlayer(pilot.id);
+        }
     }
 
     releaseLink(pilot) {
@@ -200,6 +250,7 @@ export class MatchServer {
         const pilot = this.pilots.get(playerId);
         if (!pilot || pilot.gone) return;
         pilot.gone = true;
+        pilot.awayUntil = null;
         this.releaseLink(pilot);
         if (pilot.ship?.alive) pilot.zone?.world.removeShip(pilot.ship, { flash: true });
         pilot.ship = null;

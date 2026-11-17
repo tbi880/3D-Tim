@@ -183,13 +183,50 @@ stalled, or was cut off from the others) it stands down and plays on as a client
 devices take over in the same term (each noticed before hearing of the other), the one
 whose player id sorts first is the host - the same choice on every device.
 
-What this does not do: two groups of devices that can no longer reach each other at all
-each go on with their own match; and a device that never got a checkpoint (it was third in
+What this does not do on one Wi-Fi: two groups of devices that can no longer reach each
+other at all each go on with their own match (across the internet the lobby server settles
+that: see the next section); and a device that never got a checkpoint (it was third in
 line or further, and both ahead of it are gone as well) cannot take over - the match ends
 for those it would have served, as it used to for everybody.
 
 The checkpoint holds everything, including what the map hides from a player. The two
 devices next in line could read it. That is the price of not running the match on a server.
+
+### The server as referee (across the internet)
+
+Across the internet a device cannot tell a host that is gone from a link to it that broke,
+and guessing differently on two devices made two matches - in each of which the other side
+had left, so this side won on the spot. There the lobby server rules who runs the match:
+
+* **The host's sign of life.** Every `NET.serverSnapshotInterval` (1 s) the host sends the
+  server a snapshot of the whole match - `MatchServer.capture()`, gzip, base64
+  (`lobby/matchSnapshot.js`): about 3 kB of 35 kB - with its line of succession
+  (`PutMatchSnapshot`). The server keeps the last one of the current host, in the current
+  term, and nothing from anybody else.
+* **A lost host is reported, not guessed at.** A client that hears nothing for
+  `NET.internetHostLostTimeout` (or whose link closes) asks the server (`ReportHostLost`). If
+  the host sent within the last 4 seconds only this client's link to it is broken: the client
+  makes it again (any device may call during a match; of two calls at once the one who joined
+  later wins) and the match goes on with nobody taking over. If the host is silent - or most
+  players have lost it - the server gives the match to the next in the host's line who is
+  still connected, in a new term, and tells the room (`MatchHostChanged`) with its snapshot.
+  That device goes on from the snapshot or its own checkpoint, whichever is newer; everybody
+  else turns to it at once. The server decides under the room's lock: one host per term.
+* **The old host stands down.** A host that was replaced (it had stalled, or was cut off)
+  hears it in the answer to its next snapshot, or when it gets back to the lobby: it throws
+  its copy of the match away and joins the new host as a client, in its own ship. The match
+  is not handed back: that would cost a second rollback and a second pause for nothing.
+* **Nobody is out for a broken link.** Across the internet `MatchServer` keeps a player whose
+  link closed away for `NET.rejoinGrace` (45 s): their ship flies on with nobody at the helm,
+  and their device's new link puts them back in it. On one Wi-Fi they are out at once, as before.
+* **Nor for a dropped lobby connection.** During a match the server keeps the place of a
+  player whose connection dropped for 60 seconds (shown as not connected); the device
+  reconnects (`NET.lobbyRetryDelays`) and takes it back with the resume token its last
+  connection was given (`LobbyClient.resume`, the hub's `ResumeSession`): the same player id,
+  so the others can link to it again and the server can be asked.
+
+A device that cannot reach the server falls back on the devices' own succession above. The
+server never reads a snapshot; the devices check it like any checkpoint.
 
 ### The host's page in the background
 

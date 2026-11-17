@@ -9,6 +9,7 @@ import { gameModeOf } from '../../src/game/modes/index.js';
 import { measureStepCost } from '../../src/game/net/lobby/hostFitness.js';
 import { normalizeMatchInfo } from '../../src/game/net/match/matchInfo.js';
 import { NET } from '../../src/game/net/netConfig.js';
+import { packSnapshot, unpackSnapshot } from '../../src/game/net/lobby/matchSnapshot.js';
 import { MSG } from '../../src/game/net/protocol.js';
 import { MatchServer } from '../../src/game/net/server/MatchServer.js';
 import { createMemoryLinkPair } from '../../src/game/net/transport/MemoryLink.js';
@@ -468,4 +469,85 @@ test('the benchmark gives a small positive number of milliseconds, by the clock 
 
     let time = 0;
     assert.equal(measureStepCost(() => { time += 100; return time; }), 2.5, '100 ms for 40 steps');
+});
+
+// ---- Across the internet: a player who is away, and the server's snapshots -------------------
+
+test('across the internet a player whose link breaks keeps their ship for a while, and flies it again on a new link', () => {
+    const match = createTestMatch(['host', 'ann', 'bo']);
+    const { server } = match;
+    server.rejoinGrace = NET.rejoinGrace;
+    match.run(1);
+    const ann = server.pilots.get('ann');
+    const ship = ann.ship;
+    assert.ok(ship?.alive);
+
+    match.clients[0].link.close();
+    match.run(NET.rejoinGrace / 2);
+    assert.equal(ann.gone, false, 'away, not gone');
+    assert.equal(ann.link, null);
+    assert.equal(ann.ship, ship, 'the same ship, still in the match');
+    assert.ok(ship.alive);
+    assert.equal(server.rankSuccessors().includes('ann'), false, 'not in line while away');
+
+    // Her device is back on a new link: she is in her own ship again.
+    const [serverEnd, clientEnd] = createMemoryLinkPair();
+    const received = [];
+    clientEnd.onMessage = (text) => received.push(JSON.parse(text));
+    assert.equal(server.attachLink('ann', serverEnd), true);
+    clientEnd.sendMessage(JSON.stringify({ t: MSG.HELLO, v: NET.protocolVersion, m: match.info.matchId }));
+    serverEnd.deliver();
+    match.run(0.1);
+    clientEnd.deliver();
+    const welcome = received.find((message) => message.t === MSG.WELCOME);
+    assert.ok(welcome.ships.some((description) => description.id === ship.id && description.pilotId === 'ann'));
+    assert.equal(ann.awayUntil, null);
+
+    // Bo's link breaks and stays broken: after the grace he is out.
+    match.clients[1].link.close();
+    match.run(NET.rejoinGrace + 1);
+    assert.equal(server.pilots.get('bo').gone, true);
+    assert.equal(server.pilots.get('ann').gone, false);
+});
+
+test('on one Wi-Fi a player whose link breaks is out at once, as before', () => {
+    const match = createTestMatch(['host', 'ann']);
+    match.run(0.5);
+
+    match.clients[0].link.close();
+    match.run(0.1);
+
+    assert.equal(match.server.pilots.get('ann').gone, true);
+});
+
+test('the server is offered a snapshot every second, when somebody listens', () => {
+    const match = createTestMatch(['host', 'ann']);
+    let due = 0;
+    match.run(2);
+    assert.equal(due, 0);
+    match.server.onSnapshotDue = () => { due += 1; };
+    match.run(3.05);
+    assert.ok(due >= 3 && due <= 4, `${due} in three seconds`);
+});
+
+test('a snapshot for the server is the checkpoint, about a tenth of its size, and comes back as it was', async () => {
+    const match = createTestMatch(['host', 'ann', 'bo'], { start: { settings: { bots: 'fill' } } });
+    match.run(3);
+    const text = JSON.stringify(match.server.capture());
+
+    const packed = await packSnapshot(text);
+
+    assert.match(packed, /^[A-Za-z0-9+/]+=*$/);
+    assert.ok(packed.length < text.length / 5, `${packed.length} characters for ${text.length}`);
+    assert.ok(packed.length < NET.serverSnapshotMaxChars);
+    assert.equal(await unpackSnapshot(packed), text);
+    const server = resumeFrom(match, { checkpoint: JSON.parse(await unpackSnapshot(packed)) });
+    assert.deepEqual(describe(server), describe(match.server));
+});
+
+test('what does not unpack to a snapshot of reasonable size is nothing', async () => {
+    assert.equal(await unpackSnapshot(null), null);
+    assert.equal(await unpackSnapshot('not base64 at all!'), null);
+    assert.equal(await unpackSnapshot(btoa('plain text, not gzip')), null);
+    assert.equal(await unpackSnapshot(await packSnapshot('x'.repeat(5000)), 1000), null, 'too long once unpacked');
 });

@@ -42,6 +42,8 @@ const MAX_SUCCESSORS = 16;
 const OWN_STALL_SECONDS = 0.5;
 
 const defaultNow = () => performance.now() / 1000;
+/** The link of a client that is waiting for a link to its next host: it carries nothing (and its handlers are never called). */
+const DETACHED = { isOpen: false, onMessage: null, onState: null, onClose: null, sendMessage() {}, sendState() {} };
 const scratchStart = new Vector3();
 const scratchEnd = new Vector3();
 
@@ -201,6 +203,25 @@ export class ClientMatch {
         this.timeline.reset();
         this.predictor?.reset();
         this.listen();
+    }
+
+    /**
+     * Another host is on its way, but there is no link to it yet: this client lets go of the
+     * link it has (the old host's, which may still talk - it must not be taken for the new
+     * one), and the picture stands still until `switchLink` and the new host's welcome.
+     */
+    awaitHost() {
+        const old = this.link;
+        if (old !== DETACHED) {
+            old.onMessage = null;
+            old.onState = null;
+            old.onClose = null;
+            this.link = DETACHED;
+        }
+        this.inbox = { messages: [], states: [] };
+        if (!this.migrating) this.session?.showToast('mp.host.lost');
+        this.migrating = true;
+        this.welcomed = false;
     }
 
     /** Nobody could take the match over: it ends here after all. */
@@ -417,6 +438,11 @@ export class ClientMatch {
                 break;
             case MSG.CHECKPOINT:
                 this.onCheckpointPiece(message);
+                break;
+            case MSG.TAKEOVER:
+                // The device this client turned to has just taken the match over, and listens now: a
+                // request for the world that reached it before it did went unheard - ask again at once.
+                if (!this.welcomed) this.lastHelloAt = -Infinity;
                 break;
             default:
         }

@@ -4,7 +4,7 @@
  */
 export const NET = Object.freeze({
     /** Bumped whenever packets change shape; a host refuses a client that speaks another version. */
-    protocolVersion: 3,
+    protocolVersion: 4,
 
     /** World snapshots the host sends each client per second. */
     snapshotHz: 30,
@@ -92,6 +92,30 @@ export const NET = Object.freeze({
     stepCostWeight: 40,
     /** ...and a device with no measured link to another counts as this round trip to it. */
     unlinkedRtt: 2000,
+
+    // ---- Across the internet the lobby server is the referee (net/README.md "The server as referee") ----
+    /**
+     * Seconds between the snapshots of the whole match the host sends the lobby server. They
+     * are its sign of life (the server gives the host up after 4 seconds without one) and what
+     * another device goes on from. About 3 kB each, compressed.
+     */
+    serverSnapshotInterval: 1,
+    /** Longest snapshot sent (base64 characters): the server's LanRoomManager.SnapshotMaxChars, inside SignalR's 32 KB. */
+    serverSnapshotMaxChars: 24000,
+    /** Longest a snapshot from the server may be once unpacked (characters); a match's is about 40 000. */
+    serverSnapshotMaxUnpacked: 2_000_000,
+    /**
+     * Seconds a player whose link to the host broke keeps their ship and their place in the
+     * match, to come back to (on the host's device; the ship flies on with nobody at the
+     * helm). And how long a device that lost its host looks for it, or for its successor.
+     */
+    rejoinGrace: 45,
+    /**
+     * Seconds between a device's attempts to get back to the lobby server after its connection
+     * dropped during a match (it takes its place back with its resume token; the server keeps
+     * it for 60 seconds).
+     */
+    lobbyRetryDelays: Object.freeze([1, 2, 4, 8, 15, 30]),
 });
 
 /**

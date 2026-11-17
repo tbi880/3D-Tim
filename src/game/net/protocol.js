@@ -18,7 +18,8 @@ import { NET } from './netConfig.js';
  *                           the match has no use for them and lets them pass
  *   to      { n, h }        "the match is player h's device's now, in term n": said by a device that
  *                           has taken the match over, to every device it is linked to - a host
- *                           that hears of a later term than its own stands down
+ *                           that hears of a later term than its own stands down, and a client
+ *                           waiting for that device's welcome asks it for the world again
  *
  * Host to client:
  *   welcome { ... }         the whole place the player is in, as it is now (match/replication.js);
