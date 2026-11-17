@@ -471,9 +471,7 @@
 .eod-touch-throttle span { position: relative; font-size: 7px; padding-bottom: 4px; }
 .eod-touch-buttons { position: absolute; right: calc(14px + env(safe-area-inset-right, 0px)); bottom: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; pointer-events: auto; }
 .eod-touch-button { width: 62px; height: 62px; border-radius: 50%; font: inherit; font-size: 10px; font-weight: 700; color: #dff4ff; background: rgba(6, 16, 28, 0.45); border: 2px solid var(--eod-border); touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.eod-touch-button small { font-size: 7px; font-weight: 400; opacity: 0.8; }
 .eod-touch-button--fire { border-color: var(--eod-amber); color: var(--eod-amber); }
-.eod-touch-button--auto { background: rgba(255, 182, 72, 0.18); }
 .eod-touch-button--torpedo { border-color: var(--eod-cyan); color: var(--eod-cyan); }
 .eod-touch-pause { position: absolute; top: 8px; left: calc(8px + env(safe-area-inset-left, 0px)); width: 40px; height: 34px; padding: 0; font: inherit; font-size: 12px; font-weight: 700; color: #dff4ff; background: rgba(6, 16, 28, 0.55); border: 1px solid var(--eod-border); border-radius: 4px; pointer-events: auto; touch-action: none; }
 

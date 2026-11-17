@@ -883,7 +883,6 @@ test('a pirate is never fired on by a comrade\'s guns by accident', () => {
     const before = pat.shield + pat.hull;
     game.pilot('pip').lastInputAt = Infinity;
     game.pilot('pip').controls.firePrimary = true;
-    game.pilot('pip').autoFire = true;
     game.run(1);
     assert.equal(pat.shield + pat.hull, before, 'beams fired past a comrade do not swing onto them');
 

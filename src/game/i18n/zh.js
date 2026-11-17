@@ -52,7 +52,7 @@ export default {
     'ui.score.total': '综合得分',
     'ui.score.newRecord': '刷新本难度最高分！',
     'ui.score.best': '本难度最高分：{score}',
-    'ui.touchHint': '触屏操作：左手拇指转向，右手拇指作战，光束会自动开火。',
+    'ui.touchHint': '触屏操作：左手拇指转向，右手拇指作战，按住“开火”发射光束。',
     'ui.homeScreenHint': 'iPhone 的 Safari 不支持网页全屏：点「分享」→「添加到主屏幕」，从主屏幕图标打开即可全屏游玩。',
 
     // ---- 操作说明 -----------------------------------------------------------------------
@@ -237,7 +237,6 @@ export default {
     'ui.view': '视角',
     'ui.view.cockpit': '座舱',
     'ui.view.chase': '追尾',
-    'ui.autoFire': '光束自动开火',
     'ui.graphics': '画质',
     'ui.fullscreen': '全屏',
     'ui.graphics.performance': '流畅',
@@ -311,7 +310,7 @@ export default {
 
     // Touch-screen wording for hints that name keys (picked automatically on phones).
     'hint.flight.touch': '左摇杆转向 · 滑动“油门”条调速 · 按住“加力”开启加力燃烧',
-    'hint.weapons.touch': '“锁定”切换下一个目标 · 圆环内的目标会被光束阵列自动攻击',
+    'hint.weapons.touch': '“锁定”切换下一个目标 · 按住“开火”发射光束阵列——圆环内的目标会被自动追踪',
     'hint.torpedoes.touch': '“鱼雷”向锁定目标发射鱼雷 · 光束削护盾，鱼雷破船体',
     'hint.power.touch': '“能量”在均衡 · 攻击 · 防御之间切换 —— 视战况调配能量',
     'hint.paintTarget.touch': '用“锁定”选中“日蚀”号，并让机头始终对准它',
@@ -807,7 +806,7 @@ export default {
     'tutorial.beams.title': '光束阵列',
     'tutorial.beams.text': '把机头转向敌人，让它进入准星外面的虚线圆环，然后按住鼠标左键（或 F）：圆环里的目标会被光束自动追踪。开火消耗能量，停火后回充。',
     'tutorial.beams.keys': '按住鼠标左键 / F',
-    'tutorial.beams.text.touch': '把机头转向敌人，让它进入准星外面的虚线圆环，按住“开火”。自动开火默认开启：敌人一进圆环，光束就会自己发射。',
+    'tutorial.beams.text.touch': '把机头转向敌人，让它进入准星外面的虚线圆环，然后按住“开火”：圆环里的目标会被光束自动追踪。开火消耗能量，停火后回充。',
     'tutorial.beams.keys.touch': '按住“开火”',
     'tutorial.beams.text.vr': '把机头转向敌人，让它进入准星外面的虚线圆环，然后按住右扳机：圆环里的目标会被光束自动追踪。开火消耗能量，停火后回充。',
     'tutorial.beams.keys.vr': '按住右扳机',
@@ -830,9 +829,9 @@ export default {
     'tutorial.torpedo.keys.vr': '左扳机',
 
     'tutorial.pause.title': '暂停与设置',
-    'tutorial.pause.text': '按 Esc 或 P 随时暂停：那里可以改难度、画质、视角和自动开火，还有完整的按键表；M 键静音。跃迁不用你操作：清空一个星区后，织女会带你跳往下一站。祝你好运，指挥官。',
+    'tutorial.pause.text': '按 Esc 或 P 随时暂停：那里可以改难度、画质和视角，还有完整的按键表；M 键静音。跃迁不用你操作：清空一个星区后，织女会带你跳往下一站。祝你好运，指挥官。',
     'tutorial.pause.keys': 'Esc / P / M',
-    'tutorial.pause.text.touch': '点左上角的 II 随时暂停：那里可以改难度、画质和自动开火。跃迁不用你操作：清空一个星区后，织女会带你跳往下一站。祝你好运，指挥官。',
+    'tutorial.pause.text.touch': '点左上角的 II 随时暂停：那里可以改难度和画质。跃迁不用你操作：清空一个星区后，织女会带你跳往下一站。祝你好运，指挥官。',
     'tutorial.pause.keys.touch': 'II',
     'tutorial.pause.text.vr': '按下右摇杆随时暂停并打开菜单；按下左摇杆重置座位位置。跃迁不用你操作：清空一个星区后，织女会带你跳往下一站。祝你好运，指挥官。',
     'tutorial.pause.keys.vr': '按下右摇杆 / 按下左摇杆',

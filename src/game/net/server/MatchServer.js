@@ -49,7 +49,6 @@ class Pilot {
         /** What their device says of its fitness to host: { stepCost, rtt: { playerId: ms } }, or null (see MSG.LINKS). */
         this.fitness = null;
         this.controls = createControls();
-        this.autoFire = false;
         this.lastInputAt = -Infinity;
         this.snapshotSeq = 0;
         /** Events for this player alone (already JSON), sent with the next batch. */
@@ -145,7 +144,6 @@ export class MatchServer {
             // written here on the server every frame: there is nothing to hear from.)
             const handsOff = pilot.helmHeld || (!pilot.bot && now - pilot.lastInputAt > NET.inputTimeout);
             ship.controls = handsOff ? IDLE_CONTROLS : pilot.controls;
-            ship.autoFire = pilot.autoFire && !handsOff;
         }
 
         this.time += dt;
@@ -217,7 +215,6 @@ export class MatchServer {
             return;
         }
         Object.assign(pilot.controls, input.controls);
-        pilot.autoFire = input.autoFire;
         pilot.lastInputAt = this.now();
     }
 

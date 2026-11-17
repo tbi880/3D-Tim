@@ -17,8 +17,8 @@ export const PACKET = Object.freeze({ SNAPSHOT: 1, INPUT: 2 });
 
 export const INPUT_PACKET_SIZE = 11;
 
-const BUTTON = Object.freeze({ BOOST: 1, FIRE_PRIMARY: 2, FIRE_SECONDARY: 4, AUTO_FIRE: 8 });
-const BUTTON_MASK = BUTTON.BOOST | BUTTON.FIRE_PRIMARY | BUTTON.FIRE_SECONDARY | BUTTON.AUTO_FIRE;
+const BUTTON = Object.freeze({ BOOST: 1, FIRE_PRIMARY: 2, FIRE_SECONDARY: 4 });
+const BUTTON_MASK = BUTTON.BOOST | BUTTON.FIRE_PRIMARY | BUTTON.FIRE_SECONDARY;
 const NO_THROTTLE_TARGET = 255;
 
 const toAxis = (value) => Math.round(Math.max(-1, Math.min(1, Number.isFinite(value) ? value : 0)) * 127);
@@ -34,16 +34,14 @@ export function createControls() {
 /**
  * @param {number} seq
  * @param {object} controls held controls
- * @param {boolean} autoFire the pilot's auto-fire setting
  * @returns {ArrayBuffer}
  */
-export function encodeInput(seq, controls, autoFire = false) {
+export function encodeInput(seq, controls) {
     const target = controls.throttleTarget;
     let buttons = 0;
     if (controls.boost) buttons |= BUTTON.BOOST;
     if (controls.firePrimary) buttons |= BUTTON.FIRE_PRIMARY;
     if (controls.fireSecondary) buttons |= BUTTON.FIRE_SECONDARY;
-    if (autoFire) buttons |= BUTTON.AUTO_FIRE;
     return writer.reset()
         .u8(PACKET.INPUT)
         .u32(seq >>> 0)
@@ -56,7 +54,7 @@ export function encodeInput(seq, controls, autoFire = false) {
 /**
  * @param {ArrayBuffer | ArrayBufferView} data
  * @param {object} [out] controls object to fill (see createControls)
- * @returns {{ seq: number, controls: object, autoFire: boolean }}
+ * @returns {{ seq: number, controls: object }}
  * @throws {PacketError} if the packet is not exactly a well-formed input packet
  */
 export function decodeInput(data, out = createControls()) {
@@ -75,7 +73,7 @@ export function decodeInput(data, out = createControls()) {
     out.boost = Boolean(buttons & BUTTON.BOOST);
     out.firePrimary = Boolean(buttons & BUTTON.FIRE_PRIMARY);
     out.fireSecondary = Boolean(buttons & BUTTON.FIRE_SECONDARY);
-    return { seq, controls: out, autoFire: Boolean(buttons & BUTTON.AUTO_FIRE) };
+    return { seq, controls: out };
 }
 
 /**

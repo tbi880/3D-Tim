@@ -52,7 +52,7 @@ export default {
     'ui.score.total': 'Final score',
     'ui.score.newRecord': 'New best on this difficulty!',
     'ui.score.best': 'Best on this difficulty: {score}',
-    'ui.touchHint': 'Touch controls: left thumb steers, right thumb fights. Beams fire automatically.',
+    'ui.touchHint': 'Touch controls: left thumb steers, right thumb fights. Hold FIRE for the beams.',
     'ui.homeScreenHint': 'Safari on iPhone cannot show web pages fullscreen: tap Share → Add to Home Screen and open the game from its icon to play fullscreen.',
 
     // ---- Controls screen ----------------------------------------------------------------
@@ -237,7 +237,6 @@ export default {
     'ui.view': 'View',
     'ui.view.cockpit': 'Cockpit',
     'ui.view.chase': 'Chase',
-    'ui.autoFire': 'Auto-fire beams',
     'ui.graphics': 'Graphics',
     'ui.fullscreen': 'Fullscreen',
     'ui.graphics.performance': 'Smooth',
@@ -311,7 +310,7 @@ export default {
 
     // Touch-screen wording for hints that name keys (picked automatically on phones).
     'hint.flight.touch': 'Left stick steers · slide THR for speed · hold BURN for the afterburner',
-    'hint.weapons.touch': 'LOCK picks the next target · beam arrays fire by themselves at anything inside the ring',
+    'hint.weapons.touch': 'LOCK picks the next target · hold FIRE for the beam arrays — they track anything inside the ring',
     'hint.torpedoes.touch': 'TORP launches a torpedo at your lock · beams strip shields, torpedoes break hulls',
     'hint.power.touch': 'POWER cycles balanced · attack · defense — divert power to suit the moment',
     'hint.paintTarget.touch': 'LOCK the Eclipse and keep your nose on it',
@@ -807,7 +806,7 @@ export default {
     'tutorial.beams.title': 'Beam arrays',
     'tutorial.beams.text': 'Turn towards a hostile until it is inside the dashed ring around the crosshair, then hold the left mouse button (or F): the beams track anything in the ring by themselves. Firing drains energy, which comes back when you stop.',
     'tutorial.beams.keys': 'Hold left mouse / F',
-    'tutorial.beams.text.touch': 'Turn towards a hostile until it is inside the dashed ring around the crosshair, and hold FIRE. Auto-fire is on by default: the beams fire by themselves at a hostile in the ring.',
+    'tutorial.beams.text.touch': 'Turn towards a hostile until it is inside the dashed ring around the crosshair, and hold FIRE: the beams track anything in the ring by themselves. Firing drains energy, which comes back when you stop.',
     'tutorial.beams.keys.touch': 'Hold FIRE',
     'tutorial.beams.text.vr': 'Turn towards a hostile until it is inside the dashed ring around the crosshair, then hold the right trigger: the beams track anything in the ring by themselves. Firing drains energy, which comes back when you stop.',
     'tutorial.beams.keys.vr': 'Hold the right trigger',
@@ -830,9 +829,9 @@ export default {
     'tutorial.torpedo.keys.vr': 'Left trigger',
 
     'tutorial.pause.title': 'Pause and settings',
-    'tutorial.pause.text': 'Esc or P pauses at any time: difficulty, graphics, view and auto-fire are there, with the full list of keys; M mutes. Jumps need nothing from you: when a sector is clear, VEGA takes you on to the next. Good luck, Commander.',
+    'tutorial.pause.text': 'Esc or P pauses at any time: difficulty, graphics and view are there, with the full list of keys; M mutes. Jumps need nothing from you: when a sector is clear, VEGA takes you on to the next. Good luck, Commander.',
     'tutorial.pause.keys': 'Esc / P / M',
-    'tutorial.pause.text.touch': 'The II button top left pauses at any time: difficulty, graphics and auto-fire are there. Jumps need nothing from you: when a sector is clear, VEGA takes you on to the next. Good luck, Commander.',
+    'tutorial.pause.text.touch': 'The II button top left pauses at any time: difficulty and graphics are there. Jumps need nothing from you: when a sector is clear, VEGA takes you on to the next. Good luck, Commander.',
     'tutorial.pause.keys.touch': 'II',
     'tutorial.pause.text.vr': 'Click the right stick to pause and open the menu at any time; click the left stick to re-centre your seat. Jumps need nothing from you: when a sector is clear, VEGA takes you on to the next. Good luck, Commander.',
     'tutorial.pause.keys.vr': 'Right stick click / left stick click',

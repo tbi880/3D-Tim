@@ -14,16 +14,12 @@ const STICK_TRAVEL = 56;
  * Phones keep only what a thumb pilot needs: the view is locked to chase, the power mode stays
  * balanced, and a comms line is revealed or skipped by tapping it (CommsPanel.jsx).
  *
- * With the "auto-fire" setting on (the default on touch devices) the beams fire by
- * themselves whenever a hostile is inside the ring, so flying only needs one thumb.
- *
  * The `data-tutorial` names are how the first-flight tutorial finds a button to light up
  * (config/tutorial.js).
  */
 export default function TouchControls({ input, session }) {
     const t = useT();
     const phase = useGameStore((state) => state.phase);
-    const autoFire = useGameStore((state) => state.settings.autoFire);
     const [knob, setKnob] = useState({ x: 0, y: 0 });
     const [throttle, setThrottle] = useState(0.5);
     /** True while a finger is on the throttle bar; otherwise the bar shows the ship's own throttle. */
@@ -97,9 +93,7 @@ export default function TouchControls({ input, session }) {
                 <button type="button" className="eod-touch-button" data-tutorial="lock" {...tap('cycleTarget')}>{t('hud.lock')}</button>
                 <button type="button" className="eod-touch-button" data-tutorial="boost" {...hold('boost')}>{t('hud.boost')}</button>
                 <button type="button" className="eod-touch-button eod-touch-button--torpedo" data-tutorial="torpedo" {...hold('fireSecondary')}>{t('hud.torp')}</button>
-                <button type="button" className={`eod-touch-button eod-touch-button--fire ${autoFire ? 'eod-touch-button--auto' : ''}`} data-tutorial="fire" {...hold('firePrimary')}>
-                    {t('hud.fire')}{autoFire && <small>AUTO</small>}
-                </button>
+                <button type="button" className="eod-touch-button eod-touch-button--fire" data-tutorial="fire" {...hold('firePrimary')}>{t('hud.fire')}</button>
             </div>
             <button type="button" className="eod-touch-pause" aria-label={t('controls.pause')} {...tap('pause')}>II</button>
         </div>

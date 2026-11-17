@@ -58,8 +58,6 @@ export class World {
         this.playerClassId = PLAYER.classId;
         /** Levels bought at refits ({ rating: levels }, core/refit.js); saved with the player. */
         this.playerUpgrades = {};
-        /** Assist: the player's beams fire by themselves when something hostile is in the ring. */
-        this.autoFire = false;
         /** Multiplayer: players can hurt the computer-flown ships of their own side (see mayAttack). */
         this.friendlyFire = false;
         /** Multiplayer: `(target, source, amount)` called for every bit of damage a ship deals, for whoever keeps the rules. */
@@ -324,10 +322,9 @@ export class World {
         this.beams.length = 0;
 
         // The ship flown on this device takes its helm from here; in a multiplayer match the
-        // host sets `controls` and `autoFire` on the other players' ships itself.
+        // host sets `controls` on the other players' ships itself.
         if (this.player) {
             this.player.controls = this.playerControls;
-            this.player.autoFire = this.autoFire;
             this.player.cannonLock = 0;
         }
         for (const ship of this.ships) {

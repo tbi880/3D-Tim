@@ -92,7 +92,6 @@ export class GameSession {
         setLocale(this.settings.locale);
         this.events = new EventBus();
         this.world = new World({ difficultyId: settings.difficulty });
-        this.world.autoFire = Boolean(settings.autoFire);
         this.comms = new CommsQueue({
             getDuration: (line) => estimateReadingTime(t(line.textKey)),
             onChange: (line) => {
@@ -275,7 +274,6 @@ export class GameSession {
         this.match = null;
         match.dispose();
         this.world.setDifficulty(this.settings.difficulty);
-        this.world.autoFire = Boolean(this.settings.autoFire);
         this.ui.set({ match: null, matchPanel: null, matchOutro: null, refit: null });
     }
 
@@ -302,7 +300,6 @@ export class GameSession {
         // A match flies at the difficulty its host chose; the setting applies again afterwards.
         if (partial.difficulty && !this.match) this.world.setDifficulty(partial.difficulty);
         if (partial.locale) setLocale(partial.locale);
-        if ('autoFire' in partial) this.world.autoFire = Boolean(partial.autoFire);
         saveSettings(this.settings);
         this.ui.set({ settings: { ...this.settings } });
         this.events.emit(SESSION_EVENTS.SETTINGS, { settings: this.settings });

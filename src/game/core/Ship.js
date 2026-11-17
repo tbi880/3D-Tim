@@ -175,8 +175,6 @@ export class Ship {
         this.upgrades = options.upgrades ?? null;
         /** Held controls (see IDLE_CONTROLS), refreshed every frame by whoever has the helm. */
         this.controls = null;
-        /** Assist: the beams fire by themselves when something hostile is in the ring. */
-        this.autoFire = false;
         /** Whether a ship-mounted cannon is on this ship this step: 0 no, 1 tracking, 2 locked. */
         this.cannonLock = 0;
         /** True while the ship is past the sector's edge and the helm is being nudged back. */

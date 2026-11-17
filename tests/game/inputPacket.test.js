@@ -12,10 +12,9 @@ test('an input packet is eleven bytes', () => {
 
 test('controls come back as sent, to within the stick precision', () => {
     const controls = held({ yaw: 0.5, pitch: -1, roll: 0.25, throttle: 1, boost: true, firePrimary: false, fireSecondary: true });
-    const decoded = decodeInput(encodeInput(42, controls, true));
+    const decoded = decodeInput(encodeInput(42, controls));
 
     assert.equal(decoded.seq, 42);
-    assert.equal(decoded.autoFire, true);
     assert.ok(Math.abs(decoded.controls.yaw - 0.5) < 1 / 127);
     assert.equal(decoded.controls.pitch, -1);
     assert.ok(Math.abs(decoded.controls.roll - 0.25) < 1 / 127);

@@ -322,7 +322,7 @@ headlessly the same way (`tutorial.test.js` flies the first-flight tutorial like
 
 **Phones and tablets** (`ui/TouchControls.jsx`, shown when the primary pointer is a
 finger): a stick under the left thumb steers, the bar beside it sets the throttle, and the
-right thumb has LOCK, BURN, TORP and FIRE. Beams fire automatically at whatever is inside
-the aiming ring (the *Auto-fire* setting, on by default on touch). The top bar has pause,
+right thumb has LOCK, BURN, TORP and FIRE. Holding FIRE plays the beams on whatever is
+inside the aiming ring. The top bar has pause,
 skip, view and power. The HUD needs the long side of the screen, so portrait shows a
 "turn your phone" notice. Hints that name keys have a `.touch` twin in the i18n files.

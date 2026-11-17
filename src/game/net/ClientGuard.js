@@ -51,7 +51,7 @@ export class ClientGuard {
 
     /**
      * @param {ArrayBuffer | ArrayBufferView} data
-     * @returns {{ seq: number, controls: object, autoFire: boolean } | null} the input, or null if the packet was dropped.
+     * @returns {{ seq: number, controls: object } | null} the input, or null if the packet was dropped.
      *          `controls` is reused by the next call: copy what you keep.
      */
     acceptInput(data) {

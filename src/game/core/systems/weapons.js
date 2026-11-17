@@ -213,10 +213,8 @@ function updatePlayerBeam(world, ship, weapon, dt, triggerHeld) {
     forwardOf(ship.quaternion, scratchForward);
     const origin = ship.position;
     const target = pickPlayerBeamTarget(world, ship, def, origin, scratchForward);
-    // Auto-fire assist (touch devices): the beams open up by themselves on anything hostile in the ring.
-    const wantsFire = triggerHeld || (ship.autoFire && !world.controlsLocked && Boolean(target));
 
-    const firing = wantsFire && !weapon.depleted && ship.energy > 0;
+    const firing = triggerHeld && !weapon.depleted && ship.energy > 0;
     if (triggerHeld && weapon.depleted && !weapon.firing) {
         world.events.emit(GAME_EVENTS.WEAPON_EMPTY, { ship });
     }

@@ -284,7 +284,7 @@ export class ClientMatch {
             sendControls.fireSecondary = true;
         }
         this.inputSeq += 1;
-        if (this.link.isOpen) this.link.sendState(encodeInput(this.inputSeq, sendControls, world.autoFire));
+        if (this.link.isOpen) this.link.sendState(encodeInput(this.inputSeq, sendControls));
         if (own) this.predictor.step(own, this.inputSeq, sendControls, dt);
 
         const now = this.now();

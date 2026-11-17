@@ -16,7 +16,7 @@ export function createTestSession(settings = {}) {
     const ui = {};
     const session = new GameSession({
         ui: { set: (partial) => Object.assign(ui, partial) },
-        settings: { locale: 'en', difficulty: 'captain', playerShip: 'kestrel', muted: true, invertY: false, autoFire: false, ...settings },
+        settings: { locale: 'en', difficulty: 'captain', playerShip: 'kestrel', muted: true, invertY: false, ...settings },
     });
     return { session, ui };
 }

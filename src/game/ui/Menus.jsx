@@ -183,9 +183,6 @@ function SettingsRows({ session }) {
                     <span>{t('ui.view')}</span><strong>{t(`ui.view.${settings.cameraMode}`)}</strong>
                 </button>
             )}
-            <button type="button" className="eod-setting" onClick={() => session.updateSettings({ autoFire: !settings.autoFire })}>
-                <span>{t('ui.autoFire')}</span><strong>{settings.autoFire ? t('ui.on') : t('ui.off')}</strong>
-            </button>
             <button
                 type="button"
                 className="eod-setting"

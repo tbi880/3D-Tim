@@ -85,8 +85,6 @@ export function defaultSettings() {
         invertY: false,
         /** 'cockpit' (first person) or 'chase' (third person). Phones always fly in chase view. */
         cameraMode: isTouchDevice() ? 'chase' : 'cockpit',
-        /** Beams fire by themselves at hostiles in the ring. On by default where there is no trigger finger to spare. */
-        autoFire: isTouchDevice(),
         /** Rendering preset (config/graphics.js). */
         graphics: DEFAULT_GRAPHICS,
         /** The first-flight tutorial in the prologue: on until it has been finished or skipped (state/Tutorial.js). */
@@ -104,6 +102,8 @@ export function loadSettings() {
     if (isTouchDevice()) settings.cameraMode = 'chase';
     if (!GRAPHICS[settings.graphics]) settings.graphics = DEFAULT_GRAPHICS;
     settings.tutorial = Boolean(settings.tutorial);
+    // Left in the settings saved by builds that still had the auto-fire assist.
+    delete settings.autoFire;
     return settings;
 }
 
