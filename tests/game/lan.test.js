@@ -919,6 +919,36 @@ test('a host that had only stalled stands down when it hears that another device
     assert.equal(ann.ui.match.players.length, 3);
 });
 
+test('two devices that take over at the same moment settle on one of them', async () => {
+    const party = await measured();
+    const { host: tim, byName: { Ann: ann, Bo: bo }, run, idOf, lose } = party;
+    await tim.lan.startMatch();
+    run(4);
+    lose(ann);
+    // Each believes it is alone in having noticed: both build a server, both announce it, in the same term.
+    for (const each of [tim, bo]) {
+        if (!each.lan.server) {
+            each.lan.clearSuccession();
+            each.lan.succession = { tried: new Set(), timer: null };
+            assert.equal(each.lan.takeOver(), true);
+        }
+    }
+    assert.ok(tim.lan.server && bo.lan.server, 'for a moment there are two');
+
+    run(1);
+
+    const expected = [idOf('Tim'), idOf('Bo')].sort()[0];
+    const hosting = [tim, bo].filter((each) => each.lan.server);
+    assert.equal(hosting.length, 1, 'then one');
+    assert.equal(hosting[0].state.me.playerId, expected, 'the one whose id sorts first - the same choice on both devices');
+    for (const each of [tim, bo]) {
+        assert.equal(each.lan.matchHostId, expected);
+        assert.equal(each.session.phase, PHASE.PLAYING);
+        assert.equal(each.lan.client.migrating, false);
+        assert.equal(each.ui.match.players.length, 2);
+    }
+});
+
 test('with no checkpoint to go on from, a lost host ends the match as it used to', async () => {
     const party = await measured();
     const { host: tim, byName: { Ann: ann, Bo: bo }, run, lose } = party;

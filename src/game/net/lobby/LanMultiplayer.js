@@ -745,6 +745,7 @@ export class LanMultiplayer {
         // to the old host); only then are the links given to the server - that one among them.
         this.server = server;
         this.matchHostId = me;
+        client.term = server.term;
         this.clearSuccession();
         session.replaceMatch(new HostSeat({ server, client, localPlayerId: me }));
         for (const [playerId, link] of this.links) {
@@ -766,12 +767,17 @@ export class LanMultiplayer {
      * than this device knows wins: a client turns to the new host at once (without waiting to
      * miss the old one), and a device that was running the match itself - it had only stalled,
      * or was cut off from the others - stands down and becomes a client again.
+     *
+     * Two devices can take over in the same term (each noticed the loss before hearing of the
+     * other). Then the one whose player id sorts first is the host, on every device alike.
      */
     onTakeoverNotice(fromPlayerId, term, hostPlayerId) {
         const { client } = this;
-        if (!this.inMatch || !client || !Number.isInteger(term) || term <= client.term) return;
+        if (!this.inMatch || !client || !Number.isInteger(term)) return;
         const me = this.state.me.playerId;
-        if (typeof hostPlayerId !== 'string' || hostPlayerId === me) return;
+        if (typeof hostPlayerId !== 'string' || hostPlayerId === me || hostPlayerId === this.matchHostId) return;
+        const sameTermButFirst = term === client.term && term > 0 && typeof this.matchHostId === 'string' && hostPlayerId < this.matchHostId;
+        if (term < client.term || (term === client.term && !sameTermButFirst)) return;
         client.term = term;
         this.clearSuccession();
         const previousHost = this.matchHostId;

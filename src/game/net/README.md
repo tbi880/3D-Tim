@@ -167,7 +167,9 @@ which walks the order of succession:
 The match goes on from the checkpoint - a few seconds back - without the player whose
 device was lost, and without shots that were in flight. A device that hears of a takeover
 with a later term than it knows follows it at once; if it was hosting itself (it had only
-stalled, or was cut off from the others) it stands down and plays on as a client.
+stalled, or was cut off from the others) it stands down and plays on as a client. If two
+devices take over in the same term (each noticed before hearing of the other), the one
+whose player id sorts first is the host - the same choice on every device.
 
 What this does not do: two groups of devices that can no longer reach each other at all
 each go on with their own match; and a device that never got a checkpoint (it was third in
