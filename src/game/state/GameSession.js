@@ -13,6 +13,7 @@ import { StoryDirector } from '../story/StoryDirector.js';
 import { CommsQueue, estimateReadingTime } from './CommsQueue.js';
 import { computeFinalScore, killPoints } from '../config/scoring.js';
 import { CAMERA_MODES, clearSave, loadSave, recordFinalScore, saveSettings, writeSave } from './saveGame.js';
+import { sameValue } from './sameValue.js';
 import { Tutorial } from './Tutorial.js';
 
 export const PHASE = Object.freeze({
@@ -138,6 +139,8 @@ export class GameSession {
         this.effectsDelta = 0;
         /** Counts calls of `update`, so a watchdog can tell whether frames are still being drawn. */
         this.updates = 0;
+        /** What `showOnHud` last put in the store, slice by slice. */
+        this.hudShown = {};
 
         this.unsubscribe = [
             this.world.events.on(GAME_EVENTS.SHIP_SPAWNED, () => this.publishRoster()),
@@ -305,11 +308,8 @@ export class GameSession {
         this.toastTimer = 0;
         this.pendingRefit = null;
         this.tutorial.cancel();
-        this.ui.set({
-            refit: null,
-            objective: null, hint: null, titleCard: null, toast: null, progress: null,
-            escort: null, boss: null, target: null, gameOverReason: null, stats: null, finalScore: null,
-        });
+        this.ui.set({ refit: null, hint: null, titleCard: null, toast: null, gameOverReason: null, stats: null, finalScore: null });
+        this.showOnHud({ objective: null, progress: null, escort: null, boss: null, target: null });
     }
 
     // ---- Settings and player actions ----------------------------------------------------
@@ -375,7 +375,7 @@ export class GameSession {
     }
 
     setObjective(textKey) {
-        this.ui.set({ objective: textKey ? { key: textKey, params: this.director.objectiveParams?.(this.director.context) ?? null } : null });
+        this.showOnHud({ objective: textKey ? { key: textKey, params: this.director.objectiveParams?.(this.director.context) ?? null } : null });
     }
 
     /**
@@ -608,7 +608,7 @@ export class GameSession {
         const target = player.target?.alive ? player.target : null;
         const mission = this.missionHud();
 
-        this.ui.set({
+        this.showOnHud({
             hud: {
                 alive: player.alive,
                 hull: player.hullFraction,
@@ -638,6 +638,23 @@ export class GameSession {
             progress: mission.progress,
             objective: mission.objective,
         });
+    }
+
+    /**
+     * Puts HUD slices into the store, keeping the object already there for each slice whose
+     * content has not changed (see sameValue): a panel subscribed to a slice redraws only when
+     * what it shows changes, not on every refresh. Slices written here must not be written
+     * any other way, or this would not know what the store holds.
+     */
+    showOnHud(slices) {
+        let changed = null;
+        for (const key of Object.keys(slices)) {
+            const value = slices[key];
+            if (key in this.hudShown && sameValue(this.hudShown[key], value)) continue;
+            this.hudShown[key] = value;
+            (changed ??= {})[key] = value;
+        }
+        if (changed) this.ui.set(changed);
     }
 
     /**
