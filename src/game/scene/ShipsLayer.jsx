@@ -10,6 +10,7 @@ import { seenFromInside } from './effects/impactPoint.js';
 import { INSIDE_SCALE, ShieldShell, shieldShells } from './effects/ShieldShell.js';
 import { WARP_IN_DISTANCE, WARP_STRETCH, warpDisplacement } from './effects/warpPath.js';
 import { useGameStore } from '../state/gameStore.js';
+import GatePortal from './models/GatePortal.jsx';
 import ShipModel, { getModelInfo } from './models/ShipModel.jsx';
 import { cameraModeOf } from '../xr/vrState.js';
 
@@ -182,6 +183,8 @@ function ShipView({ ship, session }) {
             <ShipModel modelId={ship.cls.model} faction={ship.faction} getThrust={getThrust} />
             {info?.engines?.length > 0 && <Exhaust engines={info.engines} faction={ship.faction} ship={ship} session={session} />}
             {ship.maxShield > 0 && <Shield ship={ship} session={session} />}
+            {/* A stargate: the field across its opening. */}
+            {ship.cls.portal && <GatePortal radius={ship.cls.portal} session={session} />}
             {/* Bright core of the warp streak; the stretched hull supplies the rest. */}
             <mesh ref={streakRef} scale={[streakWidth, streakWidth, ship.boundingRadius * 1.2]} visible={false}>
                 <sphereGeometry args={[1, 8, 6]} />

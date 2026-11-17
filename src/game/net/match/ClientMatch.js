@@ -101,6 +101,8 @@ export class ClientMatch {
         /** Raw packets received since the last frame; applied at the start of the next one. */
         this.inbox = { messages: [], states: [] };
         this.welcomed = false;
+        /** True once the game mode has taken the picture for itself (`takeStage`). */
+        this.staged = false;
         /** Id of the zone this device is showing, or null. */
         this.zoneId = null;
         this.state = null;
@@ -182,11 +184,35 @@ export class ClientMatch {
         this.disconnect();
     }
 
+    /**
+     * Hands this device's picture to the game mode: the world is emptied and set in
+     * `sectorId`, and from here on nothing the host sends about ships and shots is drawn -
+     * whatever the mode puts on the stage is all there is. The match itself is still heard
+     * (its state, its cues). Used for an ending that is played somewhere of its own.
+     */
+    takeStage(sectorId) {
+        const { world } = this;
+        this.staged = true;
+        world.clear();
+        world.setSector(sectorId);
+        world.controlsLocked = true;
+        this.index.clear();
+        this.timeline.reset();
+        this.predictor.reset();
+    }
+
     update(dt, controls) {
         const { world } = this;
         this.receive();
         this.checkLink();
         this.presenter?.update(dt);
+        if (this.staged) {
+            // The mode moves what is on its stage; time still passes for whatever glows there.
+            world.time += dt;
+            world.lastStep = dt;
+            world.prune();
+            return;
+        }
         if (!this.welcomed) {
             this.askAgain();
             return;
@@ -328,7 +354,9 @@ export class ClientMatch {
                 for (const entry of message.e) {
                     // Before the player is anywhere (a mode's introduction) there is no world to
                     // change, but the match can already speak: its state, its cues.
-                    if (this.welcomed || (Array.isArray(entry) && PLACELESS_EVENTS.has(entry[0]))) this.applyEvent(entry);
+                    // The same once the mode has taken the stage: the world on screen is no longer the host's.
+                    const placed = this.welcomed && !this.staged;
+                    if (placed || (Array.isArray(entry) && PLACELESS_EVENTS.has(entry[0]))) this.applyEvent(entry);
                 }
                 break;
             case MSG.PONG:
@@ -370,6 +398,14 @@ export class ClientMatch {
             return;
         }
         const { world } = this;
+        if (this.staged) {
+            // The picture is the mode's own by now: only the match's word is taken.
+            this.epoch = message.epoch;
+            this.welcomed = true;
+            this.migrating = false;
+            this.applyMatchState(message.match);
+            return;
+        }
         // A welcome is a whole place: whatever was here before is gone.
         world.clear();
         world.setSector(message.sectorId);
@@ -402,7 +438,7 @@ export class ClientMatch {
     }
 
     onSnapshot(data) {
-        if (!this.welcomed) return;
+        if (!this.welcomed || this.staged) return;
         let snapshot;
         try {
             snapshot = decodeSnapshot(data);

@@ -36,6 +36,10 @@ The two kinds differ only in how a room is found (see "Rooms" below). Names in t
   its player is in. The host's own client reaches the server through an in-memory link
   (`match/HostSeat.js`), so there is one way of showing a match and the host sees nothing
   the others do not.
+* A game mode may take a device's picture for itself (`ClientMatch.takeStage`): the world is
+  emptied and from then on nothing the host sends about ships and shots is drawn, only the
+  match's own word (state, cues) is heard. The battle royale does this for its ending, which
+  every device plays at the stargate wherever its player was.
 * `lobby/LanMultiplayer.js` is the conductor the menus talk to: lobby, links, starting and
   ending matches on the `GameSession` (`session.beginMatch`). `lobby/lanStore.js` is the only
   file that knows the browser (SignalR, WebRTC, the site's sign-in, the hub's address).

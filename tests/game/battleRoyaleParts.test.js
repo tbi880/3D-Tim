@@ -4,7 +4,7 @@ import { BATTLE_ROYALE, NPC_FACTIONS, PLAYER_FACTIONS, STAR_SYSTEM } from '../..
 import { FACTION } from '../../src/game/config/gameConfig.js';
 import { SECTORS } from '../../src/game/config/sectors.js';
 import { SHIP_CLASSES } from '../../src/game/config/shipClasses.js';
-import { Vector3 } from 'three';
+import { Quaternion, Vector3 } from 'three';
 import { createRng, forwardOf } from '../../src/game/core/math.js';
 import { drainShip } from '../../src/game/core/systems/damage.js';
 import { World } from '../../src/game/core/World.js';
@@ -14,7 +14,8 @@ import { CollapseClock, PLANET_STATUS } from '../../src/game/modes/battleRoyale/
 import { EQUIPMENT, EQUIPMENT_ORDER, Inventory, isEquipment } from '../../src/game/modes/battleRoyale/equipment.js';
 import { planGarrisons, stationGarrison } from '../../src/game/modes/battleRoyale/garrisons.js';
 import { StarMap } from '../../src/game/modes/battleRoyale/starMap.js';
-import { STATION_TAG, buildStation } from '../../src/game/modes/battleRoyale/station.js';
+import { GateCeremony } from '../../src/game/modes/battleRoyale/gateCeremony.js';
+import { GATE_TAG, STATION_TAG, buildGate, buildStation, gatePose } from '../../src/game/modes/battleRoyale/station.js';
 import { Zone } from '../../src/game/net/server/Zone.js';
 
 // ---- Configuration ---------------------------------------------------------------------------
@@ -371,7 +372,7 @@ test('in every sector the station stands straight ahead of where ships arrive, i
     const layout = BATTLE_ROYALE.station;
     for (const planet of STAR_SYSTEM.planets) {
         const zone = zoneAt(planet.sectorId);
-        const station = buildStation(zone, layout, Boolean(planet.gate));
+        const station = buildStation(zone, layout);
         const start = SECTORS[planet.sectorId].playerStart;
         const arrival = new Vector3().fromArray(start.position);
         const lane = new Vector3().fromArray(start.facing).normalize();
@@ -404,7 +405,7 @@ test('a garrison waits inside the ring, out of the hull, and far enough from the
     const layout = BATTLE_ROYALE.garrisons;
     for (const planet of STAR_SYSTEM.planets) {
         const zone = zoneAt(planet.sectorId);
-        const station = buildStation(zone, BATTLE_ROYALE.station, false);
+        const station = buildStation(zone, BATTLE_ROYALE.station);
         const arrival = new Vector3().fromArray(SECTORS[planet.sectorId].playerStart.position);
         for (const faction of NPC_FACTIONS) {
             for (const ship of stationGarrison(zone, station, faction, BATTLE_ROYALE.garrisons.gate[faction], layout, true)) {
@@ -443,4 +444,171 @@ test('a drain takes shield then hull at face value, and stops at the hull\'s flo
     const station = world.spawnShip('lanternStation', { position: [0, 0, 9000] });
     drainShip(world, station, 1e6);
     assert.equal(station.alive, true, 'what cannot be hurt is not');
+});
+
+// ---- The stargate ----------------------------------------------------------------------------
+
+/** The gate built at the last planet, with the station it stands off. */
+function gateZone() {
+    const planet = STAR_SYSTEM.planets.at(-1);
+    const zone = new Zone(planet.id, planet.sectorId, { seed: 3 });
+    const station = buildStation(zone, BATTLE_ROYALE.station);
+    const gate = buildGate(zone.world, zone.sectorId, BATTLE_ROYALE.station, BATTLE_ROYALE.gate, (rock) => zone.clearRock(rock));
+    const pose = gatePose(SECTORS[planet.sectorId].playerStart, BATTLE_ROYALE.station, BATTLE_ROYALE.gate);
+    return { zone, station, gate, pose, arrival: new Vector3().fromArray(SECTORS[planet.sectorId].playerStart.position) };
+}
+
+test('the stargate hangs over its station, in sight of arriving ships and clear of everything', () => {
+    const { zone, station, gate, pose, arrival } = gateZone();
+
+    assert.equal(gate.tags.has(GATE_TAG), true);
+    assert.equal(station.ship.tags.has(GATE_TAG), false);
+    assert.ok(gate.position.distanceTo(pose.position) < 1e-6);
+    assert.ok(gate.position.length() + gate.boundingRadius < 12000, 'inside the sector');
+
+    // Ahead of an arriving ship and above the station: it is the first thing they see past it.
+    const toGate = gate.position.clone().sub(arrival);
+    const sight = toGate.clone().normalize();
+    assert.ok(sight.dot(pose.lane) > Math.cos(Math.PI / 6), 'within thirty degrees of straight ahead');
+    assert.ok(toGate.dot(pose.lane) > station.ship.position.clone().sub(arrival).dot(pose.lane), 'beyond the station');
+    // Nothing of the station is in the way of that line of sight, and the two do not touch.
+    for (let along = 200; along < toGate.length() - gate.boundingRadius; along += 150) {
+        assert.ok(station.ship.distanceToPoint(arrival.clone().addScaledVector(sight, along)) > 100, `station in the way ${along} m out`);
+    }
+    assert.ok(station.ship.distanceToPoint(gate.position) > gate.boundingRadius + 500);
+    for (const rock of zone.world.obstacles.filter((rock) => rock.alive)) {
+        assert.ok(gate.distanceToPoint(rock.position) >= rock.radius + BATTLE_ROYALE.gate.clearance);
+    }
+});
+
+test('the stargate is a ring: solid all the way round, open in the middle', () => {
+    const { gate, pose } = gateZone();
+    const right = new Vector3(1, 0, 0).applyQuaternion(gate.quaternion);
+    const up = new Vector3(0, 1, 0).applyQuaternion(gate.quaternion);
+    const at = (radius, angle, along = 0) => gate.position.clone()
+        .addScaledVector(right, radius * Math.cos(angle)).addScaledVector(up, radius * Math.sin(angle)).addScaledVector(pose.lane, along);
+
+    for (let step = 0; step < 72; step++) {
+        const angle = (step / 72) * Math.PI * 2;
+        assert.ok(gate.distanceToPoint(at(1075, angle)) <= 0, `a gap in the ring at ${step * 5} degrees`);
+        assert.ok(gate.distanceToPoint(at(700, angle)) > 30, `the opening is blocked at ${step * 5} degrees`);
+        assert.ok(gate.distanceToPoint(at(1500, angle)) > 100, 'nothing solid outside the ring');
+    }
+    // The whole way through, along the axis.
+    for (let along = -600; along <= 600; along += 100) assert.ok(gate.distanceToPoint(at(0, 0, along)) > 600);
+    assert.ok(SHIP_CLASSES.stargate.portal < 1075 - 100, 'the field is drawn inside the ring');
+});
+
+/** The ceremony at the real gate. */
+function ceremony(options) {
+    const { pose } = gateZone();
+    return { pose, show: new GateCeremony({ gate: pose, timing: BATTLE_ROYALE.outro, opens: true, others: 0, ...options }) };
+}
+const { outro: OUTRO } = BATTLE_ROYALE;
+
+test('the ending - a winner runs straight at the gate and is through it as the ending runs out', () => {
+    const { pose, show } = ceremony({ won: true, others: 3 });
+    const position = new Vector3();
+    const quaternion = new Quaternion();
+    let last = Infinity;
+    let lastSpeed = 0;
+    for (let elapsed = 0; elapsed <= OUTRO.seconds + 1e-9; elapsed += 0.25) {
+        show.placeViewer(elapsed, position, quaternion);
+        const toGate = pose.position.clone().sub(position);
+        const distance = toGate.length();
+        // Always on the gate's axis, nose to it, closing faster and faster.
+        if (distance > 1) assert.ok(toGate.normalize().dot(pose.lane) > 0.9999);
+        assert.ok(forwardOf(quaternion, new Vector3()).dot(pose.lane) > 0.9999);
+        assert.ok(distance <= last);
+        if (elapsed > 0) {
+            const speed = (last - distance) / 0.25;
+            assert.ok(speed >= lastSpeed - 1e-6, 'it never slows');
+            lastSpeed = speed;
+        }
+        last = distance;
+    }
+    assert.ok(last < 1e-6, 'at the gate when the ending is over');
+    show.placeViewer(0, position, quaternion);
+    assert.ok(Math.abs(position.distanceTo(pose.position) - OUTRO.approach) < 1e-6);
+
+    // The gate is open well before they get there, stays open, and the jump builds all the way.
+    const field = {};
+    assert.equal(show.field(0, field).open, 0);
+    assert.equal(show.field(OUTRO.seconds * OUTRO.open, field).open, 1);
+    assert.deepEqual([show.field(OUTRO.seconds, field).open, field.shut, field.charge], [1, 0, 1]);
+    assert.equal(show.warp(0), 0);
+    assert.equal(show.warp(OUTRO.seconds), 1);
+    assert.ok(show.warp(OUTRO.seconds / 2) < 0.5);
+    assert.equal(show.fade(OUTRO.seconds / 2), 0);
+    assert.equal(show.fade(0), 1, 'the picture comes up from black');
+});
+
+test('the ending - the rest of the winning side goes through ahead of a winner, one after another', () => {
+    const { pose, show } = ceremony({ won: true, others: 4 });
+    assert.equal(show.flyers.length, 4);
+    const arrivals = show.flyers.map((flyer) => flyer.arrive);
+    assert.deepEqual(arrivals, [...arrivals].sort((a, b) => a - b), 'in order');
+    assert.equal(new Set(arrivals.map((time) => time.toFixed(3))).size, 4, 'not all at once');
+    assert.ok(arrivals.at(-1) < OUTRO.seconds, 'before the player');
+
+    const viewer = new Vector3();
+    const position = new Vector3();
+    const quaternion = new Quaternion();
+    show.placeViewer(0, viewer, quaternion);
+    const nose = forwardOf(quaternion, new Vector3());
+    show.flyers.forEach((flyer, index) => {
+        assert.equal(show.placeFlyer(index, 0, position, quaternion), false);
+        // In front of the cockpit at the start: where they can be seen pulling away.
+        const offset = position.clone().sub(viewer);
+        assert.ok(offset.dot(nose) > 100 && offset.length() < 600);
+        assert.equal(show.placeFlyer(index, flyer.arrive, position, quaternion), true);
+        assert.ok(Math.abs(position.clone().sub(pose.position).dot(pose.lane)) < 1e-6, 'in the plane of the gate');
+        assert.ok(position.distanceTo(pose.position) < SHIP_CLASSES.stargate.portal * 0.5, 'near the middle of the opening');
+    });
+    // Each one through lights the gate up for a moment.
+    const field = {};
+    assert.equal(show.field(arrivals[0] - 0.01, field).pulse, 0);
+    assert.ok(show.field(arrivals[0] + 0.01, field).pulse > 0.9);
+    assert.ok(show.field(arrivals[0] + 0.4, field).pulse < 0.5);
+});
+
+test('the ending - everybody else watches the gate open for the winners and close behind them', () => {
+    const { pose, show } = ceremony({ won: false, others: 3 });
+    const position = new Vector3();
+    const quaternion = new Quaternion();
+    show.placeViewer(0, position, quaternion);
+    const start = position.clone();
+    // Off the axis, well back, looking at it.
+    const toGate = pose.position.clone().sub(position);
+    assert.ok(toGate.length() > 3000);
+    assert.ok(toGate.clone().normalize().dot(pose.lane) < 0.99, 'not on the winners\' road');
+    assert.ok(forwardOf(quaternion, new Vector3()).dot(toGate.clone().normalize()) > 0.9999);
+    show.placeViewer(OUTRO.seconds, position, quaternion);
+    assert.ok(position.distanceTo(start) < 400, 'they barely move');
+
+    // Every winner is through before it starts to close.
+    const closing = OUTRO.close[0] * OUTRO.seconds;
+    assert.ok(show.flyers.every((flyer) => flyer.arrive <= closing + 1e-9));
+    assert.ok(show.flyers.every((flyer) => flyer.arrive > 1));
+    const field = {};
+    assert.equal(show.field(closing, field).open, 1);
+    assert.deepEqual([show.field(OUTRO.close[1] * OUTRO.seconds, field).open, field.shut, field.charge], [0, 1, 0]);
+    assert.equal(show.warp(OUTRO.seconds), 0, 'no jump for them');
+    assert.equal(show.fade(closing), 0);
+    assert.ok(Math.abs(show.fade(OUTRO.seconds) - OUTRO.fade[1]) < 1e-9, 'and the dark closes in');
+});
+
+test('the ending - when nobody won the gate opens for nobody', () => {
+    const { show } = ceremony({ won: false, opens: false, others: 5 });
+    assert.equal(show.flyers.length, 0);
+    const field = {};
+    for (let elapsed = 0; elapsed <= OUTRO.seconds; elapsed += 0.5) {
+        show.field(elapsed, field);
+        assert.equal(field.open, 0);
+        assert.equal(field.pulse, 0);
+    }
+    assert.equal(field.shut, 1);
+    assert.equal(field.charge, 0);
+    // A side cannot have "won" a match nobody won.
+    assert.equal(new GateCeremony({ gate: gateZone().pose, timing: OUTRO, won: true, opens: false, others: 0 }).warp(OUTRO.seconds), 0);
 });

@@ -340,6 +340,16 @@
     "engines": [],
     "triangles": 1709
   },
+  "stargate": {
+    "file": "game/stargate-transformed.glb",
+    "size": [
+      2613.61,
+      2425.88,
+      413.97
+    ],
+    "engines": [],
+    "triangles": 17799
+  },
   "stationTurret": {
     "file": "game/stationTurret-transformed.glb",
     "size": [

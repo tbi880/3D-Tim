@@ -7,10 +7,11 @@ src/game/scene/models/modelManifest.json (sizes and engine positions).
 
 Needs Blender's Python: either `pip install bpy`, or `blender -b -P tools/game-models/build_models.py`.
 Each model is a function below. A MODELS entry is (builder, palette, length, seed, tile):
-`length` is the nose-to-tail size in metres, `tile` how many metres one repeat of the shared
+`length` is the nose-to-tail size in metres (None for a model drawn to scale: its builder sets `b.unit`), `tile` how many metres one repeat of the shared
 plating texture covers (smaller = finer plates; about a fifth of the length suits most ships).
 """
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -397,6 +398,72 @@ def build_forge(b):
     b.mark("turretAft", (0, 4.0, 15.0))
 
 
+def gate_palette():
+    """The stargate: old dark steel and brass, lit pale blue. Older than either fleet."""
+    return sf.palette(hull="#59606c", panel="#2c3038", accent="#b0842f", glow="#9fe8ff", window="#ffe2a0",
+                      hull_metallic=0.6, hull_roughness=1.15)
+
+
+# The stargate is drawn in units of an eighth of a kilometre (`b.unit`), so the game can rely
+# on its measurements: the ring's middle line is 8.6 units out, the opening 7.5 units.
+STARGATE_UNIT = 125.0
+
+
+def build_stargate(b):
+    """
+    The stargate of the battle royale: a ring 2.4 km across that ships fly through along z.
+    Twelve emitter blocks, each with a prong reaching into the opening, joined by lighter
+    trusses; four stabiliser fins outside. The field across the opening is not part of the
+    model: the game draws it (scene/models/GatePortal.jsx) over a disc of radius 7.5 units.
+    """
+    b.unit = STARGATE_UNIT
+    blocks = 12
+    ring_radius = 8.6
+    for i in range(blocks):
+        angle = i / blocks * math.tau
+        cos, sin = math.cos(angle), math.sin(angle)
+        # An emitter block, long side along the ring. Its local x is the radial direction.
+        block = b.box((ring_radius * cos, ring_radius * sin, 0), (2.0, 2.5, 1.9), HULL, rot=(0, 0, angle), bevel=0.22)
+        b.detail(block, plate_height=0.05, panels=0.35, machinery=0.22, windows=0.1, recess=0.12)
+        # Collar plates fore and aft, and the housing the prong grows from.
+        for z in (-1.05, 1.05):
+            b.box((ring_radius * cos, ring_radius * sin, z), (1.5, 1.9, 0.3), PANEL, rot=(0, 0, angle), bevel=0.08)
+        b.box(((ring_radius - 1.15) * cos, (ring_radius - 1.15) * sin, 0), (0.7, 1.3, 1.1), DARK, rot=(0, 0, angle), bevel=0.1)
+        # The prong: a spike into the opening with a lit tip, and two running lights along it.
+        root = ring_radius - 1.3
+        tip = ring_radius - 2.25
+        b.tube((root * cos, root * sin, 0), (tip * cos, tip * sin, 0), 0.34, 0.1, 8, PANEL)
+        b.ball((tip * cos, tip * sin, 0), 0.16, GLOW, 1)
+        for z in (-0.42, 0.42):
+            b.light_strip(((root + 0.2) * cos, (root + 0.2) * sin, z), ((root + 0.95) * cos, (root + 0.95) * sin, z), 0.05)
+        # A brass band across the block's outer face.
+        b.box(((ring_radius + 1.02) * cos, (ring_radius + 1.02) * sin, 0), (0.12, 1.7, 0.5), ACCENT, rot=(0, 0, angle), bevel=0.03)
+
+        # The truss to the next block: a lighter span, sunk a little into both.
+        middle = angle + math.tau / blocks / 2
+        mcos, msin = math.cos(middle), math.sin(middle)
+        span = b.box((ring_radius * mcos, ring_radius * msin, 0), (1.15, 2.6, 1.05), PANEL, rot=(0, 0, middle), bevel=0.14)
+        b.detail(span, plate_height=0.04, panels=0.2, machinery=0.3, windows=0.0, recess=0.2)
+        for z in (-0.7, 0.7):
+            b.box(((ring_radius + 0.25) * mcos, (ring_radius + 0.25) * msin, z), (0.3, 2.9, 0.22), HULL, rot=(0, 0, middle), bevel=0.05)
+
+    # Rails all the way round: two outside, and the lit one that rims the opening.
+    for z in (-0.62, 0.62):
+        b.ring((0, 0, z), ring_radius + 0.95, 0.09, DARK, 72, axis="z")
+    b.ring((0, 0, 0), ring_radius - 1.02, 0.07, GLOW, 96, axis="z")
+
+    # Stabiliser fins on the diagonals, swept back along the flight axis.
+    for i in range(4):
+        angle = math.tau / 8 + i * math.tau / 4
+        cos, sin = math.cos(angle), math.sin(angle)
+        fin = b.box((10.35 * cos, 10.35 * sin, 0), (2.3, 0.5, 3.2), HULL, rot=(0, 0, angle), bevel=0.12)
+        b.detail(fin, plate_height=0.04, panels=0.3, machinery=0.12, windows=0.06, recess=0.1)
+        b.box((11.3 * cos, 11.3 * sin, 0), (0.5, 0.26, 2.0), ACCENT, rot=(0, 0, angle), bevel=0.05)
+        for z in (-1.2, 1.2):
+            b.ball((11.62 * cos, 11.62 * sin, z), 0.11, WINDOW, 1)
+        b.light_strip((9.75 * cos, 9.75 * sin, -1.3), (9.75 * cos, 9.75 * sin, 1.3), 0.045)
+
+
 # ---- Modules and props --------------------------------------------------------------------
 
 def build_shield_generator(b):
@@ -528,10 +595,11 @@ MODELS = {
     "buoy": (build_buoy, neutral_palette, 12, 25, 6),
     "wreck": (build_wreck, wreck_palette, 190, 26, 30),
     "cockpit": (build_cockpit, cockpit_palette, None, 27, 2.6),
+    "stargate": (build_stargate, gate_palette, None, 28, 150),
 }
 
 # Models whose origin is meaningful and must not be moved to the bounding-box centre.
-KEEP_ORIGIN = {"forge", "cockpit"}
+KEEP_ORIGIN = {"forge", "cockpit", "stargate"}
 
 
 def compress(path):

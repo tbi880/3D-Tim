@@ -132,6 +132,8 @@ class ShipBuilder:
         self.window_layer = self.bm.faces.layers.int.new("window")
         self.engines = []  # [x, y, z, radius] of every engine exhaust, for in-game plumes
         self.markers = {}  # named points (mount positions) reported in the manifest
+        # Metres per unit, for a model drawn to a fixed scale; None for one sized by its length.
+        self.unit = None
 
     # ---- Primitives -------------------------------------------------------------------
 
@@ -446,11 +448,15 @@ class ShipBuilder:
         """
         Scales the model so it is `length` metres from nose to tail and, unless `recentre`
         is False, moves its bounding-box centre to the origin. With `length=None` the model
-        is left exactly as authored (used by the cockpit). Returns the final [x, y, z] size.
+        is left exactly as authored (used by the cockpit). A builder that set `unit` (metres
+        per unit) is scaled by exactly that instead. Returns the final [x, y, z] size.
         """
         low, high = self.bounds()
-        scale = 1.0 if length is None else length / (high.z - low.z)
-        centre = (low + high) / 2 if recentre and length is not None else Vector((0, 0, 0))
+        if self.unit is not None:
+            scale = self.unit
+        else:
+            scale = 1.0 if length is None else length / (high.z - low.z)
+        centre = (low + high) / 2 if recentre and (length is not None or self.unit is not None) else Vector((0, 0, 0))
         bmesh.ops.translate(self.bm, verts=self.bm.verts, vec=-centre)
         bmesh.ops.scale(self.bm, verts=self.bm.verts, vec=(scale, scale, scale))
 

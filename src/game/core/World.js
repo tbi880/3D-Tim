@@ -68,6 +68,13 @@ export class World {
         this.warpFactor = 0;
         /** 0..1 how far the screen has faded to black (docking cut-scenes); driven by the story's fade beat. */
         this.screenFade = 0;
+        /**
+         * How a stargate in this world shows (scene/models/GatePortal.jsx), driven by the game
+         * mode: `charge` 0..1 how strongly its field glows, `open` 0..1 how far the way through
+         * has opened from the middle, `shut` 0..1 how far it has died, `pulse` 1 -> 0 after a
+         * ship has gone through, `faction` whose colour it wears (null: its own).
+         */
+        this.gateField = { charge: 0, open: 0, shut: 0, pulse: 0, faction: null };
     }
 
     // ---- Lifecycle ----------------------------------------------------------------------
@@ -88,6 +95,7 @@ export class World {
         this.controlsLocked = false;
         this.warpFactor = 0;
         this.screenFade = 0;
+        Object.assign(this.gateField, { charge: 0, open: 0, shut: 0, pulse: 0, faction: null });
     }
 
     /** Whether the local player is past the sector's edge (the HUD's warning). */

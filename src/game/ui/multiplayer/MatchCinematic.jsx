@@ -7,8 +7,9 @@ import { useGameStore, useT } from '../../state/gameStore.js';
  *
  *  - the introduction (about ten seconds, before anybody is in the system): what is
  *    happening here, why everybody wants the stargate, and the three sides with their pilots;
- *  - the ending (five seconds, between the deciding moment and the result screen): the
- *    winners go through the gate, everybody else stays with the star.
+ *  - the ending (a few seconds, between the deciding moment and the result screen): the
+ *    3D view shows the stargate - the winners go through it, everybody else watches it
+ *    close - and this puts the words under it.
  *
  * Both are timed by the match itself (`match.intro` counts down on the host; the presenter
  * holds `matchOutro` for as long as the ending plays), so every device shows them together.
@@ -69,9 +70,7 @@ function MatchOutro({ outro }) {
     const kind = !outro.winner ? 'none' : outro.won ? 'won' : 'lost';
     const faction = outro.winner ? t(`mp.faction.${outro.winner}`) : '';
     return (
-        <div className={`eod-cinematic eod-outro eod-outro--${kind}`}>
-            {/* The winners' own moment: light breaking over the screen as the gate opens. */}
-            {outro.won && <div className="eod-outro-burst" aria-hidden="true" />}
+        <div className={`eod-cinematic eod-outro eod-outro--${kind}`} style={{ '--eod-outro-seconds': `${BATTLE_ROYALE.outro.seconds}s` }}>
             <h2 className={`eod-cinematic-title ${outro.winner ? `eod-side--${outro.winner}` : ''}`}>{t(`mp.outro.${kind}.title`)}</h2>
             <p className="eod-outro-text">{t(`mp.outro.${kind}.text`, { faction })}</p>
         </div>

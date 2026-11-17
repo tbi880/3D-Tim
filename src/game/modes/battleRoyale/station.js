@@ -3,7 +3,7 @@ import { FACTION } from '../../config/gameConfig.js';
 import { SECTORS } from '../../config/sectors.js';
 import { lookRotation } from '../../core/math.js';
 
-/** Tag on every planet's station (scenery: it cannot be hurt or locked), and on the one that is the stargate. */
+/** Tag on every planet's station (scenery: it cannot be hurt or locked), and on the stargate at the last one. */
 export const STATION_TAG = 'station';
 export const GATE_TAG = 'stargate';
 
@@ -85,15 +85,14 @@ export function findStation(zone, layout) {
  * clears the rocks out of its hull and its approach lane.
  * @param {import('../../net/server/Zone.js').Zone} zone
  * @param {object} layout BATTLE_ROYALE.station
- * @param {boolean} gate true for the station that is the stargate
  * @returns {Station}
  */
-export function buildStation(zone, layout, gate) {
+export function buildStation(zone, layout) {
     const start = SECTORS[zone.sectorId].playerStart;
     const pose = stationPose(start, layout);
     const ship = zone.world.spawnShip(layout.classId, {
         faction: FACTION.NEUTRAL, position: pose.position, quaternion: pose.quaternion.toArray(),
-        tags: gate ? [STATION_TAG, GATE_TAG] : [STATION_TAG], invulnerable: true, targetable: false,
+        tags: [STATION_TAG], invulnerable: true, targetable: false,
     });
     const station = new Station(ship, pose.lane, layout);
 
@@ -107,4 +106,41 @@ export function buildStation(zone, layout, gate) {
         if (ship.distanceToPoint(rock.position) < room || scratchClosest.distanceTo(rock.position) < room) zone.clearRock(rock);
     }
     return station;
+}
+
+/**
+ * Where the stargate stands at the planet whose ships arrive at `start`: off that planet's
+ * station, turned as the station is, so ships that came down the approach lane go on
+ * through it the same way.
+ * @param {{ position: number[], facing: number[] }} start the sector's `playerStart`
+ * @param {object} layout BATTLE_ROYALE.station
+ * @param {object} gateLayout BATTLE_ROYALE.gate
+ * @returns {{ position: Vector3, quaternion: Quaternion, lane: Vector3 }} `lane` is the unit direction ships fly through it
+ */
+export function gatePose(start, layout, gateLayout) {
+    const station = stationPose(start, layout);
+    const position = new Vector3().fromArray(gateLayout.offset).applyQuaternion(station.quaternion).add(station.position);
+    return { position, quaternion: station.quaternion, lane: station.lane };
+}
+
+/**
+ * Builds the stargate in a zone (nobody's, and nothing can hurt it) and clears the rocks
+ * out of its ring.
+ * @param {import('../../core/World.js').World} world the zone's world
+ * @param {string} sectorId the zone's sector
+ * @param {object} layout BATTLE_ROYALE.station
+ * @param {object} gateLayout BATTLE_ROYALE.gate
+ * @param {(rock: object) => void} [clearRock] how a rock is taken away (a zone records it for its players)
+ * @returns {import('../../core/Ship.js').Ship}
+ */
+export function buildGate(world, sectorId, layout, gateLayout, clearRock = (rock) => { rock.alive = false; }) {
+    const pose = gatePose(SECTORS[sectorId].playerStart, layout, gateLayout);
+    const gate = world.spawnShip(gateLayout.classId, {
+        faction: FACTION.NEUTRAL, position: pose.position, quaternion: pose.quaternion.toArray(),
+        tags: [GATE_TAG], invulnerable: true, targetable: false,
+    });
+    for (const rock of world.obstacles) {
+        if (rock.alive && gate.distanceToPoint(rock.position) < rock.radius + gateLayout.clearance) clearRock(rock);
+    }
+    return gate;
 }

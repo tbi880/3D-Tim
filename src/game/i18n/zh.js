@@ -355,6 +355,7 @@ export default {
     'speaker.okoro': '奥科罗站长',
     'speaker.okoro.role': '灯塔站 · 交通管制',
     'ship.lanternStation': '灯塔空间站',
+    'ship.stargate': '星门',
     'ship.penumbra': '“半影”级母舰',
     'sector.lantern': '灯塔空间站',
     'sector.muster': '集结地',

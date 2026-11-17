@@ -355,6 +355,7 @@ export default {
     'speaker.okoro': 'Station Master Okoro',
     'speaker.okoro.role': 'Lantern Station · traffic control',
     'ship.lanternStation': 'Lantern Station',
+    'ship.stargate': 'Stargate',
     'ship.penumbra': 'Penumbra-class carrier',
     'sector.lantern': 'Lantern Station',
     'sector.muster': 'The Muster',

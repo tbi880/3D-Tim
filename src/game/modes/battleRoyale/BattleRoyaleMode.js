@@ -16,7 +16,7 @@ import { CollapseClock, PLANET_STATUS } from './collapse.js';
 import { EQUIPMENT, Inventory } from './equipment.js';
 import { callReinforcements, planGarrisons, stationGarrison } from './garrisons.js';
 import { StarMap } from './starMap.js';
-import { buildStation, findStation } from './station.js';
+import { GATE_TAG, buildGate, buildStation, findStation } from './station.js';
 
 const scratchOffset = new Vector3();
 const sumLevels = (upgrades) => Object.values(upgrades).reduce((sum, levels) => sum + levels, 0);
@@ -82,8 +82,9 @@ class Place {
  * same way.
  *
  * Tuning is in config/battleRoyale.js. The pieces: StarMap (who can jump where), CollapseClock
- * (what falls in when), allegiance (sides and treason), station (the docks), garrisons (the
- * computer-flown ships), equipment (what pilots carry).
+ * (what falls in when), allegiance (sides and treason), station (the docks, and where the
+ * stargate stands), garrisons (the computer-flown ships), equipment (what pilots carry).
+ * The ending at the gate is the presenter's (gateCeremony.js): the rules only say who won.
  */
 export class BattleRoyaleMode {
     /**
@@ -118,6 +119,11 @@ export class BattleRoyaleMode {
 
     // ---- Setting up --------------------------------------------------------------------------
 
+    /** Stands the stargate up at the last planet: scenery to fly round, or through, until the end. */
+    raiseGate(zone) {
+        buildGate(zone.world, zone.sectorId, BATTLE_ROYALE.station, BATTLE_ROYALE.gate, (rock) => zone.clearRock(rock));
+    }
+
     setup(server) {
         this.server = server;
         const { map, rng } = this;
@@ -128,7 +134,8 @@ export class BattleRoyaleMode {
             const zone = server.addZone(planet.id, planet.sectorId, {
                 seed: Math.floor(rng() * 0xffffffff), difficulty: BATTLE_ROYALE.difficulty, friendlyFire: BATTLE_ROYALE.friendlyFire,
             });
-            const station = buildStation(zone, BATTLE_ROYALE.station, Boolean(planet.gate));
+            const station = buildStation(zone, BATTLE_ROYALE.station);
+            if (planet.gate) this.raiseGate(zone);
             this.places.set(planet.id, new Place(planet, orbit, zone, station));
             const sidesHere = garrisons.get(planet.id);
             for (const faction of sidesHere) {
@@ -251,7 +258,9 @@ export class BattleRoyaleMode {
                 seed: Math.floor(rng() * 0xffffffff), difficulty: BATTLE_ROYALE.difficulty, friendlyFire: BATTLE_ROYALE.friendlyFire,
             }, checkpoint.zones?.[planet.id]);
             // A checkpoint without the station (it never should be) gets a new one: the planet cannot be taken without it.
-            const station = findStation(zone, BATTLE_ROYALE.station) ?? buildStation(zone, BATTLE_ROYALE.station, Boolean(planet.gate));
+            const station = findStation(zone, BATTLE_ROYALE.station) ?? buildStation(zone, BATTLE_ROYALE.station);
+            // (Nor should it be without the gate: a checkpoint from before there was one.)
+            if (planet.gate && !zone.world.findByTag(GATE_TAG)) this.raiseGate(zone);
             const place = new Place(planet, orbit, zone, station);
             const saved = savedPlaces.get(planet.id) ?? {};
             place.owner = side(saved.owner);

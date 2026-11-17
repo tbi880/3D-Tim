@@ -49,6 +49,25 @@ const LANTERN_HIT_BOXES = Object.freeze([
     [18, -1127, 2216, 416, 387, 464], [25, -659, 2217, 556, 77, 503],
 ]);
 
+/**
+ * A ring as hit boxes: `count` of them round a circle of `radius` in the ship's x-y plane,
+ * each covering its stretch of a ring `2 x halfRadial` thick and `2 x halfDepth` deep. The
+ * middle is left open: ships fly through it.
+ */
+function ringHitBoxes(radius, halfRadial, halfDepth, count) {
+    const halfAlong = radius * Math.tan(Math.PI / count);
+    return Object.freeze(Array.from({ length: count }, (_, index) => {
+        const angle = (index / count) * Math.PI * 2;
+        const cos = Math.abs(Math.cos(angle));
+        const sin = Math.abs(Math.sin(angle));
+        // The box that holds this stretch once it is turned to its place on the ring.
+        return [
+            Math.round(radius * Math.cos(angle)), Math.round(radius * Math.sin(angle)), 0,
+            Math.round(cos * halfRadial + sin * halfAlong), Math.round(sin * halfRadial + cos * halfAlong), halfDepth,
+        ];
+    }));
+}
+
 export const SHIP_CLASSES = Object.freeze({
     // ---- Dawn fleet ---------------------------------------------------------------------
     // ---- Player ships (config/playerShips.js) ------------------------------------------------
@@ -257,6 +276,19 @@ export const SHIP_CLASSES = Object.freeze({
         model: 'lanternStation', radius: 3000,
         // From build_station.py (build/layout.json): the ring in 15-degree segments, the tower, the spine.
         hitBoxes: LANTERN_HIT_BOXES,
+        hull: 1, shield: 0, shieldRegen: 0, shieldDelay: 0,
+        maxSpeed: 0, turnRate: 0, acceleration: 0,
+        weapons: [], invulnerable: true, targetable: false,
+    },
+    stargate: {
+        // The stargate of the battle royale (tools/game-models/build_models.py `build_stargate`):
+        // a ring 2.4 km across, flown through along z. Scenery: the fight is for the station
+        // beside it. Its middle line is 1075 m out; the prongs leave about 790 m clear.
+        nameKey: 'ship.stargate', faction: FACTION.NEUTRAL, behavior: 'static', kind: 'station',
+        model: 'stargate', radius: 1300,
+        hitBoxes: ringHitBoxes(1075, 135, 125, 24),
+        /** Radius (m) of the opening its field is drawn across (scene/models/GatePortal.jsx). */
+        portal: 945,
         hull: 1, shield: 0, shieldRegen: 0, shieldDelay: 0,
         maxSpeed: 0, turnRate: 0, acceleration: 0,
         weapons: [], invulnerable: true, targetable: false,

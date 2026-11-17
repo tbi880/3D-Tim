@@ -1,12 +1,16 @@
 import { Vector3 } from 'three';
-import { BATTLE_ROYALE } from '../../config/battleRoyale.js';
+import { BATTLE_ROYALE, STAR_SYSTEM } from '../../config/battleRoyale.js';
+import { FACTION } from '../../config/gameConfig.js';
+import { SECTORS } from '../../config/sectors.js';
+import { SHIP_CLASSES } from '../../config/shipClasses.js';
 import { t } from '../../i18n/index.js';
 import { MATCH_PHASE } from '../../net/match/matchState.js';
 import { sanitizeBattleRoyaleState } from './battleRoyaleState.js';
 import { BR_EVENT, BR_REQUEST } from './battleRoyaleProtocol.js';
 import { PLANET_STATUS } from './collapse.js';
 import { isEquipment } from './equipment.js';
-import { STATION_TAG } from './station.js';
+import { GateCeremony } from './gateCeremony.js';
+import { STATION_TAG, buildGate, gatePose, stationPose } from './station.js';
 
 /** The mode's own keys and buttons (bound in input/InputController.js, shown by ui/multiplayer). */
 export const MATCH_ACTION = Object.freeze({
@@ -23,6 +27,14 @@ export const factionName = (faction) => t(`mp.faction.${String(faction)}`);
 export const equipmentName = (item) => t(`mp.equipment.${String(item)}.name`);
 
 const scratchOffset = new Vector3();
+
+/** The planet the stargate stands at. */
+const GATE_PLANET = STAR_SYSTEM.planets.find((planet) => planet.gate);
+/** Most ships shown going through the gate at the end, besides the player's own. */
+const MAX_FLYERS = 7;
+/** What a pilot whose ship the host never named is shown flying at the end. */
+const FALLBACK_SHIP = 'kestrel';
+const playerClass = (classId) => (SHIP_CLASSES[classId]?.behavior === 'player' ? classId : FALLBACK_SHIP);
 
 /** Seconds the warp streaks take to fade once the ship has arrived. */
 const WARP_EXIT_SECONDS = 1.4;
@@ -50,8 +62,10 @@ export class BattleRoyalePresenter {
         this.refitOpen = false;
         /** Whether the introduction is on screen (null before the first state has said). */
         this.introShowing = null;
-        /** The ending being played: { elapsed, seconds, won, showResults }, or null. */
+        /** The ending being played: { elapsed, seconds, won, showResults, stage }, or null. */
         this.outro = null;
+        /** True from the moment the match is decided: the picture is the ending's from then on. */
+        this.decided = false;
     }
 
     sanitizeState(raw) {
@@ -85,8 +99,8 @@ export class BattleRoyalePresenter {
     }
 
     /**
-     * The match is decided. Plays the ending - the winners go through the stargate, everybody
-     * else is left to the black hole - and only then lets the result screen up.
+     * The match is decided. Plays the ending at the stargate - the winners go through it,
+     * everybody else watches it close - and only then lets the result screen up.
      */
     onMatchOver(state, showResults) {
         if (this.outro) return true;
@@ -94,22 +108,80 @@ export class BattleRoyalePresenter {
         const won = Boolean(state.winner) && state.you?.faction === state.winner;
         this.setPanel(null);
         this.refitOpen = false;
+        this.decided = true;
+        session.setWaypoint(null);
         session.ui.set({ refit: null, matchOutro: { winner: state.winner, won } });
-        this.outro = { elapsed: 0, seconds: BATTLE_ROYALE.outro.seconds, won, showResults };
         this.warp = null;
+        this.outro = { elapsed: 0, seconds: BATTLE_ROYALE.outro.seconds, won, showResults, stage: this.stageEnding(state, won) };
         session.playCue(won ? CUE.VICTORY : CUE.DEFEAT);
         if (won) session.playMusic('finale');
         return true;
     }
 
+    /**
+     * Sets the ending's stage: wherever the player was (or was not: they may be dead), this
+     * device now shows the stargate, the station it stands off, the player's own ship and
+     * the rest of the winning side's. The ceremony says where each of them goes.
+     * @returns {{ ceremony: GateCeremony, own: object, flyers: object[] }}
+     */
+    stageEnding(state, won) {
+        const { client, session } = this;
+        const { world } = session;
+        const { sectorId } = GATE_PLANET;
+        const start = SECTORS[sectorId].playerStart;
+        client.takeStage(sectorId);
+
+        const station = stationPose(start, BATTLE_ROYALE.station);
+        world.spawnShip(BATTLE_ROYALE.station.classId, {
+            faction: FACTION.NEUTRAL, position: station.position, quaternion: station.quaternion.toArray(),
+            tags: [STATION_TAG], invulnerable: true, targetable: false,
+        });
+        buildGate(world, sectorId, BATTLE_ROYALE.station, BATTLE_ROYALE.gate);
+        world.gateField.faction = state.winner;
+
+        const me = state.players.find((player) => player.id === client.localPlayerId);
+        const others = state.winner
+            ? state.players.filter((player) => player.faction === state.winner && player !== me).slice(0, MAX_FLYERS)
+            : [];
+        const ceremony = new GateCeremony({
+            gate: gatePose(start, BATTLE_ROYALE.station, BATTLE_ROYALE.gate), timing: BATTLE_ROYALE.outro,
+            won, opens: Boolean(state.winner), others: others.length,
+        });
+        // Whoever goes through is under full burn; a watcher's engines idle.
+        const fly = (ship, burning) => {
+            ship.speed = burning ? ship.cls.maxSpeed : 0;
+            ship.boosting = burning;
+            return ship;
+        };
+        const own = fly(world.spawnShip(playerClass(me?.classId), {
+            faction: me?.faction ?? state.you?.faction ?? FACTION.NEUTRAL, pilotId: client.localPlayerId,
+        }), won);
+        const flyers = others.map((player) => fly(world.spawnShip(playerClass(player.classId), {
+            faction: player.faction, pilotId: player.id, callsign: player.name, local: false,
+        }), true));
+        const stage = { ceremony, own, flyers };
+        this.playEnding(stage, 0);
+        return stage;
+    }
+
+    /** Puts everything on the ending's stage where it belongs `elapsed` seconds in. */
+    playEnding({ ceremony, own, flyers }, elapsed) {
+        const { world } = this.session;
+        ceremony.placeViewer(elapsed, own.position, own.quaternion);
+        flyers.forEach((ship, index) => {
+            // Through the gate: gone.
+            if (ship.alive && ceremony.placeFlyer(index, elapsed, ship.position, ship.quaternion)) world.removeShip(ship);
+        });
+        ceremony.field(elapsed, world.gateField);
+        world.warpFactor = ceremony.warp(elapsed);
+        world.screenFade = ceremony.fade(elapsed);
+    }
+
     updateOutro(dt) {
         const { outro, session } = this;
         outro.elapsed += dt;
-        const progress = Math.min(1, outro.elapsed / outro.seconds);
-        // Winners: the jump through the gate builds for the whole ending. Losers: the dark closes in.
-        if (outro.won) session.world.warpFactor = progress * progress;
-        else session.world.screenFade = 0.85 * progress;
-        if (progress < 1) return;
+        this.playEnding(outro.stage, Math.min(outro.elapsed, outro.seconds));
+        if (outro.elapsed < outro.seconds) return;
         this.outro = null;
         if (outro.won) {
             // Through the gate: the flash of arrival, and the streaks let go behind the result.
@@ -297,12 +369,34 @@ export class BattleRoyalePresenter {
         }
     }
 
+    /**
+     * How the stargate shows while the match is still being fought: asleep until the last
+     * stand, then charging as the countdown runs out, in the colour of whoever holds its station
+     * (as far as this player knows).
+     */
+    followGate() {
+        const state = this.client?.state;
+        const field = this.session.world.gateField;
+        const { charge } = BATTLE_ROYALE.gate;
+        const left = state?.finalStand;
+        field.open = 0;
+        field.shut = 0;
+        field.pulse = 0;
+        field.faction = state?.planets?.find((planet) => planet.id === GATE_PLANET.id)?.owner ?? null;
+        field.charge = left == null ? charge.asleep
+            : charge.lastStand + (charge.ready - charge.lastStand) * (1 - Math.min(1, left / BATTLE_ROYALE.collapse.finalStand));
+    }
+
     update(dt) {
         if (this.outro) {
             this.updateOutro(dt);
             return;
         }
-        if (this.session) this.markDock();
+        // Once the match is decided the picture is the ending's stage, and stays as it left it.
+        if (this.session && !this.decided) {
+            this.markDock();
+            this.followGate();
+        }
         const { warp } = this;
         const world = this.session?.world;
         if (!warp || !world) return;
@@ -334,10 +428,12 @@ export class BattleRoyalePresenter {
         if (this.session) {
             this.session.world.warpFactor = 0;
             this.session.world.screenFade = 0;
+            Object.assign(this.session.world.gateField, { charge: 0, open: 0, shut: 0, pulse: 0, faction: null });
             this.session.setWaypoint(null);
         }
         this.warp = null;
         this.outro = null;
+        this.decided = false;
         this.openPanel = null;
         this.refitOpen = false;
     }

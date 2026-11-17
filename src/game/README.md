@@ -31,6 +31,15 @@ in `net/README.md` (the machinery) and `modes/battleRoyale/` (the rules, startin
 `BattleRoyaleMode.js`; tuning in `config/battleRoyale.js`). Its own keys: G star map,
 E dock / let go, I equipment, U refit, B reinforcements.
 
+The stargate everybody is fighting towards is a real thing at the last planet: a ring
+2.4 km across (`build_stargate` in `tools/game-models/build_models.py`, ship class
+`stargate`) hanging over that planet's station, with a field across its opening drawn by a
+shader (`scene/models/GatePortal.jsx`, driven by `world.gateField`): a faint film while
+the match is fought, charging through the last stand in the colour of whoever holds the
+station. When the match is decided every device cuts to it for the ending
+(`modes/battleRoyale/gateCeremony.js`): the winners fly through, everybody else watches it
+close.
+
 ## Architecture
 
 The game is split into layers that only depend downwards. The simulation knows nothing

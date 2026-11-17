@@ -177,14 +177,16 @@
 .eod-intro-side ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 12px; margin: 2px 0 0; padding: 0; list-style: none; font-size: 13px; }
 .eod-intro-me { color: var(--eod-amber); font-weight: 700; }
 
+/* The ending is played in the 3D view, at the stargate: the words stand under it, out of its way. */
+.eod-outro { justify-content: flex-end; padding-bottom: 11vh; }
 .eod-outro-text { margin: 0; max-width: 640px; font-size: clamp(14px, 1.9vw, 19px); line-height: 1.6; text-shadow: 0 0 12px #000; animation: eod-cine-in 0.9s ease-out 0.7s both; }
-.eod-outro--won .eod-cinematic-title { color: #ffe9a8; text-shadow: 0 0 18px #ffb648, 0 0 60px #ff8a1f; animation: eod-outro-rise 5s ease-out both; }
-.eod-outro--lost, .eod-outro--none { background: radial-gradient(ellipse at center, rgba(20, 0, 6, 0.2) 0%, rgba(10, 0, 4, 0.75) 100%); }
+.eod-outro--won .eod-cinematic-title { color: #ffe9a8; text-shadow: 0 0 18px #ffb648, 0 0 60px #ff8a1f; animation: eod-outro-rise var(--eod-outro-seconds, 8s) ease-out both; }
+.eod-outro--lost, .eod-outro--none { background: radial-gradient(ellipse at 50% 38%, rgba(20, 0, 6, 0) 30%, rgba(10, 0, 4, 0.6) 100%); }
 .eod-outro--lost .eod-cinematic-title, .eod-outro--none .eod-cinematic-title { color: var(--eod-red); }
 .eod-outro--lost .eod-outro-text, .eod-outro--none .eod-outro-text { color: rgba(255, 215, 220, 0.9); }
-/* Rays turning behind the winners' title, and a wash of gold that swells until the jump. */
-.eod-outro-burst { position: absolute; inset: -40%; z-index: -1; background: repeating-conic-gradient(from 0deg, rgba(255, 200, 110, 0.2) 0deg 6deg, transparent 6deg 18deg); mask-image: radial-gradient(circle, #000 0%, transparent 62%); -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 62%); animation: eod-outro-rays 5s linear both; }
-@keyframes eod-outro-rays { from { opacity: 0; transform: rotate(0deg) scale(0.6); } 20% { opacity: 1; } to { opacity: 1; transform: rotate(70deg) scale(1.5); } }
+/* Those words are about the gate closing: they wait until it does (config outro.close). */
+.eod-outro--lost .eod-cinematic-title { animation-delay: calc(var(--eod-outro-seconds, 8s) * 0.6); }
+.eod-outro--lost .eod-outro-text { animation-delay: calc(var(--eod-outro-seconds, 8s) * 0.6 + 0.7s); }
 @keyframes eod-outro-rise { from { opacity: 0; transform: scale(0.8); letter-spacing: 0.05em; } 18% { opacity: 1; transform: scale(1); } to { opacity: 1; transform: scale(1.08); letter-spacing: 0.26em; } }
 
 @media (pointer: coarse) {

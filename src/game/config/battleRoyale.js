@@ -44,8 +44,32 @@ export const BATTLE_ROYALE = Object.freeze({
      * sun (`sectorId`'s sky) from outside. When it ends every ship drops out of warp at once.
      */
     intro: Object.freeze({ seconds: 10, sectorId: 'collapse' }),
-    /** After the match is decided: seconds of ending shown before the result screen. */
-    outro: Object.freeze({ seconds: 5 }),
+    /**
+     * After the match is decided: the ending, played at the stargate before the result screen
+     * (modes/battleRoyale/gateCeremony.js). Whoever won flies through the gate; everybody
+     * else watches it open for them, and close. Distances are metres from the gate, back
+     * down its approach; `open`, `close` and `fade` are shares of `seconds`.
+     */
+    outro: Object.freeze({
+        seconds: 8,
+        /** Where the winners' run at the gate starts, and how hard it accelerates (1 = steady speed). */
+        approach: 4400,
+        acceleration: 2.1,
+        /** Winners fly in a loose wedge: metres between ships sideways, and each one's head start in seconds. */
+        spacing: 70,
+        stagger: 0.45,
+        /** Where everybody else sits and watches: back, to the side and below the gate's axis. */
+        gallery: Object.freeze([1500, -420, 4600]),
+        /** Metres per second the watchers drift towards the gate that is no longer theirs. */
+        drift: 35,
+        /** When the gate's field has opened; when, for the watchers, the winners are through and it starts to close, and has. */
+        open: 0.22,
+        close: Object.freeze([0.6, 0.86]),
+        /** From when the watchers' view darkens, and how dark it gets. */
+        fade: Object.freeze([0.68, 0.85]),
+        /** Seconds the picture takes to come up on the gate. */
+        cut: 0.5,
+    }),
 
     jump: Object.freeze({
         /** Seconds the drive needs after arriving anywhere before it can jump again. */
@@ -103,6 +127,22 @@ export const BATTLE_ROYALE = Object.freeze({
         heldSeconds: 15,
         /** Rocks closer than this to the hull or the approach lane are cleared away (metres). */
         clearance: 160,
+    }),
+
+    /**
+     * The stargate itself: a ring ships can fly through (config/shipClasses.js `stargate`),
+     * standing off the last planet's station - `offset` is in that station's axes: beyond it
+     * and above, facing back down the approach lane, so it hangs over the station as ships
+     * arrive. It is scenery while the match is fought (the station is what is taken), and the
+     * way out once it is decided. `charge` is how strongly its field shows: asleep, when the
+     * last stand begins, and when the last stand runs out.
+     */
+    gate: Object.freeze({
+        classId: 'stargate',
+        offset: Object.freeze([0, 2600, 6400]),
+        /** Rocks closer than this to the ring are cleared away (metres). */
+        clearance: 200,
+        charge: Object.freeze({ asleep: 0.1, lastStand: 0.35, ready: 0.85 }),
     }),
 
     capture: Object.freeze({
