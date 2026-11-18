@@ -318,7 +318,7 @@ const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, r
 
                             <div className="vr-container" style={{ marginTop: '10%' }}>
                                 <FontAwesomeIcon icon={faVrCardboard} className="vr-icon" />
-                                <span>VR is mode is temporary disabled, will be back soon.</span>
+                                <span>VR is now supported</span>
                             </div>
                             <br /><br />
                             <a
