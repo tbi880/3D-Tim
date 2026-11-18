@@ -488,8 +488,9 @@ function drawMenu(panel, menu, selected, t) {
         });
         y += 30 + half * 28;
     }
-    // A picture of the menu's own (the star map), between the text and the rows.
-    if (menu.diagram) y += 14 + menu.diagram(ctx, left, y + 14, contentWidth);
+    // A picture of the menu's own (the star map), between the text and the rows; it is told
+    // which row is selected, to mark on it what that row is about.
+    if (menu.diagram) y += 14 + menu.diagram(ctx, left, y + 14, contentWidth, menu.items[selected] ?? null);
     y += 18;
 
     // Rows; on long menus they shrink so everything fits above the footer.

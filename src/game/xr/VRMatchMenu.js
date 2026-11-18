@@ -1,7 +1,7 @@
-import { BATTLE_ROYALE, MAX_PLAYERS, PLAYER_FACTIONS, STAR_SYSTEM } from '../config/battleRoyale.js';
+import { BATTLE_ROYALE, MAX_PLAYERS, STAR_SYSTEM } from '../config/battleRoyale.js';
 import { PLAYER_SHIPS } from '../config/playerShips.js';
 import { MATCH_ACTION, MATCH_PANEL, OUTRO_ACT } from '../modes/battleRoyale/BattleRoyalePresenter.js';
-import { isBattle, jumpChoice, rankPlayers, respawnBlockedKey, rosterBySide } from '../modes/battleRoyale/battleRoyaleState.js';
+import { jumpChoice, rankPlayers, respawnBlockedKey, rosterBySide } from '../modes/battleRoyale/battleRoyaleState.js';
 import { PLANET_STATUS } from '../modes/battleRoyale/collapse.js';
 import { EQUIPMENT, EQUIPMENT_ORDER } from '../modes/battleRoyale/equipment.js';
 import { LAN_STATUS, LOBBY_SCOPE, ROOM_STATE, ROOM_VISIBILITY } from '../net/lobby/LanMultiplayer.js';
@@ -9,9 +9,9 @@ import { useLanStore } from '../net/lobby/lanStore.js';
 import { MATCH_PHASE } from '../net/match/matchState.js';
 import { LINK_STATUS } from '../net/transport/PeerLink.js';
 import { PHASE } from '../state/GameSession.js';
-import { drawCachedBackdrop, isGatePlanet, lookOf, paintPlanet } from '../ui/systemChart.js';
 import { matchMenuPlace } from './menuPlacement.js';
 import { exitVR } from './vrState.js';
+import { drawStarMap, respawnMarks } from './vrStarMap.js';
 
 /**
  * Multiplayer inside the headset: the LAN lobby, and in a match the star map (with the
@@ -31,6 +31,11 @@ const EQUIPMENT_PARAMS = Object.freeze({
     [EQUIPMENT.EMERGENCY_SHIELD]: { seconds: BATTLE_ROYALE.equipment.emergencyShieldSeconds },
 });
 const ORBITS = STAR_SYSTEM.planets.map((planet) => planet.id);
+/**
+ * Rows that fit, at a comfortable height, under the star map on the menu of a pilot who is down
+ * with the two lines of rules above it (xr/VRMenu.js lays the panel out); with more, the rules go.
+ */
+const RESPAWN_ROWS_WITH_RULES = 6;
 
 /**
  * True while the player's ship is lost and the menu of where to come back (or of whom to
@@ -258,116 +263,6 @@ function ending(state, t) {
 
 // ---- In a match -------------------------------------------------------------------------------
 
-const SIDE_COLORS = Object.freeze({ dawn: '#59d0ff', umbra: '#c04dff', pirate: '#ffb648' });
-const STATUS_COLORS = Object.freeze({ [PLANET_STATUS.SAFE]: '#7dffa8', [PLANET_STATUS.COLLAPSING]: '#ffb648', [PLANET_STATUS.SWALLOWED]: '#ff4b6e' });
-const MAP_FONT = '"PingFang SC", "Microsoft YaHei", Orbitron, sans-serif';
-/** The star map's height on the panel: the planets' row, three lines of text under it, and the "Sun → outer orbits" line. */
-const MAP_HEIGHT = 222;
-/** The biggest planet's radius on the panel (the others are drawn smaller: ui/systemChart.js PLANET_LOOKS). */
-const MAP_PLANET_MAX = 22;
-
-/**
- * Draws the star map the flat page shows as cards (ui/multiplayer/StarMapPanel.jsx): the
- * system side on as on the page (ui/systemChart.js: the collapsing sun at the left, an orbit
- * round it through each planet, "Sun → outer orbits" along the bottom), then over it every
- * planet in orbit order with its state and countdown, and where the player is. Where their
- * side has eyes (a pilot, a station it holds, or a beacon): who holds the station (a ring in
- * that side's colour), the ships there by side, a docking in progress, comrades. Elsewhere: a
- * question mark. The still part of the picture is kept and copied, not drawn again each time
- * a countdown on the map ticks.
- * @returns {number} the height it took
- */
-function drawStarMap(ctx, x, y, width, match, t) {
-    const { planets, you } = match;
-    const sunWidth = 54;
-    const cell = (width - sunWidth) / planets.length;
-    const centreY = y + 62;
-    const planetXs = planets.map((planet, index) => x + sunWidth + cell * (index + 0.5));
-    drawCachedBackdrop(ctx, {
-        x: x - 24, y, width: width + 48, height: MAP_HEIGHT, eclipticY: centreY, sunEdge: x + 30, planetXs, captionY: y + MAP_HEIGHT - 8,
-    }, { sun: t('mp.map.sun'), outer: t('mp.map.outer') }, { font: MAP_FONT, scale: 1.55 });
-    ctx.save();
-    ctx.textBaseline = 'alphabetic';
-
-    planets.forEach((planet, index) => {
-        const cx = planetXs[index];
-        const here = planet.id === you.planet;
-        const gate = isGatePlanet(planet.id);
-        const swallowed = planet.status === PLANET_STATUS.SWALLOWED;
-        const color = STATUS_COLORS[planet.status];
-        const look = lookOf(planet.id);
-        const radius = look.size * MAP_PLANET_MAX;
-        ctx.textAlign = 'center';
-
-        if (here) {
-            ctx.fillStyle = '#ffffff';
-            ctx.font = `700 17px ${MAP_FONT}`;
-            ctx.fillText(`▼ ${t('mp.lan.you')}`, cx, y + 20);
-        }
-        // The side that holds the planet's station.
-        if (planet.owner) {
-            ctx.strokeStyle = SIDE_COLORS[planet.owner];
-            ctx.lineWidth = 5;
-            ctx.beginPath();
-            ctx.arc(cx, centreY, MAP_PLANET_MAX + 9, 0, Math.PI * 2);
-            ctx.stroke();
-        }
-        ctx.globalAlpha = swallowed ? 0.6 : 1;
-        paintPlanet(ctx, { x: cx, y: centreY, radius, look, swallowed, gate, scale: 1.5 });
-        // A planet falling in: an amber ring round it (a swallowed one has its red rim already).
-        if (planet.status === PLANET_STATUS.COLLAPSING) {
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.arc(cx, centreY, radius + 5, 0, Math.PI * 2);
-            ctx.stroke();
-        }
-        ctx.globalAlpha = swallowed ? 0.45 : 1;
-
-        ctx.fillStyle = here ? '#ffffff' : 'rgba(225, 240, 255, 0.92)';
-        ctx.font = `700 19px ${MAP_FONT}`;
-        ctx.fillText(t(`mp.planet.${planet.id}`), cx, centreY + 56);
-        ctx.fillStyle = color;
-        ctx.font = `600 15px ${MAP_FONT}`;
-        const status = gate && planet.status === PLANET_STATUS.SAFE ? t('mp.map.gate') : t(`mp.hud.status.${planet.status}`);
-        ctx.fillText(planet.changesIn === null ? status : `${status} ${planet.changesIn}s`, cx, centreY + 77);
-
-        ctx.font = `700 16px ${MAP_FONT}`;
-        if (!planet.known) {
-            ctx.fillStyle = 'rgba(225, 240, 255, 0.45)';
-            ctx.fillText('?', cx, centreY + 99);
-        } else {
-            // The ships there, in their sides' colours; red under them when sides are fighting.
-            const sides = PLAYER_FACTIONS.filter((faction) => planet.forces[faction] > 0);
-            const spacing = 40;
-            sides.forEach((faction, slot) => {
-                ctx.fillStyle = SIDE_COLORS[faction];
-                ctx.fillText(`◆${planet.forces[faction]}`, cx + (slot - (sides.length - 1) / 2) * spacing, centreY + 99);
-            });
-            if (planet.beacon) {
-                ctx.fillStyle = '#7dffa8';
-                ctx.fillText('⌖', cx + 34, centreY - 22);
-            }
-            const note = planet.docking ? t('mp.map.docking', { faction: t(`mp.faction.${planet.docking}`) })
-                : isBattle(planet.forces) ? t('mp.map.battle') : null;
-            if (note && planet.comrades.length === 0) {
-                ctx.fillStyle = planet.docking ? SIDE_COLORS[planet.docking] : '#ff4b6e';
-                ctx.font = `600 14px ${MAP_FONT}`;
-                ctx.fillText(note, cx, centreY + 119);
-            }
-        }
-        if (planet.comrades.length > 0) {
-            ctx.fillStyle = SIDE_COLORS[you.faction];
-            ctx.font = `600 14px ${MAP_FONT}`;
-            const names = planet.comrades.join(', ');
-            ctx.fillText(names.length > 14 ? `${names.slice(0, 13)}…` : names, cx, centreY + 119);
-        }
-        ctx.globalAlpha = 1;
-    });
-    ctx.restore();
-    return MAP_HEIGHT;
-}
-
 function planetLine(planet, t) {
     const timer = planet.changesIn === null ? ''
         : ` · ${t(planet.status === PLANET_STATUS.SAFE ? 'mp.hud.fallsIn' : 'mp.hud.goneIn', { seconds: planet.changesIn })}`;
@@ -392,6 +287,7 @@ function starMap(session, presenter, match, t) {
             : jump.overdrive && you.jump.cooldown > 0 ? t('mp.map.overdriveCharging', { seconds: you.jump.cooldown }) : t(`mp.hud.status.${planet.status}`);
         items.push({
             label: `${jump.overdrive ? t('mp.map.overdrive') : t('mp.map.jump')} · ${t(`mp.planet.${planet.id}`)}`,
+            planet: planet.id,
             value,
             disabled: Boolean(jump.block),
             select: () => presenter.jumpTo(planet.id),
@@ -400,7 +296,12 @@ function starMap(session, presenter, match, t) {
     if (you.alive && you.equipment[EQUIPMENT.BEACON] > 0) {
         for (const planet of match.planets) {
             if (orbitsTo(planet) !== 1 || planet.beacon) continue;
-            items.push({ label: `${t('mp.map.beacon')} · ${t(`mp.planet.${planet.id}`)}`, value: `×${you.equipment[EQUIPMENT.BEACON]}`, select: () => presenter.launchBeacon(planet.id) });
+            items.push({
+                label: `${t('mp.map.beacon')} · ${t(`mp.planet.${planet.id}`)}`,
+                planet: planet.id,
+                value: `×${you.equipment[EQUIPMENT.BEACON]}`,
+                select: () => presenter.launchBeacon(planet.id),
+            });
         }
     }
     items.push(
@@ -422,7 +323,8 @@ function starMap(session, presenter, match, t) {
         title: t('mp.map.title'),
         lines,
         // The whole system at a glance, as on the flat page; redrawn whenever anything on it changes.
-        diagram: (ctx, x, y, width) => drawStarMap(ctx, x, y, width, match, t),
+        // The planet a jump or beacon row goes to is framed while the row is selected.
+        diagram: (ctx, x, y, width, row) => drawStarMap(ctx, x, y, width, match, t, { focus: row?.planet ?? null }),
         diagramKey: JSON.stringify([match.planets, you.planet]),
         items,
     };
@@ -458,22 +360,32 @@ function equipment(presenter, match, t) {
 }
 
 /**
- * Shot down (ui/multiplayer/MatchHud.jsx RespawnPrompt in the headset): the wait, then a row
- * for each station the side holds - the first is where the pilot is sent if the clock runs
- * out - and the star map. The rows are there during the wait too, but cannot be chosen yet;
- * a station another side is taking is a row that cannot be chosen until that is settled.
+ * Shot down (ui/multiplayer/MatchHud.jsx RespawnPrompt in the headset): the wait, the star map
+ * with the stations the side holds marked on it (the one the pilot is sent to if the clock
+ * runs out, those that may be chosen, and those that may not: being taken, or about to be
+ * swallowed), then a row for each station that may be chosen - the first is the default -
+ * and the comrades to watch. The station or comrade whose row is selected is framed on the
+ * map. The station rows are there during the wait too, but cannot be chosen yet. The gear
+ * row leads to the equipment (and from there to the whole star map, with what is at the
+ * pilot's planet).
+ *
+ * The map takes no more of the view than the rows did: it is drawn into the same panel, the
+ * line saying what the trigger does moves to the panel's foot, and when there are many rows
+ * the rules make room for them.
  */
 function respawn(presenter, match, t) {
-    if (match.you.out) {
+    const { you } = match;
+    if (you.out) {
         return {
             key: 'match:out',
             title: t('mp.out.title'),
             lines: [t('mp.out.text')],
+            // (No map here: every pilot still flying, of any side, may be watched - up to nine rows.)
             items: [...watchRows(presenter, match, t), { label: t('mp.map.title'), select: () => presenter.setPanel(MATCH_PANEL.MAP) }],
             tone: 'failure',
         };
     }
-    const comeback = match.you.respawn;
+    const comeback = you.respawn;
     const ready = comeback.wait === 0;
     const open = comeback.stations.length > 0;
     const none = !open && comeback.contested.length === 0 && comeback.falling.length === 0;
@@ -481,30 +393,38 @@ function respawn(presenter, match, t) {
         : none ? t('mp.respawn.noStation')
             : !open ? t(respawnBlockedKey(comeback)) : t('mp.respawn.choose', { seconds: comeback.choose ?? 0 });
     const statusOf = (planetId) => match.planets.find((planet) => planet.id === planetId)?.status ?? PLANET_STATUS.SAFE;
-    const items = comeback.stations.map((planetId, index) => ({
-        id: `respawn:${planetId}`,
-        label: t('mp.respawn.station', { planet: t(`mp.planet.${planetId}`) }),
-        sub: index === 0 ? t('mp.respawn.default') : null,
-        value: t(`mp.hud.status.${statusOf(planetId)}`),
-        disabled: !ready,
-        select: () => presenter.respawnAt(planetId),
-    }));
-    for (const planetId of comeback.contested) {
-        items.push({ label: t('mp.respawn.station', { planet: t(`mp.planet.${planetId}`) }), value: t('mp.respawn.contested'), disabled: true });
-    }
-    for (const planetId of comeback.falling) {
-        items.push({ label: t('mp.respawn.station', { planet: t(`mp.planet.${planetId}`) }), value: t('mp.respawn.falling'), disabled: true });
-    }
-    items.push(...watchRows(presenter, match, t), { label: t('mp.map.title'), select: () => presenter.setPanel(MATCH_PANEL.MAP) });
-    const lines = [headline, none ? t('mp.respawn.noStationText') : t('mp.respawn.text', { next: comeback.next })];
-    if (ready && open) lines.push(t('mp.respawn.vrHint'));
+    // (Stations being taken or about to fall in are marked on the map, not listed: they cannot be chosen.)
+    const items = comeback.stations.map((planetId, index) => {
+        const status = t(`mp.hud.status.${statusOf(planetId)}`);
+        return {
+            id: `respawn:${planetId}`,
+            planet: planetId,
+            label: t('mp.respawn.station', { planet: t(`mp.planet.${planetId}`) }),
+            value: index === 0 ? `${status} · ${t('mp.respawn.default')}` : status,
+            disabled: !ready,
+            select: () => presenter.respawnAt(planetId),
+        };
+    });
+    items.push(...watchRows(presenter, match, t), {
+        label: t('mp.vr.gear'),
+        value: you.picks > 0 ? t('mp.equipment.picks', { count: you.picks }) : carriedLine(you, t),
+        select: () => presenter.setPanel(MATCH_PANEL.EQUIPMENT),
+    });
+    // With more rows than fit under the map, the two lines of rules give way to them (the headline stays).
+    const lines = [headline];
+    if (items.length <= RESPAWN_ROWS_WITH_RULES) lines.push(none ? t('mp.respawn.noStationText') : t('mp.respawn.text', { next: comeback.next }));
+    if (match.finalStand !== null) lines.push(t('mp.map.finalStand', { seconds: match.finalStand }));
+    const marks = respawnMarks(comeback);
     return {
         // A new key when the stations can be chosen, and when one starts or stops being taken or
         // starts to fall: the selection goes back to the first one offered, never left on one that cannot be chosen.
         key: `match:respawn:${ready && open ? 'ready' : 'waiting'}:${comeback.contested.join()}:${comeback.falling.join()}`,
         title: t('mp.hud.dead'),
         lines,
+        diagram: (ctx, x, y, width, row) => drawStarMap(ctx, x, y, width, match, t, { marks, focus: row?.planet ?? null }),
+        diagramKey: JSON.stringify([match.planets, you.planet, marks]),
         items,
+        footer: ready && open ? t('mp.respawn.vrFooter') : undefined,
         tone: 'failure',
     };
 }
@@ -521,6 +441,7 @@ function watchRows(presenter, match, t) {
         const mate = you.team.find((entry) => entry.id === id);
         return {
             id: `watch:${id}`,
+            planet: mate?.planet ?? null,
             label: t('mp.vr.watch', { name: player?.name ?? id }),
             sub: player && player.faction !== you.faction ? t(`mp.faction.${player.faction}`) : null,
             value: you.watching === id ? '◉' : mate?.planet ? t(`mp.planet.${mate.planet}`) : null,

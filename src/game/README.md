@@ -29,7 +29,10 @@ There is also a multiplayer mode - one "Multiplayer" entry on the title menu, th
 royale across a collapsing star system, where sides take planets by docking at their
 stations - described in `net/README.md` (the machinery) and `modes/battleRoyale/` (the rules,
 starting at `BattleRoyaleMode.js`; tuning in `config/battleRoyale.js`). Its own keys: G star map,
-E dock / let go, I equipment, U refit, B reinforcements.
+E dock / let go, I equipment, U refit, B reinforcements. In a headset the star map is a picture
+on the menu panel (`xr/vrStarMap.js`), and a pilot who is shot down chooses where to come back
+on the same picture: the stations they may (or for now may not) come back to are marked on it,
+and the planet of the row the stick is on - a station, or a comrade to watch - is framed.
 
 The stargate everybody is fighting towards is a real thing at the last planet: a ring
 2.4 km across (`build_stargate` in `tools/game-models/build_models.py`, ship class
