@@ -144,12 +144,19 @@
 .eod-match-mate-hull { background: #ff9a5c; }
 
 /* ---- Star map ---------------------------------------------------------------------------- */
+/* The cards stand on a picture of the system side on (StarMapPanel.jsx SystemBackdrop, a canvas
+   inside the sun's column that covers the whole list): the sun in that column, an orbit through
+   each card, the planet at the top of the card, and "Sun -> outer orbits" in the strip below.
+   The cards are clear over the planet and darken under their text. */
 .eod-map { gap: 14px; }
-.eod-map-orbits { display: flex; align-items: stretch; justify-content: center; gap: 6px; width: min(1100px, 96vw); margin: 0; padding: 0; list-style: none; overflow-x: auto; }
-.eod-map-sun { display: flex; align-items: center; padding: 0 6px; font-size: 44px; color: #b06bff; text-shadow: 0 0 22px #7a2bd6; }
-.eod-map-planet { display: flex; flex: 1 1 0; flex-direction: column; align-items: center; gap: 4px; min-width: 92px; padding: 10px 6px; font-size: 11px; text-align: center; background: var(--eod-panel); border: 1px solid var(--eod-border); }
-.eod-map-planet strong { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
-.eod-map-globe { font-size: 26px; line-height: 1; color: var(--eod-cyan); }
+.eod-map-orbits { --eod-planet-max: 15px; position: relative; isolation: isolate; display: flex; align-items: stretch; justify-content: center; gap: 6px; width: min(1100px, 96vw); margin: 0; padding: 0 0 26px; list-style: none; overflow-x: auto; overflow-y: hidden; }
+.eod-map-chart { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; }
+.eod-map-sun { flex: 0 0 72px; }
+.eod-map-planet { position: relative; z-index: 1; display: flex; flex: 1 1 0; flex-direction: column; align-items: center; gap: 4px; min-width: 92px; padding: 10px 6px; font-size: 11px; text-align: center; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9); background: linear-gradient(to bottom, rgba(6, 16, 28, 0.06), rgba(6, 16, 28, 0.06) 48px, rgba(6, 16, 28, 0.5) 74px); border: 1px solid var(--eod-border); }
+.eod-map-planet strong { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; text-shadow: 0 0 6px #000; }
+/* The planet's place (painted behind): a ring round it shows a collapse (amber, blinking), a swallowing (red) and the side holding its station (a ring of that side's colour). */
+.eod-map-globe { position: relative; flex: none; width: 100%; height: calc(var(--eod-planet-max) * 2 + 12px); }
+.eod-map-globe::before { content: ''; position: absolute; left: 50%; top: 50%; box-sizing: border-box; width: calc(var(--eod-planet-size, 0.6) * var(--eod-planet-max) * 2 + 10px); aspect-ratio: 1; border: 2px solid transparent; border-radius: 50%; transform: translate(-50%, -50%); }
 .eod-map-status { font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--eod-green); }
 .eod-map-timer, .eod-map-forces, .eod-map-comrades { color: rgba(225, 240, 255, 0.7); }
 .eod-map-forces { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 10px; }
@@ -164,15 +171,27 @@
 .eod-map-here { font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--eod-cyan); }
 .eod-map-planet--here { border-color: var(--eod-cyan); box-shadow: 0 0 14px rgba(89, 208, 255, 0.35) inset; }
 .eod-map-planet--collapsing { border-color: var(--eod-amber); }
-.eod-map-planet--collapsing .eod-map-status, .eod-map-planet--collapsing .eod-map-globe { color: var(--eod-amber); animation: eod-blink 0.8s steps(2) infinite; }
+.eod-map-planet--collapsing .eod-map-status { color: var(--eod-amber); animation: eod-blink 0.8s steps(2) infinite; }
+.eod-map-planet--collapsing .eod-map-globe::before { border-color: var(--eod-amber); animation: eod-blink 0.8s steps(2) infinite; }
 .eod-map-planet--swallowed { opacity: 0.55; border-color: rgba(255, 75, 110, 0.5); }
-.eod-map-planet--swallowed .eod-map-status, .eod-map-planet--swallowed .eod-map-globe { color: var(--eod-red); }
-.eod-map-planet--held-dawn .eod-map-globe { text-shadow: 0 0 12px var(--eod-cyan), 0 0 26px var(--eod-cyan); }
-.eod-map-planet--held-umbra .eod-map-globe { text-shadow: 0 0 12px var(--eod-violet), 0 0 26px var(--eod-violet); }
-.eod-map-planet--held-pirate .eod-map-globe { text-shadow: 0 0 12px var(--eod-amber), 0 0 26px var(--eod-amber); }
+.eod-map-planet--swallowed .eod-map-status { color: var(--eod-red); }
+.eod-map-planet--swallowed .eod-map-globe::before { border-color: var(--eod-red); }
+.eod-map-planet--held-dawn .eod-map-globe::before { box-shadow: 0 0 0 3px var(--eod-cyan), 0 0 16px var(--eod-cyan); }
+.eod-map-planet--held-umbra .eod-map-globe::before { box-shadow: 0 0 0 3px var(--eod-violet), 0 0 16px var(--eod-violet); }
+.eod-map-planet--held-pirate .eod-map-globe::before { box-shadow: 0 0 0 3px var(--eod-amber), 0 0 16px var(--eod-amber); }
 .eod-map-planet { box-sizing: border-box; overflow: hidden; }
 .eod-map-jump { box-sizing: border-box; margin-top: auto; padding: 8px 4px; width: 100%; letter-spacing: 0.1em; }
 .eod-map-jump:disabled { opacity: 0.45; cursor: default; transform: none; }
+/* The cards keep their height (the screen scrolls instead of the cards losing their lower lines);
+   on a short screen - a phone held sideways - the heading, the hint and Close are made small
+   enough that the whole map fits. */
+.eod-map-orbits { flex-shrink: 0; }
+@media (max-height: 520px) {
+    .eod-screen.eod-map { justify-content: safe center; gap: 6px; padding: 8px 12px; }
+    .eod-map .eod-refit-title { font-size: 20px; letter-spacing: 0.14em; }
+    .eod-map .eod-screen-text { max-width: 680px; font-size: 11px; line-height: 1.4; }
+    .eod-map .eod-menu .eod-button { padding: 6px 18px; font-size: 12px; }
+}
 
 /* ---- Result ------------------------------------------------------------------------------ */
 .eod-result--victory .eod-screen-heading { color: var(--eod-green); }
@@ -236,7 +255,9 @@
     .eod-hud--desktop .eod-match-respawn-stations .eod-button { padding: 7px 6px; font-size: 10px; letter-spacing: 0.06em; }
 }
 @media (pointer: coarse) {
-    .eod-map-planet { min-width: 104px; padding: 6px 4px; font-size: 10px; }
+    .eod-map-orbits { --eod-planet-max: 11px; padding-bottom: 22px; }
+    .eod-map-sun { flex-basis: 44px; }
+    .eod-map-planet { min-width: 104px; padding: 6px 4px; font-size: 10px; background: linear-gradient(to bottom, rgba(6, 16, 28, 0.06), rgba(6, 16, 28, 0.06) 34px, rgba(6, 16, 28, 0.52) 56px); }
     .eod-gear-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .eod-gear-card { padding: 6px; font-size: 10px; }
     .eod-gear-icon { font-size: 18px; }

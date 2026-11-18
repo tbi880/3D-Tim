@@ -9,6 +9,7 @@ import { useLanStore } from '../net/lobby/lanStore.js';
 import { MATCH_PHASE } from '../net/match/matchState.js';
 import { LINK_STATUS } from '../net/transport/PeerLink.js';
 import { PHASE } from '../state/GameSession.js';
+import { drawCachedBackdrop, isGatePlanet, lookOf, paintPlanet } from '../ui/systemChart.js';
 import { exitVR } from './vrState.js';
 
 /**
@@ -251,14 +252,20 @@ function ending(outro, t) {
 const SIDE_COLORS = Object.freeze({ dawn: '#59d0ff', umbra: '#c04dff', pirate: '#ffb648' });
 const STATUS_COLORS = Object.freeze({ [PLANET_STATUS.SAFE]: '#7dffa8', [PLANET_STATUS.COLLAPSING]: '#ffb648', [PLANET_STATUS.SWALLOWED]: '#ff4b6e' });
 const MAP_FONT = '"PingFang SC", "Microsoft YaHei", Orbitron, sans-serif';
-const MAP_HEIGHT = 196;
+/** The star map's height on the panel: the planets' row, three lines of text under it, and the "Sun → outer orbits" line. */
+const MAP_HEIGHT = 222;
+/** The biggest planet's radius on the panel (the others are drawn smaller: ui/systemChart.js PLANET_LOOKS). */
+const MAP_PLANET_MAX = 22;
 
 /**
  * Draws the star map the flat page shows as cards (ui/multiplayer/StarMapPanel.jsx): the
- * collapsing sun, then every planet in orbit order with its state and countdown, and where
- * the player is. Where their side has eyes (a pilot, a station it holds, or a beacon): who
- * holds the station (a ring in that side's colour), the ships there by side, a docking in
- * progress, comrades. Elsewhere: a question mark.
+ * system side on as on the page (ui/systemChart.js: the collapsing sun at the left, an orbit
+ * round it through each planet, "Sun → outer orbits" along the bottom), then over it every
+ * planet in orbit order with its state and countdown, and where the player is. Where their
+ * side has eyes (a pilot, a station it holds, or a beacon): who holds the station (a ring in
+ * that side's colour), the ships there by side, a docking in progress, comrades. Elsewhere: a
+ * question mark. The still part of the picture is kept and copied, not drawn again each time
+ * a countdown on the map ticks.
  * @returns {number} the height it took
  */
 function drawStarMap(ctx, x, y, width, match, t) {
@@ -266,29 +273,21 @@ function drawStarMap(ctx, x, y, width, match, t) {
     const sunWidth = 54;
     const cell = (width - sunWidth) / planets.length;
     const centreY = y + 62;
+    const planetXs = planets.map((planet, index) => x + sunWidth + cell * (index + 0.5));
+    drawCachedBackdrop(ctx, {
+        x: x - 24, y, width: width + 48, height: MAP_HEIGHT, eclipticY: centreY, sunEdge: x + 30, planetXs, captionY: y + MAP_HEIGHT - 8,
+    }, { sun: t('mp.map.sun'), outer: t('mp.map.outer') }, { font: MAP_FONT, scale: 1.55 });
     ctx.save();
     ctx.textBaseline = 'alphabetic';
 
-    // The sun that is eating the system, and the line of orbits leading away from it.
-    ctx.strokeStyle = 'rgba(150, 200, 235, 0.35)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(x + 30, centreY);
-    ctx.lineTo(x + width - cell / 2, centreY);
-    ctx.stroke();
-    ctx.fillStyle = '#12061f';
-    ctx.strokeStyle = '#b06bff';
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.arc(x + 24, centreY, 17, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
     planets.forEach((planet, index) => {
-        const cx = x + sunWidth + cell * (index + 0.5);
+        const cx = planetXs[index];
         const here = planet.id === you.planet;
-        const gate = index === planets.length - 1;
+        const gate = isGatePlanet(planet.id);
+        const swallowed = planet.status === PLANET_STATUS.SWALLOWED;
         const color = STATUS_COLORS[planet.status];
+        const look = lookOf(planet.id);
+        const radius = look.size * MAP_PLANET_MAX;
         ctx.textAlign = 'center';
 
         if (here) {
@@ -301,22 +300,20 @@ function drawStarMap(ctx, x, y, width, match, t) {
             ctx.strokeStyle = SIDE_COLORS[planet.owner];
             ctx.lineWidth = 5;
             ctx.beginPath();
-            ctx.arc(cx, centreY, 30, 0, Math.PI * 2);
+            ctx.arc(cx, centreY, MAP_PLANET_MAX + 9, 0, Math.PI * 2);
             ctx.stroke();
         }
-        ctx.globalAlpha = planet.status === PLANET_STATUS.SWALLOWED ? 0.45 : 1;
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(cx, centreY, gate ? 13 : 19, 0, Math.PI * 2);
-        ctx.fill();
-        if (gate) {
-            // The stargate: a ring around the last planet.
+        ctx.globalAlpha = swallowed ? 0.6 : 1;
+        paintPlanet(ctx, { x: cx, y: centreY, radius, look, swallowed, gate, scale: 1.5 });
+        // A planet falling in: an amber ring round it (a swallowed one has its red rim already).
+        if (planet.status === PLANET_STATUS.COLLAPSING) {
             ctx.strokeStyle = color;
-            ctx.lineWidth = 4;
+            ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.arc(cx, centreY, 22, 0, Math.PI * 2);
+            ctx.arc(cx, centreY, radius + 5, 0, Math.PI * 2);
             ctx.stroke();
         }
+        ctx.globalAlpha = swallowed ? 0.45 : 1;
 
         ctx.fillStyle = here ? '#ffffff' : 'rgba(225, 240, 255, 0.92)';
         ctx.font = `700 19px ${MAP_FONT}`;
