@@ -34,6 +34,8 @@ export const useGameStore = create(() => ({
     match: null,
     /** The match's own window that is open over the flight view ('map'), or null. */
     matchPanel: null,
+    /** VR: a pilot who is down has put their menu away to watch somebody fly (modes/battleRoyale/BattleRoyalePresenter.js setWatchView). */
+    matchWatchView: false,
     /** The ending a match is playing before its result screen ({ winner, won }), or null. */
     matchOutro: null,
 

@@ -46,7 +46,7 @@ export class FakeLobbyServer {
         this.nextRoom += 1;
         const room = {
             code, state: 'Lobby', hostPlayerId: host.playerId, mode: options?.mode ?? 'battleRoyale', settings: options?.settings ?? {},
-            maxPlayers: 6, matchId: null, players: [host], visibility, startsInSeconds: null,
+            maxPlayers: 10, matchId: null, players: [host], visibility, startsInSeconds: null,
             /** Players the host has put out: not let or matched back in. */
             removed: [],
         };

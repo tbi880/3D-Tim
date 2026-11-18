@@ -122,6 +122,27 @@
 .eod-match-respawn-stations .eod-match-respawn-contested { border-style: dashed; }
 .eod-match-respawn-stations .eod-match-respawn-contested small { color: var(--eod-red); }
 
+/* Whom a pilot who is down watches fly, under the choice of where to come back. */
+.eod-match-watch { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; }
+.eod-match-watch > span { color: rgba(225, 240, 255, 0.65); }
+.eod-match-watch strong { min-width: 90px; font-size: 12px !important; letter-spacing: 0.04em !important; color: var(--eod-cyan) !important; text-transform: none !important; }
+.eod-match-watch .eod-match-button { flex: none; padding: 4px 8px; }
+.eod-match-watch kbd { margin-left: 5px; }
+/* The comrades: name, where (or how long until they are back), and shield over hull. */
+.eod-match-team { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; pointer-events: auto; }
+.eod-match-mate { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 2px 8px; padding: 3px 6px; font: inherit; font-size: 12px; text-align: left; color: inherit; background: rgba(10, 30, 50, 0.45); border: 1px solid transparent; }
+.eod-match-mate:disabled { cursor: default; }
+.eod-match-mate:not(:disabled) { cursor: pointer; border-color: var(--eod-border); }
+.eod-match-mate:not(:disabled):hover { border-color: var(--eod-cyan); }
+.eod-match-mate--watched { border-color: var(--eod-cyan) !important; background: rgba(30, 80, 120, 0.55); }
+.eod-match-mate--down { opacity: 0.6; }
+.eod-match-mate-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 700; }
+.eod-match-mate small { font-size: 10px; color: rgba(225, 240, 255, 0.7); }
+.eod-match-mate-bars { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 1px; }
+.eod-match-mate-bars i { display: block; height: 2px; }
+.eod-match-mate-shield { background: var(--eod-cyan); }
+.eod-match-mate-hull { background: #ff9a5c; }
+
 /* ---- Star map ---------------------------------------------------------------------------- */
 .eod-map { gap: 14px; }
 .eod-map-orbits { display: flex; align-items: stretch; justify-content: center; gap: 6px; width: min(1100px, 96vw); margin: 0; padding: 0; list-style: none; overflow-x: auto; }
@@ -197,6 +218,14 @@
 .eod-hud--touch .eod-match-respawn-stations .eod-button small { font-size: 8px; }
 .eod-hud--touch .eod-match-respawn-stations kbd { display: none; }
 @media (max-height: 430px) { .eod-hud--touch .eod-match-respawn p { display: none; } }
+/* Phones: the comrades (only while the player is down) small in the left column, the watch bar on one line. */
+.eod-hud--touch .eod-match-team { gap: 2px; padding: 4px 6px; }
+.eod-hud--touch .eod-match-mate { padding: 2px 4px; font-size: 10px; }
+.eod-hud--touch .eod-match-mate small { font-size: 9px; }
+.eod-hud--touch .eod-match-watch { gap: 4px; font-size: 10px; }
+.eod-hud--touch .eod-match-watch strong { min-width: 60px; font-size: 10px !important; }
+.eod-hud--touch .eod-match-watch .eod-match-button { flex: none; padding: 5px 9px; }
+.eod-hud--touch .eod-match-watch kbd { display: none; }
 /* A narrow phone: no ping in the strip, so the side and the planet share its first line. */
 @media (max-width: 700px) { .eod-hud--touch .eod-match-status--strip .eod-match-ping { display: none; } }
 /* A narrow desktop window: the choice of where to come back in the narrower top-centre column (hud.css). */

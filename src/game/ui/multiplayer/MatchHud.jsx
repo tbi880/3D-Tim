@@ -8,9 +8,9 @@ import { EQUIPMENT_ICONS } from './EquipmentPanel.jsx';
 /**
  * The battle royale's part of the in-flight HUD: which side the pilot is on, where they
  * are and how long that will last, the jump drive, what they carry and have to spend, the
- * station's dock when the ship is in it, where to come back after being shot down - and the
- * buttons for the map, the refit window, reinforcements, docking and the equipment (keys G,
- * U, B, E and I).
+ * station's dock when the ship is in it, the comrades, where to come back after being shot
+ * down and whom to watch meanwhile - and the buttons for the map, the refit window,
+ * reinforcements, docking and the equipment (keys G, U, B, E and I).
  *
  * Each part is placed by ui/GameHud.jsx in one of its docks, so that it stacks with the
  * panels it shows up with instead of covering them. GameHud shows none of them during a
@@ -164,13 +164,24 @@ export function MatchAlerts() {
  * side holds - the first one (key E) is where they are sent if they let the clock run out.
  * During the wait the buttons are there but not yet live, so the choice can be made ahead. A
  * station another side is docked at, taking it, is shown greyed out until that is settled.
+ * Once the pilot's side is out, it says so instead. Either way, under it: whom they watch fly.
  */
 export function RespawnPrompt({ session }) {
     const match = useGameStore((state) => state.match);
     const t = useT();
-    const respawn = match?.you?.respawn;
+    const you = match?.you;
     const presenter = session.match?.presenter;
-    if (!respawn || !presenter) return null;
+    if (!you || you.alive || !presenter || (!you.respawn && !you.out)) return null;
+    if (you.out) {
+        return (
+            <div className="eod-panel eod-match-respawn">
+                <strong>{t('mp.out.title')}</strong>
+                <p>{t('mp.out.text')}</p>
+                <WatchBar match={match} presenter={presenter} />
+            </div>
+        );
+    }
+    const { respawn } = you;
     const ready = respawn.wait === 0;
     const open = respawn.stations.length > 0;
     const none = !open && respawn.contested.length === 0;
@@ -209,6 +220,77 @@ export function RespawnPrompt({ session }) {
                     ))}
                 </div>
             )}
+            <WatchBar match={match} presenter={presenter} />
+        </div>
+    );
+}
+
+/**
+ * Whom a pilot who is down watches fly: the name, the previous and next pilot they may watch
+ * (key T steps on too) and a button that stops watching - the view goes back to where they are.
+ */
+function WatchBar({ match, presenter }) {
+    const t = useT();
+    const candidates = presenter.watchCandidates();
+    const { watching } = match.you;
+    const name = watching ? match.players.find((player) => player.id === watching)?.name : null;
+    if (candidates.length === 0 && !watching) return <div className="eod-match-watch"><span>{t('mp.watch.nobody')}</span></div>;
+    return (
+        <div className="eod-match-watch">
+            <span>{t('mp.watch.label')}</span>
+            <button type="button" className="eod-match-button" disabled={candidates.length === 0} onClick={() => presenter.watchNext(-1)}>◀</button>
+            <strong>{name ?? t('mp.watch.none')}</strong>
+            <button type="button" className="eod-match-button" disabled={candidates.length === 0} onClick={() => presenter.watchNext(1)}>
+                ▶<kbd>{t('mp.watch.key')}</kbd>
+            </button>
+            {watching && <button type="button" className="eod-match-button" onClick={() => presenter.watch(null)}>{t('mp.watch.stop')}</button>}
+        </div>
+    );
+}
+
+/**
+ * The player's comrades, wherever they are: each one's ship, planet, hull and shield - or how
+ * long until they may come back. While the player's own ship is lost, a comrade in the air can
+ * be clicked (tapped) to watch them fly. On a phone (`onlyWhenDown`) it comes up only then:
+ * in flight the screen has no room for it.
+ */
+export function TeamPanel({ session, onlyWhenDown = false }) {
+    const match = useGameStore((state) => state.match);
+    const t = useT();
+    const you = match?.you;
+    const presenter = session.match?.presenter;
+    if (!you || you.team.length === 0 || (onlyWhenDown && you.alive)) return null;
+    const down = !you.alive;
+    const state = (mate) => {
+        if (mate.alive) return mate.docking ? t('mp.team.docking') : mate.planet ? t(`mp.planet.${mate.planet}`) : '';
+        if (you.out || mate.wait === null) return t('mp.team.out');
+        return mate.wait > 0 ? t('mp.team.waiting', { seconds: mate.wait }) : t('mp.team.ready');
+    };
+    return (
+        <div className="eod-panel eod-match-team">
+            <span className="eod-meter-label">{t('mp.team.title')}{down ? ` · ${t('mp.team.watchHint')}` : ''}</span>
+            {you.team.map((mate) => {
+                const watchable = down && mate.alive;
+                const watched = you.watching === mate.id;
+                return (
+                    <button
+                        key={mate.id}
+                        type="button"
+                        className={`eod-match-mate ${mate.alive ? '' : 'eod-match-mate--down'} ${watched ? 'eod-match-mate--watched' : ''}`}
+                        disabled={!watchable}
+                        onClick={() => presenter?.watch(mate.id)}
+                    >
+                        <span className="eod-match-mate-name">{watched ? '◉ ' : ''}{mate.name}</span>
+                        <small>{state(mate)}</small>
+                        {mate.alive && (
+                            <span className="eod-match-mate-bars">
+                                <i className="eod-match-mate-shield" style={{ width: `${mate.shield}%` }} />
+                                <i className="eod-match-mate-hull" style={{ width: `${mate.hull}%` }} />
+                            </span>
+                        )}
+                    </button>
+                );
+            })}
         </div>
     );
 }

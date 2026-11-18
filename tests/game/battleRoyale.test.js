@@ -127,11 +127,12 @@ test('the match starts with a zone per planet, each with a garrisoned station, a
     assert.ok(NPC_FACTIONS.every((faction) => gateWorld.ships.some((ship) => ship.faction === faction)), 'both fleets wait at the gate');
 });
 
-test('players are dealt into sides, each flying for the side they got', () => {
+test('players are dealt into sides, each flying for the side they got: ten of them four, four and two', () => {
     for (let seed = 1; seed <= 12; seed++) {
-        const { server, mode } = createTestServer(['a', 'b', 'c', 'd', 'e', 'f'], { start: { seed } });
+        const names = Array.from({ length: 10 }, (_, index) => `p${index}`);
+        const { server, mode } = createTestServer(names, { start: { seed } });
         const sides = [...mode.contestants.values()].map((contestant) => contestant.faction);
-        assert.deepEqual([DAWN, UMBRA, PIRATE].map((faction) => sides.filter((side) => side === faction).length), [2, 2, 2]);
+        assert.deepEqual([DAWN, UMBRA, PIRATE].map((faction) => sides.filter((side) => side === faction).length), [4, 4, 2]);
         for (const contestant of mode.contestants.values()) {
             const { pilot } = contestant;
             assert.equal(pilot.ship.faction, contestant.faction);
@@ -142,7 +143,7 @@ test('players are dealt into sides, each flying for the side they got', () => {
         assert.equal(new Set(zoneOf(DAWN)).size, 1, 'a side starts together');
         assert.equal(new Set(zoneOf(UMBRA)).size, 1);
         assert.equal(new Set(zoneOf(PIRATE)).size, 1, 'the pirates too');
-        assert.ok(server.pilots.size === 6);
+        assert.ok(server.pilots.size === 10);
     }
 });
 
@@ -709,7 +710,9 @@ test('a station taken back from a side brings back that side\'s fallen too', () 
 // ---- Coming back at a station -------------------------------------------------------------------
 
 test('a pilot shot down waits ten seconds, then comes back at a station their side holds', () => {
-    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, THIRD] });
+    // (Cy keeps the Federation in the match meanwhile: a side with nobody flying is out.)
+    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, THIRD], cy: [DAWN, SECOND] });
+    game.empty(SECOND);
     game.place(FOURTH).owner = DAWN;
     destroyShip(game.world(THIRD), game.ship('ann'), game.ship('bo'));
     game.run(0.1);
@@ -740,8 +743,9 @@ test('a pilot shot down waits ten seconds, then comes back at a station their si
 });
 
 test('every comeback makes the next wait ten seconds longer: 10, 20, 30', () => {
-    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, GATE] });
+    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, GATE], cy: [DAWN, SECOND] });
     game.empty(GATE);
+    game.empty(SECOND);
     game.place(THIRD).owner = DAWN;
     const waits = [];
     for (let round = 0; round < 3; round++) {
@@ -757,7 +761,8 @@ test('every comeback makes the next wait ten seconds longer: 10, 20, 30', () => 
 });
 
 test('a ship can only come back at a station its side holds, and only once it is down', () => {
-    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, SECOND] });
+    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, SECOND], cy: [DAWN, INNERMOST] });
+    game.empty(INNERMOST);
     game.place(FOURTH).owner = DAWN;
     game.place(SECOND).owner = UMBRA;
     game.ask('ann', BR_REQUEST.RESPAWN, { at: FOURTH });
@@ -856,15 +861,16 @@ test('nobody comes back at a station another side is docked at, taking it; the f
 });
 
 test('with every station of the side being taken there is nowhere to come back to until that is settled', () => {
-    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, FOURTH] });
+    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, FOURTH], cy: [DAWN, SECOND] });
     game.empty(FOURTH);
+    game.empty(SECOND);
     game.place(FOURTH).owner = DAWN;
     destroyShip(game.world(THIRD), game.ship('ann'), null);
     game.dock('bo');
     game.run(RESPAWN.wait + 1);
 
     assert.deepEqual(game.state('ann').you.respawn, { wait: 0, stations: [], contested: [FOURTH], choose: null, next: RESPAWN.wait + RESPAWN.waitStep });
-    assert.equal(game.state('bo').phase, MATCH_PHASE.PLAYING, 'a station being taken is still held: the Federation is not out');
+    assert.equal(game.place(FOURTH).owner, DAWN, 'a station being taken is still held');
 
     game.ask('bo', BR_REQUEST.UNDOCK);
     game.run(0.2);
@@ -876,7 +882,8 @@ test('with every station of the side being taken there is nowhere to come back t
 });
 
 test('the dead have no ship to jump, dock, refit or call for help with', () => {
-    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, GATE] });
+    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, GATE], cy: [DAWN, SECOND] });
+    game.empty(SECOND);
     game.place(THIRD).owner = DAWN;
     game.who('ann').points = 3;
     game.who('ann').summons = 1;
@@ -894,7 +901,9 @@ test('the dead have no ship to jump, dock, refit or call for help with', () => {
 });
 
 test('a comeback keeps the pilot\'s refits, score and equipment', () => {
-    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, GATE] });
+    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, GATE], cy: [DAWN, SECOND] });
+    game.empty(SECOND);
+    game.empty(GATE);
     game.place(THIRD).owner = DAWN;
     game.who('ann').points = 2;
     game.ask('ann', BR_REQUEST.REFIT, { added: { hull: 2 } });
@@ -1200,28 +1209,41 @@ test('everybody dead is nobody\'s win', () => {
     assert.equal(game.state('ann').winner, null);
 });
 
-test('a side with every pilot down is still in the match while it holds a station to come back to', () => {
-    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, FOURTH] });
-    game.place(FOURTH).owner = DAWN;
-    destroyShip(game.world(THIRD), game.ship('ann'), game.ship('bo'));
-    game.run(0.2);
-    assert.equal(game.state('bo').phase, MATCH_PHASE.PLAYING, 'Ann can still come back at the fourth planet');
+test('a side whose pilots are all down at once is out: nobody of it comes back, and its stations are nobody\'s', () => {
+    const game = arrange({ ann: [DAWN, THIRD], cy: [DAWN, FOURTH], bo: [UMBRA, GATE], pip: [PIRATE, SECOND] });
+    for (const planet of [SECOND, FOURTH, GATE]) game.empty(planet);
+    for (const planet of [FOURTH, INNERMOST]) game.place(planet).owner = DAWN;
+    destroyShip(game.world(THIRD), game.ship('ann'), null);
+    game.run(RESPAWN.wait + 1);
+    assert.equal(game.state('ann').you.out, false, 'Cy is still flying');
+    assert.equal(game.state('ann').you.respawn.wait, 0, 'and Ann could come back now');
 
-    game.empty(FOURTH);
-    game.take('bo');
-    game.run(0.2);
-    assert.equal(game.state('bo').phase, MATCH_PHASE.OVER, 'with the station gone, so is the Federation');
-    assert.equal(game.state('bo').winner, UMBRA);
+    destroyShip(game.world(FOURTH), game.ship('cy'), null);
+    game.run(0.1);
+
+    assert.equal(game.state('ann').you.out, true);
+    assert.equal(game.state('ann').you.respawn, null);
+    assert.deepEqual(game.state('bo').out, [DAWN], 'everybody is told');
+    assert.deepEqual([game.place(FOURTH).owner, game.place(INNERMOST).owner], [null, null], 'its stations and their bubbles are gone');
+    assert.deepEqual(game.told('bo', BR_EVENT.SIDE_OUT), [{ faction: DAWN }]);
+    game.ask('ann', BR_REQUEST.RESPAWN, { at: FOURTH });
+    assert.deepEqual(game.told('ann', BR_EVENT.RESPAWN_REFUSED), [{ reason: RESPAWN_REFUSAL.OUT }]);
+    game.run(RESPAWN.wait * 4 + RESPAWN.choose);
+    assert.deepEqual([game.who('ann').alive, game.who('cy').alive], [false, false], 'nobody of it comes back, ever');
+    assert.equal(game.state('bo').phase, MATCH_PHASE.PLAYING, 'the Umbra and the pirates fight on');
+
+    // Nor does taking a station bring anybody of theirs back: there is nobody of theirs to take it.
+    game.take('pip');
+    assert.equal(game.who('ann').alive, false);
 });
 
-test('a side whose pilots are down but can come back goes on, and wins if it outlasts the rest', () => {
+test('the last side with a pilot flying wins at once, whatever stations the others hold', () => {
     const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, THIRD] });
     game.place(SECOND).owner = DAWN;
     destroyShip(game.world(THIRD), game.ship('ann'), game.ship('bo'));
-    destroyShip(game.world(THIRD), game.ship('bo'), null);
     game.run(0.2);
 
-    assert.equal(game.state('ann').winner, DAWN, 'nobody flying, but only the Federation can come back');
+    assert.equal(game.state('ann').winner, UMBRA, 'the Federation held a station, but nobody of it was flying');
 });
 
 test('holding the stargate when the last stand runs out wins the match for the whole side - taking it does not end it early', () => {
@@ -1711,10 +1733,11 @@ test('a match short of players is made up with computer-flown ones, dealt into t
         const { server, mode } = createTestServer(['ann', 'bo'], { start: { seed, settings: { bots: 'fill' } } });
         const pilots = [...server.pilots.values()];
         assert.equal(pilots.length, BOTS.fillTo);
-        assert.deepEqual(pilots.map((pilot) => pilot.bot), [false, false, true, true, true, true]);
+        assert.equal(BOTS.fillTo, 10, 'every seat of a full match');
+        assert.deepEqual(pilots.map((pilot) => pilot.bot), [false, false, ...Array(8).fill(true)]);
 
         const sides = [...mode.contestants.values()].map((contestant) => contestant.faction);
-        assert.deepEqual([DAWN, UMBRA, PIRATE].map((faction) => sides.filter((side) => side === faction).length), [2, 2, 2], 'two to a side, bots included');
+        assert.deepEqual([DAWN, UMBRA, PIRATE].map((faction) => sides.filter((side) => side === faction).length), [4, 4, 2], 'four, four and two, bots included');
         const names = pilots.filter((pilot) => pilot.bot).map((pilot) => pilot.name);
         assert.equal(new Set(names).size, names.length, 'each under its own name');
         assert.ok(names.every((name) => name.startsWith(BOTS.namePrefix)), 'which says what it is');
@@ -2037,15 +2060,30 @@ test('on a player\'s device a jump is a new sky, a warp, and the same ship', () 
     assert.ok(ann.ui.match.you.jump.cooldown > 0);
 });
 
-test('on a player\'s device a pilot shot down sees the wait, then the dock key brings them back at the station offered', () => {
-    const match = createTestMatch(['host', 'ann'], { start: { settings: { pace: 'quick' } } });
+/**
+ * A match on real clients with nothing computer-flown anywhere (only what the test does
+ * happens) and every player on Ann's side - so one of them going down does not put it out.
+ */
+function comradesMatch(names) {
+    const match = createTestMatch(names, { start: { settings: { pace: 'quick' } } });
     match.run(0.5);
-    const [ann] = match.clients;
     const mode = match.server.mode;
-    // Nothing computer-flown anywhere: only what the test does happens.
     for (const place of mode.places.values()) {
         for (const ship of [...place.zone.world.ships]) if (!ship.isPlayer && ship.faction !== FACTION.NEUTRAL) place.zone.world.removeShip(ship);
     }
+    const side = mode.contestants.get('ann').faction;
+    for (const contestant of mode.contestants.values()) {
+        contestant.faction = side;
+        match.server.setShipFaction(contestant.pilot.zone, contestant.pilot.ship, side);
+    }
+    mode.sidesAtStart = new Set([side]);
+    return match;
+}
+
+test('on a player\'s device a pilot shot down sees the wait, then the dock key brings them back at the station offered', () => {
+    const match = comradesMatch(['host', 'ann']);
+    const [ann] = match.clients;
+    const mode = match.server.mode;
     const contestant = mode.contestants.get('ann');
     const from = mode.placeOf(contestant);
     const home = mode.places.get(mode.map.neighbours(from.planet.id)[0]);
@@ -2077,6 +2115,89 @@ test('on a player\'s device a pilot shot down sees the wait, then the dock key b
     assert.equal(ann.world.sectorId, home.zone.sectorId, 'a new sky');
     assert.equal(ann.world.player?.pilotId, 'ann', 'and a ship to fly');
     assert.deepEqual(toasts, ['mp.respawned']);
+});
+
+test('on a player\'s device the comrades are listed, and one shot down can watch a comrade fly, wherever they go', () => {
+    const match = comradesMatch(['host', 'ann', 'bo']);
+    const [ann] = match.clients;
+    const mode = match.server.mode;
+    const host = mode.contestants.get('host');
+    const annSeat = mode.contestants.get('ann');
+    // The host flies two planets away.
+    const away = mode.places.get(mode.map.neighbours(mode.placeOf(annSeat).planet.id)[0]);
+    host.pilot.zone.world.removeShip(host.pilot.ship);
+    mode.launch(host, away, { warpIn: false });
+    match.run(0.5);
+
+    const team = ann.ui.match.you.team;
+    assert.deepEqual(team.map((mate) => mate.id).sort(), ['bo', 'host']);
+    const hostRow = team.find((mate) => mate.id === 'host');
+    assert.deepEqual([hostRow.alive, hostRow.planet, hostRow.hull, hostRow.wait], [true, away.planet.id, 100, null]);
+
+    destroyShip(annSeat.pilot.zone.world, annSeat.pilot.ship, null);
+    match.run(0.5);
+    assert.deepEqual(ann.match.presenter.watchCandidates().sort(), ['bo', 'host']);
+    ann.match.presenter.watch('host');
+    match.run(1);
+    assert.equal(ann.ui.match.you.watching, 'host');
+    assert.equal(ann.world.sectorId, away.zone.sectorId, 'the picture is the host\'s planet');
+    assert.equal(ann.world.spectating?.pilotId, 'host', 'and the view rides with the host\'s ship');
+    assert.ok(ann.world.spectating.position.distanceTo(host.pilot.ship.position) < 50, 'where the host has it, a moment behind');
+
+    // The watched pilot jumps on: the watcher goes along.
+    host.jumpReadyAt = 0;
+    const further = mode.map.neighbours(away.planet.id).find((id) => id !== annSeat.pilot.zone.id) ?? mode.map.neighbours(away.planet.id)[0];
+    mode.requestJump(host, further);
+    match.run(BATTLE_ROYALE.jump.spool + 1.5);
+    assert.equal(ann.world.sectorId, mode.places.get(further).zone.sectorId);
+    assert.equal(ann.world.spectating?.pilotId, 'host');
+
+    // The key for the next target steps on to the next comrade; a stranger cannot be watched.
+    ann.session.handleAction('cycleTarget');
+    match.run(1);
+    assert.equal(ann.ui.match.you.watching, 'bo');
+    mode.requestWatch(annSeat, 'nobody');
+    assert.equal(annSeat.watching, 'bo');
+
+    ann.match.presenter.watch(null);
+    match.run(0.5);
+    assert.equal(ann.ui.match.you.watching, null);
+    assert.equal(ann.world.spectating, null);
+});
+
+test('a pilot who is down is moved on to another comrade when the one watched goes down, and stops watching once back in a ship', () => {
+    const game = arrange({ ann: [DAWN, THIRD], cy: [DAWN, SECOND], di: [DAWN, FOURTH], bo: [UMBRA, GATE] });
+    for (const planet of [SECOND, FOURTH, GATE]) game.empty(planet);
+    game.place(THIRD).owner = DAWN;
+    destroyShip(game.world(THIRD), game.ship('ann'), null);
+    game.ask('ann', BR_REQUEST.WATCH, { id: 'bo' });
+    assert.equal(game.who('ann').watching, null, 'not an enemy');
+    game.ask('ann', BR_REQUEST.WATCH, { id: 'cy' });
+    assert.equal(game.pilot('ann').zone.id, SECOND, 'told about where Cy flies');
+
+    destroyShip(game.world(SECOND), game.ship('cy'), null);
+    game.run(0.1);
+    assert.equal(game.who('ann').watching, 'di');
+    assert.equal(game.pilot('ann').zone.id, FOURTH);
+    game.ask('cy', BR_REQUEST.WATCH, { id: 'ann' });
+    assert.equal(game.who('cy').watching, null, 'nobody watches a pilot who is down');
+
+    game.run(RESPAWN.wait);
+    game.ask('ann', BR_REQUEST.RESPAWN, { at: THIRD });
+    assert.equal(game.who('ann').watching, null);
+    assert.equal(game.pilot('ann').zone.id, THIRD);
+    assert.equal(game.state('ann').you.watching, null);
+});
+
+test('once a pilot\'s side is out they may watch anybody still flying', () => {
+    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, GATE], pip: [PIRATE, SECOND] });
+    for (const planet of [SECOND, GATE]) game.empty(planet);
+    destroyShip(game.world(THIRD), game.ship('ann'), null);
+    game.run(0.1);
+    assert.equal(game.state('ann').you.out, true);
+    game.ask('ann', BR_REQUEST.WATCH, { id: 'bo' });
+    assert.equal(game.who('ann').watching, 'bo');
+    assert.equal(game.pilot('ann').zone.id, GATE);
 });
 
 test('on a player\'s device one key docks and lets go; while docked the helm is the station\'s', () => {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import AuthPanel from '../../../Tools/AuthPanel';
 import { useAuthStore } from '../../../hooks/useAuthStore';
-import { BATTLE_ROYALE } from '../../config/battleRoyale.js';
+import { BATTLE_ROYALE, MAX_PLAYERS } from '../../config/battleRoyale.js';
 import { LAN_ERROR, LAN_STATUS, LOBBY_SCOPE, ROOM_STATE, ROOM_VISIBILITY } from '../../net/lobby/LanMultiplayer.js';
 import { useLanStore } from '../../net/lobby/lanStore.js';
 import { LINK_STATUS } from '../../net/transport/PeerLink.js';
@@ -25,7 +25,8 @@ import './multiplayer.css';
 const PACES = Object.keys(BATTLE_ROYALE.paces);
 /** The room's `bots` setting: fill the empty seats with computer-flown players, or leave them empty. */
 const BOT_SETTINGS = ['fill', 'none'];
-const SEATS = [2, 3, 4, 5, 6, 7, 8];
+/** Seats the host can choose: up to a full match (ten: four Federation, four Umbra, two pirates). */
+const SEATS = Array.from({ length: MAX_PLAYERS - 1 }, (_, index) => index + 2);
 const next = (list, current) => list[(list.indexOf(current) + 1) % list.length];
 const DEVICE_ICONS = { Desktop: '🖥', Mobile: '📱', VR: '🥽' };
 /** What a player's beams and torpedoes do to another player's ship in a match, as a share of their damage (config/battleRoyale.js). */

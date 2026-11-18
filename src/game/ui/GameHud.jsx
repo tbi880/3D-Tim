@@ -6,7 +6,7 @@ import { PHASE, SESSION_EVENTS } from '../state/GameSession.js';
 import { useGameStore, useT } from '../state/gameStore.js';
 import { abilityStateText } from './abilityText.js';
 import CommsPanel from './CommsPanel.jsx';
-import { DockPrompt, MatchAlerts, MatchButtons, MatchStatus, RespawnPrompt } from './multiplayer/MatchHud.jsx';
+import { DockPrompt, MatchAlerts, MatchButtons, MatchStatus, RespawnPrompt, TeamPanel } from './multiplayer/MatchHud.jsx';
 
 /**
  * The in-flight HUD. Each panel subscribes to one slice of the game store (refreshed about
@@ -412,12 +412,16 @@ function ScreenFade({ session }) {
  * comms line, leaving the middle of the screen to the fight.
  */
 function TouchHud({ session, radarCanvasRef }) {
+    // In a match, with the player's ship lost: its gauges have nothing to say, and the comrades take their place.
+    const down = useGameStore((state) => Boolean(state.match?.you) && !state.match.you.alive);
     return (
         <>
             {/* Right of the pause button: the ship, the objective under it - ending above the stick. */}
             <div className="eod-dock eod-dock--left">
-                <CompactShipPanel />
+                {!down && <CompactShipPanel />}
                 <ObjectivePanel />
+                {/* The comrades only while the player's own ship is lost: in flight there is no room. */}
+                <TeamPanel session={session} onlyWhenDown />
             </div>
             <div className="eod-dock eod-dock--centre">
                 <FleetBars />
@@ -452,6 +456,7 @@ function DesktopHud({ session, radarCanvasRef }) {
             <div className="eod-dock eod-dock--left">
                 <ObjectivePanel />
                 <MatchStatus session={session} />
+                <TeamPanel session={session} />
             </div>
             <div className="eod-dock eod-dock--centre">
                 <FleetBars />

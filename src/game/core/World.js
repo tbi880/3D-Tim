@@ -53,6 +53,12 @@ export class World {
 
         /** @type {Ship | null} */
         this.player = null;
+        /**
+         * Multiplayer: another pilot's ship the camera follows while the player's own is lost
+         * (watching a comrade fly), or null. Only the view follows it; it is flown from elsewhere.
+         * @type {Ship | null}
+         */
+        this.spectating = null;
         this.playerControls = IDLE_CONTROLS;
         /** True while the story has the helm (warp jumps, cut-scenes). */
         this.controlsLocked = false;
@@ -99,6 +105,7 @@ export class World {
         this.scriptedBeams = [];
         this.obstacles = [];
         this.player = null;
+        this.spectating = null;
         this.controlsLocked = false;
         this.warpFactor = 0;
         this.screenFade = 0;

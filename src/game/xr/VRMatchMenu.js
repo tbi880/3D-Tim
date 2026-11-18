@@ -1,4 +1,4 @@
-import { BATTLE_ROYALE, PLAYER_FACTIONS, STAR_SYSTEM } from '../config/battleRoyale.js';
+import { BATTLE_ROYALE, MAX_PLAYERS, PLAYER_FACTIONS, STAR_SYSTEM } from '../config/battleRoyale.js';
 import { PLAYER_SHIPS } from '../config/playerShips.js';
 import { MATCH_ACTION, MATCH_PANEL } from '../modes/battleRoyale/BattleRoyalePresenter.js';
 import { isBattle, rankPlayers, rosterBySide } from '../modes/battleRoyale/battleRoyaleState.js';
@@ -30,10 +30,19 @@ const EQUIPMENT_PARAMS = Object.freeze({
 });
 const ORBITS = STAR_SYSTEM.planets.map((planet) => planet.id);
 
+/**
+ * True while the player's ship is lost and the menu of where to come back (or of whom to
+ * watch, once their side is out) is up - not while they have put it away to watch somebody fly.
+ */
+function isDownMenuOpen(state) {
+    const you = state.match?.you;
+    return Boolean(you) && !you.alive && (Boolean(you.respawn) || you.out) && !state.matchWatchView;
+}
+
 /** True when a multiplayer panel should be up over the flight view: the story, the map, where to come back once shot down. */
 export function isMatchMenuOpen(state) {
     const { match } = state;
-    return Boolean(match) && (match.intro != null || Boolean(state.matchOutro) || Boolean(state.matchPanel) || Boolean(match.you?.respawn));
+    return Boolean(match) && (match.intro != null || Boolean(state.matchOutro) || Boolean(state.matchPanel) || isDownMenuOpen(state));
 }
 
 /**
@@ -77,8 +86,9 @@ export function buildMatchMenu(game, state, t, view) {
     if (!presenter) return null;
     if (state.matchPanel === MATCH_PANEL.MAP) return starMap(session, presenter, match, t);
     if (state.matchPanel === MATCH_PANEL.EQUIPMENT) return equipment(presenter, match, t);
-    // Shot down: the choice of where to come back stays up until the pilot is (the map can be looked at meanwhile).
-    if (match.you.respawn) return respawn(presenter, match, t);
+    // Shot down: the choice of where to come back stays up until the pilot is (the map can be looked at
+    // meanwhile, and it is put away to watch a comrade fly).
+    if (isDownMenuOpen(state)) return respawn(presenter, match, t);
     return null;
 }
 
@@ -449,6 +459,15 @@ function equipment(presenter, match, t) {
  * a station another side is taking is a row that cannot be chosen until that is settled.
  */
 function respawn(presenter, match, t) {
+    if (match.you.out) {
+        return {
+            key: 'match:out',
+            title: t('mp.out.title'),
+            lines: [t('mp.out.text')],
+            items: [...watchRows(presenter, match, t), { label: t('mp.map.title'), select: () => presenter.setPanel(MATCH_PANEL.MAP) }],
+            tone: 'failure',
+        };
+    }
     const comeback = match.you.respawn;
     const ready = comeback.wait === 0;
     const open = comeback.stations.length > 0;
@@ -468,7 +487,7 @@ function respawn(presenter, match, t) {
     for (const planetId of comeback.contested) {
         items.push({ label: t('mp.respawn.station', { planet: t(`mp.planet.${planetId}`) }), value: t('mp.respawn.contested'), disabled: true });
     }
-    items.push({ label: t('mp.map.title'), select: () => presenter.setPanel(MATCH_PANEL.MAP) });
+    items.push(...watchRows(presenter, match, t), { label: t('mp.map.title'), select: () => presenter.setPanel(MATCH_PANEL.MAP) });
     const lines = [headline, none ? t('mp.respawn.noStationText') : t('mp.respawn.text', { next: comeback.next })];
     if (ready && open) lines.push(t('mp.respawn.vrHint'));
     return {
@@ -482,13 +501,38 @@ function respawn(presenter, match, t) {
     };
 }
 
+/**
+ * A row for each pilot a player who is down may watch (their comrades in the air; anybody once
+ * their side is out): choosing one puts the menu away and the view behind that ship. B brings
+ * the menu back. And a row that stops watching.
+ */
+function watchRows(presenter, match, t) {
+    const { you } = match;
+    const rows = presenter.watchCandidates().map((id) => {
+        const player = match.players.find((entry) => entry.id === id);
+        const mate = you.team.find((entry) => entry.id === id);
+        return {
+            id: `watch:${id}`,
+            label: t('mp.vr.watch', { name: player?.name ?? id }),
+            sub: player && player.faction !== you.faction ? t(`mp.faction.${player.faction}`) : null,
+            value: you.watching === id ? '◉' : mate?.planet ? t(`mp.planet.${mate.planet}`) : null,
+            select: () => {
+                presenter.watch(id);
+                presenter.setWatchView(true);
+            },
+        };
+    });
+    if (you.watching) rows.push({ label: t('mp.vr.watchStop'), select: () => presenter.watch(null) });
+    return rows;
+}
+
 function result(lan, lanState, match, t, exitItem) {
     const disconnected = match.phase === MATCH_PHASE.DISCONNECTED;
     const won = Boolean(match.winner) && match.you?.faction === match.winner;
     const title = disconnected ? 'mp.result.disconnected' : !match.winner ? 'mp.result.draw' : won ? 'mp.result.victory' : 'mp.result.defeat';
     const lines = [disconnected ? t('mp.result.disconnectedText') : match.winner ? t('mp.result.winner', { faction: t(`mp.faction.${match.winner}`) }) : t('mp.result.noWinner')];
     const players = match.players?.length ? rankPlayers(match) : [];
-    players.slice(0, 8).forEach((player, index) => {
+    players.slice(0, MAX_PLAYERS).forEach((player, index) => {
         lines.push(`${index + 1}. ${player.name} · ${t(`mp.faction.${player.faction}`)} · ${player.score.toLocaleString()}`);
     });
     const online = Boolean(lanState.room) && lanState.status === LAN_STATUS.ONLINE;

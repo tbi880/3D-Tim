@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { BATTLE_ROYALE } from '../../src/game/config/battleRoyale.js';
 import { DEVICE_KIND, describeDevice } from '../../src/game/net/lobby/deviceInfo.js';
 import { LAN_ERROR, LAN_STATUS, LOBBY_SCOPE, LanMultiplayer, ROOM_STATE, ROOM_VISIBILITY, cleanName, initialLanState } from '../../src/game/net/lobby/LanMultiplayer.js';
 import { LOBBY_ERROR, LobbyClient, LobbyError } from '../../src/game/net/lobby/LobbyClient.js';
@@ -646,7 +647,7 @@ test('quick match opens a public room for the first player and puts the next one
         assert.equal(each.state.matching, false, 'matched');
         assert.equal(each.state.startsAt, null);
         assert.equal(each.ui.match.players.filter((player) => !player.bot).length, 3);
-        assert.equal(each.ui.match.players.length, 6, 'a public match short of players is made up with computer-flown ones');
+        assert.equal(each.ui.match.players.length, BATTLE_ROYALE.bots.fillTo, 'a public match short of players is made up with computer-flown ones');
     }
 });
 

@@ -353,6 +353,21 @@ function drawPaneText(ctx, state, t, now, scoreFeed) {
         if (!you.alive && !you.respawn) warnings.push(t('mp.hud.dead'));
         ctx.font = `700 12px ${FONT}`;
         warnings.slice(0, 2).forEach((text, index) => drawShadowedText(ctx, text, centre, height / 2 - 104 - index * 17, '#ffb648'));
+
+        // The comrades, always (top left, clear of the objective and the alerts).
+        drawTeam(ctx, state.match, t);
+        // Watching somebody fly with the menu put away: whom, how the comeback stands, and B for the menu.
+        if (!you.alive && you.watching && state.matchWatchView) {
+            const name = state.match.players.find((player) => player.id === you.watching)?.name ?? '';
+            const comeback = you.out ? t('mp.out.title')
+                : you.respawn?.wait > 0 ? t('mp.respawn.waiting', { seconds: you.respawn.wait })
+                    : you.respawn?.stations.length ? t('mp.respawn.choose', { seconds: you.respawn.choose ?? 0 }) : t('mp.respawn.noStation');
+            ctx.textAlign = 'center';
+            ctx.font = `700 13px ${FONT}`;
+            drawShadowedText(ctx, `${t('mp.watch.label')}  ${name}`, centre, height / 2 + 26, '#59d0ff');
+            ctx.font = `600 11px ${FONT}`;
+            drawShadowedText(ctx, `${comeback} · ${t('mp.vr.watchMenuHint')}`, centre, height / 2 + 41, '#ffb648');
+        }
     }
 
     if (state.toast) {
@@ -429,6 +444,38 @@ function drawPaneText(ctx, state, t, now, scoreFeed) {
 
     // Over everything else: the tutorial's card, while one is up.
     if (state.tutorial) drawTutorialCard(ctx, { ...state.tutorial, hasTarget: Boolean(state.target) }, t);
+}
+
+/** VR: the comrades in a column at the top left of the head-up pane - name, then where or how long until they are back. */
+function drawTeam(ctx, match, t) {
+    const { you } = match;
+    const team = you.team.slice(0, 4);
+    if (team.length === 0) return;
+    const x = 26;
+    let y = 150;
+    ctx.textAlign = 'left';
+    ctx.font = `600 10px ${FONT}`;
+    drawShadowedText(ctx, t('mp.team.title').toUpperCase(), x, y, 'rgba(160, 215, 255, 0.75)');
+    for (const mate of team) {
+        y += 12;
+        const status = mate.alive ? (mate.docking ? t('mp.team.docking') : mate.planet ? t(`mp.planet.${mate.planet}`) : '')
+            : you.out || mate.wait === null ? t('mp.team.out')
+                : mate.wait > 0 ? t('mp.team.waiting', { seconds: mate.wait }) : t('mp.team.ready');
+        const name = mate.name.length > 12 ? `${mate.name.slice(0, 11)}…` : mate.name;
+        ctx.font = `700 11px ${FONT}`;
+        drawShadowedText(ctx, `${you.watching === mate.id ? '◉ ' : ''}${name}`, x, y + 11, mate.alive ? '#e8f6ff' : 'rgba(200, 215, 230, 0.55)');
+        ctx.font = `500 10px ${FONT}`;
+        drawShadowedText(ctx, status, x, y + 23, mate.alive ? 'rgba(190, 225, 255, 0.8)' : 'rgba(255, 180, 120, 0.75)');
+        if (mate.alive) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(x, y + 27, 90, 4);
+            ctx.fillStyle = '#59d0ff';
+            ctx.fillRect(x, y + 27, 90 * mate.shield / 100, 2);
+            ctx.fillStyle = '#ff9a5c';
+            ctx.fillRect(x, y + 29, 90 * mate.hull / 100, 2);
+        }
+        y += 24;
+    }
 }
 
 const RADAR_SIZE = 300;

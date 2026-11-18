@@ -387,8 +387,10 @@ export class VRMenu {
                 else if (this.launch) this.launch = null;
                 else if (menu.key === 'ship') this.closeShipPage(false);
                 else if (menu.key === 'multiplayer') this.closeMultiplayer();
-                // In a match: closes the star map (back to where to come back, for a pilot who is down).
+                // In a match: closes the star map (back to where to come back, for a pilot who is down);
+                // on that menu, while watching somebody fly, puts the menu away to see them.
                 else if (state.matchPanel) this.game.session.match?.presenter?.setPanel(null);
+                else if (state.match?.you?.watching && !state.match.you.alive) this.game.session.match?.presenter?.setWatchView(true);
                 break;
             default: break;
         }

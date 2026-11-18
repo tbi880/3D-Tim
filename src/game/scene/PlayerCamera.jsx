@@ -59,6 +59,10 @@ const scratchScale = new THREE.Vector3();
  * view, no swing - since anything that moves the picture without the head moving makes people
  * sick in a headset. What shakes there instead is the cabin round the pilot, by millimetres,
  * while the stars stay still. `children` hang off the camera too (that VR rig).
+ *
+ * A player whose ship is lost in a match may watch a comrade fly (`world.spectating`): the
+ * camera then follows that ship, always in the chase view (there is no cockpit of theirs to
+ * sit in), and nothing of theirs shakes it - in a headset, rigidly behind it like the chase seat.
  */
 export default function PlayerCamera({ session, children }) {
     const cameraRef = useRef(null);
@@ -94,14 +98,15 @@ export default function PlayerCamera({ session, children }) {
     useFrame(({ size, gl }) => {
         const camera = cameraRef.current;
         const { world, effectsDelta: dt } = session;
-        const player = world.player;
+        const watching = world.spectating?.alive ? world.spectating : null;
+        const player = watching ?? world.player;
         if (!camera || !player) return;
-        const isCockpit = cameraModeOf(session) !== 'chase';
+        const isCockpit = !watching && cameraModeOf(session) !== 'chase';
         const rig = chase.current;
 
         // Hits fade; a heavy beam held on the ship keeps it trembling until it lets go.
-        trauma.current = Math.max(0, trauma.current - TRAUMA_DECAY * dt);
-        const bearing = player.alive && underHeavyBeam(world, player) ? 1 : 0;
+        trauma.current = watching ? 0 : Math.max(0, trauma.current - TRAUMA_DECAY * dt);
+        const bearing = !watching && player.alive && underHeavyBeam(world, player) ? 1 : 0;
         playerFeedback.beamRumble += (bearing - playerFeedback.beamRumble) * (1 - Math.exp(-RUMBLE_FOLLOW * dt));
         const rumble = playerFeedback.beamRumble * BEAM_RUMBLE_SHAKE * (player.shield > 0 ? 1 : BEAM_RUMBLE_BARE_HULL);
         // Spooling up the warp drive rattles the ship too.
@@ -114,7 +119,7 @@ export default function PlayerCamera({ session, children }) {
             rig.lastPosition.copy(player.position);
             playerFeedback.cabinShake.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(shake * VR_CABIN_SHAKE);
             if (cabin) {
-                cabin.visible = isCockpit && player.alive;
+                cabin.visible = isCockpit && player.alive && !watching;
                 cabin.position.copy(playerFeedback.cabinShake);
             }
             syncVRViewPose(camera, gl.xr.getCamera());
@@ -143,7 +148,7 @@ export default function PlayerCamera({ session, children }) {
             camera.quaternion.setFromRotationMatrix(scratchMatrix.lookAt(camera.position, scratchTarget, scratchUp));
         }
         rig.lastPosition.copy(player.position);
-        if (cabin) cabin.visible = isCockpit && player.alive;
+        if (cabin) cabin.visible = isCockpit && player.alive && !watching;
 
         if (shake > 0.0005) {
             camera.translateX((Math.random() - 0.5) * shake * MAX_SHAKE_OFFSET);

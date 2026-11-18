@@ -1,14 +1,16 @@
 import { FACTION } from '../../config/gameConfig.js';
 
 /**
- * Deals players into sides: the list of sides is walked in a shuffled order, so every side
- * gets a player before any gets two, and who lands where depends only on the match's seed.
+ * Deals players into sides, in proportion to each side's seats: every player goes to the side
+ * whose seats are least filled so far (ties in a shuffled order). So every side gets a player
+ * before any gets two, a full match is exactly `seats`, and a smaller one is shaped like it -
+ * and who lands where depends only on the match's seed.
  * @param {string[]} playerIds
- * @param {string[]} factions the sides to deal into
+ * @param {Record<string, number>} seats side -> seats in a full match (SIDE_SEATS)
  * @param {() => number} rng 0..1
  * @returns {Map<string, string>} player id -> faction
  */
-export function dealFactions(playerIds, factions, rng) {
+export function dealFactions(playerIds, seats, rng) {
     const shuffle = (list) => {
         const copy = [...list];
         for (let i = copy.length - 1; i > 0; i--) {
@@ -17,9 +19,15 @@ export function dealFactions(playerIds, factions, rng) {
         }
         return copy;
     };
-    const order = shuffle(factions);
+    const order = shuffle(Object.keys(seats));
+    const counts = new Map(order.map((faction) => [faction, 0]));
     const dealt = new Map();
-    shuffle(playerIds).forEach((id, index) => dealt.set(id, order[index % order.length]));
+    for (const id of shuffle(playerIds)) {
+        // The least filled side; the first in the shuffled order when several are as empty.
+        const faction = order.reduce((best, side) => (counts.get(side) / seats[side] < counts.get(best) / seats[best] ? side : best));
+        counts.set(faction, counts.get(faction) + 1);
+        dealt.set(id, faction);
+    }
     return dealt;
 }
 

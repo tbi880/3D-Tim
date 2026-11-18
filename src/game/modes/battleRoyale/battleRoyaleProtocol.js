@@ -13,6 +13,8 @@ export const BR_REQUEST = Object.freeze({
     SUMMON: 'summon',
     /** { at: planetId } - come back, after being shot down, at the station of a planet the player's side holds */
     RESPAWN: 'respawn',
+    /** { id: playerId | null } - shot down: watch that pilot fly (a comrade; anybody, once one's side is out), or stop */
+    WATCH: 'watch',
     /** {} - clamp on to the station's dock (the ship must be at its mouth), and let go again */
     DOCK: 'dock',
     UNDOCK: 'undock',
@@ -42,6 +44,8 @@ export const BR_EVENT = Object.freeze({
     RESPAWNED: 'respawned',
     /** { reason: RESPAWN_REFUSAL } */
     RESPAWN_REFUSED: 'respawnRefused',
+    /** { faction } - every pilot of a side was down at once: the side is out, its stations nobody's */
+    SIDE_OUT: 'sideOut',
     /** { faction } - the player has been firing on their own side */
     WARNING: 'warning',
     /** { former } - the player is a pirate now */
@@ -100,4 +104,6 @@ export const RESPAWN_REFUSAL = Object.freeze({
     NOT_HELD: 'notHeld',
     /** Another side is docked at it, taking it: nobody comes back there until that is settled. */
     CONTESTED: 'contested',
+    /** The player's side is out of the match: nobody of it comes back any more. */
+    OUT: 'out',
 });

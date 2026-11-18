@@ -32,6 +32,14 @@ export const STAR_SYSTEM = Object.freeze({
  */
 export const PLAYER_FACTIONS = Object.freeze([FACTION.DAWN, FACTION.UMBRA, FACTION.PIRATE]);
 /**
+ * Seats in a full match, by side: ten players, four Federation, four Umbra, two pirates. A
+ * match with fewer players is dealt in the same proportions (allegiance.js dealFactions), and
+ * the computer-flown players fill it up to this (`bots.fillTo`).
+ */
+export const SIDE_SEATS = Object.freeze({ [FACTION.DAWN]: 4, [FACTION.UMBRA]: 4, [FACTION.PIRATE]: 2 });
+/** Most players in a match (and in a room: the lobby server's LanRoomOptions.MaxPlayersLimit is the same). */
+export const MAX_PLAYERS = Object.values(SIDE_SEATS).reduce((sum, seats) => sum + seats, 0);
+/**
  * The single-player level every computer-flown ship of a match fights at (`difficulty`, below):
  * as tough, as quick on the trigger and as painful to a player as the story's Umbra are there.
  */
@@ -289,7 +297,7 @@ export const BATTLE_ROYALE = Object.freeze({
     }),
 
     /**
-     * Computer-flown players ("bots"). When a match starts with fewer than `fillTo` players the
+     * Computer-flown players ("bots"). When a match starts with fewer than `fillTo` players (every seat: MAX_PLAYERS) the
      * empty seats are taken by bots, unless the room's `bots` setting says "none". A bot is a
      * player in everything the rules know: it is dealt a side, flies one of the players' ships
      * with the players' own flight model and weapons, scores, docks, comes back and wins or loses
@@ -297,11 +305,11 @@ export const BATTLE_ROYALE = Object.freeze({
      * run on the host's device.
      */
     bots: Object.freeze({
-        fillTo: 6,
+        fillTo: MAX_PLAYERS,
         defaultSetting: 'fill',
         /** Shown as "AI·Vega": everybody can tell who is not a person. */
         namePrefix: 'AI·',
-        names: Object.freeze(['Vega', 'Orion', 'Lyra', 'Altair', 'Rigel', 'Deneb', 'Sirius', 'Castor']),
+        names: Object.freeze(['Vega', 'Orion', 'Lyra', 'Altair', 'Rigel', 'Deneb', 'Sirius', 'Castor', 'Polaris', 'Capella', 'Antares', 'Mira']),
         /** Seconds between a bot's decisions (what to do); it steers every frame. */
         thinkInterval: 0.4,
         /** A bot goes for hostiles within this many metres - or for whoever shot it last. */

@@ -70,6 +70,8 @@ export class BattleRoyalePresenter {
         this.outro = null;
         /** True from the moment the match is decided: the picture is the ending's from then on. */
         this.decided = false;
+        /** VR: the menu of a pilot who is down is put away while they watch somebody fly. */
+        this.watchView = false;
     }
 
     sanitizeState(raw) {
@@ -114,6 +116,7 @@ export class BattleRoyalePresenter {
         this.setPanel(null);
         this.refitOpen = false;
         this.decided = true;
+        session.world.spectating = null;
         session.setWaypoint(null);
         session.ui.set({ refit: null, matchOutro: { winner: state.winner, won, act: OUTRO_ACT.GATE } });
         this.warp = null;
@@ -321,6 +324,14 @@ export class BattleRoyalePresenter {
             case BR_EVENT.RESPAWN_REFUSED:
                 session.showToast(`mp.respawn.refused.${String(data?.reason)}`);
                 break;
+            case BR_EVENT.SIDE_OUT:
+                if (data?.faction === this.client.state?.you?.faction) {
+                    session.showToast('mp.sideOut.yours');
+                    session.playCue('alarm');
+                } else {
+                    session.showToast('mp.sideOut', { faction: factionName(data?.faction) });
+                }
+                break;
             case BR_EVENT.WARNING:
                 session.showToast('mp.loyalty.warning');
                 session.playCue('alarm');
@@ -363,14 +374,23 @@ export class BattleRoyalePresenter {
 
     // ---- The pilot's own keys and windows -----------------------------------------------------
 
-    /** Keys and buttons that belong to this mode (input/InputController.js MATCH_KEYS). */
+    /**
+     * Keys and buttons that belong to this mode (input/InputController.js MATCH_KEYS). With the
+     * player's ship lost, the next-target key (T, Tab) steps through the pilots they may watch.
+     */
     handleAction(action) {
         const state = this.client.state;
         // Nothing to open while the story is being told.
         if (this.outro || state?.intro != null) return Object.values(MATCH_ACTION).includes(action);
+        if (action === 'cycleTarget' && state?.you && !state.you.alive) {
+            this.watchNext(1);
+            return true;
+        }
         switch (action) {
             case MATCH_ACTION.MAP:
-                this.setPanel(this.panel === MATCH_PANEL.MAP ? null : MATCH_PANEL.MAP);
+                // In the headset, watching with the menu put away: the same button (B) brings the menu back.
+                if (this.watchView) this.setWatchView(false);
+                else this.setPanel(this.panel === MATCH_PANEL.MAP ? null : MATCH_PANEL.MAP);
                 return true;
             case MATCH_ACTION.REFIT:
                 if (state?.you?.alive && state.you.points > 0) this.openRefit();
@@ -455,6 +475,62 @@ export class BattleRoyalePresenter {
         if (respawn && respawn.wait === 0 && respawn.stations.length > 0) this.respawnAt(respawn.stations[0]);
     }
 
+    // ---- Watching a comrade fly, while the player's own ship is lost --------------------------
+
+    /** Asks to watch a pilot fly (player id), or to stop (null). The host decides who may be watched. */
+    watch(playerId) {
+        this.client.request(BR_REQUEST.WATCH, { id: playerId });
+    }
+
+    /**
+     * The pilots this player may watch now, as player ids: their comrades in the air - or, once
+     * their side is out, everybody still flying, comrades of theirs first. Empty while they fly.
+     */
+    watchCandidates() {
+        const state = this.client?.state;
+        const you = state?.you;
+        if (!you || you.alive) return [];
+        const comrades = you.team.filter((mate) => mate.alive).map((mate) => mate.id);
+        if (!you.out) return comrades;
+        const others = state.players.filter((player) => player.alive && player.id !== this.client.localPlayerId && !comrades.includes(player.id))
+            .sort((a, b) => a.name.localeCompare(b.name)).map((player) => player.id);
+        return [...comrades, ...others];
+    }
+
+    /** Watches the next pilot (`step` 1) or the one before (-1) of those that may be watched, from the one watched now. */
+    watchNext(step = 1) {
+        const list = this.watchCandidates();
+        if (list.length === 0) return;
+        const at = list.indexOf(this.client.state.you.watching);
+        const next = at < 0 ? (step > 0 ? list[0] : list[list.length - 1]) : list[(at + step + list.length) % list.length];
+        if (next !== this.client.state.you.watching) this.watch(next);
+    }
+
+    /**
+     * VR: puts the menu of a pilot who is down away (`on`) so they see whom they watch, or
+     * brings it back (xr/VRMatchMenu.js; the B button does that).
+     */
+    setWatchView(on) {
+        if (this.watchView === on) return;
+        this.watchView = on;
+        this.session.ui.set({ matchWatchView: on });
+    }
+
+    /** Points the view at the ship of the pilot being watched, if it is in the picture (world.spectating; scene/PlayerCamera.jsx). */
+    followWatched() {
+        const { world } = this.session;
+        const you = this.client?.state?.you;
+        const id = you && !you.alive ? you.watching : null;
+        if (!id) {
+            world.spectating = null;
+            // Back in a ship, or watching nobody: nothing to keep the menu away for.
+            this.setWatchView(false);
+            return;
+        }
+        if (world.spectating?.alive && world.spectating.pilotId === id) return;
+        world.spectating = world.ships.find((ship) => ship.isPlayer && ship.alive && ship.pilotId === id) ?? null;
+    }
+
     /** The player is somewhere new (a jump, a comeback, or the start): the streaks let go. */
     onZoneEntered() {
         if (this.warp?.phase !== 'spool') return;
@@ -507,6 +583,7 @@ export class BattleRoyalePresenter {
         if (this.session && !this.decided) {
             this.markDock();
             this.followGate();
+            this.followWatched();
         }
         const { warp } = this;
         const world = this.session?.world;
@@ -541,6 +618,7 @@ export class BattleRoyalePresenter {
             this.session.world.screenFade = 0;
             Object.assign(this.session.world.gateField, { charge: 0, open: 0, shut: 0, pulse: 0, faction: null });
             this.session.world.singularity.size = 0;
+            this.session.world.spectating = null;
             this.session.setWaypoint(null);
         }
         this.warp = null;
@@ -548,5 +626,6 @@ export class BattleRoyalePresenter {
         this.decided = false;
         this.openPanel = null;
         this.refitOpen = false;
+        if (this.watchView) this.setWatchView(false);
     }
 }

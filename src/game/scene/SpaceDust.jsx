@@ -46,7 +46,8 @@ export default function SpaceDust({ session }) {
     useFrame(() => {
         const eye = viewPose.position;
         const { world, effectsDelta: dt } = session;
-        const player = world.player;
+        // The ship the view rides with: the player's, or a comrade's they are watching.
+        const player = (world.spectating?.alive ? world.spectating : null) ?? world.player;
         if (!player) return;
         const warp = world.warpFactor;
         forwardOf(player.quaternion, forward);

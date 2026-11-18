@@ -16,6 +16,7 @@ import { EQUIPMENT_ORDER } from './equipment.js';
  *   time,                 seconds played
  *   intro,                seconds of introduction left (nobody is in the system yet), or null once it is over
  *   finalStand,           seconds left of the last planet's stand, or null before it
+ *   out: [faction],       the sides that are out (every pilot of theirs was down at once)
  *   you: {
  *     faction,            the side this player is on now (it changes if they turn pirate)
  *     planet,             where they are
@@ -36,6 +37,16 @@ import { EQUIPMENT_ORDER } from './equipment.js';
  *                         another side is docked at, taking them (not to be chosen); seconds left to choose
  *                         before they are sent (null: not counting); the wait after their next comeback.
  *                         Null while they fly.
+ *     out,                whether their side is out of the match (they do not come back)
+ *     watching,           while they are down: the player id of the pilot they watch fly, or null
+ *     team: [{            their comrades (the pirates are comrades too):
+ *       id, name, classId, bot,
+ *       planet,           where they fly, or null while they are down
+ *       alive,
+ *       hull, shield,     percent (0 while down)
+ *       docking,          clamped on to a station, taking it
+ *       wait,             while down: seconds until they may come back (0: they may), null if they cannot
+ *     }],
  *   },
  *   planets: [{           innermost first
  *     id, status, changesIn,
@@ -95,6 +106,26 @@ function cleanYou(raw) {
         equipment: Object.fromEntries(EQUIPMENT_ORDER.map((item) => [item, count(raw.equipment?.[item])])),
         effects: { gravityShield: count(raw.effects?.gravityShield), emergencyShield: count(raw.effects?.emergencyShield) },
         respawn,
+        out: Boolean(raw.out),
+        watching: typeof raw.watching === 'string' ? raw.watching.slice(0, 64) : null,
+        team: Array.isArray(raw.team) ? raw.team.slice(0, 16).filter((mate) => mate && typeof mate === 'object').map(cleanTeammate) : [],
+    };
+}
+
+const percent = (value) => Math.min(100, count(value));
+
+function cleanTeammate(raw) {
+    return {
+        id: String(raw.id ?? '').slice(0, 64),
+        name: String(raw.name ?? '').slice(0, 40),
+        classId: String(raw.classId ?? '').slice(0, 40),
+        bot: Boolean(raw.bot),
+        planet: planetId(raw.planet),
+        alive: Boolean(raw.alive),
+        hull: percent(raw.hull),
+        shield: percent(raw.shield),
+        docking: Boolean(raw.docking),
+        wait: raw.alive ? null : seconds(raw.wait),
     };
 }
 
@@ -114,6 +145,7 @@ export function sanitizeBattleRoyaleState(raw) {
         time: count(raw.time),
         intro: seconds(raw.intro),
         finalStand: seconds(raw.finalStand),
+        out: Array.isArray(raw.out) ? [...new Set(raw.out.map(sideOrNull).filter(Boolean))] : [],
         you: cleanYou(raw.you),
         planets: raw.planets.slice(0, 16).filter((planet) => PLANET_IDS.has(planet?.id)).map((planet) => ({
             id: planet.id,

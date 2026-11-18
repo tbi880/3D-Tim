@@ -143,6 +143,8 @@ test('a player who has left stays out, and the dead stay dead until they come ba
 test('a pilot waiting to come back waits on where they were on the new host, and their waits keep growing', () => {
     const game = createTestServer(['ann', 'bo', 'cy'], { start: { settings: {} } });
     const cy = game.mode.contestants.get('cy');
+    // Ann on Cy's side, flying: a side with nobody flying is out, and Cy would never come back.
+    game.mode.contestants.get('ann').faction = cy.faction;
     const station = [...game.mode.places.values()].find((place) => place.zone !== cy.pilot.zone);
     station.owner = cy.faction;
     cy.respawns = 2;

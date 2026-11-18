@@ -1,5 +1,5 @@
 import { Vector3 } from 'three';
-import { BATTLE_ROYALE, NPC_FACTIONS, PLAYER_FACTIONS, STAR_SYSTEM } from '../../config/battleRoyale.js';
+import { BATTLE_ROYALE, NPC_FACTIONS, PLAYER_FACTIONS, SIDE_SEATS, STAR_SYSTEM } from '../../config/battleRoyale.js';
 import { FACTION } from '../../config/gameConfig.js';
 import { RATING_ORDER } from '../../config/playerShips.js';
 import { SECTORS } from '../../config/sectors.js';
@@ -56,6 +56,8 @@ class Contestant {
         this.respawnAt = null;
         /** Once they may come back and their side has a station: the match time they are sent to the first one offered. */
         this.chooseUntil = null;
+        /** While they are down: the pilot whose flight they are watching (player id), or null. */
+        this.watching = null;
     }
 }
 
@@ -84,7 +86,9 @@ class Place {
  * a station, guarded by the Federation's or the Umbra's computer-flown garrison or fought
  * over by both. A side takes a planet by docking a ship at its station - and loses it the
  * same way. A pilot who is shot down comes back, after a wait that grows each time, at a
- * station their side holds; and taking a planet brings every one of the side's fallen back.
+ * station their side holds - and may watch a comrade fly meanwhile; taking a planet brings
+ * every one of the side's fallen back. A side whose pilots are all down at once is out.
+ * Ten players at most: four Federation, four Umbra, two pirates (SIDE_SEATS).
  *
  * Tuning is in config/battleRoyale.js. The pieces: StarMap (who can jump where), CollapseClock
  * (what falls in when), allegiance (sides and treason), station (the docks, and where the
@@ -114,6 +118,8 @@ export class BattleRoyaleMode {
         /** `{ winner: faction | null }` once the match is decided. */
         this.result = null;
         this.sidesAtStart = new Set();
+        /** Sides that are out of the match: every pilot of theirs was down at once. Nobody of theirs comes back. */
+        this.outSides = new Set();
         /** The computer-flown players' hands and heads (bots.js), one per bot. */
         this.bots = [];
     }
@@ -151,7 +157,7 @@ export class BattleRoyaleMode {
 
         // A match short of players is made up with computer-flown ones, dealt in like everybody else.
         seatBots(server, this.info.settings, rng);
-        const sides = dealFactions([...server.pilots.keys()], PLAYER_FACTIONS, rng);
+        const sides = dealFactions([...server.pilots.keys()], SIDE_SEATS, rng);
         const startOf = new Map();
         for (const pilot of server.pilots.values()) {
             const faction = sides.get(pilot.id);
@@ -205,6 +211,7 @@ export class BattleRoyaleMode {
             startedAt: this.startedAt,
             result: this.result,
             sidesAtStart: [...this.sidesAtStart],
+            outSides: [...this.outSides],
             clock: this.clock.capture(),
             places: [...this.places.values()].map((place) => ({
                 id: place.planet.id,
@@ -255,6 +262,7 @@ export class BattleRoyaleMode {
         this.startedAt = seconds(data.startedAt);
         this.result = data.result && typeof data.result === 'object' ? { winner: side(data.result.winner) } : null;
         this.sidesAtStart = new Set((Array.isArray(data.sidesAtStart) ? data.sidesAtStart : []).map(side).filter(Boolean));
+        this.outSides = new Set((Array.isArray(data.outSides) ? data.outSides : []).map(side).filter(Boolean));
         this.clock = CollapseClock.resume(data.clock, map.count, BATTLE_ROYALE.collapse)
             ?? new CollapseClock({ planets: map.count, rng, timing: BATTLE_ROYALE.collapse, timeScale: this.pace.timeScale });
         this.clock.advanceTo(Math.max(0, time - this.startedAt));
@@ -299,7 +307,7 @@ export class BattleRoyaleMode {
             contestant.emergencyShieldUntil = time + seconds(saved.emergencyShieldLeft, -1);
             contestant.respawns = count(saved.respawns);
             // Down, and not yet back: the wait goes on where it was (a checkpoint without one starts it again).
-            if (!contestant.alive && !pilot.gone && this.introLeft <= 0) {
+            if (!contestant.alive && !pilot.gone && this.introLeft <= 0 && !this.outSides.has(contestant.faction)) {
                 contestant.respawnAt = time + seconds(saved.respawnIn, this.respawnWait(contestant.respawns));
                 contestant.chooseUntil = Number.isFinite(saved.chooseIn) ? time + saved.chooseIn : null;
             }
@@ -331,6 +339,7 @@ export class BattleRoyaleMode {
         contestant.alive = true;
         contestant.respawnAt = null;
         contestant.chooseUntil = null;
+        contestant.watching = null;
         const ship = this.server.spawnPilotShip(contestant.pilot, place.zone, {
             faction: contestant.faction, position, facing, warpIn: warpIn && !fromStation, hullFraction,
         });
@@ -392,8 +401,10 @@ export class BattleRoyaleMode {
             this.updateDock(contestant, dt);
             this.updateEmergencyShield(contestant);
             this.updateRespawn(contestant);
+            this.updateWatching(contestant);
         }
         for (const bot of this.bots) bot.update(dt);
+        this.checkEliminations();
         this.checkVictory();
     }
 
@@ -621,9 +632,10 @@ export class BattleRoyaleMode {
             this.tellMode(member.pilot, BR_EVENT.PICKS, { picks: member.inventory.picks });
         }
         this.reward(members);
-        // Only those who were there are paid; the fallen are brought back after it.
+        // Only those who were there are paid; the fallen are brought back after it (unless the side is out:
+        // a pilot who turned pirate after the pirates were wiped out flies for nobody who can come back).
         for (const contestant of this.contestants.values()) {
-            if (contestant.alive || contestant.pilot.gone || contestant.faction !== faction) continue;
+            if (contestant.alive || contestant.pilot.gone || contestant.faction !== faction || this.outSides.has(faction)) continue;
             this.bringBack(contestant, place);
             this.tellMode(contestant.pilot, BR_EVENT.REVIVED, { planet: place.planet.id });
         }
@@ -689,6 +701,7 @@ export class BattleRoyaleMode {
 
     /** Why a pilot cannot come back at `place` right now (RESPAWN_REFUSAL), or null if they can. */
     respawnRefusal(contestant, place) {
+        if (this.outSides.has(contestant.faction) && !contestant.alive) return RESPAWN_REFUSAL.OUT;
         if (contestant.alive || contestant.pilot.gone || contestant.respawnAt === null) return RESPAWN_REFUSAL.FLYING;
         if (this.server.time < contestant.respawnAt) return RESPAWN_REFUSAL.WAITING;
         if (!place || place.owner !== contestant.faction) return RESPAWN_REFUSAL.NOT_HELD;
@@ -750,6 +763,66 @@ export class BattleRoyaleMode {
         }
     }
 
+    // ---- Watching a comrade fly -------------------------------------------------------------
+
+    /**
+     * True when `viewer` (down) may watch `target` fly: a comrade with a ship in the air - or,
+     * once the viewer's side is out and there is nobody of theirs left to tell, anybody's.
+     */
+    mayWatch(viewer, target) {
+        return Boolean(target) && target !== viewer && target.alive && !target.pilot.gone && Boolean(target.pilot.ship?.alive) && Boolean(target.pilot.zone)
+            && (target.faction === viewer.faction || this.outSides.has(viewer.faction));
+    }
+
+    /** The pilots a viewer may watch, in a steady order: their own side's first (as the team is listed), then by name. */
+    watchable(viewer) {
+        return [...this.contestants.values()].filter((target) => this.mayWatch(viewer, target))
+            .sort((a, b) => (a.faction === viewer.faction ? 0 : 1) - (b.faction === viewer.faction ? 0 : 1) || a.pilot.name.localeCompare(b.pilot.name));
+    }
+
+    /**
+     * A player who is down asks to watch a pilot fly (`id`, from their device: checked), or to
+     * stop (null). Watching moves the place they are told about to the watched pilot's - their
+     * device is sent that place whole, and then its snapshots like anybody's there - so it is
+     * the same live picture, a moment behind, as everybody there has.
+     */
+    requestWatch(contestant, id) {
+        if (contestant.alive || contestant.pilot.gone || contestant.pilot.bot) return;
+        if (id === null) {
+            if (contestant.watching === null) return;
+            contestant.watching = null;
+            this.server.publishState();
+            return;
+        }
+        const target = typeof id === 'string' ? this.contestants.get(id) : null;
+        if (!this.mayWatch(contestant, target)) return;
+        contestant.watching = target.pilot.id;
+        this.server.moveToZone(contestant.pilot, target.pilot.zone);
+        this.server.publishState();
+    }
+
+    /**
+     * Keeps a watcher with the pilot they watch: on to the next planet when that pilot jumps,
+     * and on to another one they may watch when that pilot is shot down (or to nobody, staying
+     * where they are, if there is none).
+     */
+    updateWatching(contestant) {
+        if (contestant.watching === null) return;
+        const target = this.contestants.get(contestant.watching);
+        if (contestant.alive || contestant.pilot.gone) {
+            contestant.watching = null;
+            return;
+        }
+        if (!this.mayWatch(contestant, target)) {
+            const [next] = this.watchable(contestant);
+            contestant.watching = next ? next.pilot.id : null;
+            if (next) this.server.moveToZone(contestant.pilot, next.pilot.zone);
+            this.server.publishState();
+            return;
+        }
+        if (target.pilot.zone !== contestant.pilot.zone) this.server.moveToZone(contestant.pilot, target.pilot.zone);
+    }
+
     // ---- What players ask for ----------------------------------------------------------------
 
     /** `data` comes straight from a player's device: every field is checked before it is used. */
@@ -767,6 +840,7 @@ export class BattleRoyaleMode {
             case BR_REQUEST.REFIT: this.spendPoints(contestant, data.added); break;
             case BR_REQUEST.SUMMON: this.summon(contestant); break;
             case BR_REQUEST.RESPAWN: this.requestRespawn(contestant, data.at); break;
+            case BR_REQUEST.WATCH: this.requestWatch(contestant, data.id); break;
             case BR_REQUEST.DOCK: this.requestDock(contestant); break;
             case BR_REQUEST.UNDOCK: this.undock(contestant, DOCK_END.RELEASED); break;
             case BR_REQUEST.BEACON: this.launchBeacon(contestant, data.to); break;
@@ -892,7 +966,8 @@ export class BattleRoyaleMode {
         if (victim) {
             victim.alive = false;
             victim.deaths += 1;
-            victim.respawnAt = this.server.time + this.respawnWait(victim.respawns);
+            // (A pilot of a side that is already out - one who turned pirate after the pirates were - does not come back.)
+            victim.respawnAt = this.outSides.has(victim.faction) ? null : this.server.time + this.respawnWait(victim.respawns);
             victim.chooseUntil = null;
             victim.jump = null;
             victim.gravityShieldUntil = 0;
@@ -917,6 +992,7 @@ export class BattleRoyaleMode {
         contestant.alive = false;
         contestant.respawnAt = null;
         contestant.chooseUntil = null;
+        contestant.watching = null;
         contestant.jump = null;
         this.undock(contestant);
     }
@@ -933,21 +1009,39 @@ export class BattleRoyaleMode {
     }
 
     /**
-     * Sides still in the match: with a pilot flying, or with a pilot down who can come back -
-     * the side holds a station somewhere. A side with nobody flying and no station is out.
+     * A side whose pilots - those still in the match, bots included - are all down at the same
+     * moment is out: none of them comes back, by choice or by a capture, and every station it
+     * holds is nobody's again at once (its bubble with it). Waiting, choosing or with nowhere to
+     * go makes no difference; nor does a station of its being taken or not.
      */
-    sidesInPlay() {
-        const sides = this.standingSides();
-        for (const contestant of this.contestants.values()) {
-            if (!contestant.alive && !contestant.pilot.gone && contestant.respawnAt !== null
-                && this.holdsStation(contestant.faction)) sides.add(contestant.faction);
+    checkEliminations() {
+        if (this.introLeft > 0) return;
+        for (const faction of this.sidesAtStart) {
+            if (this.outSides.has(faction)) continue;
+            const flying = [...this.contestants.values()].some((contestant) => contestant.faction === faction && contestant.alive && !contestant.pilot.gone);
+            if (!flying) this.eliminate(faction);
         }
-        return sides;
+    }
+
+    eliminate(faction) {
+        this.outSides.add(faction);
+        for (const contestant of this.contestants.values()) {
+            if (contestant.faction !== faction || contestant.alive) continue;
+            contestant.respawnAt = null;
+            contestant.chooseUntil = null;
+        }
+        for (const place of this.places.values()) {
+            if (place.owner === faction) place.owner = null;
+        }
+        for (const contestant of this.contestants.values()) {
+            if (!contestant.pilot.gone) this.tellMode(contestant.pilot, BR_EVENT.SIDE_OUT, { faction });
+        }
+        this.server.publishState();
     }
 
     checkVictory() {
         if (this.result) return;
-        const standing = this.sidesInPlay();
+        const standing = this.standingSides();
         if (standing.size === 0) this.finish(null);
         else if (standing.size === 1 && this.sidesAtStart.size > 1) this.finish([...standing][0]);
         else if (this.clock.finalStandLeft === 0) this.finish(this.holderOfGate() ?? this.strongestAtGate());
@@ -992,6 +1086,7 @@ export class BattleRoyaleMode {
             time: Math.round(time),
             intro: this.introLeft > 0 ? Math.ceil(this.introLeft) : null,
             finalStand: this.clock.finalStandLeft === null ? null : Math.ceil(this.clock.finalStandLeft),
+            out: [...this.outSides],
             you: you && {
                 faction: you.faction,
                 planet: here?.planet.id ?? null,
@@ -1015,6 +1110,9 @@ export class BattleRoyaleMode {
                     emergencyShield: Math.max(0, Math.ceil(you.emergencyShieldUntil - time)),
                 },
                 respawn: this.describeRespawn(you),
+                out: this.outSides.has(you.faction),
+                watching: you.watching,
+                team: this.describeTeam(you),
             },
             planets: [...this.places.values()].map((place) => this.describePlace(place, you)),
             players: [...this.contestants.values()].filter((contestant) => !contestant.pilot.gone).map((contestant) => ({
@@ -1047,6 +1145,30 @@ export class BattleRoyaleMode {
             choose: you.chooseUntil === null ? null : Math.max(0, Math.ceil(you.chooseUntil - time)),
             next: this.respawnWait(you.respawns + 1),
         };
+    }
+
+    /**
+     * The player's comrades as their HUD lists them, wherever they are: their ship, where they
+     * are, how it stands with their hull and shield (percent) or a docking - or, while they are
+     * down, the seconds until they may come back (0: they may; null: they cannot).
+     */
+    describeTeam(you) {
+        const { time } = this.server;
+        return [...this.contestants.values()].filter((other) => other !== you && other.faction === you.faction && !other.pilot.gone).map((other) => {
+            const ship = other.alive ? other.pilot.ship : null;
+            return {
+                id: other.pilot.id,
+                name: other.pilot.name,
+                classId: other.pilot.classId,
+                bot: other.pilot.bot,
+                planet: other.alive ? this.placeOf(other)?.planet.id ?? null : null,
+                alive: other.alive,
+                hull: ship ? Math.round(ship.hullFraction * 100) : 0,
+                shield: ship ? Math.round(ship.shieldFraction * 100) : 0,
+                docking: Boolean(other.dock),
+                wait: other.alive || other.respawnAt === null ? null : Math.max(0, Math.ceil(other.respawnAt - time)),
+            };
+        });
     }
 
     /** The station where a contestant is, as their HUD shows it: can they clamp on, and how far along they are. */

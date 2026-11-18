@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { BATTLE_ROYALE, NPC_FACTIONS, PLAYER_FACTIONS, STAR_SYSTEM } from '../../src/game/config/battleRoyale.js';
+import { BATTLE_ROYALE, MAX_PLAYERS, NPC_FACTIONS, PLAYER_FACTIONS, SIDE_SEATS, STAR_SYSTEM } from '../../src/game/config/battleRoyale.js';
 import { FACTION } from '../../src/game/config/gameConfig.js';
 import { SECTORS } from '../../src/game/config/sectors.js';
 import { SHIP_CLASSES } from '../../src/game/config/shipClasses.js';
@@ -144,23 +144,33 @@ test('the same seed gives the same timetable', () => {
 
 // ---- Sides -----------------------------------------------------------------------------------
 
-test('every side gets a player before any side gets two', () => {
+test('a full match is four Federation, four Umbra and two pirates', () => {
+    assert.deepEqual(SIDE_SEATS, { [FACTION.DAWN]: 4, [FACTION.UMBRA]: 4, [FACTION.PIRATE]: 2 });
+    assert.equal(MAX_PLAYERS, 10);
     for (let seed = 1; seed <= 30; seed++) {
-        for (const players of [2, 3, 4, 6, 8]) {
+        const dealt = dealFactions(Array.from({ length: 10 }, (_, i) => `p${i}`), SIDE_SEATS, createRng(seed));
+        assert.deepEqual(PLAYER_FACTIONS.map((faction) => [...dealt.values()].filter((side) => side === faction).length), [4, 4, 2]);
+    }
+});
+
+test('every side gets a player before any side gets two, and no side more than its seats', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+        for (let players = 1; players <= MAX_PLAYERS; players++) {
             const ids = Array.from({ length: players }, (_, i) => `p${i}`);
-            const dealt = dealFactions(ids, PLAYER_FACTIONS, createRng(seed));
+            const dealt = dealFactions(ids, SIDE_SEATS, createRng(seed));
             const sizes = PLAYER_FACTIONS.map((faction) => [...dealt.values()].filter((side) => side === faction).length);
             assert.equal(dealt.size, players);
-            assert.ok(Math.max(...sizes) - Math.min(...sizes) <= 1, `${players} players -> ${sizes}`);
-            if (players >= 2) assert.ok(sizes.filter((size) => size > 0).length >= 2, 'never everybody on one side');
+            if (players <= 3) assert.ok(sizes.every((size) => size <= 1), `${players} players -> ${sizes}`);
+            else assert.ok(sizes.every((size) => size >= 1), `${players} players -> ${sizes}`);
+            PLAYER_FACTIONS.forEach((faction, index) => assert.ok(sizes[index] <= SIDE_SEATS[faction], `${players} players -> ${sizes}`));
         }
     }
 });
 
 test('who lands where depends on the seed alone', () => {
     const ids = ['a', 'b', 'c', 'd', 'e'];
-    assert.deepEqual([...dealFactions(ids, PLAYER_FACTIONS, createRng(5))], [...dealFactions(ids, PLAYER_FACTIONS, createRng(5))]);
-    const outcomes = new Set(Array.from({ length: 20 }, (_, seed) => dealFactions(ids, PLAYER_FACTIONS, createRng(seed + 1)).get('a')));
+    assert.deepEqual([...dealFactions(ids, SIDE_SEATS, createRng(5))], [...dealFactions(ids, SIDE_SEATS, createRng(5))]);
+    const outcomes = new Set(Array.from({ length: 20 }, (_, seed) => dealFactions(ids, SIDE_SEATS, createRng(seed + 1)).get('a')));
     assert.equal(outcomes.size, 3, 'over many seeds a player sees every side');
 });
 
@@ -229,7 +239,13 @@ const goodState = () => ({
         faction: 'umbra', planet: 'rust', alive: true, points: 3, summons: 1, upgrades: { hull: 2 }, loyalty: 'warned',
         jump: { cooldown: 14, to: null, spool: null, trapped: false, reach: 2 }, respawn: { wait: 0, stations: ['rust', 'veil'], contested: ['ember'], choose: 17, next: 30 },
         dock: { ready: false, left: 6.5, seconds: 15 }, picks: 1, equipment: { beacon: 2, overdrive: 1 }, effects: { gravityShield: 12, emergencyShield: 0 },
+        out: false, watching: 'b',
+        team: [
+            { id: 'b', name: 'Bo', classId: 'swift', bot: true, planet: 'rust', alive: true, hull: 80, shield: 35, docking: true, wait: null },
+            { id: 'c', name: 'Cy', classId: 'kestrel', bot: false, planet: null, alive: false, hull: 0, shield: 0, docking: false, wait: 12 },
+        ],
     },
+    out: ['pirate'],
     planets: STAR_SYSTEM.planets.map((planet) => ({
         id: planet.id, status: 'safe', changesIn: 100, known: true, beacon: true, owner: 'umbra', forces: { dawn: 4, umbra: 0, pirate: 1 }, docking: 'pirate', comrades: ['Bo'],
     })),
@@ -243,6 +259,8 @@ test('a well-formed state comes through unchanged in substance', () => {
     assert.equal(clean.you.upgrades.speed, 0, 'every rating is present');
     assert.equal(clean.you.loyalty, 'warned');
     assert.deepEqual(clean.you.respawn, { wait: 0, stations: ['rust', 'veil'], contested: ['ember'], choose: 17, next: 30 });
+    assert.deepEqual([clean.you.out, clean.you.watching, clean.out], [false, 'b', ['pirate']]);
+    assert.deepEqual(clean.you.team, goodState().you.team);
     assert.equal(clean.planets.length, STAR_SYSTEM.planets.length);
     assert.deepEqual(clean.planets[0].forces, { dawn: 4, umbra: 0, pirate: 1 });
     assert.deepEqual([clean.planets[0].known, clean.planets[0].beacon, clean.planets[0].owner, clean.planets[0].docking], [true, true, 'umbra', 'pirate']);
@@ -270,6 +288,9 @@ test('odd values are replaced by safe ones, never passed on', () => {
     raw.you.upgrades = { hull: 1e9, evil: 3, speed: -2 };
     raw.you.jump = { cooldown: NaN, to: 'pluto', spool: -3, trapped: 'yes' };
     raw.you.respawn = { wait: -3, stations: ['rust', 'pluto', 'rust', 7, null, 'veil'], contested: 'ember', choose: 'soon', next: NaN };
+    raw.you.watching = { id: 'b' };
+    raw.you.team = [{ id: 7, name: 'n'.repeat(500), planet: 'pluto', alive: 'yes', hull: 900, shield: -4, wait: 5 }, null, 'x'];
+    raw.out = ['pirate', 'gods', 'pirate'];
     raw.you.dock = { ready: 'yes', left: -2, seconds: 'soon' };
     raw.you.picks = -1;
     raw.you.equipment = { beacon: 'all', nuke: 5, overdrive: 2.9 };
@@ -297,6 +318,10 @@ test('odd values are replaced by safe ones, never passed on', () => {
     assert.deepEqual(clean.you.jump, { cooldown: 0, to: null, spool: 0, trapped: true, reach: 1 });
     assert.deepEqual(clean.you.respawn, { wait: 0, stations: ['rust', 'veil'], contested: [], choose: null, next: 0 },
         'only real planets, each once, in the order sent; no time is ever negative');
+    assert.equal(clean.you.watching, null);
+    assert.deepEqual(clean.you.team, [{ id: '7', name: 'n'.repeat(40), classId: '', bot: false, planet: null, alive: true, hull: 100, shield: 0, docking: false, wait: null }],
+        'teammates that are not objects are dropped; numbers are kept to percent');
+    assert.deepEqual(clean.out, ['pirate']);
     assert.deepEqual(clean.you.dock, { ready: true, left: 0, seconds: 1 });
     assert.equal(clean.you.picks, 0);
     assert.deepEqual(clean.you.equipment, { beacon: 0, gravityShield: 0, emergencyShield: 0, overdrive: 2 });
