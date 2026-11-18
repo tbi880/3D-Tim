@@ -1031,7 +1031,7 @@ export class BattleRoyaleMode {
         this.squadSerial += 1;
         const id = this.squadSerial;
         // They drop out of warp in front of the caller, where its pilot sees them come.
-        const ships = callReinforcements(pilot.zone, pilot.ship, classId, BATTLE_ROYALE.summon, [squadTag(id)]);
+        const ships = callReinforcements(pilot.zone, pilot.ship, classId, BATTLE_ROYALE.summon.count, BATTLE_ROYALE.summon.distance, [squadTag(id)]);
         // They stay with the fight they were called into for a while; after that they go where the side needs them.
         const { time } = this.server;
         this.squads.push(new Squad({
