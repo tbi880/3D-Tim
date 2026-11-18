@@ -231,6 +231,8 @@
 .eod-hud--touch .eod-match-status--strip .eod-match-row--refits { display: none; }
 .eod-hud--touch .eod-watch-tag { gap: 4px; padding-bottom: 2px; font-size: 8px; }
 .eod-hud--touch .eod-watch-tag strong { font-size: 9px; }
+/* The ship panel names whom, the strip says what they fly. */
+.eod-hud--touch .eod-watch-tag span:last-child { display: none; }
 .eod-hud--touch .eod-match-effect { font-size: 9px !important; }
 .eod-hud--touch .eod-centre-stack > .eod-match-buttons { width: 100%; flex-wrap: nowrap; margin: 0; gap: 4px; pointer-events: auto; }
 .eod-hud--touch .eod-match-button { flex: 1 1 0; min-width: 0; padding: 7px 2px; font-size: 9px; letter-spacing: 0.04em; background: rgba(6, 16, 28, 0.62); }
@@ -240,6 +242,10 @@
 .eod-hud--touch .eod-match-dock strong { font-size: 11px; }
 .eod-hud--touch .eod-match-dock-bar { flex-basis: 100%; order: 1; height: 5px; }
 .eod-hud--touch .eod-match-dock .eod-button { padding: 6px 12px; font-size: 11px; }
+/* A comrade's docking, watched: one short line, the bar beside the words. */
+.eod-hud--touch .eod-match-dock--watched { flex-wrap: nowrap; align-items: center; }
+.eod-hud--touch .eod-match-dock--watched strong { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px; letter-spacing: 0.03em; text-transform: none; }
+.eod-hud--touch .eod-match-dock--watched .eod-match-dock-bar { flex: 1 1 40px; order: 0; }
 /* Docked: the objective already says the helm is locked; here just the time left, the bar and Let go. */
 .eod-hud--touch .eod-match-dock--on > span { display: none; }
 .eod-hud--touch .eod-match-dock--on strong { flex: 1 1 auto; }
@@ -253,8 +259,13 @@
 .eod-hud--touch .eod-match-respawn-stations .eod-button small { font-size: 8px; }
 .eod-hud--touch .eod-match-respawn-stations kbd { display: none; }
 @media (max-height: 430px) { .eod-hud--touch .eod-match-respawn p { display: none; } }
-/* Phones: the comrades (only while the player is down) small in the left column, the watch bar on one line. */
+/* Phones: the comrades (only while the player is down) small in the left column, the watch bar on one line.
+   Under the gauges of a comrade being watched there may not be room for all of them above the stick:
+   the list then takes what is left and scrolls (the hint makes way: the watch bar is there to step on). */
 .eod-hud--touch .eod-match-team { gap: 2px; padding: 4px 6px; }
+.eod-hud--touch .eod-dock--left > .eod-match-team { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-x pan-y; }
+.eod-hud--touch .eod-match-team > * { flex: none; }
+.eod-hud--touch .eod-match-team--watching .eod-match-team-hint { display: none; }
 .eod-hud--touch .eod-match-mate { padding: 2px 4px; font-size: 10px; }
 .eod-hud--touch .eod-match-mate small { font-size: 9px; }
 .eod-hud--touch .eod-match-watch { gap: 4px; font-size: 10px; }

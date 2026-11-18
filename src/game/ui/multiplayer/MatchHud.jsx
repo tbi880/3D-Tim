@@ -331,8 +331,8 @@ export function TeamPanel({ session, onlyWhenDown = false }) {
         return mate.wait > 0 ? t('mp.team.waiting', { seconds: mate.wait }) : t('mp.team.ready');
     };
     return (
-        <div className="eod-panel eod-match-team">
-            <span className="eod-meter-label">{t('mp.team.title')}{down ? ` · ${t('mp.team.watchHint')}` : ''}</span>
+        <div className={`eod-panel eod-match-team ${down && you.watching ? 'eod-match-team--watching' : ''}`}>
+            <span className="eod-meter-label">{t('mp.team.title')}{down && <span className="eod-match-team-hint"> · {t('mp.team.watchHint')}</span>}</span>
             {you.team.map((mate) => {
                 const watchable = down && mate.alive;
                 const watched = you.watching === mate.id;
