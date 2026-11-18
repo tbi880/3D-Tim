@@ -102,6 +102,14 @@ difference is where its controls come from - a small program on the host's devic
 them every frame instead of a packet from a player's device - so the other devices carry
 nothing extra but one more ship in their snapshots.
 
+Which planet a bot is at, and where the reinforcements a pilot has called go, is decided on
+the host too: each side's war council (`modes/battleRoyale/strategy.js`, `BATTLE_ROYALE.strategy`)
+plans every couple of seconds from what the side can see - a station of its being taken, a
+comrade in trouble, stations to take, one ship on watch at each it holds - and its units jump
+by a pilot's rules. A squad of reinforcements (`squads.js`) jumps as ships leaving one place
+in a flash and dropping out of warp at the next, the ordinary remove and spawn events, so
+nothing new travels; its ships are tagged, so a checkpoint finds the squad again.
+
 ## What travels
 
 | | Channel | From | Content |

@@ -401,6 +401,12 @@ export class MatchServer {
             pilot.gone = Boolean(saved.gone);
         }
         this.mode.restoreState(this, checkpoint);
+        // A player who is down stays where they were watching from (their ship's place came back with the ship).
+        for (const saved of Array.isArray(checkpoint.pilots) ? checkpoint.pilots : []) {
+            const pilot = this.pilots.get(saved?.id);
+            const zone = typeof saved?.zone === 'string' ? this.zones.get(saved.zone) : null;
+            if (pilot && zone && !pilot.bot && !pilot.gone && !pilot.zone) this.moveToZone(pilot, zone);
+        }
     }
 
     /**

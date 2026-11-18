@@ -1959,7 +1959,7 @@ test('a bot jumps outwards before its planet falls in', () => {
     assert.equal(bot.alive, true);
 });
 
-test('bots do not race ahead of the collapse: from a planet their side holds they move on only so far', () => {
+test('a bot on its own takes the stations the collapse is coming for one after another - it does not sit on the first, nor race ahead', () => {
     const game = withBots(['ann']);
     const [bot] = game.bots;
     game.alone(bot, INNERMOST, INNERMOST);
@@ -1967,16 +1967,22 @@ test('bots do not race ahead of the collapse: from a planet their side holds the
         if (other !== bot && other.pilot.ship?.alive) other.pilot.zone.world.removeShip(other.pilot.ship);
     }
     for (const planet of PLANETS) {
-        const place = game.place(planet);
-        place.owner = bot.faction;
-        for (const ship of [...place.zone.world.ships]) if (ship.faction !== FACTION.NEUTRAL && !ship.isPlayer) place.zone.world.removeShip(ship);
+        const { world } = game.place(planet).zone;
+        for (const ship of [...world.ships]) if (ship.faction !== FACTION.NEUTRAL && !ship.isPlayer) world.removeShip(ship);
     }
-    for (let minute = 0; minute < 3; minute++) {
+    const visited = new Set();
+    for (let leg = 0; leg < 4; leg++) {
         bot.jumpReadyAt = 0;
-        game.run(BOTS.restSeconds + BATTLE_ROYALE.jump.spool + 3);
+        for (let second = 0; second < 40; second++) {
+            game.run(1);
+            visited.add(bot.pilot.zone.id);
+        }
     }
 
-    assert.equal(bot.pilot.zone.id, PLANETS[BOTS.maxAhead], 'two orbits ahead of the innermost planet still standing, and no further');
+    const { maxAhead } = BATTLE_ROYALE.strategy;
+    const within = PLANETS.slice(0, maxAhead + 1);
+    assert.deepEqual(within.map((planet) => game.place(planet).owner), within.map(() => bot.faction), 'it took each in turn');
+    assert.deepEqual([...visited].sort(), [...within].sort(), 'and went no further out than the collapse\'s front and two orbits');
 });
 
 test('a place is kept running for a living bot, and no longer for one that has been shot down', () => {
@@ -2015,6 +2021,135 @@ test('a bot cannot be given a link, and a second pilot cannot take its name', ()
     assert.equal(server.attachLink('bot:1', { isOpen: true }), false);
     assert.throws(() => server.addBot({ id: 'bot:1', name: 'x', classId: 'kestrel' }));
     assert.throws(() => server.addBot({ id: 'ann', name: 'x', classId: 'kestrel' }));
+});
+
+// ---- Where the computer-flown units go (strategy.js) -----------------------------------------
+
+/**
+ * A side holds the veil and the stargate's station with all four of its bots at the gate, and
+ * Ann - of another side - docks at the veil. Only that side's bots think (with `brains: false`
+ * none do); everybody else's ship sits idle, out of the way at the innermost planet.
+ */
+function stationUnderAttack({ brains = true } = {}) {
+    const game = withBots(['ann']);
+    const { mode, server } = game;
+    const [ann] = game.people;
+    const side = [DAWN, UMBRA].find((faction) => faction !== ann.faction);
+    const crew = [...mode.contestants.values()].filter((contestant) => contestant.faction === side);
+    mode.bots = brains ? mode.bots.filter((bot) => bot.contestant.faction === side) : [];
+    const moveTo = (contestant, planet) => {
+        if (contestant.pilot.ship?.alive) contestant.pilot.zone.world.removeShip(contestant.pilot.ship);
+        return mode.launch(contestant, game.place(planet), { warpIn: false });
+    };
+    for (const other of mode.contestants.values()) if (other.faction !== side && other !== ann) moveTo(other, INNERMOST);
+    for (const contestant of crew) moveTo(contestant, GATE);
+    for (const planet of [FOURTH, GATE]) {
+        const place = game.place(planet);
+        place.owner = side;
+        for (const ship of [...place.zone.world.ships]) if (!ship.isPlayer && ship.faction !== FACTION.NEUTRAL) place.zone.world.removeShip(ship);
+    }
+    const ship = moveTo(ann, FOURTH);
+    server.pilots.get('ann').lastInputAt = -Infinity;
+    ship.position.copy(game.place(FOURTH).station.mouth);
+    ship.velocity.set(0, 0, 0);
+    mode.requestDock(ann);
+    assert.ok(ann.dock, 'Ann is taking the veil');
+    const at = (planet) => crew.filter((contestant) => contestant.alive && contestant.pilot.zone?.id === planet);
+    return { game, mode, server, ann, side, crew, at };
+}
+
+test('bots that hold the stargate go back when a station of theirs further in is being taken - and the stargate keeps one on watch', () => {
+    const { game, mode, server, side, crew, at } = stationUnderAttack();
+    for (const contestant of crew) contestant.jumpReadyAt = server.time;
+    game.run(BATTLE_ROYALE.strategy.planInterval + 0.5);
+
+    const called = crew.filter((contestant) => mode.councilOf(side).orderFor(contestant.pilot.id)?.planet === FOURTH);
+    assert.ok(called.length >= 2, `${called.length} of the four are called back`);
+    assert.ok(called.every((contestant) => contestant.jump || contestant.pilot.zone.id !== GATE), 'and they are on their way at once');
+
+    let watched = true;
+    let arrived = false;
+    for (let second = 0; second < 150; second++) {
+        game.run(1);
+        watched &&= at(GATE).length > 0;
+        arrived ||= at(FOURTH).length > 0;
+    }
+    assert.equal(arrived, true, 'they got there');
+    assert.equal(watched, true, 'never was the stargate\'s station left bare');
+    assert.equal(game.place(FOURTH).owner, side, 'and the veil is theirs (again)');
+});
+
+test('reinforcements go where their side needs them, by a pilot\'s rules: one orbit a jump, and as battered as they were', () => {
+    const { game, mode, server, ann, crew } = stationUnderAttack({ brains: false });
+    // A long docking: the alarm goes on for as long as the test wants it to.
+    ann.dock.left = 1e6;
+    const [caller] = crew;
+    caller.summons = 1;
+    mode.summon(caller);
+    const [squad] = mode.squads;
+    assert.equal(squad.ships.length, BATTLE_ROYALE.summon.count);
+    assert.ok(squad.ships.every((ship) => ship.hasTag(squad.key)));
+    game.run(5);
+    squad.ships[0].hull = squad.ships[0].maxHull / 2;
+    // They have done what they were called for, and their drives are charged.
+    squad.committedUntil = 0;
+    squad.readyAt = server.time;
+    const gate = game.place(GATE).zone.world;
+    game.run(BATTLE_ROYALE.strategy.planInterval + BATTLE_ROYALE.jump.spool + 0.5);
+
+    assert.equal(squad.place.planet.id, NEXT_TO_GATE, 'one orbit in, on the way to the veil');
+    assert.equal(gate.ships.filter((ship) => ship.alive && ship.hasTag(squad.key)).length, 0, 'gone from the stargate in a flash');
+    const { world } = game.place(NEXT_TO_GATE).zone;
+    assert.equal(squad.ships.length, BATTLE_ROYALE.summon.count);
+    assert.ok(squad.ships.every((ship) => ship.alive && world.ships.includes(ship) && ship.hasTag(squad.key) && ship.faction === caller.faction));
+    assert.ok(squad.ships.some((ship) => Math.abs(ship.hullFraction - 0.5) < 0.02), 'the damaged one is still damaged');
+    assert.ok(squad.readyAt > server.time, 'and the drives must charge again');
+
+    game.run(BATTLE_ROYALE.jump.cooldown + BATTLE_ROYALE.strategy.planInterval + BATTLE_ROYALE.jump.spool + 0.5);
+    assert.equal(squad.place.planet.id, FOURTH, 'then on to the veil');
+});
+
+test('reinforcements get out of a planet that is about to fall in, whatever their orders', () => {
+    const game = withBots(['ann']);
+    const { mode } = game;
+    mode.bots = [];
+    const caller = game.bots.find((bot) => bot.faction !== PIRATE);
+    game.alone(caller, INNERMOST);
+    caller.summons = 1;
+    mode.summon(caller);
+    const [squad] = mode.squads;
+    squad.readyAt = 0;
+    game.skipTo(mode.clock.schedule[0].startsAt - BOTS.fleeAhead + 1);
+    game.run(BATTLE_ROYALE.jump.spool + 1);
+    assert.equal(squad.place.planet.id, SECOND, 'even straight after being called (they stay with the fight, not with a planet falling in)');
+});
+
+test('a bot at its side\'s station goes first for a ship docked there, taking it - and with nothing about, keeps watch on the way in', () => {
+    const game = withBots(['ann']);
+    const { mode } = game;
+    const [ann] = game.people;
+    const contestant = game.bots.find((bot) => bot.faction !== ann.faction && bot.faction !== PIRATE);
+    const bot = mode.bots.find((brain) => brain.contestant === contestant);
+    const ship = game.alone(contestant, THIRD);
+    const place = game.place(THIRD);
+    place.owner = contestant.faction;
+    game.run(BOTS.thinkInterval + 0.1);
+    assert.equal(bot.goal.kind, 'watch');
+    const post = place.station.mouth.clone().addScaledVector(place.station.mouth.clone().sub(place.station.berth).normalize(), -1100);
+    const before = ship.position.distanceTo(post);
+    game.run(10);
+    assert.ok(ship.position.distanceTo(post) < before, 'on its way to the post');
+
+    const intruder = mode.launch(ann, place, { warpIn: false });
+    intruder.position.copy(place.station.mouth);
+    intruder.velocity.set(0, 0, 0);
+    mode.requestDock(ann);
+    game.server.pilots.get('ann').lastInputAt = -Infinity;
+    const enemy = contestant.faction === UMBRA ? DAWN : UMBRA;
+    place.zone.world.spawnShip('drone', { faction: enemy, position: ship.position.clone().add({ x: 0, y: 0, z: -300 }), aiMode: 'hold' });
+    game.run(BOTS.thinkInterval + 0.1);
+    assert.equal(bot.goal.kind, 'attack');
+    assert.equal(bot.goal.target, intruder, 'the ship taking the station, not the drone in front of it');
 });
 
 test('whole matches of bots play to a decision without anybody at a keyboard', () => {

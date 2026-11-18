@@ -8,9 +8,9 @@ import { areHostile } from '../../core/systems/damage.js';
 import { applyPilotAction } from '../../core/systems/pilotActions.js';
 import { isValidTarget } from '../../core/systems/targeting.js';
 import { playerBeamRange, playerTorpedoRange } from '../../core/systems/weapons.js';
-import { JUMP_REFUSAL } from './battleRoyaleProtocol.js';
 import { PLANET_STATUS } from './collapse.js';
 import { EQUIPMENT } from './equipment.js';
+import { TASK, stepToward } from './strategy.js';
 
 /**
  * Computer-flown players for the battle royale (see BATTLE_ROYALE.bots).
@@ -22,17 +22,24 @@ import { EQUIPMENT } from './equipment.js';
  * it asks the rules for the things a player asks for: a jump, a docking, a refit, a comeback -
  * and it presses its ship's ability button (config/abilities.js) when the moment suits it.
  * It can do nothing a player cannot, and its ship answers exactly as a player's would.
+ *
+ * Which planet it is at is its side's war council's to say (strategy.js): the bot jumps
+ * towards the planet it is given - at once when the job is urgent (a station of its side being
+ * taken, a comrade in trouble), once nothing is shooting at it otherwise - and, whatever its
+ * orders, out of a planet that is about to fall in. Where it is, it does what a pilot would.
  */
 
 const TUNING = BATTLE_ROYALE.bots;
-/** Equipment a bot chooses from: the pieces that work by themselves. */
-const BOT_EQUIPMENT = Object.freeze([EQUIPMENT.GRAVITY_SHIELD, EQUIPMENT.EMERGENCY_SHIELD]);
+/** Equipment a bot chooses from: the pieces that work by themselves, and the overdrive chip it keeps for an urgent jump. */
+const BOT_EQUIPMENT = Object.freeze([EQUIPMENT.GRAVITY_SHIELD, EQUIPMENT.EMERGENCY_SHIELD, EQUIPMENT.OVERDRIVE]);
 /** How hard the stick is pushed per unit of "off to the side" (1 = full deflection at 90 degrees). */
 const STICK_GAIN = 2.6;
 /** Metres from a point at which a bot flying to it eases off, and at which it has arrived. */
 const SLOW_RADIUS = 500;
 /** How far down the approach lane from the dock's mouth a bot lines up before flying in (metres). */
 const DOCK_APPROACH = 550;
+/** How far down that lane a bot keeps watch over a station its side holds (metres): in the way of anybody coming to dock. */
+const WATCH_DISTANCE = 1100;
 
 const scratchDesired = new Vector3();
 const scratchLocal = new Vector3();
@@ -76,7 +83,7 @@ export class BotPilot {
         this.rng = rng;
         // Not all at once: each bot thinks on its own beat.
         this.thinkIn = rng() * TUNING.thinkInterval;
-        /** What the bot is doing: { kind: 'attack', target } | { kind: 'evade', from } | { kind: 'dock' } | { kind: 'hold' }. */
+        /** What the bot is doing: { kind: 'attack', target } | { kind: 'evade', from } | { kind: 'dock' } | { kind: 'watch' } | { kind: 'hold' }. */
         this.goal = { kind: 'hold' };
         /** Breaking away from a target that got too close: seconds left, and which way. */
         this.breakLeft = 0;
@@ -93,6 +100,49 @@ export class BotPilot {
 
     get pilot() {
         return this.contestant.pilot;
+    }
+
+    // ---- As one of its side's units (strategy.js) ---------------------------------------------
+
+    /** The war council's name for it. */
+    get key() {
+        return this.contestant.pilot.id;
+    }
+
+    /** True while it has a ship somewhere: only then does it take orders. */
+    get flying() {
+        const { contestant } = this;
+        return contestant.alive && !contestant.pilot.gone && Boolean(contestant.pilot.ship?.alive) && Boolean(contestant.pilot.zone);
+    }
+
+    get ships() {
+        return this.flying ? [this.pilot.ship] : [];
+    }
+
+    /** What its side's war council last told it: { planet, task, urgent }, or null. */
+    get order() {
+        return this.mode.councilOf(this.contestant.faction).orderFor(this.key);
+    }
+
+    /** The jump it is spooling up, if any: { to, left }. */
+    get jump() {
+        return this.contestant.jump;
+    }
+
+    /** As the war council sees it (strategy.js planSide `units`). */
+    describe(time) {
+        const { mode, contestant } = this;
+        const here = mode.placeOf(contestant);
+        return {
+            key: this.key,
+            orbit: here.orbit,
+            readyIn: Math.max(0, contestant.jumpReadyAt - time),
+            reach: mode.jumpReach(contestant),
+            strength: BATTLE_ROYALE.strategy.strength.player,
+            squad: false,
+            // Jumping, or clamped on to a station it is taking: that is where it is, whatever comes up.
+            fixed: contestant.jump ? contestant.jump.to : contestant.dock ? here.planet.id : null,
+        };
     }
 
     /** Once per server frame. */
@@ -130,9 +180,9 @@ export class BotPilot {
         const { mode, contestant, rng } = this;
         if (contestant.inventory.picks > 0) mode.pickEquipment(contestant, pick(rng, BOT_EQUIPMENT));
         if (contestant.alive && contestant.points > 0) mode.spendPoints(contestant, { [pick(rng, RATING_ORDER)]: 1 });
-        // Shot down: back the moment the wait is over, at the station the rules would send it to anyway.
+        // Shot down: back the moment the wait is over - at the station nearest whatever its side most needs doing.
         if (!contestant.alive && contestant.respawnAt !== null && mode.server.time >= contestant.respawnAt && mode.holdsStation(contestant.faction)) {
-            const [station] = mode.respawnStations(contestant);
+            const station = mode.councilOf(contestant.faction).respawnPick(mode.respawnStations(contestant));
             if (station && mode.respawnRefusal(contestant, station) === null) mode.respawn(contestant, station);
         }
     }
@@ -142,16 +192,14 @@ export class BotPilot {
     think(ship, world) {
         const { mode, contestant } = this;
         const place = mode.placeOf(contestant);
-        const enemy = this.nearestHostile(ship, world);
+        const enemy = this.nearestHostile(ship, world, place);
         this.quietFor = enemy ? 0 : this.quietFor + TUNING.thinkInterval;
         const mine = place.owner === contestant.faction;
 
-        if (this.shouldLeave(place, mine)) {
-            const outward = mode.map.planets[place.orbit + 1];
-            if (outward && mode.jumpRefusal(contestant, outward.id) === null) {
-                mode.requestJump(contestant, outward.id);
-                return;
-            }
+        const hop = this.nextJump(place, mine);
+        if (hop && mode.jumpRefusal(contestant, hop) === null) {
+            mode.requestJump(contestant, hop);
+            return;
         }
         if (contestant.dock) {
             // Docked and being shot to pieces: let go and fight. Otherwise sit it out.
@@ -161,9 +209,11 @@ export class BotPilot {
         // In danger with no way out, the only shelter is the station's bubble: go for the dock whatever is shooting.
         const desperate = !mine && place.status !== PLANET_STATUS.SAFE;
         const dockIsClear = !enemy || enemy.position.distanceTo(place.station.mouth) > TUNING.dockClearRange;
-        // Shot nearly bare: run until the shield is back, unless running is no use here.
+        // Shot nearly bare: run until the shield is back, unless running is no use here. (The side's
+        // last pilot in the air does not stay to fight at all: it is all that keeps the side in.)
         const running = this.goal.kind === 'evade';
-        if (enemy && !desperate && ship.shieldFraction < (running ? TUNING.recoverShield : TUNING.retreatShield)) {
+        const lyingLow = this.order?.task === TASK.HIDE;
+        if (enemy && !desperate && (lyingLow || ship.shieldFraction < (running ? TUNING.recoverShield : TUNING.retreatShield))) {
             this.goal = { kind: 'evade', from: enemy };
         } else if (!mine && (desperate || dockIsClear)) {
             this.goal = { kind: 'dock' };
@@ -172,34 +222,52 @@ export class BotPilot {
             this.goal = { kind: 'attack', target: enemy };
             if (contestant.summons > 0) mode.summon(contestant);
         } else {
-            this.goal = { kind: 'hold' };
+            // Its own side's station, and nothing in reach: keep watch on the way in to the dock.
+            this.goal = { kind: mine ? 'watch' : 'hold' };
         }
     }
 
     /**
-     * Time to jump outwards: the planet is falling in (or about to) and is not under the
-     * bot's own bubble - or its side holds the station, all is quiet, and there is more to take.
+     * Where to jump now, if anywhere (a planet id; whether the drive allows it is the rules' to say).
+     * First, out of a planet that is falling in - or about to - and is not under the bot's own
+     * bubble: always outwards, where the collapse comes last. Then towards the planet its side's
+     * war council gives it: at once for something urgent (and as far as an overdrive chip
+     * reaches), otherwise once nothing has been in reach for a moment - not out of a dogfight.
      */
-    shouldLeave(place, mine) {
+    nextJump(place, mine) {
         const { mode, contestant } = this;
-        if (contestant.jump || place.orbit >= mode.map.count - 1) return false;
-        if (!mine) {
-            if (place.status === PLANET_STATUS.COLLAPSING) return true;
-            if (place.status === PLANET_STATUS.SWALLOWED) return mode.jumpRefusal(contestant, mode.map.planets[place.orbit + 1].id) !== JUMP_REFUSAL.TRAPPED;
+        if (contestant.jump) return null;
+        if (!mine && place.orbit < mode.map.count - 1 && place.status !== PLANET_STATUS.SWALLOWED) {
             const wait = mode.clock.secondsToChange(place.orbit);
-            return wait !== null && wait < TUNING.fleeAhead;
+            if (place.status === PLANET_STATUS.COLLAPSING || (wait !== null && wait < TUNING.fleeAhead)) return mode.map.planets[place.orbit + 1].id;
         }
-        // Its own side's planet, and quiet: on to the next - but not racing ahead of the collapse to the gate.
-        const front = mode.map.planets.findIndex((planet) => mode.places.get(planet.id).status !== PLANET_STATUS.SWALLOWED);
-        return this.quietFor >= TUNING.restSeconds && place.orbit - front < TUNING.maxAhead;
+        if (contestant.dock) return null;
+        const order = this.order;
+        if (!order || order.planet === place.planet.id) return null;
+        if (!order.urgent && this.quietFor < TUNING.leaveQuiet) return null;
+        const target = mode.map.orbitOf.get(order.planet);
+        return mode.map.planets[stepToward(place.orbit, target, order.urgent ? mode.jumpReach(contestant) : 1)].id;
+    }
+
+    /** The ship of another side's pilot docked at this bot's own side's station here: taking it. */
+    intruderAt(place) {
+        const { faction } = this.contestant;
+        if (place.owner !== faction) return null;
+        for (const other of this.mode.contestants.values()) {
+            if (other.dock?.place === place && other.faction !== faction) return other.pilot.ship;
+        }
+        return null;
     }
 
     /**
-     * The ship to fight: hostile, hurtable, and within reach - or whoever shot this ship last.
+     * The ship to fight: first of all one docked at the side's own station here, taking it;
+     * otherwise whatever is hostile, hurtable, and within reach - or whoever shot this ship last.
      * The nearest one, except that a fighter near enough comes before any big ship: a capital
      * ship's guns are no place to fly into while its escorts are still about.
      */
-    nearestHostile(ship, world) {
+    nearestHostile(ship, world, place) {
+        const intruder = this.intruderAt(place);
+        if (intruder && isValidTarget(intruder) && areHostile(ship, intruder)) return intruder;
         let best = null;
         let bestScore = Infinity;
         for (const other of world.ships) {
@@ -234,6 +302,7 @@ export class BotPilot {
                 this.steer(ship, world, scratchDesired.copy(ship.position).sub(this.goal.from.position).normalize(), controls, 1, true);
                 break;
             case 'dock': this.flyToDock(ship, world, controls); break;
+            case 'watch': this.flyToWatch(ship, world, controls); break;
             default:
                 controls.yaw = 0;
                 controls.pitch = 0;
@@ -358,6 +427,23 @@ export class BotPilot {
         controls.boost = distance > 2500 && ship.boost > 0.5;
         // On the last stretch the hull beside the door is not something to shy away from.
         this.steer(ship, world, scratchDesired, controls, distance > SLOW_RADIUS ? 1 : 0.4, !linedUp || distance > SLOW_RADIUS);
+    }
+
+    /** Out to a post down the approach lane of its side's station, and stops there: anybody coming to dock has to pass it. */
+    flyToWatch(ship, world, controls) {
+        const { station } = this.mode.placeOf(this.contestant);
+        const lane = scratchForward.copy(station.mouth).sub(station.berth).normalize();
+        const post = scratchPoint.copy(station.mouth).addScaledVector(lane, -WATCH_DISTANCE);
+        const distance = ship.position.distanceTo(post);
+        if (distance < SLOW_RADIUS) {
+            controls.yaw = 0;
+            controls.pitch = 0;
+            controls.throttleTarget = 0;
+            return;
+        }
+        scratchDesired.copy(post).sub(ship.position).normalize();
+        controls.boost = distance > 2500 && ship.boost > 0.5;
+        this.steer(ship, world, scratchDesired, controls, distance > SLOW_RADIUS * 3 ? 1 : 0.4, true);
     }
 
     /**

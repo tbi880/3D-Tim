@@ -58,6 +58,27 @@ test('a match resumed from a checkpoint is the match that was captured', () => {
     for (const place of next.mode.places.values()) assert.equal(place.station.ship, place.zone.world.findByTag(STATION_TAG), `${place.planet.id} has its station`);
 });
 
+test('reinforcements are still a squad on the new host: the same ships where they were, their drives as charged as they were', () => {
+    const game = createTestServer(['ann', 'bo', 'cy'], { start: { seed: 3, settings: { bots: 'none' } } });
+    const { mode, server } = game;
+    const caller = [...mode.contestants.values()].find((contestant) => contestant.faction !== FACTION.PIRATE);
+    caller.summons = 2;
+    mode.summon(caller);
+    game.run(1);
+    const [squad] = mode.squads;
+
+    const next = resumeFrom(game);
+    const [again] = next.mode.squads;
+    assert.equal(next.mode.squads.length, 1);
+    assert.deepEqual([again.id, again.faction, again.place.planet.id, again.ships.length], [squad.id, squad.faction, squad.place.planet.id, squad.ships.length]);
+    assert.ok(again.ships.every((ship) => ship.alive && ship.hasTag(again.key) && again.place.zone.world.ships.includes(ship)));
+    assert.ok(Math.abs((again.readyAt - next.time) - (squad.readyAt - server.time)) < 0.01, 'the drives charge on from where they were');
+    assert.ok(again.committedUntil > next.time, 'and they are still with the fight they were called into');
+
+    next.mode.summon(next.mode.contestants.get(caller.pilot.id));
+    assert.deepEqual(next.mode.squads.map((each) => each.id), [squad.id, squad.id + 1], 'a new call is a new squad');
+});
+
 test('an ability still recharging, and a shield held down, go on from where they were', () => {
     const game = createTestServer(['ann', 'bo'], { start: { seed: 3, settings: { bots: 'none', pace: 'quick' } } });
     game.run(1);

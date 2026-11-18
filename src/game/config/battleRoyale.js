@@ -250,7 +250,11 @@ export const BATTLE_ROYALE = Object.freeze({
         overdriveReach: 2,
     }),
 
-    /** Ships that answer a call for reinforcements, and how far behind the caller they arrive. */
+    /**
+     * Ships that answer a call for reinforcements, and how far behind the caller they arrive.
+     * They stay with the fight they were called into for a while (`strategy.summonCommit`),
+     * then go where their side needs them, jumping as a squad by a pilot's rules (squads.js).
+     */
     summon: Object.freeze({
         count: 3,
         distance: 600,
@@ -325,15 +329,12 @@ export const BATTLE_ROYALE = Object.freeze({
         dockClearRange: 2400,
         /** ...and lets go if it is shot down to this share of its shield while docked. */
         undockShield: 0.35,
-        /** It jumps outwards this many seconds before its planet starts to fall in, if the drive is charged... */
-        fleeAhead: 45,
         /**
-         * ...and, from a planet its side holds, after this many quiet seconds - but never
-         * further than `maxAhead` orbits ahead of the innermost planet still standing: bots
-         * fight over the planets the collapse is coming for, and reach the gate when it does.
+         * Whatever its orders (strategy, below), it jumps outwards this many seconds before its
+         * planet starts to fall in, if the drive is charged and its side's bubble is not there.
+         * (Reinforcements do the same.)
          */
-        restSeconds: 20,
-        maxAhead: 2,
+        fleeAhead: 45,
         /** With its shield down to this share a bot runs - afterburner, away from whoever is nearest - until it is back to `recoverShield`. */
         retreatShield: 0.2,
         recoverShield: 0.6,
@@ -360,6 +361,93 @@ export const BATTLE_ROYALE = Object.freeze({
             lanceRange: 5000,
             lanceOffAxis: 0.4,
         }),
+        /** Seconds with nothing hostile in reach before a bot leaves a planet for work that is not urgent (strategy, below). */
+        leaveQuiet: 5,
+    }),
+
+    /**
+     * Where each side's computer-flown units go: its bots, and the reinforcements its pilots
+     * have called (modes/battleRoyale/strategy.js, on the host's device). Every `planInterval`
+     * seconds a side looks at the system as its pilots can see it and lists what needs doing,
+     * most pressing first - a station of its being taken, enemies at a station it holds, a
+     * comrade outnumbered, a station to take, one ship on watch at each station it holds - and
+     * hands each unit the job worth most to it, less `hopCost` for every jump on the way. A job
+     * asks for `need` strength (a player's ship is 1); once that is met the next unit goes to
+     * the next job, so a side does not pile everything into one place and leave the rest bare.
+     */
+    strategy: Object.freeze({
+        planInterval: 2,
+        /** Worth of each job before the way there is paid for. */
+        priority: Object.freeze({
+            /** Another side is docked at a station the side holds. */
+            dockAlarm: 100,
+            /** Hostile ships at a station the side holds. */
+            defend: 75,
+            /** A pilot of the side was shot down at a station it holds a moment ago. */
+            avenge: 70,
+            /** A pilot of the side is outnumbered somewhere the side holds nothing. */
+            rescue: 65,
+            /** A station to take while the side holds none and has pilots down (taking it brings them back). */
+            revive: 80,
+            /** A station the side does not hold: `take`, plus `takePerOrbit` for every orbit out, plus `reviveEach` for every pilot of the side who is down. */
+            take: 40,
+            takePerOrbit: 4,
+            reviveEach: 3,
+            /**
+             * One ship on watch at a station the side holds, plus `guardPerOrbit` for every orbit
+             * out: at the most valuable one (the outermost) `guardFirst`, at the next `guardSecond`
+             * - so a side with more than one unit never leaves its best stations bare - at the rest `guard`.
+             */
+            guardFirst: 50,
+            guardSecond: 32,
+            guard: 12,
+            guardPerOrbit: 3,
+            /** Added for the stargate's station, once it is within reach (`maxAhead`). */
+            gate: 15,
+        }),
+        /**
+         * Stations further out than this many orbits past the innermost planet still standing
+         * are not taken yet: a side fights over the planets the collapse is coming for, and
+         * reaches the gate when it does. (Guarding and defending what it holds know no such limit.)
+         */
+        maxAhead: 2,
+        /** Worth lost per jump on the way (a jump costs a minute of the drive's charge). */
+        hopCost: 10,
+        /** Worth added to staying with the job a unit already has: it does not dither between two. */
+        stickiness: 12,
+        /** Worth lost by a job whose `need` is already met (a unit with nothing better still goes somewhere useful). */
+        overflow: 25,
+        /** Reinforcements cannot dock: a station to take is worth less to them, and keeping watch more - a pilot's ship is freed to take stations. */
+        squadTake: 20,
+        squadGuard: 10,
+        /** Strength wanted against the enemy at a place (times theirs, plus a margin), and the most any one job asks for. */
+        overmatch: 1.2,
+        margin: 0.5,
+        maxNeed: 4,
+        /** Strength wanted at a station being taken, at least. */
+        dockAlarmNeed: 1.5,
+        /**
+         * A side only takes on a fight where the enemy is at most this many times what it can
+         * bring there (all its units, and its people and garrison there) - for a station of its
+         * own being taken, `dockAlarmBoldness` times bolder still.
+         */
+        boldness: 1.3,
+        dockAlarmBoldness: 1.5,
+        /** Ships at the stargate's station kept on watch once the last stand is near. */
+        gateGuards: 2,
+        /** Enemy strength assumed where the side has no eyes. */
+        unknownEnemy: 1,
+        /** Strength of a ship: a player's (bots included), a computer-flown capital ship, any other. */
+        strength: Object.freeze({ player: 1, capital: 1.5, other: 0.4 }),
+        /** Seconds a pilot's loss at a place counts as a sign of trouble there, and since a hit that a pilot is under fire. */
+        lossMemory: 30,
+        underFireSeconds: 4,
+        /** A planet due to start falling in sooner than this is not worth guarding or taking... */
+        doomSeconds: 90,
+        /** ...and a route must leave each planet on the way this long before its collapse begins. */
+        routeMargin: 15,
+        /** Reinforcements stay with the fight they were called into this long before they take other orders. */
+        summonCommit: 45,
     }),
 
     /**

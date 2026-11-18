@@ -16,7 +16,9 @@ import { CollapseClock, PLANET_STATUS } from './collapse.js';
 import { EQUIPMENT, Inventory } from './equipment.js';
 import { callReinforcements, planGarrisons, stationGarrison } from './garrisons.js';
 import { StarMap } from './starMap.js';
+import { Squad, restoreSquads, squadIdOf, squadTag } from './squads.js';
 import { GATE_TAG, buildGate, buildStation, findStation } from './station.js';
+import { WarCouncil, shipStrength } from './strategy.js';
 
 const scratchOffset = new Vector3();
 const sumLevels = (upgrades) => Object.values(upgrades).reduce((sum, levels) => sum + levels, 0);
@@ -92,8 +94,9 @@ class Place {
  *
  * Tuning is in config/battleRoyale.js. The pieces: StarMap (who can jump where), CollapseClock
  * (what falls in when), allegiance (sides and treason), station (the docks, and where the
- * stargate stands), garrisons (the computer-flown ships), equipment (what pilots carry).
- * The ending is the presenter's (gateCeremony.js, then systemFall.js): the rules only say who won.
+ * stargate stands), garrisons (the computer-flown ships), equipment (what pilots carry),
+ * bots (the computer-flown players), strategy (where each side's bots and reinforcements go)
+ * and squads (reinforcements on the move). The ending is the presenter's (gateCeremony.js, then systemFall.js): the rules only say who won.
  */
 export class BattleRoyaleMode {
     /**
@@ -122,6 +125,11 @@ export class BattleRoyaleMode {
         this.outSides = new Set();
         /** The computer-flown players' hands and heads (bots.js), one per bot. */
         this.bots = [];
+        /** Reinforcements called by pilots (squads.js), as long as any of their ships is left. */
+        this.squads = [];
+        this.squadSerial = 0;
+        /** @type {Map<string, WarCouncil>} by side: where its bots and reinforcements go (strategy.js) */
+        this.councils = new Map();
     }
 
     get jumpCooldown() {
@@ -240,6 +248,7 @@ export class BattleRoyaleMode {
                 respawnIn: contestant.respawnAt === null ? null : contestant.respawnAt - time,
                 chooseIn: contestant.chooseUntil === null ? null : contestant.chooseUntil - time,
             })),
+            squads: this.squads.filter((squad) => squad.alive).map((squad) => squad.save(time)),
         };
     }
 
@@ -324,6 +333,9 @@ export class BattleRoyaleMode {
             this.contestants.set(pilot.id, contestant);
             if (pilot.bot) this.bots.push(new BotPilot(this, contestant, rng));
         }
+        // The reinforcements are found again by the tags on their ships; the councils plan afresh.
+        this.squads = restoreSquads(this, data.squads);
+        this.squadSerial = this.squads.reduce((most, squad) => Math.max(most, squad.id), 0);
         server.publishState();
     }
 
@@ -403,6 +415,9 @@ export class BattleRoyaleMode {
             this.updateRespawn(contestant);
             this.updateWatching(contestant);
         }
+        for (const faction of PLAYER_FACTIONS) this.councilOf(faction).update(dt);
+        for (const squad of this.squads) squad.update(this, dt);
+        this.squads = this.squads.filter((squad) => squad.alive);
         for (const bot of this.bots) bot.update(dt);
         this.checkEliminations();
         this.checkVictory();
@@ -930,8 +945,46 @@ export class BattleRoyaleMode {
         const classId = BATTLE_ROYALE.summon.ships[contestant.faction];
         if (contestant.summons <= 0 || !pilot.ship?.alive || !classId) return;
         contestant.summons -= 1;
-        callReinforcements(pilot.zone, pilot.ship, classId, BATTLE_ROYALE.summon.count, BATTLE_ROYALE.summon.distance);
+        this.squadSerial += 1;
+        const id = this.squadSerial;
+        const ships = callReinforcements(pilot.zone, pilot.ship, classId, BATTLE_ROYALE.summon.count, BATTLE_ROYALE.summon.distance, [squadTag(id)]);
+        // They stay with the fight they were called into for a while; after that they go where the side needs them.
+        const { time } = this.server;
+        this.squads.push(new Squad({
+            id, faction: contestant.faction, ships, place: this.placeOf(contestant),
+            readyAt: time + this.jumpCooldown, committedUntil: time + BATTLE_ROYALE.strategy.summonCommit,
+        }));
         this.server.publishState();
+    }
+
+    // ---- Where the computer-flown units go (strategy.js) -------------------------------------
+
+    /** A side's war council (made the first time it is asked for: each side plans on its own beat). */
+    councilOf(faction) {
+        let council = this.councils.get(faction);
+        if (!council) {
+            const beat = BATTLE_ROYALE.strategy.planInterval;
+            council = new WarCouncil(this, faction, ((this.councils.size + 1) * beat) / (PLAYER_FACTIONS.length + 1));
+            this.councils.set(faction, council);
+        }
+        return council;
+    }
+
+    /** A side's units that take orders: its bots in the air, and its reinforcements. */
+    unitsOf(faction) {
+        const units = this.bots.filter((bot) => bot.contestant.faction === faction && bot.flying);
+        for (const squad of this.squads) {
+            if (squad.faction === faction && squad.alive) units.push(squad);
+        }
+        return units;
+    }
+
+    /**
+     * True when a side has eyes on a planet: a pilot of theirs there, the station theirs, or
+     * a beacon of theirs. (What a side's players are shown of a planet follows the same rule: describePlace.)
+     */
+    sideSees(place, faction) {
+        return place.owner === faction || place.scouts.has(faction) || this.membersAt(place, faction).length > 0;
     }
 
     // ---- What happens to ships ---------------------------------------------------------------
@@ -963,6 +1016,9 @@ export class BattleRoyaleMode {
     onShipDestroyed(zone, ship, killer) {
         const scorer = killer?.isPlayer ? this.contestants.get(killer.pilotId) : null;
         const victim = ship.isPlayer ? this.contestants.get(ship.pilotId) : null;
+        // A pilot or a reinforcement lost is a sign of trouble there, for the side's war council.
+        const place = this.places.get(zone.id);
+        if (place && (victim || squadIdOf(ship) !== null)) this.councilOf(victim?.faction ?? ship.faction).noteLoss(place, shipStrength(ship));
         if (victim) {
             victim.alive = false;
             victim.deaths += 1;

@@ -55,9 +55,10 @@ export const garrisonGroup = (faction) => `garrison:${faction}`;
 
 /**
  * Brings reinforcements out of warp behind `ship`, on its side.
+ * @param {string[]} [tags] given to every ship (a squad's, squads.js)
  * @returns {object[]} the ships that arrived
  */
-export function callReinforcements(zone, ship, classId, count, distance) {
+export function callReinforcements(zone, ship, classId, count, distance, tags = []) {
     const { world } = zone;
     const behind = new Vector3(0, 0, 1).applyQuaternion(ship.quaternion);
     const spawned = [];
@@ -65,7 +66,7 @@ export function callReinforcements(zone, ship, classId, count, distance) {
         randomUnitVector(world.rng, scratchOffset);
         const position = ship.position.clone().addScaledVector(behind, distance).addScaledVector(scratchOffset, 120);
         spawned.push(world.spawnShip(classId, {
-            faction: ship.faction, position, quaternion: ship.quaternion.toArray(), group: garrisonGroup(ship.faction), warpIn: true,
+            faction: ship.faction, position, quaternion: ship.quaternion.toArray(), group: garrisonGroup(ship.faction), tags, warpIn: true,
         }));
     }
     return spawned;
