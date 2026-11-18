@@ -6,7 +6,7 @@ import { PHASE, SESSION_EVENTS } from '../state/GameSession.js';
 import { useGameStore, useT } from '../state/gameStore.js';
 import { abilityStateText } from './abilityText.js';
 import CommsPanel from './CommsPanel.jsx';
-import { DockPrompt, MatchAlerts, MatchButtons, MatchStatus, RespawnPrompt, TeamPanel } from './multiplayer/MatchHud.jsx';
+import { DockPrompt, MatchAlerts, MatchButtons, MatchStatus, RespawnPrompt, TeamPanel, WatchTag } from './multiplayer/MatchHud.jsx';
 
 /**
  * The in-flight HUD. Each panel subscribes to one slice of the game store (refreshed about
@@ -32,6 +32,13 @@ function useTouchLayout() {
 }
 
 const percent = (fraction) => `${Math.round(Math.max(0, Math.min(1, fraction)) * 100)}%`;
+
+/*
+ * In a match, a pilot who is down and watching a comrade fly sees that ship's instruments in
+ * the ship panels (`hud.watching` is the comrade's player id; GameSession.publishHud): their
+ * shields and hull, power mode, fuel, afterburner, torpedoes, speed and throttle, ability and
+ * target. The panels then name whose they are (WatchTag) and show no keys: these do not fly it.
+ */
 
 function Meter({ label, value, tone, warning = false, live = false }) {
     return (
@@ -66,14 +73,15 @@ function StatusPanel() {
     const t = useT();
     if (!hud) return null;
     return (
-        <div className="eod-panel eod-status">
+        <div className={`eod-panel eod-status ${hud.watching ? 'eod-status--watched' : ''}`}>
+            {hud.watching && <WatchTag pilotId={hud.watching} />}
             <Meter label={t('hud.shields')} value={hud.shield} tone="shield" warning={hud.shield <= 0.01} />
             <Meter label={t('hud.hull')} value={hud.hull} tone="hull" warning={hud.hull < 0.3} />
             <div className="eod-power">
                 <span className="eod-meter-label">{t('hud.power')}</span>
                 {['balanced', 'attack', 'defense'].map((mode, index) => (
                     <span key={mode} className={`eod-power-mode ${hud.powerMode === mode ? 'eod-power-mode--active' : ''}`}>
-                        <kbd>{index + 1}</kbd>{t(`hud.power.${mode}`)}
+                        {!hud.watching && <kbd>{index + 1}</kbd>}{t(`hud.power.${mode}`)}
                     </span>
                 ))}
             </div>
@@ -89,11 +97,14 @@ function StatusPanel() {
  */
 function CompactShipPanel() {
     const hud = useGameStore((state) => state.hud);
-    const throttleSwipe = useGameStore((state) => state.throttleSwipe);
+    const swipe = useGameStore((state) => state.throttleSwipe);
     const t = useT();
     if (!hud) return null;
+    // A finger on the glass sets the player's own throttle, not that of a ship being watched.
+    const throttleSwipe = hud.watching ? null : swipe;
     return (
-        <div className="eod-panel eod-ship-compact">
+        <div className={`eod-panel eod-ship-compact ${hud.watching ? 'eod-ship-compact--watched' : ''}`}>
+            {hud.watching && <WatchTag pilotId={hud.watching} />}
             <Meter label={t('hud.shields')} value={hud.shield} tone="shield" warning={hud.shield <= 0.01} />
             <Meter label={t('hud.hull')} value={hud.hull} tone="hull" warning={hud.hull < 0.3} />
             <Meter label={t('hud.energy')} value={hud.energy} tone="energy" warning={hud.beamDepleted} />
@@ -103,12 +114,15 @@ function CompactShipPanel() {
     );
 }
 
-/** The ship's active ability (config/abilities.js): its name, its key, and a bar that empties while it runs and refills as it recharges. */
-function AbilityRow({ ability }) {
+/**
+ * The ship's active ability (config/abilities.js): its name, its key (`keyed`: not on a ship being
+ * watched), and a bar that empties while it runs and refills as it recharges.
+ */
+function AbilityRow({ ability, keyed = true }) {
     const t = useT();
     return (
         <div className={`eod-ability eod-ability--${ability.state}`}>
-            <span className="eod-meter-label"><kbd>Q</kbd>{t(`ability.${ability.id}.name`)}</span>
+            <span className="eod-meter-label">{keyed && <kbd>Q</kbd>}{t(`ability.${ability.id}.name`)}</span>
             <div className="eod-meter-track"><div className="eod-meter-fill" style={{ width: percent(ability.charge) }} /></div>
             <span className="eod-ability-state">{abilityStateText(t, ability)}</span>
         </div>
@@ -144,7 +158,7 @@ function WeaponsPanel() {
                 <span className="eod-speed-unit">m/s</span>
                 <span className="eod-meter-label">{t('hud.throttle')} {percent(hud.throttle)}</span>
             </div>
-            {hud.ability && <AbilityRow ability={hud.ability} />}
+            {hud.ability && <AbilityRow ability={hud.ability} keyed={!hud.watching} />}
             {hud.passive && <PassiveRow id={hud.passive} />}
         </div>
     );
@@ -412,13 +426,15 @@ function ScreenFade({ session }) {
  * comms line, leaving the middle of the screen to the fight.
  */
 function TouchHud({ session, radarCanvasRef }) {
-    // In a match, with the player's ship lost: its gauges have nothing to say, and the comrades take their place.
+    // In a match, with the player's ship lost: its gauges have nothing to say, and the comrades take their place -
+    // under the gauges of the comrade they watch fly, if they do.
     const down = useGameStore((state) => Boolean(state.match?.you) && !state.match.you.alive);
+    const watching = useGameStore((state) => Boolean(state.hud?.watching));
     return (
         <>
             {/* Right of the pause button: the ship, the objective under it - ending above the stick. */}
             <div className="eod-dock eod-dock--left">
-                {!down && <CompactShipPanel />}
+                {(!down || watching) && <CompactShipPanel />}
                 <ObjectivePanel />
                 {/* The comrades only while the player's own ship is lost: in flight there is no room. */}
                 <TeamPanel session={session} onlyWhenDown />

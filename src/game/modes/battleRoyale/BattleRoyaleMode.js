@@ -943,6 +943,13 @@ export class BattleRoyaleMode {
         if (target.pilot.zone !== contestant.pilot.zone) this.server.moveToZone(contestant.pilot, target.pilot.zone);
     }
 
+    /** The pilot a player who is down is watching fly (MatchServer sends their device that ship's instruments), or null. */
+    watchedPilot(pilot) {
+        const viewer = this.contestants.get(pilot.id);
+        const target = viewer && !viewer.alive && viewer.watching !== null ? this.contestants.get(viewer.watching) : null;
+        return target && this.mayWatch(viewer, target) ? target.pilot : null;
+    }
+
     // ---- What players ask for ----------------------------------------------------------------
 
     /** `data` comes straight from a player's device: every field is checked before it is used. */
@@ -1257,23 +1264,15 @@ export class BattleRoyaleMode {
                 summons: you.summons,
                 upgrades: pilot.upgrades,
                 loyalty: you.loyalty.status,
-                jump: {
-                    cooldown: Math.max(0, Math.ceil(you.jumpReadyAt - time)),
-                    to: you.jump?.to ?? null,
-                    spool: you.jump ? Math.max(0, you.jump.left) : null,
-                    trapped: this.isTrapped(you, here),
-                    reach: this.jumpReach(you),
-                },
+                jump: this.describeJump(you, here),
                 dock: this.describeDock(you, here),
                 picks: you.inventory.picks,
                 equipment: you.inventory.describe(),
-                effects: {
-                    gravityShield: Math.max(0, Math.ceil(you.gravityShieldUntil - time)),
-                    emergencyShield: Math.max(0, Math.ceil(you.emergencyShieldUntil - time)),
-                },
+                effects: this.describeEffects(you),
                 respawn: this.describeRespawn(you),
                 out: this.outSides.has(you.faction),
                 watching: you.watching,
+                watched: this.describeWatched(you),
                 team: this.describeTeam(you),
             },
             planets: [...this.places.values()].map((place) => this.describePlace(place, you)),
@@ -1307,6 +1306,47 @@ export class BattleRoyaleMode {
             falling: this.fallingStations(you.faction).map((place) => place.planet.id),
             choose: you.chooseUntil === null ? null : Math.max(0, Math.ceil(you.chooseUntil - time)),
             next: this.respawnWait(you.respawns + 1),
+        };
+    }
+
+    /**
+     * The pilot a player who is down is watching, as the HUD shows them in place of the player's
+     * own ship (the ship's own instruments come with the snapshots: MatchServer.watchedShipOf):
+     * where they fly, their jump drive, a docking in progress, the refits on their ship and the
+     * equipment they carry. Null while the player flies or watches nobody.
+     */
+    describeWatched(you) {
+        const target = !you.alive && you.watching !== null ? this.contestants.get(you.watching) : null;
+        if (!target || !this.mayWatch(you, target)) return null;
+        const here = this.placeOf(target);
+        return {
+            id: target.pilot.id,
+            planet: here?.planet.id ?? null,
+            upgrades: target.pilot.upgrades,
+            jump: this.describeJump(target, here),
+            dock: target.dock ? { left: Math.max(0, target.dock.left), seconds: target.dock.seconds } : null,
+            equipment: target.inventory.describe(),
+            effects: this.describeEffects(target),
+        };
+    }
+
+    /** A contestant's jump drive, as their HUD shows it: seconds until it is charged, the jump in progress, whether they are stuck, how far it reaches. */
+    describeJump(contestant, here) {
+        return {
+            cooldown: Math.max(0, Math.ceil(contestant.jumpReadyAt - this.server.time)),
+            to: contestant.jump?.to ?? null,
+            spool: contestant.jump ? Math.max(0, contestant.jump.left) : null,
+            trapped: this.isTrapped(contestant, here),
+            reach: this.jumpReach(contestant),
+        };
+    }
+
+    /** Seconds each piece of a contestant's equipment that switches itself on is still on (0: off). */
+    describeEffects(contestant) {
+        const { time } = this.server;
+        return {
+            gravityShield: Math.max(0, Math.ceil(contestant.gravityShieldUntil - time)),
+            emergencyShield: Math.max(0, Math.ceil(contestant.emergencyShieldUntil - time)),
         };
     }
 

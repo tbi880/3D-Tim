@@ -1,8 +1,8 @@
 import { LOYALTY } from '../../modes/battleRoyale/allegiance.js';
 import { MATCH_ACTION } from '../../modes/battleRoyale/BattleRoyalePresenter.js';
-import { respawnBlockedKey } from '../../modes/battleRoyale/battleRoyaleState.js';
+import { jumpStatusText, respawnBlockedKey, upgradesText, watchedPilot } from '../../modes/battleRoyale/battleRoyaleState.js';
 import { PLANET_STATUS } from '../../modes/battleRoyale/collapse.js';
-import { EQUIPMENT, EQUIPMENT_ORDER } from '../../modes/battleRoyale/equipment.js';
+import { EQUIPMENT_ORDER } from '../../modes/battleRoyale/equipment.js';
 import { useGameStore, useT } from '../../state/gameStore.js';
 import { EQUIPMENT_ICONS } from './EquipmentPanel.jsx';
 
@@ -13,46 +13,80 @@ import { EQUIPMENT_ICONS } from './EquipmentPanel.jsx';
  * down and whom to watch meanwhile - and the buttons for the map, the refit window,
  * reinforcements, docking and the equipment (keys G, U, B, E and I).
  *
+ * While the player is down and watches a comrade fly, the panels that are about a pilot in
+ * flight - planet, jump drive, refits, equipment, a docking in progress, the collapse's warnings
+ * - are about that comrade (`watchedPilot`), and say whose they are.
+ *
  * Each part is placed by ui/GameHud.jsx in one of its docks, so that it stacks with the
  * panels it shows up with instead of covering them. GameHud shows none of them during a
  * match's introduction or ending. Each one draws nothing outside a match.
  */
 
-/** What the pilot carries, and which of it is on right now. */
-function EquipmentRow({ you }) {
+/** What a pilot carries (the player, or the one they watch), and which of it is on right now. */
+function EquipmentRow({ pilot }) {
     const t = useT();
-    const carried = EQUIPMENT_ORDER.filter((item) => you.equipment[item] > 0);
-    const effects = Object.entries(you.effects).filter(([, seconds]) => seconds > 0);
+    const carried = EQUIPMENT_ORDER.filter((item) => pilot.equipment[item] > 0);
+    const effects = Object.entries(pilot.effects).filter(([, seconds]) => seconds > 0);
     if (carried.length === 0 && effects.length === 0) return null;
     return (
         <div className="eod-match-row eod-match-gear">
             {carried.map((item) => (
-                <span key={item} title={t(`mp.equipment.${item}.name`)}>{EQUIPMENT_ICONS[item]}{you.equipment[item] > 1 && <b>×{you.equipment[item]}</b>}</span>
+                <span key={item} title={t(`mp.equipment.${item}.name`)}>{EQUIPMENT_ICONS[item]}{pilot.equipment[item] > 1 && <b>×{pilot.equipment[item]}</b>}</span>
             ))}
             {effects.map(([item, seconds]) => <strong key={item} className="eod-match-effect">{t(`mp.equipment.effect.${item}`, { seconds })}</strong>)}
         </div>
     );
 }
 
-/** Side, planet and jump drive, and what the pilot carries. */
+/**
+ * Whose instruments the ship panels show while the player watches somebody fly (`pilotId`, the
+ * HUD's `watching`): their name in their side's colour, and their ship.
+ */
+export function WatchTag({ pilotId }) {
+    const match = useGameStore((state) => state.match);
+    const t = useT();
+    const pilot = match?.players.find((player) => player.id === pilotId);
+    if (!pilot) return null;
+    return (
+        <div className="eod-watch-tag">
+            <span className="eod-meter-label">{t('mp.watch.label')}</span>
+            <strong className={`eod-side--${pilot.faction}`}>{pilot.name}</strong>
+            <span>{t(`ship.${pilot.classId}`)}</span>
+        </div>
+    );
+}
+
+/**
+ * Side, planet and jump drive, and what the pilot carries. While the player watches somebody
+ * fly: whom (and their ship), and that pilot's planet, drive, refits and equipment.
+ */
 function MatchRows({ match }) {
     const t = useT();
-    const you = match.you;
-    const here = match.planets.find((planet) => planet.id === you.planet);
-    const jump = you.jump.to ? t('mp.hud.jumpSpooling', { planet: t(`mp.planet.${you.jump.to}`) })
-        : you.jump.trapped ? t('mp.hud.jumpTrapped')
-            : you.jump.cooldown > 0 ? t(you.equipment[EQUIPMENT.OVERDRIVE] > 0 ? 'mp.hud.jumpChargingChip' : 'mp.hud.jumpCharging', { seconds: you.jump.cooldown }) : t('mp.hud.jumpReady');
+    const watched = watchedPilot(match);
+    const pilot = watched ?? match.you;
+    const here = match.planets.find((planet) => planet.id === pilot.planet);
     const timer = here && here.changesIn !== null
         ? t(here.status === PLANET_STATUS.SAFE ? 'mp.hud.fallsIn' : 'mp.hud.goneIn', { seconds: here.changesIn })
         : null;
+    const ping = Number.isFinite(match.rtt) && <small className="eod-match-ping">{t('mp.hud.ping', { ms: match.rtt })}</small>;
+    const refits = watched ? upgradesText(t, watched.upgrades) : '';
 
     return (
         <>
-            <div className="eod-match-row eod-match-row--side">
-                <span className="eod-meter-label">{t('mp.hud.side')}</span>
-                <strong className={`eod-side--${you.faction}`}>{t(`mp.faction.${you.faction}`)}</strong>
-                {Number.isFinite(match.rtt) && <small className="eod-match-ping">{t('mp.hud.ping', { ms: match.rtt })}</small>}
-            </div>
+            {watched ? (
+                <div className="eod-match-row eod-match-row--watched">
+                    <span className="eod-meter-label">{t('mp.watch.label')}</span>
+                    <strong className={`eod-side--${watched.faction}`}>{watched.name}</strong>
+                    <span className="eod-match-watched-ship">{t(`ship.${watched.classId}`)}</span>
+                    {ping}
+                </div>
+            ) : (
+                <div className="eod-match-row eod-match-row--side">
+                    <span className="eod-meter-label">{t('mp.hud.side')}</span>
+                    <strong className={`eod-side--${pilot.faction}`}>{t(`mp.faction.${pilot.faction}`)}</strong>
+                    {ping}
+                </div>
+            )}
             {here && (
                 <div className="eod-match-row eod-match-row--planet">
                     <span className="eod-meter-label">{t('mp.hud.planet')}</span>
@@ -62,9 +96,15 @@ function MatchRows({ match }) {
             )}
             <div className="eod-match-row eod-match-row--jump">
                 <span className="eod-meter-label">{t('mp.hud.jump')}</span>
-                <strong className={you.jump.cooldown === 0 && !you.jump.trapped ? 'eod-match-ready' : ''}>{jump}</strong>
+                <strong className={pilot.jump.cooldown === 0 && !pilot.jump.trapped ? 'eod-match-ready' : ''}>{jumpStatusText(t, pilot.jump, pilot.equipment)}</strong>
             </div>
-            <EquipmentRow you={you} />
+            {refits && (
+                <div className="eod-match-row eod-match-row--refits">
+                    <span className="eod-meter-label">{t('mp.hud.refit')}</span>
+                    <small>{refits}</small>
+                </div>
+            )}
+            <EquipmentRow pilot={pilot} />
         </>
     );
 }
@@ -109,15 +149,30 @@ export function MatchStatus({ session, buttons = true }) {
     );
 }
 
+/** A docking of the pilot the player watches fly: whose, how long is left, and the bar - nothing to press. */
+function WatchedDocking({ match }) {
+    const t = useT();
+    const watched = watchedPilot(match);
+    if (!watched?.dock) return null;
+    const done = Math.min(1, Math.max(0, 1 - watched.dock.left / watched.dock.seconds));
+    return (
+        <div className="eod-panel eod-match-dock eod-match-dock--on eod-match-dock--watched">
+            <strong>{t('mp.watch.docking', { name: watched.name, seconds: Math.ceil(watched.dock.left) })}</strong>
+            <div className="eod-match-dock-bar"><i style={{ width: `${done * 100}%` }} /></div>
+        </div>
+    );
+}
+
 /**
  * The station's dock. In its mouth: the button that clamps the ship on. Clamped on: how long
- * is left, and the button that lets go.
+ * is left, and the button that lets go. Shot down and watching a comrade: their docking.
  */
 export function DockPrompt({ session }) {
     const match = useGameStore((state) => state.match);
     const t = useT();
     const you = match?.you;
     const dock = you?.dock;
+    if (you && !you.alive) return <WatchedDocking match={match} />;
     if (!you?.alive || !dock || (!dock.ready && dock.left === null)) return null;
     const toggle = () => session.handleAction(MATCH_ACTION.DOCK);
     if (dock.left === null) {
@@ -146,10 +201,12 @@ export function MatchAlerts() {
     const t = useT();
     const you = match?.you;
     if (!you) return null;
-    const here = match.planets.find((planet) => planet.id === you.planet);
+    // Shot down and watching a comrade: the warnings of the planet they fly at.
+    const flying = you.alive ? you : watchedPilot(match);
+    const here = flying && match.planets.find((planet) => planet.id === flying.planet);
     const alerts = [];
     // (Holding the planet's station is no shelter: the collapse is everybody's.)
-    if (you.alive && here) {
+    if (here) {
         if (here.status === PLANET_STATUS.COLLAPSING) alerts.push(t('mp.alert.collapsing', { seconds: here.changesIn ?? 0 }));
         if (here.status === PLANET_STATUS.SWALLOWED) alerts.push(t('mp.alert.swallowed'));
     }

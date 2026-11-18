@@ -115,7 +115,7 @@ nothing new travels; its ships are tagged, so a checkpoint finds the squad again
 | | Channel | From | Content |
 | --- | --- | --- | --- |
 | input | state | client, every frame | 11 bytes: stick, throttle, buttons (`codec/inputPacket.js`) |
-| snapshot | state | server, 30 / s | every ship's pose, hull, shield, flags (boosting, cloaked, shield held down ...); beams; the receiver's own ship in full, with where its ability stands (`codec/snapshotPacket.js`) |
+| snapshot | state | server, 30 / s | every ship's pose, hull, shield, flags (boosting, cloaked, shield held down ...); beams; the receiver's own ship in full, with where its ability stands - or, while the receiver has no ship and watches another pilot fly, that pilot's ship in its place, for the HUD (`codec/snapshotPacket.js`) |
 | hello / action / req / ping | events | client | "send me the world", a pilot action, a request to the game mode (`protocol.js`) |
 | welcome / batch | events | server | the whole zone; then what happened each frame: spawns, hits, kills, abilities starting, ending and going off, the match state |
 

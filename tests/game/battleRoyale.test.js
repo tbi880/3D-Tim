@@ -2,14 +2,14 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Vector3 } from 'three';
 import { BATTLE_ROYALE, NPC_FACTIONS, STAR_SYSTEM } from '../../src/game/config/battleRoyale.js';
-import { FACTION } from '../../src/game/config/gameConfig.js';
+import { FACTION, PLAYER } from '../../src/game/config/gameConfig.js';
 import { PLAYER_SHIPS } from '../../src/game/config/playerShips.js';
 import { SHIP_CLASSES } from '../../src/game/config/shipClasses.js';
 import { applyDamage, areHostile, destroyShip, mayAttack } from '../../src/game/core/systems/damage.js';
 import { LOYALTY } from '../../src/game/modes/battleRoyale/allegiance.js';
 import { BR_EVENT, BR_REQUEST, DOCK_END, DOCK_REFUSAL, JUMP_REFUSAL, RESPAWN_REFUSAL } from '../../src/game/modes/battleRoyale/battleRoyaleProtocol.js';
 import { MATCH_ACTION, MATCH_PANEL } from '../../src/game/modes/battleRoyale/BattleRoyalePresenter.js';
-import { jumpChoice, rosterBySide, sanitizeBattleRoyaleState } from '../../src/game/modes/battleRoyale/battleRoyaleState.js';
+import { jumpChoice, rosterBySide, sanitizeBattleRoyaleState, watchedPilot } from '../../src/game/modes/battleRoyale/battleRoyaleState.js';
 import { PLANET_STATUS } from '../../src/game/modes/battleRoyale/collapse.js';
 import { EQUIPMENT } from '../../src/game/modes/battleRoyale/equipment.js';
 import { GATE_TAG, STATION_TAG } from '../../src/game/modes/battleRoyale/station.js';
@@ -2561,6 +2561,89 @@ test('on a player\'s device the comrades are listed, and one shot down can watch
     match.run(0.5);
     assert.equal(ann.ui.match.you.watching, null);
     assert.equal(ann.world.spectating, null);
+});
+
+test('on a player\'s device a pilot shot down who watches a comrade sees that comrade\'s instruments: gauges, lock, drive, gear', () => {
+    const match = comradesMatch(['host', 'ann']);
+    const [ann] = match.clients;
+    const mode = match.server.mode;
+    const host = mode.contestants.get('host');
+    const annSeat = mode.contestants.get('ann');
+    const ship = host.pilot.ship;
+    const zone = host.pilot.zone;
+    // Something for the host to have locked, far off; the host's own state as the test sets it.
+    const quarry = zone.world.spawnShip('raider', { faction: FACTION.UMBRA, position: ship.position.clone().add(new Vector3(0, 0, -6000)).toArray() });
+    ship.powerMode = 'attack';
+    ship.target = quarry;
+    ship.weapons.find((weapon) => weapon.def.type === 'torpedo').ammo = 1;
+    ship.upgrades = { ...ship.upgrades };
+    host.pilot.upgrades = { ...host.pilot.upgrades, shields: 2 };
+    host.inventory.grant(1);
+    host.inventory.pick(EQUIPMENT.OVERDRIVE);
+    host.jumpReadyAt = match.server.time + 30;
+
+    destroyShip(annSeat.pilot.zone.world, annSeat.pilot.ship, null);
+    match.run(0.5);
+    ann.match.presenter.watch('host');
+    match.run(1);
+
+    const { hud, target } = ann.ui;
+    assert.equal(hud.watching, 'host', 'the gauges are the host\'s');
+    assert.equal(hud.alive, true);
+    assert.equal(hud.powerMode, 'attack');
+    assert.equal(hud.torpedoes, 1);
+    assert.ok(Math.abs(hud.energy - ship.energy / PLAYER.energyMax) < 0.05);
+    assert.equal(target?.id, ann.world.spectating.target?.id, 'the host\'s lock');
+    assert.equal(ann.world.spectating.target?.classId, 'raider');
+    assert.ok(target.distance > 5000);
+    assert.equal(ann.world.player, null, 'no ship of Ann\'s own here to be taken for hers');
+
+    const { watched } = ann.ui.match.you;
+    assert.equal(watched.id, 'host');
+    assert.equal(watched.planet, mode.placeOf(host).planet.id);
+    assert.equal(watched.upgrades.shields, 2);
+    assert.equal(watched.equipment[EQUIPMENT.OVERDRIVE], 1);
+    assert.ok(watched.jump.cooldown > 25 && watched.jump.cooldown <= 30);
+    assert.equal(watched.dock, null);
+    const pilot = watchedPilot(ann.ui.match);
+    assert.deepEqual([pilot.name, pilot.classId, pilot.faction], ['host', host.pilot.classId, host.faction]);
+
+    // The host clamps on to a station: Ann sees how far along the docking is.
+    host.dock = { place: mode.placeOf(host), left: 8, seconds: 10 };
+    match.run(0.5);
+    assert.ok(ann.ui.match.you.watched.dock.left <= 8);
+    assert.equal(ann.ui.match.you.watched.dock.seconds, 10);
+    host.dock = null;
+
+    // Stops watching: there is no ship of hers to show here, and nobody else's.
+    ann.match.presenter.watch(null);
+    match.run(0.5);
+    assert.equal(ann.ui.match.you.watched, null);
+    assert.equal(ann.ui.hud, null);
+    assert.equal(ann.ui.target, null);
+});
+
+test('only a pilot who is down and watching is told about the one watched - and sent their ship\'s instruments', () => {
+    const game = arrange({ ann: [DAWN, THIRD], cy: [DAWN, SECOND], bo: [UMBRA, SECOND] });
+    game.empty(SECOND);
+    const { server } = game;
+    assert.equal(game.state('ann').you.watched, null, 'in flight');
+    assert.equal(server.watchedShipOf(game.pilot('ann')), null);
+
+    destroyShip(game.world(THIRD), game.ship('ann'), null);
+    game.run(0.1);
+    assert.equal(game.state('ann').you.watched, null, 'down, watching nobody');
+    game.ask('ann', BR_REQUEST.WATCH, { id: 'cy' });
+    assert.equal(game.state('ann').you.watched.id, 'cy');
+    assert.equal(server.watchedShipOf(game.pilot('ann')), game.ship('cy'));
+    assert.equal(game.state('cy').you.watched, null, 'the one watched is told nothing of it');
+    assert.equal(server.watchedShipOf(game.pilot('cy')), null);
+
+    destroyShip(game.world(SECOND), game.ship('cy'), null);
+    game.run(0.1);
+    assert.equal(game.who('ann').watching, null, 'nobody of hers is left in the air');
+    assert.equal(game.state('ann').you.watched, null);
+    assert.equal(server.watchedShipOf(game.pilot('ann')), null);
 });
 
 test('a pilot who is down is moved on to another comrade when the one watched goes down, and stops watching once back in a ship', () => {

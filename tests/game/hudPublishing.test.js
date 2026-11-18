@@ -114,3 +114,31 @@ test('a locked target that holds still keeps its panel object, and one that is h
     assert.notEqual(store.target, target);
     assert.equal(store.target.shield, 0.5);
 });
+
+test('the HUD reads the player\'s own ship while it flies; with it lost, the ship being watched', () => {
+    const { session, store, refresh } = createSession();
+    const { world } = session;
+    const own = world.player;
+    const comrade = world.spawnShip('kestrel', { position: [0, 0, 400], pilotId: 'bo', local: false });
+    comrade.energy = 20;
+    refresh();
+    assert.equal(world.hudShip, own);
+    assert.equal(store.hud.watching, null);
+
+    // Watching while the own ship still flies changes nothing.
+    world.spectating = comrade;
+    assert.equal(world.hudShip, own);
+
+    own.alive = false;
+    assert.equal(world.hudShip, comrade);
+    refresh();
+    assert.equal(store.hud.watching, 'bo');
+    assert.equal(store.hud.alive, true);
+    assert.ok(Math.abs(store.hud.energy - 0.2) < 1e-9);
+
+    // The one watched is lost too: back to the player's own, lost, ship.
+    comrade.alive = false;
+    assert.equal(world.hudShip, own);
+    world.spectating = null;
+    assert.equal(world.hudShip, own);
+});

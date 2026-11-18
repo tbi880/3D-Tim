@@ -4,7 +4,7 @@ import { Quaternion, Vector3 } from 'three';
 import { World } from '../../src/game/core/World.js';
 import { ByteWriter, PacketError } from '../../src/game/net/codec/binary.js';
 import { PACKET } from '../../src/game/net/codec/inputPacket.js';
-import { POSE_STRIDE, SHIP_FLAG, SNAPSHOT_LIMITS, SnapshotEncoder, decodeSnapshot } from '../../src/game/net/codec/snapshotPacket.js';
+import { INSTRUMENTS, POSE_STRIDE, SHIP_FLAG, SNAPSHOT_LIMITS, SnapshotEncoder, decodeSnapshot } from '../../src/game/net/codec/snapshotPacket.js';
 
 function worldWithShips() {
     const world = new World();
@@ -157,6 +157,45 @@ test('the player\'s own ship comes back in full', () => {
     assert.equal(own.torpedoes, 3);
     assert.equal(own.torpedoReload, 1.25);
     assert.equal(own.targetId, drone.id);
+});
+
+test('a client without a ship of its own can be sent the instruments of the ship it watches, in the own ship\'s place', () => {
+    const { world, player, drone } = worldWithShips();
+    const comrade = world.spawnShip('kestrel', { position: [0, 0, 600], pilotId: 'bo', local: false });
+    comrade.energy = 41;
+    comrade.throttle = 0.6;
+    comrade.powerMode = 'attack';
+    comrade.target = drone;
+    comrade.weapons.find((weapon) => weapon.def.type === 'torpedo').ammo = 1;
+    comrade.ability.cooldown = 12;
+    const encoder = new SnapshotEncoder();
+    encoder.captureWorld(world);
+
+    const watching = decodeSnapshot(encoder.packetFor(0, 1, 0, null, comrade));
+    assert.equal(watching.own, null, 'nothing for the prediction to take for its own');
+    assert.deepEqual(
+        [watching.watched.id, watching.watched.energy, watching.watched.powerMode, watching.watched.targetId, watching.watched.torpedoes, watching.watched.abilityCooldown],
+        [comrade.id, 41, 'attack', drone.id, 1, 12],
+    );
+    assert.ok(Math.abs(watching.watched.throttle - 0.6) < 1e-6);
+
+    // A client that flies is sent its own ship, never another's.
+    const flying = decodeSnapshot(encoder.packetFor(0, 2, 0, player, comrade));
+    assert.equal(flying.own.id, player.id);
+    assert.equal(flying.watched, null);
+    const nothing = decodeSnapshot(encoder.packetFor(0, 3, 0, null));
+    assert.deepEqual([nothing.own, nothing.watched], [null, null]);
+});
+
+test('a packet that names instruments of an unknown kind is refused', () => {
+    const { world, player } = worldWithShips();
+    const encoder = new SnapshotEncoder();
+    encoder.captureWorld(world);
+    const packet = new Uint8Array(encoder.packetFor(0, 1, 0, player));
+    // type, epoch, seq, time, ack, world flags: the instruments byte comes after 19 bytes.
+    assert.equal(packet[19], INSTRUMENTS.OWN);
+    packet[19] = INSTRUMENTS.WATCHED + 1;
+    assert.throws(() => decodeSnapshot(packet.buffer), /unknown instruments/);
 });
 
 test('no target, or a target that is gone, is sent as none', () => {

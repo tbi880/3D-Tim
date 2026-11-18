@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { CHARACTERS } from '../config/characters.js';
 import { GAME_EVENTS } from '../core/EventBus.js';
 import { translate } from '../i18n/index.js';
-import { EQUIPMENT } from '../modes/battleRoyale/equipment.js';
+import { jumpStatusText, watchedPilot } from '../modes/battleRoyale/battleRoyaleState.js';
 import { CABIN_SCALE } from '../scene/CockpitCabin.jsx';
 import layout from '../scene/cockpitLayout.json';
 import { isHullHitOnPlayer, playerFeedback } from '../scene/effects/playerFeedback.js';
@@ -33,6 +33,9 @@ import { createCanvasPanel, drawMeter, roundRect, wrapText } from './canvasPanel
  *        million pixels) only when the redrawn picture differs from the last one.
  *  - Instrument panel below the line of sight: shields, hull, beam energy, afterburner,
  *    radar, speed, torpedoes, power mode and the current target. Redrawn ten times a second.
+ *    In a match, a pilot who is down and watches a comrade fly sees that ship's instruments
+ *    here (named on the panel's top edge), and the head-up lines under the reticle are about
+ *    that comrade: where they are, their jump drive or docking, what is on.
  *    A hit on the bare hull (shield down) scrambles its picture for a moment: it tears,
  *    ghosts and drops lines, redrawn every frame while that lasts.
  *  - A veil around the eye for the docking fade-to-black and the warp-arrival white-out.
@@ -321,16 +324,20 @@ function drawPaneText(ctx, state, t, now, scoreFeed) {
     }
 
     // Multiplayer: side, planet and jump drive on one line under the alerts' place, and the collapse as an alert.
+    // Shot down and watching a comrade fly: their planet, and their drive (or docking) - the line above it says whom.
     const you = state.match?.you;
+    let toastY = height / 2 + 74;
     if (you) {
-        const here = state.match.planets.find((planet) => planet.id === you.planet);
-        const jump = you.jump.to ? t('mp.hud.jumpSpooling', { planet: t(`mp.planet.${you.jump.to}`) })
-            : you.jump.trapped ? t('mp.hud.jumpTrapped')
-                : you.jump.cooldown > 0 ? t(you.equipment[EQUIPMENT.OVERDRIVE] > 0 ? 'mp.hud.jumpChargingChip' : 'mp.hud.jumpCharging', { seconds: you.jump.cooldown }) : t('mp.hud.jumpReady');
+        const watched = watchedPilot(state.match);
+        const pilot = watched ?? you;
+        const here = state.match.planets.find((planet) => planet.id === pilot.planet);
+        const drive = watched?.dock ? t('mp.watch.docking', { name: watched.name, seconds: Math.ceil(watched.dock.left) })
+            : `${t('mp.hud.jump')}: ${jumpStatusText(t, pilot.jump, pilot.equipment)}`;
         const place = here ? `${t(`mp.planet.${here.id}`)} · ${t(`mp.hud.status.${here.status}`)}${here.changesIn !== null ? ` ${here.changesIn}s` : ''}` : '';
         ctx.textAlign = 'center';
         ctx.font = `600 11px ${FONT}`;
-        drawShadowedText(ctx, `${t(`mp.faction.${you.faction}`)} · ${place} · ${t('mp.hud.jump')}: ${jump}`, centre, height / 2 + 56, '#cfe8ff');
+        const line = [watched ? null : t(`mp.faction.${you.faction}`), place, drive].filter(Boolean).join(' · ');
+        drawShadowedText(ctx, line, centre, height / 2 + 56, watched?.dock ? '#59d0ff' : '#cfe8ff');
         // Something to do or spend: say so, and where (the flat HUD has buttons for it; here it is in the map menu).
         // The station's dock comes before everything else: it is why the pilot flew here.
         if (you.alive && you.dock?.left != null) {
@@ -341,12 +348,15 @@ function drawPaneText(ctx, state, t, now, scoreFeed) {
             const gear = you.picks > 0 ? ` · ${t('mp.vr.gear')} ${you.picks}` : '';
             drawShadowedText(ctx, `${t('mp.vr.spend', { points: you.points, summons: you.summons })}${gear} · ${t('mp.vr.mapHint')}`, centre, height / 2 + 40, '#ffb648');
         }
-        const effects = Object.entries(you.effects).filter(([, seconds]) => seconds > 0);
+        // What is on: under the reticle - or, watching a comrade (whose name has that place), under the line about them.
+        const effects = Object.entries(pilot.effects).filter(([, seconds]) => seconds > 0);
         if (effects.length > 0) {
-            drawShadowedText(ctx, effects.map(([item, seconds]) => t(`mp.equipment.effect.${item}`, { seconds })).join(' · '), centre, height / 2 + 26, '#7dffa8');
+            drawShadowedText(ctx, effects.map(([item, seconds]) => t(`mp.equipment.effect.${item}`, { seconds })).join(' · '), centre, height / 2 + (watched ? 71 : 26), '#7dffa8');
+            if (watched) toastY += 16;
         }
         const warnings = [];
-        if (you.alive && here && here.owner !== you.faction) {
+        // (Holding the planet's station is no shelter: the collapse is everybody's.)
+        if ((you.alive || watched) && here) {
             if (here.status === 'collapsing') warnings.push(t('mp.alert.collapsing', { seconds: here.changesIn ?? 0 }));
             if (here.status === 'swallowed') warnings.push(t('mp.alert.swallowed'));
         }
@@ -357,9 +367,10 @@ function drawPaneText(ctx, state, t, now, scoreFeed) {
 
         // The comrades, always (top left, clear of the objective and the alerts).
         drawTeam(ctx, state.match, t);
-        // Watching somebody fly with the menu put away: whom, how the comeback stands, and B for the menu.
+        // Watching somebody fly with the menu put away: whom (and their ship), how the comeback stands, and B for the menu.
         if (!you.alive && you.watching && state.matchWatchView) {
-            const name = state.match.players.find((player) => player.id === you.watching)?.name ?? '';
+            const player = state.match.players.find((entry) => entry.id === you.watching);
+            const name = player ? `${player.name} · ${t(`ship.${player.classId}`)}` : '';
             const comeback = you.out ? t('mp.out.title')
                 : you.respawn?.wait > 0 ? t('mp.respawn.waiting', { seconds: you.respawn.wait })
                     : you.respawn?.stations.length ? t('mp.respawn.choose', { seconds: you.respawn.choose ?? 0 }) : t('mp.respawn.noStation');
@@ -375,7 +386,7 @@ function drawPaneText(ctx, state, t, now, scoreFeed) {
         ctx.textAlign = 'center';
         ctx.font = `600 13px ${FONT}`;
         const label = state.toast.checkpointId ? `${t(state.toast.key)} · ${t(`checkpoint.${state.toast.checkpointId}`)}` : t(state.toast.key, state.toast.params ?? undefined);
-        drawShadowedText(ctx, label, centre, height / 2 + 74, '#9dffb0');
+        drawShadowedText(ctx, label, centre, toastY, '#9dffb0');
     }
 
     // Bottom: the hint, then the comms line in a box.
@@ -514,6 +525,20 @@ function scramblePanel({ ctx, canvas }, strength) {
     for (let streak = 0; streak < strength * 14; streak++) ctx.fillRect(Math.random() * width, Math.random() * height, 20 + Math.random() * 140, 2);
 }
 
+/** The room between the panel's left and right columns, for the name of the pilot being watched (px of the panel's texture). */
+const WATCH_TAG_WIDTH = 350;
+
+/** "Watching · Vega · Kestrel" centred at (x, y) on the instrument panel, cut to fit between its columns. */
+function drawWatchTag(ctx, state, t, x, y) {
+    const player = state.match?.players.find((entry) => entry.id === state.hud.watching);
+    if (!player) return;
+    ctx.textAlign = 'center';
+    ctx.font = `700 21px ${FONT}`;
+    ctx.fillStyle = '#59d0ff';
+    ctx.fillText(wrapText(ctx, `${t('mp.watch.label')} · ${player.name} · ${t(`ship.${player.classId}`)}`, WATCH_TAG_WIDTH)[0], x, y);
+    ctx.textAlign = 'left';
+}
+
 /** The colour of an ability's state on the panel: ready, running (or a warhead waiting for the button), recharging. */
 const ABILITY_TONES = Object.freeze({ ready: '#7dffa8', active: '#ffb648', armed: '#ffb648', cooldown: 'rgba(200, 215, 230, 0.6)' });
 
@@ -541,6 +566,9 @@ function drawPanel(panel, session, state, t, glitch = 0) {
     drawMeter(ctx, 36, 138, 290, t('hud.hull'), hud.hull, '#ff9a5c', hud.hull < 0.3);
     drawMeter(ctx, 36, 214, 290, t('hud.energy'), hud.energy, '#ffd36b', hud.beamDepleted);
     drawMeter(ctx, 36, 290, 290, t('hud.boost'), hud.boost, hud.boosting ? '#ffffff' : '#b28cff');
+
+    // Watching a comrade fly: whose instruments these are, along the top edge over the radar.
+    if (hud.watching) drawWatchTag(ctx, state, t, width / 2, 33);
 
     // Middle: radar (drawn on its own canvas first: drawRadar clears the square it draws in).
     const radar = radarCanvas();

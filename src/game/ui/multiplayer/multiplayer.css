@@ -88,6 +88,13 @@
 .eod-match-row strong { font-size: 13px; }
 .eod-match-row small { margin-left: auto; font-size: 10px; color: rgba(225, 240, 255, 0.6); }
 .eod-match-ready { color: var(--eod-green); }
+/* Watching a comrade fly: whom (the status panel's first row; GameHud's ship panels: WatchTag), their refits. */
+.eod-match-row--watched strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.eod-match-watched-ship { font-size: 11px; color: rgba(225, 240, 255, 0.75); white-space: nowrap; }
+.eod-match-row--refits small { margin-left: 0; }
+.eod-watch-tag { display: flex; align-items: baseline; gap: 7px; min-width: 0; padding-bottom: 5px; border-bottom: 1px solid var(--eod-border); font-size: 11px; color: rgba(225, 240, 255, 0.75); }
+.eod-watch-tag strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; }
+.eod-watch-tag span:last-child { margin-left: auto; white-space: nowrap; }
 .eod-match-planet--collapsing { color: var(--eod-amber); animation: eod-blink 0.8s steps(2) infinite; }
 .eod-match-planet--swallowed { color: var(--eod-red); }
 .eod-match-buttons { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; }
@@ -101,6 +108,10 @@
 .eod-match-dock kbd { margin-right: 8px; padding: 0 5px; font: inherit; font-size: 10px; border: 1px solid currentColor; }
 .eod-match-dock-bar { width: 100%; height: 8px; background: rgba(4, 12, 22, 0.8); border: 1px solid var(--eod-border); }
 .eod-match-dock-bar i { display: block; height: 100%; background: var(--eod-amber); transition: width 0.25s linear; }
+/* A comrade's docking, watched: nothing to press, in the watching colour. */
+.eod-match-dock--watched { pointer-events: none; border-color: var(--eod-cyan); }
+.eod-match-dock--watched strong { color: var(--eod-cyan); }
+.eod-match-dock--watched .eod-match-dock-bar i { background: var(--eod-cyan); }
 .eod-match-button { display: flex; flex: 1 1 30%; align-items: center; justify-content: center; gap: 5px; padding: 6px 6px; font: inherit; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: inherit; background: rgba(10, 30, 50, 0.7); border: 1px solid var(--eod-border); cursor: pointer; }
 .eod-match-button:not(:disabled):hover { border-color: var(--eod-amber); color: var(--eod-amber); }
 .eod-match-button:disabled { opacity: 0.4; cursor: default; }
@@ -215,6 +226,11 @@
 .eod-hud--touch .eod-match-status--strip .eod-match-row--side .eod-meter-label,
 .eod-hud--touch .eod-match-status--strip .eod-match-row--planet .eod-meter-label { display: none; }
 .eod-hud--touch .eod-match-status--strip .eod-match-gear { gap: 2px 6px; font-size: 11px; }
+/* Watching a comrade: whom on the strip's first line (the label stays: it says this is not the player's own); no room for their refits. */
+.eod-hud--touch .eod-match-status--strip .eod-match-watched-ship { font-size: 9px; }
+.eod-hud--touch .eod-match-status--strip .eod-match-row--refits { display: none; }
+.eod-hud--touch .eod-watch-tag { gap: 4px; padding-bottom: 2px; font-size: 8px; }
+.eod-hud--touch .eod-watch-tag strong { font-size: 9px; }
 .eod-hud--touch .eod-match-effect { font-size: 9px !important; }
 .eod-hud--touch .eod-centre-stack > .eod-match-buttons { width: 100%; flex-wrap: nowrap; margin: 0; gap: 4px; pointer-events: auto; }
 .eod-hud--touch .eod-match-button { flex: 1 1 0; min-width: 0; padding: 7px 2px; font-size: 9px; letter-spacing: 0.04em; background: rgba(6, 16, 28, 0.62); }

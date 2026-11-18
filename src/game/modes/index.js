@@ -17,6 +17,9 @@ import { BattleRoyalePresenter } from './battleRoyale/BattleRoyalePresenter.js';
  *   onPlayerLeft?(pilot)
  *   describeState(pilot)                the match state for that player (net/match/matchState.js);
  *                                       it may differ per player - only put in it what they may know
+ *   watchedPilot?(pilot)                the pilot whose flight a player without a ship is watching, or
+ *                                       null: their device is sent that ship's instruments (fuel, lock,
+ *                                       ammunition...) with each snapshot, as if it were its own
  *   saveState?()                        everything the rules know, as plain data...
  *   restoreState?(server, checkpoint)   ...and going on from it on another device instead of `setup`
  *                                       (the server rebuilds the zones: server.restoreZone). A mode

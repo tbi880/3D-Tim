@@ -363,8 +363,19 @@ export class MatchServer {
                 captured.add(zone);
             }
             pilot.snapshotSeq += 1;
-            pilot.link.sendState(zone.encoder.packetFor(pilot.epoch, pilot.snapshotSeq, pilot.guard.lastSeq, pilot.ship?.alive ? pilot.ship : null));
+            const own = pilot.ship?.alive ? pilot.ship : null;
+            pilot.link.sendState(zone.encoder.packetFor(pilot.epoch, pilot.snapshotSeq, pilot.guard.lastSeq, own, own ? null : this.watchedShipOf(pilot)));
         }
+    }
+
+    /**
+     * The ship whose instruments a player without a ship of their own is sent with each
+     * snapshot: that of the pilot the game mode has them watching (`watchedPilot`), as long as
+     * it flies in the place the player is told about. Null otherwise.
+     */
+    watchedShipOf(pilot) {
+        const watched = this.mode.watchedPilot?.(pilot) ?? null;
+        return watched && watched !== pilot && watched.zone === pilot.zone && watched.ship?.alive ? watched.ship : null;
     }
 
     // ---- Handing the match on ----------------------------------------------------------------

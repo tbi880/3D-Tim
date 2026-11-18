@@ -9,7 +9,7 @@ import { createRng, forwardOf } from '../../src/game/core/math.js';
 import { drainShip } from '../../src/game/core/systems/damage.js';
 import { World } from '../../src/game/core/World.js';
 import { LOYALTY, LoyaltyRecord, dealFactions } from '../../src/game/modes/battleRoyale/allegiance.js';
-import { isBattle, jumpChoice, rankPlayers, rankWinners, sanitizeBattleRoyaleState } from '../../src/game/modes/battleRoyale/battleRoyaleState.js';
+import { isBattle, jumpChoice, jumpStatusText, rankPlayers, rankWinners, sanitizeBattleRoyaleState, upgradesText, watchedPilot } from '../../src/game/modes/battleRoyale/battleRoyaleState.js';
 import { CollapseClock, PLANET_STATUS } from '../../src/game/modes/battleRoyale/collapse.js';
 import { EQUIPMENT, EQUIPMENT_ORDER, Inventory, isEquipment } from '../../src/game/modes/battleRoyale/equipment.js';
 import { planGarrisons, stationGarrison } from '../../src/game/modes/battleRoyale/garrisons.js';
@@ -278,6 +278,82 @@ test('a well-formed state comes through unchanged in substance', () => {
     assert.deepEqual(clean.you.equipment, { beacon: 2, gravityShield: 0, emergencyShield: 0, overdrive: 1 }, 'every piece is present');
     assert.deepEqual(clean.you.effects, { gravityShield: 12, emergencyShield: 0 });
     assert.deepEqual(clean.players[0], { id: 'a', name: 'Ann', classId: 'kestrel', bot: false, faction: 'umbra', alive: true, score: 500, kills: 1, deaths: 0 });
+});
+
+/** A pilot who is down (Ann), watching Bo fly. */
+const watchingState = () => {
+    const state = goodState();
+    Object.assign(state.you, { alive: false, dock: null, watching: 'b' });
+    state.you.watched = {
+        id: 'b', planet: 'rust', upgrades: { shields: 3 }, jump: { cooldown: 0, to: 'veil', spool: 1.5, trapped: false, reach: 1 },
+        dock: { left: 4.5, seconds: 15 }, equipment: { overdrive: 1 }, effects: { gravityShield: 0, emergencyShield: 6 },
+    };
+    state.players.push({ id: 'b', name: 'Bo', classId: 'swift', bot: true, faction: 'umbra', alive: true, score: 300, kills: 2, deaths: 1 });
+    return state;
+};
+
+test('the pilot watched comes through with where they are, their drive, docking, refits and gear', () => {
+    const clean = sanitizeBattleRoyaleState(watchingState());
+    assert.deepEqual(clean.you.watched, {
+        id: 'b', planet: 'rust',
+        upgrades: { speed: 0, agility: 0, firepower: 0, range: 0, shields: 3, hull: 0 },
+        jump: { cooldown: 0, to: 'veil', spool: 1.5, trapped: false, reach: 1 },
+        dock: { left: 4.5, seconds: 15 },
+        equipment: { beacon: 0, gravityShield: 0, emergencyShield: 0, overdrive: 1 },
+        effects: { gravityShield: 0, emergencyShield: 6 },
+    });
+    // With the roster's name, ship and side: what the HUD shows in place of the player's own ship.
+    const pilot = watchedPilot(clean);
+    assert.deepEqual([pilot.name, pilot.classId, pilot.faction, pilot.kills, pilot.dock.left], ['Bo', 'swift', 'umbra', 2, 4.5]);
+});
+
+test('the pilot watched is dropped when the player flies, watches somebody else or nobody, or it is not an object', () => {
+    const cases = [
+        (state) => { state.you.alive = true; },
+        (state) => { state.you.watching = 'c'; },
+        (state) => { state.you.watching = null; },
+        (state) => { state.you.watched = 'b'; },
+        (state) => { state.you.watched.id = 7; },
+    ];
+    for (const spoil of cases) {
+        const state = watchingState();
+        spoil(state);
+        assert.equal(sanitizeBattleRoyaleState(state).you.watched, null, String(spoil));
+    }
+    // Somebody the roster does not know is nobody to show.
+    const stranger = watchingState();
+    stranger.players.pop();
+    assert.equal(watchedPilot(sanitizeBattleRoyaleState(stranger)), null);
+    assert.equal(watchedPilot(sanitizeBattleRoyaleState(goodState())), null, 'in flight');
+});
+
+test('odd values about the pilot watched are made safe', () => {
+    const state = watchingState();
+    state.you.watched = { id: 'b'.repeat(500), planet: 'pluto', upgrades: { shields: -4, evil: 9 }, jump: { cooldown: 'soon', to: 'sol', trapped: 1 }, dock: { left: NaN, seconds: 3 }, equipment: { nuke: 1 }, effects: 'on' };
+    state.you.watching = 'b'.repeat(500);
+    const { watched } = sanitizeBattleRoyaleState(state).you;
+    assert.equal(watched.id.length, 64);
+    assert.equal(watched.planet, null);
+    assert.deepEqual([watched.upgrades.shields, watched.upgrades.evil], [0, undefined]);
+    assert.deepEqual(watched.jump, { cooldown: 0, to: null, spool: null, trapped: true, reach: 1 });
+    assert.equal(watched.dock, null, 'a docking with no time left to tell is none');
+    assert.deepEqual(watched.equipment, { beacon: 0, gravityShield: 0, emergencyShield: 0, overdrive: 0 });
+    assert.deepEqual(watched.effects, { gravityShield: 0, emergencyShield: 0 });
+});
+
+test('a jump drive and a ship\'s refits read as the HUD shows them', () => {
+    const t = (key, params) => (params ? `${key}${JSON.stringify(params)}` : key);
+    const none = { overdrive: 0 };
+    const chip = { overdrive: 1 };
+    const drive = (jump) => ({ cooldown: 0, to: null, spool: null, trapped: false, reach: 1, ...jump });
+    assert.equal(jumpStatusText(t, drive({}), none), 'mp.hud.jumpReady');
+    assert.equal(jumpStatusText(t, drive({ cooldown: 12 }), none), 'mp.hud.jumpCharging{"seconds":12}');
+    assert.equal(jumpStatusText(t, drive({ cooldown: 12 }), chip), 'mp.hud.jumpChargingChip{"seconds":12}');
+    assert.equal(jumpStatusText(t, drive({ cooldown: 12, trapped: true }), chip), 'mp.hud.jumpTrapped');
+    assert.equal(jumpStatusText(t, drive({ to: 'veil', trapped: true }), none), 'mp.hud.jumpSpooling{"planet":"mp.planet.veil"}');
+
+    assert.equal(upgradesText(t, { speed: 0, shields: 2, hull: 1 }), 'ui.rating.shields\u00a0+2 · ui.rating.hull\u00a0+1', 'in the order of the ratings, each held together');
+    assert.equal(upgradesText(t, { speed: 0 }), '');
 });
 
 test('what is not a battle royale state is refused', () => {

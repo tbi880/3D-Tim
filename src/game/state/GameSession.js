@@ -601,8 +601,13 @@ export class GameSession {
         this.hudTimer = HUD_REFRESH_INTERVAL;
 
         const { world } = this;
-        const player = world.player;
-        if (!player) return;
+        // A pilot who is down in a match and watches a comrade fly sees that ship's instruments.
+        const player = world.hudShip;
+        if (!player) {
+            // In a match the player may be somewhere their lost ship never was (watching nobody, say): nothing to show.
+            if (this.match) this.showOnHud({ hud: null, target: null });
+            return;
+        }
         const torpedoes = player.weapons.find((weapon) => weapon.def.type === 'torpedo');
         const beam = player.weapons.find((weapon) => weapon.def.type === 'beam');
         const target = player.target?.alive ? player.target : null;
@@ -611,6 +616,8 @@ export class GameSession {
         this.showOnHud({
             hud: {
                 alive: player.alive,
+                /** The player id of the pilot whose ship this is, when it is not the player's own (they are watching it), else null. */
+                watching: player === world.player ? null : player.pilotId ?? null,
                 hull: player.hullFraction,
                 shield: player.shieldFraction,
                 energy: player.energy / PLAYER.energyMax,
@@ -623,8 +630,8 @@ export class GameSession {
                 torpedoCapacity: torpedoes?.def.capacity ?? 0,
                 torpedoReload: torpedoes ? torpedoes.reloadTimer / torpedoes.def.reloadTime : 0,
                 powerMode: player.powerMode,
-                outOfBounds: world.outOfBounds,
-                cannonLock: world.playerCannonLock,
+                outOfBounds: Boolean(player.outOfBounds),
+                cannonLock: player.cannonLock ?? 0,
                 ability: abilityStatus(player),
                 /** The id of the ship's passive ability (config/abilities.js PASSIVES), or null. */
                 passive: player.passive?.id ?? null,

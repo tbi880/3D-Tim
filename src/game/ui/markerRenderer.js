@@ -210,7 +210,7 @@ const beamRing = { x: 0, y: 0, radius: 0 };
 const AIM_DISTANCE = 1500;
 
 function drawReticle(ctx, session, camera, width, height, stick) {
-    const player = session.world.player;
+    const player = session.world.hudShip;
     // The reticle marks where the nose points. In the cockpit that is the middle of the
     // screen; in the chase view it drifts as the camera lags behind the ship.
     scratchLocal.set(0, 0, -AIM_DISTANCE).applyQuaternion(player.quaternion).add(player.position);
@@ -242,6 +242,8 @@ function drawReticle(ctx, session, camera, width, height, stick) {
     ctx.stroke();
 
     // Steering indicator: where the virtual stick currently is (always around the screen centre).
+    // Not on a ship being watched: the stick here does not fly it.
+    if (player !== session.world.player) return;
     const stickRadius = Math.min(width, height) * STICK_RADIUS;
     const stickX = width / 2 + stick.yaw * stickRadius;
     const stickY = height / 2 - stick.pitch * stickRadius;
@@ -261,7 +263,7 @@ function drawReticle(ctx, session, camera, width, height, stick) {
 
 function drawShipMarkers(ctx, session, camera, width, height) {
     const { world } = session;
-    const player = world.player;
+    const player = world.hudShip;
     const focalLength = height / 2 / Math.tan((camera.fov * Math.PI) / 360);
     const escortTag = session.director.scene.escortTag;
     const time = performance.now() / 1000;
@@ -354,13 +356,14 @@ function drawWaypoint(ctx, session, camera, width, height) {
 }
 
 /**
- * Draws the full-screen marker layer.
+ * Draws the full-screen marker layer, as the pilot of the HUD's ship sees it (world.hudShip:
+ * the player's own, or the one a player who is down watches fly).
  * @param {CanvasRenderingContext2D} ctx already scaled so 1 unit = 1 CSS pixel
  * @param {{ yaw: number, pitch: number }} stick current steering deflection
  */
 export function drawMarkers(ctx, session, camera, width, height, stick) {
     ctx.clearRect(0, 0, width, height);
-    const player = session.world.player;
+    const player = session.world.hudShip;
     if (!player?.alive || session.world.controlsLocked) return;
     ctx.font = FONT;
     drawReticle(ctx, session, camera, width, height, stick);
@@ -370,12 +373,12 @@ export function drawMarkers(ctx, session, camera, width, height, stick) {
 
 /**
  * Top-down radar: the player is at the centre, straight ahead is up. A short stalk shows
- * whether a contact is above or below the player's wings.
+ * whether a contact is above or below the player's wings. (The player, or the pilot they watch: world.hudShip.)
  */
 export function drawRadar(ctx, session, size) {
     ctx.clearRect(0, 0, size, size);
     const { world } = session;
-    const player = world.player;
+    const player = world.hudShip;
     if (!player?.alive) return;
     const centre = size / 2;
     const radius = centre - 4;

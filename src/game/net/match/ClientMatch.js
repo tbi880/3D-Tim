@@ -523,6 +523,7 @@ export class ClientMatch {
         if (snapshot.epoch !== this.epoch || !this.timeline.push(snapshot)) return;
         this.world.controlsLocked = snapshot.controlsLocked || isMatchOver(this.state?.phase);
         this.applyOwnShip(snapshot);
+        this.applyWatchedShip(snapshot);
     }
 
     /** The host's word on this player's own ship: corrects the prediction and fills the HUD's numbers. */
@@ -535,7 +536,29 @@ export class ClientMatch {
         const now = this.now();
         this.predictor.reconcile(ship, own, snapshot.ack, this.lastReconcileAt === null ? 1 : now - this.lastReconcileAt);
         this.lastReconcileAt = now;
+        this.applyInstruments(ship, own);
+    }
 
+    /**
+     * The player has no ship and watches another pilot fly: the host sends that ship's
+     * instruments, and they go on its copy here, so the HUD can show them as the pilot sees them.
+     * Where the ship is stays the snapshots' business, as for every other ship.
+     */
+    applyWatchedShip(snapshot) {
+        const { watched } = snapshot;
+        const ship = watched ? this.index.ships.get(watched.id) : null;
+        if (!ship || !ship.alive || ship === this.world.player || !ship.isPlayer) return;
+        // (On the player's own ship the prediction keeps these: ShipPredictor.reconcile.)
+        ship.throttle = watched.throttle;
+        ship.boost = watched.boost;
+        ship.boostLockout = watched.boostLockout;
+        ship.powerMode = watched.powerMode;
+        ship.outOfBounds = watched.outOfBounds;
+        this.applyInstruments(ship, watched);
+    }
+
+    /** What a ship's own instruments read (snapshot `own` / `watched`), on to its copy here. */
+    applyInstruments(ship, own) {
         ship.energy = own.energy;
         ship.cannonLock = own.cannonLock;
         ship.beamFiring = own.beamFiring;
@@ -548,7 +571,7 @@ export class ClientMatch {
                 weapon.reloadTimer = own.torpedoReload;
             }
         }
-        world.setPlayerTarget(own.targetId ? this.index.ships.get(own.targetId) ?? null : null);
+        this.world.setPlayerTarget(own.targetId ? this.index.ships.get(own.targetId) ?? null : null, ship);
         if (ship.ability) {
             ship.ability.cooldown = own.abilityCooldown;
             ship.ability.active = own.abilityActive;

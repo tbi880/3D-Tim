@@ -34,7 +34,8 @@ const LOCK_REPEAT_MS = 650;
  */
 function AbilityButton({ session }) {
     const t = useT();
-    const ability = useGameStore((state) => state.hud?.ability);
+    // Not the ability of a ship the player is only watching: this button does not fire it.
+    const ability = useGameStore((state) => (state.hud?.watching ? null : state.hud?.ability));
     if (!ability) return null;
     return (
         <button

@@ -113,6 +113,17 @@ export class World {
         this.singularity.size = 0;
     }
 
+    /**
+     * The ship whose instruments the HUD shows: the player's own while it flies; with it lost, the
+     * one being watched (multiplayer: the host sends its instruments, net/match/ClientMatch.js);
+     * else the player's own, lost or not there at all.
+     * @type {Ship | null}
+     */
+    get hudShip() {
+        if (this.player?.alive) return this.player;
+        return this.spectating?.alive ? this.spectating : this.player;
+    }
+
     /** Whether the local player is past the sector's edge (the HUD's warning). */
     get outOfBounds() {
         return Boolean(this.player?.outOfBounds);

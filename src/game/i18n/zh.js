@@ -759,6 +759,7 @@ export default {
     'mp.watch.nobody': '没有还在飞的队友可以观看',
     'mp.watch.key': 'T',
     'mp.watch.stop': '停止观看',
+    'mp.watch.docking': '{name} 正在对接 · {seconds} 秒',
     'mp.team.title': '队友',
     'mp.team.watchHint': '点选观看',
     'mp.team.docking': '对接中',

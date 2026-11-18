@@ -759,6 +759,7 @@ export default {
     'mp.watch.nobody': 'No comrade in the air to watch',
     'mp.watch.key': 'T',
     'mp.watch.stop': 'Stop',
+    'mp.watch.docking': '{name} docking · {seconds} s',
     'mp.team.title': 'Comrades',
     'mp.team.watchHint': 'pick one to watch',
     'mp.team.docking': 'Docking',

@@ -13,7 +13,9 @@ import { PACKET } from './inputPacket.js';
  *   f64 time            world time of the place
  *   u32 ack             sequence number of the newest input of this client the host has flown
  *   u8  world flags     WORLD_FLAG bits
- *   u8  has own ship    0 | 1, then the client's own ship in full (OWN SHIP below)
+ *   u8  instruments     INSTRUMENTS: none; the client's own ship; or - while the client has no
+ *                       ship and is watching another pilot fly - that pilot's ship. Then that
+ *                       ship in full (OWN SHIP below)
  *   -- the rest is the same for every client --
  *   u16 ship count, then per ship:  u32 id, u8 SHIP_FLAG bits, u16 hull, u16 shield,
  *                                   and if SHIP_FLAG.POSE: vec3 position, quat16 orientation
@@ -24,7 +26,8 @@ import { PACKET } from './inputPacket.js';
  * where their parent is. A beam's ends are in the axes of the ships it joins (ids not 0), so
  * a client can redraw it between the hulls as *it* shows them, a few milliseconds in the past.
  *
- * OWN SHIP is everything the client needs to correct its prediction and fill its HUD:
+ * OWN SHIP is everything the client needs to correct its prediction and fill its HUD (for a
+ * watched ship only the HUD: its pose is drawn from the ship list like any other's):
  *   u32 id, vec3 position, 4 x f32 orientation, vec3 velocity, vec3 angular velocity,
  *   f32 speed, throttle, boost, energy, u8 OWN_FLAG bits, u8 cannon lock, u8 power mode,
  *   u8 torpedoes, f32 torpedo reload timer, u32 target id,
@@ -37,6 +40,8 @@ export const SHIP_FLAG = Object.freeze({ POSE: 1, BOOSTING: 2, INVULNERABLE: 4, 
 /** ABILITY_ARMED: the ship's ability torpedo is in flight and can be set off. */
 const OWN_FLAG = Object.freeze({ BOOSTING: 1, BOOST_LOCKOUT: 2, BEAM_DEPLETED: 4, OUT_OF_BOUNDS: 8, BEAM_FIRING: 16, ABILITY_ARMED: 32 });
 const WORLD_FLAG = Object.freeze({ CONTROLS_LOCKED: 1 });
+/** Whose instruments follow the header: nobody's, the client's own ship's, or the ship of the pilot the client watches. */
+export const INSTRUMENTS = Object.freeze({ NONE: 0, OWN: 1, WATCHED: 2 });
 
 export const BEAM_KINDS = Object.freeze(['beam', 'lanceCharge', 'lance', 'cannon', 'tractor']);
 
@@ -134,18 +139,17 @@ export class SnapshotEncoder {
      * @param {number} seq
      * @param {number} ack newest input sequence number flown for this client
      * @param {import('../../core/Ship.js').Ship | null} ownShip the client's ship, if it has one
+     * @param {import('../../core/Ship.js').Ship | null} [watchedShip] without one of its own: the ship
+     *        of the pilot the client watches fly, if any (its instruments are sent in place of its own)
      * @returns {ArrayBuffer}
      */
-    packetFor(epoch, seq, ack, ownShip) {
+    packetFor(epoch, seq, ack, ownShip, watchedShip = null) {
         const packet = this.packet.reset();
         packet.u8(PACKET.SNAPSHOT).u8(epoch & 0xff).u32(seq >>> 0).f64(this.time).u32(ack >>> 0)
             .u8(this.controlsLocked ? WORLD_FLAG.CONTROLS_LOCKED : 0);
-        if (ownShip) {
-            packet.u8(1);
-            writeOwnShip(packet, ownShip);
-        } else {
-            packet.u8(0);
-        }
+        const instruments = ownShip ?? watchedShip;
+        packet.u8(ownShip ? INSTRUMENTS.OWN : watchedShip ? INSTRUMENTS.WATCHED : INSTRUMENTS.NONE);
+        if (instruments) writeOwnShip(packet, instruments);
         packet.ensure(this.body.offset);
         new Uint8Array(packet.buffer, packet.offset, this.body.offset).set(new Uint8Array(this.body.buffer, 0, this.body.offset));
         packet.offset += this.body.offset;
@@ -226,9 +230,11 @@ function readBeamEnd(reader) {
 }
 
 /**
+ * `own` is the client's own ship (OWN SHIP); `watched` the same for the ship of the pilot it
+ * watches while it has none of its own. At most one of the two is there.
  * @param {ArrayBuffer | ArrayBufferView} data
  * @returns {{
- *   epoch: number, seq: number, time: number, ack: number, controlsLocked: boolean, own: object | null,
+ *   epoch: number, seq: number, time: number, ack: number, controlsLocked: boolean, own: object | null, watched: object | null,
  *   count: number, ids: Uint32Array, flags: Uint8Array, hull: Float32Array, shield: Float32Array,
  *   poses: Float32Array, indexOf: Map<number, number>,
  *   beams: { kind: string, color: string, width: number, from: { shipId: number, point: Vector3 }, to: { shipId: number, point: Vector3 } }[],
@@ -243,7 +249,11 @@ export function decodeSnapshot(data) {
     const time = reader.f64();
     const ack = reader.u32();
     const worldFlags = reader.u8();
-    const own = reader.u8() ? readOwnShip(reader) : null;
+    const instruments = reader.u8();
+    if (instruments > INSTRUMENTS.WATCHED) throw new PacketError('unknown instruments');
+    const ship = instruments === INSTRUMENTS.NONE ? null : readOwnShip(reader);
+    const own = instruments === INSTRUMENTS.OWN ? ship : null;
+    const watched = instruments === INSTRUMENTS.WATCHED ? ship : null;
 
     const count = reader.u16();
     if (count > SNAPSHOT_LIMITS.ships) throw new PacketError('too many ships');
@@ -282,7 +292,7 @@ export function decodeSnapshot(data) {
     reader.end();
 
     return {
-        epoch, seq, time, ack, controlsLocked: Boolean(worldFlags & WORLD_FLAG.CONTROLS_LOCKED), own,
+        epoch, seq, time, ack, controlsLocked: Boolean(worldFlags & WORLD_FLAG.CONTROLS_LOCKED), own, watched,
         count, ids, flags, hull, shield, poses, indexOf, beams,
     };
 }

@@ -41,6 +41,14 @@ import { EQUIPMENT, EQUIPMENT_ORDER } from './equipment.js';
  *                         Null while they fly.
  *     out,                whether their side is out of the match (they do not come back)
  *     watching,           while they are down: the player id of the pilot they watch fly, or null
+ *     watched: {          while they watch somebody fly: that pilot as the HUD shows them in place of the
+ *                         player's own ship (whose instruments come with the snapshots), else null:
+ *       id, planet,       who, and where they fly
+ *       upgrades,         { rating: levels } installed on their ship
+ *       jump,             their jump drive, as `jump` above
+ *       dock,             a docking of theirs in progress: { left, seconds }, else null
+ *       equipment, effects,   what they carry and which of it is on, as above
+ *     },
  *     team: [{            their comrades (the pirates are comrades too):
  *       id, name, classId, bot,
  *       planet,           where they fly, or null while they are down
@@ -73,10 +81,37 @@ const sideOrNull = (value) => (PLAYER_FACTIONS.includes(value) ? value : null);
 /** Real planet ids only, each once, in the order sent. */
 const planetList = (value) => (Array.isArray(value) ? [...new Set(value.slice(0, 16).map(planetId).filter(Boolean))] : []);
 
+const cleanUpgrades = (raw) => Object.fromEntries(RATING_ORDER.map((rating) => [rating, count(raw?.[rating])]));
+const cleanJump = (raw) => ({
+    cooldown: seconds(raw?.cooldown) ?? 0,
+    to: planetId(raw?.to),
+    spool: seconds(raw?.spool),
+    trapped: Boolean(raw?.trapped),
+    reach: Math.max(1, count(raw?.reach)),
+});
+const cleanEquipment = (raw) => Object.fromEntries(EQUIPMENT_ORDER.map((item) => [item, count(raw?.[item])]));
+const cleanEffects = (raw) => ({ gravityShield: count(raw?.gravityShield), emergencyShield: count(raw?.emergencyShield) });
+
+/** The pilot a player who is down watches (`you.watched`), or null. */
+function cleanWatched(raw) {
+    if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string') return null;
+    const dock = raw.dock && typeof raw.dock === 'object' && seconds(raw.dock.left) !== null
+        ? { left: seconds(raw.dock.left), seconds: Math.max(1, seconds(raw.dock.seconds) ?? 1) }
+        : null;
+    return {
+        id: raw.id.slice(0, 64),
+        planet: planetId(raw.planet),
+        upgrades: cleanUpgrades(raw.upgrades),
+        jump: cleanJump(raw.jump),
+        dock,
+        equipment: cleanEquipment(raw.equipment),
+        effects: cleanEffects(raw.effects),
+    };
+}
+
 function cleanYou(raw) {
     if (!raw || typeof raw !== 'object') return null;
-    const upgrades = {};
-    for (const rating of RATING_ORDER) upgrades[rating] = count(raw.upgrades?.[rating]);
+    const upgrades = cleanUpgrades(raw.upgrades);
     const respawn = raw.respawn && typeof raw.respawn === 'object'
         ? {
             wait: seconds(raw.respawn.wait) ?? 0,
@@ -95,22 +130,18 @@ function cleanYou(raw) {
         summons: count(raw.summons),
         upgrades,
         loyalty: oneOf(Object.values(LOYALTY), raw.loyalty, LOYALTY.TRUSTED),
-        jump: {
-            cooldown: seconds(raw.jump?.cooldown) ?? 0,
-            to: planetId(raw.jump?.to),
-            spool: seconds(raw.jump?.spool),
-            trapped: Boolean(raw.jump?.trapped),
-            reach: Math.max(1, count(raw.jump?.reach)),
-        },
+        jump: cleanJump(raw.jump),
         dock: raw.dock && typeof raw.dock === 'object'
             ? { ready: Boolean(raw.dock.ready), left: seconds(raw.dock.left), seconds: Math.max(1, seconds(raw.dock.seconds) ?? 1) }
             : null,
         picks: count(raw.picks),
-        equipment: Object.fromEntries(EQUIPMENT_ORDER.map((item) => [item, count(raw.equipment?.[item])])),
-        effects: { gravityShield: count(raw.effects?.gravityShield), emergencyShield: count(raw.effects?.emergencyShield) },
+        equipment: cleanEquipment(raw.equipment),
+        effects: cleanEffects(raw.effects),
         respawn,
         out: Boolean(raw.out),
         watching: typeof raw.watching === 'string' ? raw.watching.slice(0, 64) : null,
+        // Only while they are down, and only the one they watch.
+        watched: !raw.alive && typeof raw.watching === 'string' && raw.watched?.id === raw.watching ? cleanWatched(raw.watched) : null,
         team: Array.isArray(raw.team) ? raw.team.slice(0, 16).filter((mate) => mate && typeof mate === 'object').map(cleanTeammate) : [],
     };
 }
@@ -208,6 +239,40 @@ export function jumpChoice(you, orbits) {
     else if (you.jump.trapped) block = { key: 'mp.hud.jumpTrapped' };
     else if (charging && !chip) block = { key: 'mp.hud.jumpCharging', params: { seconds: you.jump.cooldown } };
     return { overdrive: orbits > 1 || (charging && chip), block };
+}
+
+/**
+ * How a jump drive reads on the HUD (`jump` and `equipment` of the player's state, or of the
+ * pilot they watch), in the words of `t` (i18n): spooling up for a planet, stuck, charging (and
+ * whether an overdrive chip could go anyway), or charged.
+ */
+export function jumpStatusText(t, jump, equipment) {
+    if (jump.to) return t('mp.hud.jumpSpooling', { planet: t(`mp.planet.${jump.to}`) });
+    if (jump.trapped) return t('mp.hud.jumpTrapped');
+    if (jump.cooldown > 0) return t(equipment[EQUIPMENT.OVERDRIVE] > 0 ? 'mp.hud.jumpChargingChip' : 'mp.hud.jumpCharging', { seconds: jump.cooldown });
+    return t('mp.hud.jumpReady');
+}
+
+/**
+ * The refits on a ship (`{ rating: levels }`) as one short line in the words of `t` ("Speed +2 ·
+ * Shields +1"; a rating and its level never split over two lines), or '' when it has none.
+ */
+export function upgradesText(t, upgrades) {
+    return RATING_ORDER.filter((rating) => upgrades[rating] > 0).map((rating) => `${t(`ui.rating.${rating}`)}\u00a0+${upgrades[rating]}`).join(' · ');
+}
+
+/**
+ * The pilot the player watches fly while they are down, with their name, ship, side and score
+ * from the roster: what the HUD shows in place of the player's own ship. Null while the player
+ * flies or watches nobody - or before the host has said anything about the one they watch.
+ */
+export function watchedPilot(state) {
+    const watched = state?.you?.watched;
+    if (!watched || state.you.alive) return null;
+    const player = state.players.find((entry) => entry.id === watched.id);
+    if (!player) return null;
+    const { name, classId, faction, bot, score, kills } = player;
+    return { ...watched, name, classId, faction, bot, score, kills };
 }
 
 /** True when ships of more than one side are at a planet (`forces` of a planet in the match state). */

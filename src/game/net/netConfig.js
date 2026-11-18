@@ -12,8 +12,10 @@ export const NET = Object.freeze({
      * 7: an overdrive chip jumps while the drive is still charging, and its jump leaves the
      *    charge as it was: an older host would refuse the jump the map offers. A ship that has
      *    come back from being shot down charges its drive in 15 s, not a minute.
+     * 8: a snapshot can carry the instruments of the ship a player without one is watching, in
+     *    the own ship's place: an older client would take that ship for its own.
      */
-    protocolVersion: 7,
+    protocolVersion: 8,
 
     /** World snapshots the host sends each client per second. */
     snapshotHz: 30,
