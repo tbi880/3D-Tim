@@ -34,6 +34,13 @@ on the menu panel (`xr/vrStarMap.js`), and a pilot who is shot down chooses wher
 on the same picture: the stations they may (or for now may not) come back to are marked on it,
 and the planet of the row the stick is on - a station, or a comrade to watch - is framed.
 
+Every kill in a match is news on every device (the message feed, `net/README.md`): "who, with
+what, whom" in the sides' colours, a few lines at a time for a few seconds each - under the
+target at the top right of the page, a narrow column in the upper right of the headset's
+head-up pane - with the player's own kills and their own end standing out. A computer-flown
+ship is named by its class and side. Short of room, a line with a pilot in it stays up before
+one about garrisons shooting each other (`state/MessageFeed.js` `shownLines`).
+
 A planet's fall into the black hole is a show too, and every device plays the same moment of
 it (`modes/battleRoyale/planetFall.js`): the match state carries the host's collapse clock and
 each planet's two times on it, a device keeps that clock running between states (`FallClock`),

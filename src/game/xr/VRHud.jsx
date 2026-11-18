@@ -18,6 +18,7 @@ import { tutorialKeys, tutorialParams, tutorialText } from '../ui/tutorialText.j
 import { createCanvasPanel, drawMeter, roundRect, wrapText } from './canvasPanel.js';
 import { isStoryShown } from './menuPlacement.js';
 import { drawStoryCaption, storyCaption } from './vrCaption.js';
+import { drawMessageFeed } from './vrMessageFeed.js';
 
 /**
  * The flight HUD inside the headset. Everything hangs off the pilot's seat (the player
@@ -30,7 +31,9 @@ import { drawStoryCaption, storyCaption } from './vrCaption.js';
  *        marker sits on the line from the eye to its ship. Redrawn every frame: anything
  *        slower and the brackets trail behind their ships in a turn.
  *      - text: objective, alerts, title cards, the comms line, the points for each kill
- *        (beside the reticle) and the tutorial's card. Text is what shows a soft
+ *        (beside the reticle), the tutorial's card and, in a match, the comrades (a column at
+ *        the left edge) and the news of who shot whom down (a narrow one in the upper
+ *        right, xr/vrMessageFeed.js). Text is what shows a soft
  *        texture first, so this pane has the headset's own angular resolution; it only changes
  *        slowly, so it is redrawn TEXT_RATE times a second, and uploaded to the GPU (1.8
  *        million pixels) only when the redrawn picture differs from the last one.
@@ -255,8 +258,11 @@ export function drawTutorialCard(ctx, tutorial, t) {
     ctx.fillText(t('tutorial.skipHint.vr'), centre, top + height - 12);
 }
 
-/** Text overlays on the head-up pane (logical pixels). `scoreFeed`: see drawScoreFeed. */
-function drawPaneText(ctx, state, t, now, scoreFeed) {
+/**
+ * Text overlays on the head-up pane (logical pixels). `scoreFeed`: see drawScoreFeed.
+ * `feedTime`: the clock the message feed's lines are timed by (`session.feed.time`).
+ */
+function drawPaneText(ctx, state, t, now, scoreFeed, feedTime) {
     const [width, height] = VIEW_LOGICAL;
     const centre = width / 2;
     ctx.textBaseline = 'alphabetic';
@@ -372,6 +378,8 @@ function drawPaneText(ctx, state, t, now, scoreFeed) {
 
         // The comrades, always (top left, clear of the objective and the alerts).
         drawTeam(ctx, state.match, t);
+        // The match's news - who shot whom down - on the other side, in the upper right.
+        drawMessageFeed(ctx, state.feed, t, feedTime, { font: FONT });
         // Watching somebody fly with the menu put away: whom (and their ship), how the comeback stands, and B for the menu.
         if (!you.alive && you.watching && state.matchWatchView) {
             const player = state.match.players.find((entry) => entry.id === you.watching);
@@ -720,7 +728,7 @@ export default function VRHud({ game, seatRef }) {
             if (local.textTimer <= 0) {
                 local.textTimer = 1 / TEXT_RATE;
                 beginLogicalFrame(textPane);
-                drawPaneText(textPane.ctx, store, t, local.time, scoreFeed);
+                drawPaneText(textPane.ctx, store, t, local.time, scoreFeed, session.feed.time);
                 textPane.commit();
             }
         } else if (!story) {

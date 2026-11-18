@@ -117,12 +117,29 @@ nothing new travels; its ships are tagged, so a checkpoint finds the squad again
 | input | state | client, every frame | 11 bytes: stick, throttle, buttons (`codec/inputPacket.js`) |
 | snapshot | state | server, 30 / s | every ship's pose, hull, shield, flags (boosting, cloaked, shield held down ...); beams; the receiver's own ship in full, with where its ability stands - or, while the receiver has no ship and watches another pilot fly, that pilot's ship in its place, for the HUD (`codec/snapshotPacket.js`) |
 | hello / action / req / ping | events | client | "send me the world", a pilot action, a request to the game mode (`protocol.js`) |
-| welcome / batch | events | server | the whole zone; then what happened each frame: spawns, hits, kills, abilities starting, ending and going off, the match state |
+| welcome / batch | events | server | the whole zone; then what happened each frame: spawns, hits, kills, abilities starting, ending and going off, the match state, lines for the message feed |
 
 Remote ships are drawn a moment (45 ms) behind the newest snapshot, blended between two
 (`match/SnapshotTimeline.js`). The player's own ship does not wait: it is flown at once with
 the same flight model the server uses and corrected when the server's answer arrives
 (`match/ShipPredictor.js`). Tuning: `netConfig.js`.
+
+### The message feed
+
+Short lines every device shows at the side of the screen for a few seconds: who shot whom
+down, wherever in the match it happened. The host says one with `MatchServer.announce(type,
+data)`; it travels as a batch entry `['feed', type, data]` to every player (or to the pilots
+named), whatever place they are in. `type` says what kind of line it is and so what `data`
+holds; `match/feed.js` has the kinds, builds a kill's line on the host (`describeKill`) and
+checks every line on arrival (`sanitizeFeedMessage`). The device keeps the lines and takes
+them down again (`state/MessageFeed.js`); the page and the headset draw the same words
+(`ui/feedText.js`, `ui/MessageFeed.jsx`, `xr/vrMessageFeed.js`).
+
+There is one kind today, `kill`. The feed is where what players say to each other is meant
+to go: a new kind needs a name, a check and its words (the list is at the top of
+`match/feed.js`), and - for something a player sends - a client message of its own, checked
+like the others (`protocol.js`). A device drops a type it does not know, and an older build
+ignores `feed` entries altogether, so neither needs a new protocol version.
 
 ## Cheating
 

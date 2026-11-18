@@ -293,6 +293,39 @@ html.eod-in-game .site-settings-toggle { display: none; }
 .eod-toast strong { color: var(--eod-green); font-size: 11px; }
 .eod-toast span { font-size: 10px; color: rgba(210, 235, 255, 0.75); }
 
+/*
+ * The message feed (ui/MessageFeed.jsx): a match's news - who shot whom down - in the top right
+ * dock under the target and the toast, the newest line lowest. Each line is a strip no wider
+ * than the dock; it comes in from the right, holds and fades over exactly the time the feed
+ * keeps it (the component sets the animation's duration). Nothing here can be pressed.
+ */
+.eod-feed { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; max-width: 100%; pointer-events: none; }
+.eod-feed-line {
+    display: flex; align-items: baseline; gap: 5px; max-width: 100%; box-sizing: border-box; padding: 3px 9px 3px 8px;
+    font-size: 11px; line-height: 1.35; white-space: nowrap; color: rgba(225, 240, 255, 0.9);
+    background: rgba(4, 12, 22, 0.58); border-right: 2px solid rgba(140, 190, 230, 0.35);
+    animation: eod-feed-line 6s linear both;
+}
+.eod-feed-name { font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.eod-feed-tag { flex: none; padding: 0 4px; font-size: 9px; line-height: 1.5; letter-spacing: 0.04em; border: 1px solid currentColor; border-radius: 2px; opacity: 0.85; }
+.eod-feed-link { flex: none; font-size: 10px; }
+.eod-feed-text { flex: none; }
+.eod-feed-tone--dawn { color: var(--eod-cyan); }
+.eod-feed-tone--umbra { color: var(--eod-violet); }
+.eod-feed-tone--pirate { color: var(--eod-amber); }
+.eod-feed-tone--muted { color: rgba(205, 225, 240, 0.62); }
+.eod-feed-tone--warn { color: #ff9a5c; }
+/* About the player themself: their kill in amber, their own end in red. */
+.eod-feed-line--killer { background: rgba(58, 40, 4, 0.72); border-right-color: var(--eod-amber); box-shadow: 0 0 10px rgba(255, 182, 72, 0.28); }
+.eod-feed-line--victim { background: rgba(60, 6, 18, 0.72); border-right-color: var(--eod-red); box-shadow: 0 0 10px rgba(255, 75, 110, 0.28); }
+/* (Percentages of the line's own time: the first is the coming in, the last tenth the going.) */
+@keyframes eod-feed-line {
+    0% { opacity: 0; transform: translateX(14px); }
+    4% { opacity: 1; transform: none; }
+    90% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
 /* Kill points: one line per kill under the reticle, held 3 s then faded (GameHud ScoreFeed). */
 .eod-score-feed { position: absolute; left: 50%; top: calc(50% + 46px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; pointer-events: none; }
 .eod-score-total { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(215, 238, 255, 0.7); animation: eod-score-pop 3.8s ease-out forwards; }
@@ -610,6 +643,12 @@ html.eod-in-game .site-settings-toggle { display: none; }
 .eod-hud--touch .eod-toast { padding: 5px 10px; }
 .eod-hud--touch .eod-toast strong { font-size: 10px; }
 .eod-hud--touch .eod-toast span { font-size: 9px; }
+/* The match's news under them: small, no tags (MessageFeed `compact`), ending above the four buttons. */
+.eod-hud--touch .eod-feed { gap: 2px; }
+.eod-hud--touch .eod-feed-line { gap: 4px; padding: 1px 6px; font-size: 9.5px; line-height: 1.4; }
+.eod-hud--touch .eod-feed-link { font-size: 9px; }
+/* A short phone, while a toast is up above it: two lines, or the third would reach the top button. */
+@media (max-height: 380px) { .eod-hud--touch .eod-dock--right:has(.eod-toast) .eod-feed-line:nth-last-child(n + 3) { display: none; } }
 
 /* Top centre, between the two corners: boss / escort bars (side by side), the match strip, the hint; the warnings at its foot. */
 .eod-hud--touch .eod-dock--centre {

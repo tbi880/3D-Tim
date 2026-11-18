@@ -507,10 +507,10 @@ export class MatchServer {
     addZone(id, sectorId, options) {
         const zone = new Zone(id, sectorId, options);
         zone.listen({
-            onShipDestroyed: (where, ship, killer) => {
+            onShipDestroyed: (where, ship, killer, weapon) => {
                 const pilot = ship.pilotId != null ? this.pilots.get(ship.pilotId) : null;
                 if (pilot?.ship === ship) pilot.ship = null;
-                this.mode.onShipDestroyed(where, ship, killer);
+                this.mode.onShipDestroyed(where, ship, killer, weapon);
             },
             onPlayerCollision: (where, ship, speed) => this.pilots.get(ship.pilotId)?.tell(WORLD_EVENT.BUMP, speed),
         });
@@ -570,6 +570,17 @@ export class MatchServer {
         // Whatever was locked on it or by it was chosen under the old allegiance.
         ship.target = null;
         zone.share(WORLD_EVENT.FACTION, ship.id, faction);
+    }
+
+    /**
+     * Puts a line on the message feed of every player's device, wherever in the match they
+     * are (net/match/feed.js): `type` says what kind of line, `data` is what that kind holds.
+     * @param {Iterable<Pilot>} [audience] the pilots who are told (default: everybody)
+     */
+    announce(type, data, audience = this.pilots.values()) {
+        for (const pilot of audience) {
+            if (pilot.joined && !pilot.gone) pilot.tell(WORLD_EVENT.FEED, type, data);
+        }
     }
 
     /** Sends every player their match state now instead of at the next regular update. */

@@ -10,7 +10,9 @@ import { BattleRoyalePresenter } from './battleRoyale/BattleRoyalePresenter.js';
  *
  *   setup(server)                       build the zones, place everyone (server.addZone, server.spawnPilotShip)
  *   update(dt)                          the rules' own clock, once per server frame
- *   onShipDestroyed(zone, ship, killer) any ship, a player's or not
+ *   onShipDestroyed(zone, ship, killer, weapon)   any ship, a player's or not; `weapon`: the definition of
+ *                                       the weapon that did it, if one did. (To put it on every
+ *                                       device's message feed: server.announce, net/match/feed.js.)
  *   onDamage?(zone, target, source, amount)   every bit of damage a ship deals
  *   onRequest(pilot, name, data)        a player asks for something only this mode offers; `data`
  *                                       comes straight from their device: check every field

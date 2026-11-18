@@ -11,6 +11,7 @@ import { CAMPAIGN, STARTING_SECTOR } from '../story/campaign.js';
 import { resolvePlacement } from '../story/placement.js';
 import { StoryDirector } from '../story/StoryDirector.js';
 import { CommsQueue, estimateReadingTime } from './CommsQueue.js';
+import { MessageFeed } from './MessageFeed.js';
 import { computeFinalScore, killPoints } from '../config/scoring.js';
 import { CAMERA_MODES, clearSave, loadSave, recordFinalScore, saveSettings, writeSave } from './saveGame.js';
 import { sameValue } from './sameValue.js';
@@ -122,6 +123,8 @@ export class GameSession {
         this.director = new StoryDirector({ world: this.world, stage: this, beats: CAMPAIGN });
         /** The multiplayer match being played (see beginMatch), or null in single player. */
         this.match = null;
+        /** The lines at the side of the screen during a match: who shot whom down (net/match/feed.js). The store's `feed`. */
+        this.feed = new MessageFeed({ onChange: (lines) => this.ui.set({ feed: lines }) });
         /** The first-flight tutorial: it can stop the game until the pilot has tried a control (state/Tutorial.js). */
         this.tutorial = new Tutorial(this);
 
@@ -295,6 +298,7 @@ export class GameSession {
         if (!match) return;
         this.match = null;
         match.dispose();
+        this.feed.clear();
         this.world.setDifficulty(this.settings.difficulty);
         this.ui.set({ match: null, matchPanel: null, matchIntro: null, matchOutro: null, matchWatchView: false, refit: null });
     }
@@ -508,6 +512,7 @@ export class GameSession {
         if (this.match) {
             // With a menu open the ship flies on with its controls released.
             this.match.update(dt, this.phase === PHASE.PLAYING ? controls : IDLE_CONTROLS);
+            this.feed.update(dt);
             this.updateWaypoint();
             this.updateTimers(dt);
             this.publishHud(dt);

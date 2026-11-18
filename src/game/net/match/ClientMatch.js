@@ -13,6 +13,7 @@ import { createControls, encodeInput, quantizeControls } from '../codec/inputPac
 import { decodeSnapshot } from '../codec/snapshotPacket.js';
 import { NET } from '../netConfig.js';
 import { MSG, WORLD_EVENT } from '../protocol.js';
+import { readFor, sanitizeFeedMessage } from './feed.js';
 import { cleanUpgrades } from './matchInfo.js';
 import { MATCH_PHASE, isMatchOver, sanitizeBasicState } from './matchState.js';
 import { EntityIndex, spawnReplicaProjectile, spawnReplicaShip } from './replication.js';
@@ -26,7 +27,7 @@ const PROJECTILE_GRACE = 1.5;
 /** Snapshots kept while nothing reads them; older ones are worthless anyway. */
 const MAX_UNREAD_SNAPSHOTS = 4;
 /** Events that mean something even while this device has not been sent a zone yet. */
-const PLACELESS_EVENTS = new Set([WORLD_EVENT.MATCH, WORLD_EVENT.MODE, WORLD_EVENT.STAGE]);
+const PLACELESS_EVENTS = new Set([WORLD_EVENT.MATCH, WORLD_EVENT.MODE, WORLD_EVENT.STAGE, WORLD_EVENT.FEED]);
 /** Calls the host may make on this device's stage. */
 const STAGE_CALLS = new Set(['showTitleCard', 'setHint', 'playMusic', 'playCue']);
 const FACTIONS = new Set(Object.values(FACTION));
@@ -691,6 +692,12 @@ export class ClientMatch {
                     session.events.emit(SESSION_EVENTS.SCORE, { points: a, classId: b, total: c });
                 }
                 break;
+            case WORLD_EVENT.FEED: {
+                // A line for the side of the screen (who shot whom down...), as this player reads it.
+                const message = sanitizeFeedMessage(a, b);
+                if (message) session.feed.post(readFor(message, this.localPlayerId));
+                break;
+            }
             default:
         }
     }

@@ -6,6 +6,7 @@ import { SECTORS } from '../../config/sectors.js';
 import { createRng, randomUnitVector } from '../../core/math.js';
 import { mergeUpgrades } from '../../core/refit.js';
 import { destroyShip, drainShip } from '../../core/systems/damage.js';
+import { FEED_TYPE, KILL_CAUSE, describeKill } from '../../net/match/feed.js';
 import { cleanUpgrades } from '../../net/match/matchInfo.js';
 import { MATCH_PHASE } from '../../net/match/matchState.js';
 import { WORLD_EVENT } from '../../net/protocol.js';
@@ -1195,11 +1196,12 @@ export class BattleRoyaleMode {
         this.server.publishState();
     }
 
-    onShipDestroyed(zone, ship, killer) {
+    onShipDestroyed(zone, ship, killer, weapon = null) {
         const scorer = killer?.isPlayer ? this.contestants.get(killer.pilotId) : null;
         const victim = ship.isPlayer ? this.contestants.get(ship.pilotId) : null;
-        // A pilot or a reinforcement lost is a sign of trouble there, for the side's war council.
         const place = this.places.get(zone.id);
+        this.reportKill(place, ship, killer, weapon);
+        // A pilot or a reinforcement lost is a sign of trouble there, for the side's war council.
         if (place && (victim || squadIdOf(ship) !== null)) this.councilOf(victim?.faction ?? ship.faction).noteLoss(place, shipStrength(ship));
         if (victim) {
             victim.alive = false;
@@ -1222,6 +1224,18 @@ export class BattleRoyaleMode {
             if (points > 0) scorer.pilot.tell(WORLD_EVENT.SCORE, points, ship.classId, scorer.score);
         }
         this.server.publishState();
+    }
+
+    /**
+     * Every device's message feed hears of a ship shot down, whoever shot it and wherever in
+     * the system (net/match/feed.js) - but not where: that is still for a side's own eyes to
+     * find out. A pilot nobody shot down was taken by the black hole if the planet was falling
+     * in, and flew into something otherwise.
+     */
+    reportKill(place, ship, killer, weapon) {
+        const cause = place && place.status !== PLANET_STATUS.SAFE ? KILL_CAUSE.COLLAPSE : KILL_CAUSE.CRASH;
+        const kill = describeKill(ship, killer, { weapon, cause });
+        if (kill) this.server.announce(FEED_TYPE.KILL, kill);
     }
 
     onPlayerLeft(pilot) {

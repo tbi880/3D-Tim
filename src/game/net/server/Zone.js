@@ -59,7 +59,8 @@ export class Zone {
     /**
      * Starts recording the world's events for the players here.
      * @param {object} hooks what the server itself wants to hear about
-     * @param {(zone: Zone, ship: object, killer: object | null) => void} hooks.onShipDestroyed
+     * @param {(zone: Zone, ship: object, killer: object | null, weapon: object | null) => void} hooks.onShipDestroyed
+     *        `weapon`: the definition of the weapon that did it (config/weapons.js), if one did
      * @param {(zone: Zone, ship: object, speed: number) => void} hooks.onPlayerCollision
      */
     listen({ onShipDestroyed, onPlayerCollision }) {
@@ -68,9 +69,9 @@ export class Zone {
 
         on(GAME_EVENTS.SHIP_SPAWNED, ({ ship }) => this.share(WORLD_EVENT.SPAWN, describeShip(ship)));
         on(GAME_EVENTS.SHIP_REMOVED, ({ ship, flash }) => this.share(WORLD_EVENT.REMOVE, ship.id, flash ? 1 : 0));
-        on(GAME_EVENTS.SHIP_DESTROYED, ({ ship, killer }) => {
+        on(GAME_EVENTS.SHIP_DESTROYED, ({ ship, killer, weapon }) => {
             this.share(WORLD_EVENT.DESTROY, ship.id, killer?.id ?? 0);
-            onShipDestroyed(this, ship, killer ?? null);
+            onShipDestroyed(this, ship, killer ?? null, weapon ?? null);
         });
         on(GAME_EVENTS.HIT, ({ target, position, shield, amount }) => {
             this.share(WORLD_EVENT.HIT, target?.id ?? 0, round(position.x), round(position.y), round(position.z), shield ? 1 : 0, round(amount));

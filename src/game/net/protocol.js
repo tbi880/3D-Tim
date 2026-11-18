@@ -103,6 +103,12 @@ export const WORLD_EVENT = Object.freeze({
      * and for a blast (a warhead's, a dying Bulwark's) `x, y, z, radius` after them.
      */
     ABILITY: 'ability',
+    /**
+     * A line for the receiving device's message feed - who shot whom down, say: `[kind, type, data]`.
+     * `type` says what kind of line, and so what `data` holds (match/feed.js); a device drops a
+     * type it does not know.
+     */
+    FEED: 'feed',
 });
 
 const REQUEST_NAME = /^[a-z][A-Za-z]{0,23}$/;

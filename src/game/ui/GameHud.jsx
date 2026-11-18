@@ -6,6 +6,7 @@ import { PHASE, SESSION_EVENTS } from '../state/GameSession.js';
 import { useGameStore, useT } from '../state/gameStore.js';
 import { abilityStateText } from './abilityText.js';
 import CommsPanel from './CommsPanel.jsx';
+import MessageFeed from './MessageFeed.jsx';
 import { DockPrompt, MatchAlerts, MatchButtons, MatchStatus, RespawnPrompt, TeamPanel, WatchTag } from './multiplayer/MatchHud.jsx';
 
 /**
@@ -16,7 +17,8 @@ import { DockPrompt, MatchAlerts, MatchButtons, MatchStatus, RespawnPrompt, Team
  * Panels are not placed one by one. Each goes into one of a few docks - a column top left,
  * one top centre, one top right, a stack at the bottom centre - and a dock stacks what is in
  * it, so panels that come up together (the objective and the match status, a hint and the
- * choice of where to come back, a dock prompt and the comms line) push each other along instead of covering each
+ * choice of where to come back, a dock prompt and the comms line, the target and a match's
+ * news under it) push each other along instead of covering each
  * other. The docks are sized in hud.css to keep clear of one another, of the corners (the
  * gauges on a desktop; the stick and the buttons on a touch screen) and of the reticle.
  */
@@ -462,6 +464,8 @@ function TouchHud({ session, radarCanvasRef }) {
                     <TargetPanel />
                 </div>
                 <Toast />
+                {/* A match's news - who shot whom down - under them, a few short lines that end above the buttons. */}
+                <MessageFeed session={session} compact />
             </div>
             <TitleCard />
             <ScoreFeed session={session} />
@@ -493,6 +497,7 @@ function DesktopHud({ session, radarCanvasRef }) {
             <div className="eod-dock eod-dock--right">
                 <TargetPanel />
                 <Toast />
+                <MessageFeed session={session} />
             </div>
             <StatusPanel />
             <WeaponsPanel />

@@ -91,8 +91,9 @@ export function destroyProjectile(world, projectile, withExplosion) {
  * @param {object} [options]
  * @param {boolean} [options.shown] the ship's end is only being shown here - a device told
  *   by the host, a staged ending: nothing is worked out from it, the host has done that
+ * @param {object | null} [options.weapon] the definition of the weapon that did it (config/weapons.js), if one did
  */
-export function destroyShip(world, ship, killer = null, { shown = false } = {}) {
+export function destroyShip(world, ship, killer = null, { shown = false, weapon = null } = {}) {
     if (!ship.alive) return;
     ship.alive = false;
     ship.hull = 0;
@@ -103,10 +104,10 @@ export function destroyShip(world, ship, killer = null, { shown = false } = {}) 
         capital: ship.cls.kind === 'capital' || ship.cls.kind === 'station',
         ship,
     });
-    world.events.emit(GAME_EVENTS.SHIP_DESTROYED, { ship, killer });
+    world.events.emit(GAME_EVENTS.SHIP_DESTROYED, { ship, killer, weapon });
     // Anything bolted onto the ship goes down with it.
     for (const other of world.ships) {
-        if (other.parent === ship) destroyShip(world, other, killer, { shown });
+        if (other.parent === ship) destroyShip(world, other, killer, { shown, weapon });
     }
     if (!shown && ship.passive?.kind === 'deathBlast') deathBlast(world, ship, ship.passive);
 }
@@ -209,7 +210,7 @@ export function applyDamage(world, target, amount, options = {}) {
     emitHit(world, target, position, shieldHit, amount, effect);
     reportDamage(world, target, source, amount);
 
-    if (target.hull <= 0) destroyShip(world, target, source);
+    if (target.hull <= 0) destroyShip(world, target, source, { weapon });
 }
 
 /**
@@ -269,7 +270,7 @@ export function applyTrueDamage(world, target, shieldAmount, hullAmount, options
     target.lastAttacker = source;
     emitHit(world, target, position, shieldHit, dealt, effect);
     reportDamage(world, target, source, dealt);
-    if (target.hull <= 0) destroyShip(world, target, source);
+    if (target.hull <= 0) destroyShip(world, target, source, { weapon });
 }
 
 /**
