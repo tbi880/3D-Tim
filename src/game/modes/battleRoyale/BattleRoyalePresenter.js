@@ -391,7 +391,7 @@ export class BattleRoyalePresenter {
         }
         switch (action) {
             case MATCH_ACTION.MAP:
-                // In the headset, watching with the menu put away: the same button (B) brings the menu back.
+                // In the headset, watching with the menu put away: the same button (A) brings the menu back.
                 if (this.watchView) this.setWatchView(false);
                 else this.setPanel(this.panel === MATCH_PANEL.MAP ? null : MATCH_PANEL.MAP);
                 return true;
@@ -511,7 +511,7 @@ export class BattleRoyalePresenter {
 
     /**
      * VR: puts the menu of a pilot who is down away (`on`) so they see whom they watch, or
-     * brings it back (xr/VRMatchMenu.js; the B button does that).
+     * brings it back (xr/VRMatchMenu.js; a press of A does that).
      */
     setWatchView(on) {
         if (this.watchView === on) return;

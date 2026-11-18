@@ -83,6 +83,11 @@ export class Tutorial {
         return this.step?.state === ASK;
     }
 
+    /** True while an info card waits for "Next" (in a headset A gives it, xr/VRCameraRig.jsx). */
+    get awaitsNext() {
+        return this.step?.state === ASK && this.step.def.kind === 'info';
+    }
+
     /**
      * Starts the given steps, one after another. The story waits on the returned object's
      * `finished`, which is true at once when there is nothing to show.
@@ -230,8 +235,8 @@ export class Tutorial {
         }
         if (step?.state !== ASK) return false;
         if (step.def.kind === 'info') {
-            // Enter, tapping the comms line or B (skip) also mean "next"; in a headset so does A.
-            if (action === 'skip' || (this.vr && action === 'cycleTarget')) this.next();
+            // Enter, tapping the comms line or A in a headset (skip) also mean "next".
+            if (action === 'skip') this.next();
             return true;
         }
         step.actions.add(action);

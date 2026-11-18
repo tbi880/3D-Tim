@@ -11,8 +11,7 @@
  * Fields of a step:
  *   kind       'info' | 'action'
  *   platforms  where the control exists (default: everywhere). A phone has no roll, view or
- *              power controls, so those steps are left out there; in a headset the view is
- *              switched in the pause menu, not on a button.
+ *              power controls, so those steps are left out there.
  *   done       one-shot actions (see input/InputController.js) that complete the step
  *   allow      other one-shot actions let through while the step waits (the rest are ignored)
  *   signal     a held control (the tests are TUTORIAL_SIGNALS in state/Tutorial.js): the step
@@ -70,7 +69,7 @@ export const TUTORIAL_STEPS = Object.freeze({
         target: { [DESKTOP]: '.eod-meter--boost', [TOUCH]: '[data-tutorial="boost"]' },
     },
     view: {
-        kind: 'action', platforms: [DESKTOP], done: ['toggleView'], practice: 2,
+        kind: 'action', platforms: STICKS, done: ['toggleView'], practice: 2,
     },
     radar: {
         kind: 'info',

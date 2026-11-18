@@ -4,7 +4,7 @@ import { XROrigin } from '@react-three/xr';
 import * as THREE from 'three';
 import { GAME_EVENTS } from '../core/EventBus.js';
 import { translate } from '../i18n/index.js';
-import { viewPose } from '../scene/viewPose.js';
+import { TUTORIAL_ACTION } from '../config/tutorial.js';
 import { PHASE } from '../state/GameSession.js';
 import { MATCH_ACTION } from '../modes/battleRoyale/BattleRoyalePresenter.js';
 import { useGameStore } from '../state/gameStore.js';
@@ -42,7 +42,6 @@ const XR_FAR = 3_000_000;
 export const vrRig = { origin: null };
 
 const scratchEuler = new THREE.Euler();
-const scratchForward = new THREE.Vector3();
 
 /**
  * Re-centres the seat: turns and shifts the headset's tracking origin so the head, where it
@@ -89,26 +88,39 @@ export default function VRCameraRig({ game }) {
             getInvertY: () => session.settings.invertY,
             isMenuOpen: () => menu.isOpen(store()),
             onMenuAction: (action) => menu.handle(action, store(), t),
+            // What each button does is in XRGamepadInput.js; here is what it means in the campaign and in a match.
             onFlightAction: (action) => {
+                const inMatch = Boolean(session.match);
                 switch (action) {
                     case 'recenter': recenterSoon(); break;
                     case 'pause': session.togglePause(); break;
-                    case 'skip':
-                        // A match has no comms lines: there the same button opens the star map.
-                        if (session.match) session.handleAction(MATCH_ACTION.MAP);
-                        // First press shows the whole line, the second moves on (as tapping the flat panel does).
+                    case 'view':
+                        // B: cockpit or chase (the headset keeps a view of its own, apart from the flat page's).
+                        vr.view = vr.view === 'chase' ? 'cockpit' : 'chase';
+                        if (session.phase === PHASE.PLAYING) session.tutorial.noteAction('toggleView');
+                        break;
+                    case 'confirm':
+                        // A in the campaign: "next" on a tutorial card; on the comms line the first
+                        // press shows the whole line, the second moves on (as tapping the flat panel does).
+                        if (inMatch) break;
+                        if (session.tutorial.awaitsNext) session.handleAction(TUTORIAL_ACTION.NEXT);
                         else if (vrComms.typing) vrComms.revealed = true;
                         else session.handleAction('skip');
                         break;
-                    case 'gripHeld':
-                        // In a match: clamp on to the station whose dock the ship is in, or let go of it.
-                        if (session.match) session.handleAction(MATCH_ACTION.DOCK);
+                    case 'confirmTap':
+                        // A match has no comms lines: there a press of A opens the star map (or, for a
+                        // pilot who is down and watching with the menu put away, brings the menu back)...
+                        if (inMatch) session.handleAction(MATCH_ACTION.MAP);
                         break;
-                    case 'gazeTarget':
-                        if (session.phase === PHASE.PLAYING && session.world.player?.alive && !session.world.controlsLocked) {
-                            scratchForward.set(0, 0, -1).applyQuaternion(viewPose.quaternion);
-                            session.handleAction('targetCrosshair', { forward: scratchForward });
-                        }
+                    case 'confirmHeld':
+                        // ...and kept down, clamps on to the station whose dock the ship is in or lets go
+                        // of it (shot down: comes back at the first station offered, once the wait is over).
+                        if (inMatch) session.handleAction(MATCH_ACTION.DOCK);
+                        break;
+                    case 'targetCrosshair':
+                        // Shot down in a match, the lock button steps through the pilots to watch (as T does).
+                        if (inMatch && !session.world.player?.alive) session.handleAction('cycleTarget');
+                        else session.handleAction(action);
                         break;
                     default: session.handleAction(action);
                 }

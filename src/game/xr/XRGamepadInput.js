@@ -1,22 +1,25 @@
 /**
- * Reads the VR controllers (WebXR "xr-standard" gamepads, e.g. Meta Quest Touch) once per
+ * Reads the VR controllers (WebXR "xr-standard" gamepads: Pico, Meta Quest Touch) once per
  * frame and turns them into the game's controls, in the same shape the keyboard and mouse
- * produce (see input/InputController.js `setXRControls`).
+ * produce (see input/InputController.js `setXRControls`). Laid out the way a console
+ * gamepad player expects: A confirms, the right stick's click locks on.
  *
  * In flight:
  *   right stick        pitch / yaw (like the mouse stick; "invert pitch" applies)
+ *   right stick click  lock the hostile nearest the crosshair (R on a keyboard); kept down,
+ *                      steps on through the others (T), as the LOCK button does on a phone
  *   left stick         up / down = throttle, left / right = roll
+ *   left stick click   re-centre the seat
  *   right trigger      beam arrays (hold)        left trigger    torpedo
- *   left grip          afterburner (hold)        right grip      lock the target you look at;
- *                                                                held: dock at a station / let go (multiplayer)
- *   A                  next target               B               skip comms line
+ *   left grip          afterburner (hold)        right grip      (free)
+ *   A                  confirm: show the whole comms line, then skip it ("next" on a tutorial
+ *                      card). A match has no comms lines: there a press opens the star map,
+ *                      and held it docks at a station or lets go of it
+ *   B                  cockpit / chase view; held: pause and open the menu
  *   X                  power mode                Y               the ship's ability (config/abilities.js)
- *   left stick click   re-centre the seat        right stick click  pause
- *
- * The cockpit / chase view is switched in the pause menu (xr/VRMenu.js).
  *
  * With a VR menu open, either stick moves the selection (up / down) and changes a value
- * (left / right); trigger or A picks, B goes back.
+ * (left / right); trigger, A or X picks, B or Y goes back.
  */
 
 /** xr-standard button indices (https://www.w3.org/TR/webxr-gamepads-module-1/). */
@@ -27,8 +30,13 @@ const PRESS = 0.55;
 const MENU_FLICK = 0.65;
 const MENU_REARM = 0.35;
 const MENU_REPEAT_SECONDS = 0.38;
-/** Seconds the right grip must stay squeezed to count as held (docking), not as a press. */
-export const GRIP_HOLD_SECONDS = 0.8;
+/** Right stick kept clicked this long steps on to the next target, then once more every LOCK_REPEAT_SECONDS (as ui/TouchControls.jsx). */
+export const LOCK_HOLD_SECONDS = 0.45;
+export const LOCK_REPEAT_SECONDS = 0.65;
+/** A kept down this long in a match docks (or lets go); let go sooner, it was a press (the star map). */
+export const CONFIRM_HOLD_SECONDS = 0.8;
+/** B kept down this long pauses; let go sooner, it switches the view. */
+export const PAUSE_HOLD_SECONDS = 0.6;
 
 function deadZone(value) {
     const magnitude = Math.abs(value);
@@ -49,12 +57,65 @@ function stick(gamepad) {
     return { x: axes[0] ?? 0, y: axes[1] ?? 0 };
 }
 
+/**
+ * A button that means one thing pressed and another kept down. Only a press that went down
+ * in flight counts: one that opened or closed a menu is not also read when it comes back up.
+ * `step` returns what happened this frame: 'press' (it went down), 'tap' (it came up before
+ * it was held), 'held' (kept down long enough; again every `repeatSeconds`, if given).
+ */
+class HoldButton {
+    constructor(holdSeconds, repeatSeconds = null) {
+        this.holdSeconds = holdSeconds;
+        this.repeatSeconds = repeatSeconds;
+        this.active = false;
+        this.seconds = 0;
+        this.held = false;
+        this.repeatIn = 0;
+    }
+
+    step(wentDown, isDown, dt) {
+        const events = [];
+        if (wentDown) {
+            this.active = true;
+            this.seconds = 0;
+            this.held = false;
+            events.push('press');
+        }
+        if (!this.active) return events;
+        if (!isDown) {
+            this.active = false;
+            if (!this.held) events.push('tap');
+            return events;
+        }
+        this.seconds += dt;
+        if (!this.held) {
+            if (this.seconds >= this.holdSeconds) {
+                this.held = true;
+                this.repeatIn = this.repeatSeconds ?? 0;
+                events.push('held');
+            }
+        } else if (this.repeatSeconds) {
+            this.repeatIn -= dt;
+            if (this.repeatIn <= 0) {
+                this.repeatIn += this.repeatSeconds;
+                events.push('held');
+            }
+        }
+        return events;
+    }
+
+    cancel() {
+        this.active = false;
+    }
+}
+
 export class XRGamepadInput {
     /**
      * @param {object} params
      * @param {import('../input/InputController.js').InputController} params.input
-     * @param {(event: string) => void} params.onFlightAction 'cycleTarget' | 'skip' | 'power:cycle' | 'ability' | 'gazeTarget' | 'gripHeld' | 'recenter' | 'pause'
-     * @param {(event: string) => void} params.onMenuAction 'up' | 'down' | 'left' | 'right' | 'select' | 'back' | 'pause'
+     * @param {(event: string) => void} params.onFlightAction 'targetCrosshair' | 'cycleTarget' | 'confirm' | 'confirmTap' |
+     *   'confirmHeld' | 'view' | 'pause' | 'power:cycle' | 'ability' | 'recenter'
+     * @param {(event: string) => void} params.onMenuAction 'up' | 'down' | 'left' | 'right' | 'select' | 'back'
      * @param {() => boolean} params.isMenuOpen
      * @param {() => boolean} params.getInvertY
      */
@@ -67,8 +128,12 @@ export class XRGamepadInput {
         /** Button states from the previous frame, keyed by `${hand}:${index}`. */
         this.previous = new Map();
         this.menuStick = { armed: true, direction: null, repeat: 0 };
-        /** Seconds the right grip has been squeezed in flight, and whether that squeeze has already counted as held. */
-        this.gripHold = { seconds: 0, fired: false };
+        /** The buttons that mean something else when kept down (right stick click, A, B). */
+        this.holds = {
+            lock: new HoldButton(LOCK_HOLD_SECONDS, LOCK_REPEAT_SECONDS),
+            confirm: new HoldButton(CONFIRM_HOLD_SECONDS),
+            view: new HoldButton(PAUSE_HOLD_SECONDS),
+        };
         this.controls = { yaw: 0, pitch: 0, roll: 0, throttle: 0, boost: false, firePrimary: false, fireSecondary: false };
         this.gamepads = { left: null, right: null };
     }
@@ -96,6 +161,7 @@ export class XRGamepadInput {
         const { left, right } = this.gamepads;
         if (!left && !right) {
             this.release();
+            for (const hold of Object.values(this.holds)) hold.cancel();
             return;
         }
 
@@ -105,7 +171,6 @@ export class XRGamepadInput {
         const edges = {
             leftTrigger: this.edge('left', BUTTON.trigger),
             rightTrigger: this.edge('right', BUTTON.trigger),
-            rightSqueeze: this.edge('right', BUTTON.squeeze),
             leftStick: this.edge('left', BUTTON.stick),
             rightStick: this.edge('right', BUTTON.stick),
             a: this.edge('right', BUTTON.lower),
@@ -114,16 +179,11 @@ export class XRGamepadInput {
             y: this.edge('left', BUTTON.upper),
         };
 
-        if (edges.rightStick) {
-            (menuOpen ? this.onMenuAction : this.onFlightAction)('pause');
-            this.release();
-            return;
-        }
         if (edges.leftStick) this.onFlightAction('recenter');
 
         if (menuOpen) {
             this.release();
-            this.gripHold.seconds = 0;
+            for (const hold of Object.values(this.holds)) hold.cancel();
             this.updateMenu(stick(left), stick(right), dt);
             if (edges.rightTrigger || edges.leftTrigger || edges.a || edges.x) this.onMenuAction('select');
             else if (edges.b || edges.y) this.onMenuAction('back');
@@ -145,26 +205,23 @@ export class XRGamepadInput {
         controls.fireSecondary = pressed(left, BUTTON.trigger);
         this.input.setXRControls(controls);
 
-        if (edges.rightSqueeze) this.onFlightAction('gazeTarget');
-        this.updateGripHold(pressed(right, BUTTON.squeeze), dt);
-        if (edges.a) this.onFlightAction('cycleTarget');
-        if (edges.b) this.onFlightAction('skip');
+        const { lock, confirm, view } = this.holds;
+        for (const event of lock.step(edges.rightStick, pressed(right, BUTTON.stick), dt)) {
+            if (event === 'press') this.onFlightAction('targetCrosshair');
+            else if (event === 'held') this.onFlightAction('cycleTarget');
+        }
+        for (const event of confirm.step(edges.a, pressed(right, BUTTON.lower), dt)) {
+            if (event === 'press') this.onFlightAction('confirm');
+            else if (event === 'tap') this.onFlightAction('confirmTap');
+            else this.onFlightAction('confirmHeld');
+        }
         if (edges.x) this.onFlightAction('power:cycle');
         if (edges.y) this.onFlightAction('ability');
-    }
-
-    /** A right grip kept squeezed for GRIP_HOLD_SECONDS is 'gripHeld', once per squeeze. */
-    updateGripHold(squeezed, dt) {
-        const hold = this.gripHold;
-        if (!squeezed) {
-            hold.seconds = 0;
-            hold.fired = false;
-            return;
+        // Last: a pause opens the menu, which has the controllers from the next frame.
+        for (const event of view.step(edges.b, pressed(right, BUTTON.upper), dt)) {
+            if (event === 'tap') this.onFlightAction('view');
+            else if (event === 'held') this.onFlightAction('pause');
         }
-        hold.seconds += dt;
-        if (hold.fired || hold.seconds < GRIP_HOLD_SECONDS) return;
-        hold.fired = true;
-        this.onFlightAction('gripHeld');
     }
 
     /** One menu step per flick of either stick; holding it repeats slowly. */

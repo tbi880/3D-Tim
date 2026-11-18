@@ -19,8 +19,8 @@ import { exitVR } from './vrState.js';
  * multiplayer) cannot be seen in VR; these are the same choices as rows for VRMenu, which
  * draws them and moves the selection (see there for what a row is).
  *
- * In flight the B button opens the star map (there are no comms lines to skip in a match),
- * and holding the right grip docks at a station or lets go of it.
+ * In flight a press of A opens the star map (there are no comms lines to skip in a match),
+ * and keeping A down docks at a station or lets go of it.
  */
 
 const cycle = (list, current, step) => list[(list.indexOf(current) + step + list.length) % list.length];
@@ -377,7 +377,7 @@ function starMap(session, presenter, match, t) {
     const orbitsTo = (planet) => Math.abs(ORBITS.indexOf(planet.id) - ORBITS.indexOf(you.planet));
     const close = () => presenter.setPanel(null);
     const items = [];
-    // (Docking is not here: in the headset it is the right grip, held - see XRGamepadInput.js.)
+    // (Docking is not here: in the headset it is A, kept down - see XRGamepadInput.js.)
     // (What is at each planet is on the map above; the rows only say where a jump - or a beacon - can go.)
     for (const planet of match.planets) {
         const orbits = orbitsTo(planet);
@@ -503,7 +503,7 @@ function respawn(presenter, match, t) {
 
 /**
  * A row for each pilot a player who is down may watch (their comrades in the air; anybody once
- * their side is out): choosing one puts the menu away and the view behind that ship. B brings
+ * their side is out): choosing one puts the menu away and the view behind that ship. A brings
  * the menu back. And a row that stops watching.
  */
 function watchRows(presenter, match, t) {

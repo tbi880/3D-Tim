@@ -168,13 +168,11 @@ test('a phone is not asked for controls it does not have, a headset is asked for
     const withAbility = { ability: {} };
     assert.deepEqual(tutorialStepsFor(TUTORIAL_PLATFORM.TOUCH, withAbility).slice(-3), ['torpedo', 'ability', 'pause']);
     assert.equal(tutorialStepsFor(TUTORIAL_PLATFORM.DESKTOP).includes('ability'), false);
-    // A headset has every control a desk has but the view key (Y is the ability; the view is in the pause menu).
-    assert.deepEqual(
-        tutorialStepsFor(TUTORIAL_PLATFORM.VR, withAbility),
-        tutorialStepsFor(TUTORIAL_PLATFORM.DESKTOP, withAbility).filter((stepId) => stepId !== 'view'),
-    );
+    // A headset has every control a desk has, the view switch (B) included.
+    assert.deepEqual(tutorialStepsFor(TUTORIAL_PLATFORM.VR, withAbility), tutorialStepsFor(TUTORIAL_PLATFORM.DESKTOP, withAbility));
 
-    // In a headset an info card goes on with A (the lock button), and the cards count the headset's steps.
+    // In a headset an info card goes on with A ("next", xr/VRCameraRig.jsx), not with the lock
+    // button kept down, and the cards count the headset's steps.
     const game = createSession();
     const { session, ui } = game;
     session.tutorial.setVR(true);
@@ -184,9 +182,14 @@ test('a phone is not asked for controls it does not have, a headset is asked for
     answer(game, 'comms');
     assert.equal(game.untilCard(), 'objective');
     game.run(0.6);
+    assert.equal(session.tutorial.awaitsNext, true);
     session.handleAction('cycleTarget');
     game.run(0.1);
+    assert.equal(ui.tutorial?.state, TUTORIAL_STATE.ASK, 'stepping through targets is no answer');
+    session.handleAction(TUTORIAL_ACTION.NEXT);
+    game.run(0.1);
     assert.notEqual(ui.tutorial?.state, TUTORIAL_STATE.ASK, 'A answered the card');
+    assert.equal(session.tutorial.awaitsNext, false);
 });
 
 test('a ship with no ability is not shown the ability card, and the cards count without it', () => {
