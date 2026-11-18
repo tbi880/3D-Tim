@@ -320,41 +320,26 @@ export class BattleRoyaleMode {
     }
 
     /**
-     * Puts a contestant in a (new) ship at a planet: where jumps arrive, scattered around the far
-     * end of its station's approach lane - or (`fromStation`) just out of the station's dock,
-     * nose away from it, as a pilot coming back there is.
+     * Puts a contestant in a (new) ship at a planet, scattered around the far end of its
+     * station's approach lane: where every ship arriving there drops out of warp - by jump, or
+     * coming back - out of reach of the garrisons by the dock, looking down the lane at it.
      */
-    launch(contestant, place, { warpIn = true, hullFraction = 1, fromStation = false } = {}) {
-        const { position, facing } = fromStation ? this.stationDeparture(place) : this.arrivalPoint(place);
+    launch(contestant, place, { warpIn = true, hullFraction = 1 } = {}) {
+        const start = SECTORS[place.zone.sectorId].playerStart;
+        randomUnitVector(this.rng, scratchOffset);
+        scratchOffset.y *= 0.3;
+        const position = new Vector3().fromArray(start.position).addScaledVector(scratchOffset, BATTLE_ROYALE.jump.scatter * (0.3 + this.rng() * 0.7));
         contestant.alive = true;
         contestant.respawnAt = null;
         contestant.chooseUntil = null;
         const ship = this.server.spawnPilotShip(contestant.pilot, place.zone, {
-            faction: contestant.faction, position, facing, warpIn, hullFraction,
+            faction: contestant.faction, position, facing: start.facing, warpIn, hullFraction,
         });
         // Engines idle: a pilot who is still reading the map does not drift into the garrison.
         ship.throttle = 0;
         contestant.seenDamageAt = ship.lastDamagedAt;
         this.armEmergencyShield(contestant);
         return ship;
-    }
-
-    /** Where a ship arriving at a planet by jump drops out of warp: somewhere round the sector's start point. */
-    arrivalPoint(place) {
-        const start = SECTORS[place.zone.sectorId].playerStart;
-        randomUnitVector(this.rng, scratchOffset);
-        scratchOffset.y *= 0.3;
-        const position = new Vector3().fromArray(start.position).addScaledVector(scratchOffset, BATTLE_ROYALE.jump.scatter * (0.3 + this.rng() * 0.7));
-        return { position, facing: start.facing };
-    }
-
-    /** Where a ship leaving a planet's station comes out: a little way back down its approach lane, heading out. */
-    stationDeparture(place) {
-        const { launch, scatter } = BATTLE_ROYALE.respawn;
-        const position = place.station.departure(launch, new Vector3());
-        randomUnitVector(this.rng, scratchOffset);
-        position.addScaledVector(scratchOffset, scatter * this.rng());
-        return { position, facing: place.station.lane.clone().negate() };
     }
 
     placeOf(contestant) {
@@ -689,9 +674,14 @@ export class BattleRoyaleMode {
         this.server.publishState();
     }
 
-    /** A new ship for a pilot who is down, out of the station at `place`; the jump drive starts uncharged, as on arrival. */
+    /**
+     * A new ship for a pilot who is down, at the planet whose station is `place`'s: it drops out
+     * of warp where jumps arrive, at the head of the station's approach lane - not at the dock,
+     * where whoever is trying to take the station would be waiting for it. The jump drive starts
+     * uncharged, as on any arrival.
+     */
     bringBack(contestant, place) {
-        this.launch(contestant, place, { fromStation: true });
+        this.launch(contestant, place);
         contestant.jumpReadyAt = this.server.time + this.jumpCooldown;
     }
 

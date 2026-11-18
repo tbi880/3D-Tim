@@ -4,6 +4,7 @@ import { Vector3 } from 'three';
 import { BATTLE_ROYALE, NPC_FACTIONS, STAR_SYSTEM } from '../../src/game/config/battleRoyale.js';
 import { FACTION } from '../../src/game/config/gameConfig.js';
 import { PLAYER_SHIPS } from '../../src/game/config/playerShips.js';
+import { SECTORS } from '../../src/game/config/sectors.js';
 import { SHIP_CLASSES } from '../../src/game/config/shipClasses.js';
 import { applyDamage, areHostile, destroyShip, mayAttack } from '../../src/game/core/systems/damage.js';
 import { LOYALTY } from '../../src/game/modes/battleRoyale/allegiance.js';
@@ -631,12 +632,10 @@ test('a garrison under its side\'s bubble survives the planet being swallowed', 
 
 const { respawn: RESPAWN } = BATTLE_ROYALE;
 
-/** True when a ship is where pilots come out of a station: a little way back down its approach lane, heading out. */
-function leftTheStation(game, ship, planet) {
-    const { station } = game.place(planet);
-    const out = station.departure(RESPAWN.launch, new Vector3());
-    const heading = new Vector3(0, 0, -1).applyQuaternion(ship.quaternion);
-    return ship.position.distanceTo(out) <= RESPAWN.scatter + 1 && heading.dot(station.lane) < -0.99;
+/** True when a ship is where ships arriving at a planet drop out of warp: round the head of its station's approach lane. */
+function arrivedAt(game, ship, planet) {
+    const start = SECTORS[game.place(planet).zone.sectorId].playerStart;
+    return ship.position.distanceTo(new Vector3().fromArray(start.position)) <= BATTLE_ROYALE.jump.scatter + 1;
 }
 
 /** Ann and Cy (Federation) at a planet whose station Ann has just taken; Di, of their side, was shot down elsewhere. */
@@ -648,7 +647,7 @@ function captureWithFallen() {
     return game;
 }
 
-test('taking a planet brings every fallen pilot of the side back at once, out of the station just taken', () => {
+test('taking a planet brings every fallen pilot of the side back to it at once', () => {
     const game = captureWithFallen();
 
     assert.equal(game.place(THIRD).owner, DAWN);
@@ -656,7 +655,7 @@ test('taking a planet brings every fallen pilot of the side back at once, out of
     assert.equal(game.ship('di').alive, true);
     assert.equal(game.pilot('di').zone.id, THIRD, 'at the planet that was taken, wherever they fell');
     assert.equal(game.ship('di').faction, DAWN);
-    assert.ok(leftTheStation(game, game.ship('di'), THIRD), 'just out of its dock, heading out');
+    assert.ok(arrivedAt(game, game.ship('di'), THIRD), 'where ships arrive, not at the dock');
     assert.deepEqual(game.told('di', BR_EVENT.REVIVED), [{ planet: THIRD }]);
     assert.equal(game.state('di').you.respawn, null, 'nothing more to wait for');
     assert.equal(game.who('di').respawns, 0, 'being brought back does not lengthen the next wait');
@@ -727,7 +726,8 @@ test('a pilot shot down waits ten seconds, then comes back at a station their si
     assert.equal(game.pilot('ann').zone.id, FOURTH);
     assert.equal(game.ship('ann').faction, DAWN);
     assert.equal(game.ship('ann').hull, game.ship('ann').maxHull, 'a new ship');
-    assert.ok(leftTheStation(game, game.ship('ann'), FOURTH));
+    assert.ok(arrivedAt(game, game.ship('ann'), FOURTH), 'dropping out of warp where ships arrive, out of the garrisons\' reach');
+    assert.ok(game.ship('ann').arriving, 'with the warp in, as any arrival');
     assert.deepEqual(game.told('ann', BR_EVENT.RESPAWNED), [{ planet: FOURTH }]);
     assert.equal(game.state('ann').you.respawn, null);
     assert.ok(game.who('ann').jumpReadyAt > game.server.time, 'the jump drive starts uncharged');

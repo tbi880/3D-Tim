@@ -187,7 +187,7 @@ export const BATTLE_ROYALE = Object.freeze({
 
     /**
      * Taking a planet pays every pilot of the side who is there, and brings every pilot of the
-     * side who is down back at once, at the station just taken: no choosing between the two.
+     * side who is down back to that planet at once: no choosing between the two.
      */
     capture: Object.freeze({
         /** Refit points for every player of the side who is at the planet when it is taken. */
@@ -202,7 +202,8 @@ export const BATTLE_ROYALE = Object.freeze({
 
     /**
      * Coming back after being shot down: once the wait is over, a pilot chooses a station their
-     * side holds and is launched from it in a new ship (with their refits, score and equipment).
+     * side holds, and a new ship (with their refits, score and equipment) drops out of warp at
+     * that planet where jumps arrive: at the head of the station's approach lane.
      * The wait is `wait` seconds the first time and `waitStep` more after every such comeback:
      * 10, 20, 30 ... Being brought back by a capture (above) does not lengthen it. A side whose
      * pilots are all down is still in the match while it holds a station to come back to.
@@ -212,9 +213,6 @@ export const BATTLE_ROYALE = Object.freeze({
         waitStep: 10,
         /** Seconds a pilot has to choose, once they can, before they are sent to the first station offered. */
         choose: 20,
-        /** Where a new ship comes out: metres back down the station's approach lane from its dock, and how far apart. */
-        launch: 450,
-        scatter: 120,
     }),
 
     /**
