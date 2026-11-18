@@ -251,13 +251,22 @@ export const BATTLE_ROYALE = Object.freeze({
     }),
 
     /**
-     * Ships that answer a call for reinforcements, and how far behind the caller they arrive.
-     * They stay with the fight they were called into for a while (`strategy.summonCommit`),
-     * then go where their side needs them, jumping as a squad by a pilot's rules (squads.js).
+     * Ships that answer a call for reinforcements, and where they drop out of warp: in front of
+     * the caller, where its pilot sees them streak in (garrisons.js reinforcementSpots: `ahead`
+     * metres along its nose, on an arc of `arc` radians above its line of sight `ring` metres out,
+     * give or take `scatter`; a spot less than `clearance` metres from a hull or a rock is used
+     * behind the caller instead). They stay with the fight they were called into for a while
+     * (`strategy.summonCommit`), then go where their side needs them, jumping as a squad by a
+     * pilot's rules (squads.js).
      */
     summon: Object.freeze({
         count: 3,
-        distance: 600,
+        ahead: 700,
+        ring: 260,
+        // Wide and low at the ends: a desktop's corner panels never cover the outer ones.
+        arc: (5 * Math.PI) / 6,
+        scatter: 50,
+        clearance: 120,
         ships: Object.freeze({ [FACTION.DAWN]: 'dart', [FACTION.UMBRA]: 'raider' }),
     }),
 
