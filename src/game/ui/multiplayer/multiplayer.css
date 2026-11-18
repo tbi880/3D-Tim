@@ -118,6 +118,9 @@
 .eod-match-respawn-stations kbd { padding: 0 5px; font: inherit; font-size: 10px; border: 1px solid currentColor; }
 .eod-match-respawn-stations small.eod-match-planet--collapsing { color: var(--eod-amber); animation: none; }
 .eod-match-respawn-stations small.eod-match-planet--swallowed { color: var(--eod-red); }
+/* A station another side is docked at, taking it: greyed out, its note in red. */
+.eod-match-respawn-stations .eod-match-respawn-contested { border-style: dashed; }
+.eod-match-respawn-stations .eod-match-respawn-contested small { color: var(--eod-red); }
 
 /* ---- Star map ---------------------------------------------------------------------------- */
 .eod-map { gap: 14px; }

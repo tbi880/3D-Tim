@@ -30,10 +30,12 @@ import { EQUIPMENT_ORDER } from './equipment.js';
  *     picks,              pieces of equipment they may still choose
  *     equipment,          { item: count } they carry (equipment.js)
  *     effects,            { gravityShield, emergencyShield }: seconds each is still on (0: off)
- *     respawn,            while they are down: { wait, stations, choose, next } - seconds until they may come
- *                         back (0: now); the planets whose stations their side holds, the one they would be
- *                         sent to first; seconds left to choose before they are (null: not counting); the
- *                         wait after their next comeback. Null while they fly.
+ *     respawn,            while they are down: { wait, stations, contested, choose, next } - seconds until
+ *                         they may come back (0: now); the planets whose stations their side holds and may
+ *                         come back to, the one they would be sent to first; those their side holds but
+ *                         another side is docked at, taking them (not to be chosen); seconds left to choose
+ *                         before they are sent (null: not counting); the wait after their next comeback.
+ *                         Null while they fly.
  *   },
  *   planets: [{           innermost first
  *     id, status, changesIn,
@@ -55,6 +57,8 @@ const count = (value) => (Number.isFinite(value) && value > 0 ? Math.floor(value
 const seconds = (value) => (Number.isFinite(value) ? Math.max(0, value) : null);
 const planetId = (value) => (PLANET_IDS.has(value) ? value : null);
 const sideOrNull = (value) => (PLAYER_FACTIONS.includes(value) ? value : null);
+/** Real planet ids only, each once, in the order sent. */
+const planetList = (value) => (Array.isArray(value) ? [...new Set(value.slice(0, 16).map(planetId).filter(Boolean))] : []);
 
 function cleanYou(raw) {
     if (!raw || typeof raw !== 'object') return null;
@@ -63,7 +67,8 @@ function cleanYou(raw) {
     const respawn = raw.respawn && typeof raw.respawn === 'object'
         ? {
             wait: seconds(raw.respawn.wait) ?? 0,
-            stations: Array.isArray(raw.respawn.stations) ? [...new Set(raw.respawn.stations.map(planetId).filter(Boolean))] : [],
+            stations: planetList(raw.respawn.stations),
+            contested: planetList(raw.respawn.contested),
             choose: seconds(raw.respawn.choose),
             next: seconds(raw.respawn.next) ?? 0,
         }

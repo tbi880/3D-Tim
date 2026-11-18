@@ -808,7 +808,7 @@ test('with no station held the wait ends and the pilot waits on, until their sid
     destroyShip(game.world(THIRD), game.ship('ann'), null);
     game.run(RESPAWN.wait + RESPAWN.choose + 5);
 
-    assert.deepEqual(game.state('ann').you.respawn, { wait: 0, stations: [], choose: null, next: RESPAWN.wait + RESPAWN.waitStep });
+    assert.deepEqual(game.state('ann').you.respawn, { wait: 0, stations: [], contested: [], choose: null, next: RESPAWN.wait + RESPAWN.waitStep });
     assert.equal(game.who('ann').alive, false);
 
     game.take('cy');
@@ -831,6 +831,48 @@ test('a station lost while a pilot was choosing it is refused, and the clock to 
     game.run(0.1);
     assert.deepEqual(game.told('ann', BR_EVENT.RESPAWN_REFUSED), [{ reason: RESPAWN_REFUSAL.NOT_HELD }]);
     assert.equal(game.state('ann').you.respawn.choose, null);
+});
+
+test('nobody comes back at a station another side is docked at, taking it; the first one offered is another', () => {
+    const game = arrange({ ann: [DAWN, THIRD], cy: [DAWN, GATE], bo: [UMBRA, FOURTH] });
+    game.empty(FOURTH);
+    game.empty(GATE);
+    for (const planet of [SECOND, FOURTH]) game.place(planet).owner = DAWN;
+    destroyShip(game.world(THIRD), game.ship('ann'), null);
+    game.run(RESPAWN.wait - 1);
+    assert.deepEqual(game.state('ann').you.respawn.stations, [FOURTH, SECOND], 'the outermost first, while nobody is taking it');
+
+    game.dock('bo');
+    game.run(1.1);
+    const { respawn } = game.state('ann').you;
+    assert.deepEqual([respawn.stations, respawn.contested], [[SECOND], [FOURTH]], 'shown, but not to be chosen');
+    game.ask('ann', BR_REQUEST.RESPAWN, { at: FOURTH });
+    assert.equal(game.who('ann').alive, false, 'the host checks it, whatever a device sends');
+    assert.deepEqual(game.told('ann', BR_EVENT.RESPAWN_REFUSED), [{ reason: RESPAWN_REFUSAL.CONTESTED }]);
+
+    game.run(RESPAWN.choose);
+    assert.equal(game.who('ann').alive, true, 'the clock ran out: sent to a station nobody is taking');
+    assert.equal(game.pilot('ann').zone.id, SECOND);
+});
+
+test('with every station of the side being taken there is nowhere to come back to until that is settled', () => {
+    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, FOURTH] });
+    game.empty(FOURTH);
+    game.place(FOURTH).owner = DAWN;
+    destroyShip(game.world(THIRD), game.ship('ann'), null);
+    game.dock('bo');
+    game.run(RESPAWN.wait + 1);
+
+    assert.deepEqual(game.state('ann').you.respawn, { wait: 0, stations: [], contested: [FOURTH], choose: null, next: RESPAWN.wait + RESPAWN.waitStep });
+    assert.equal(game.state('bo').phase, MATCH_PHASE.PLAYING, 'a station being taken is still held: the Federation is not out');
+
+    game.ask('bo', BR_REQUEST.UNDOCK);
+    game.run(0.2);
+    const { respawn } = game.state('ann').you;
+    assert.deepEqual([respawn.stations, respawn.contested], [[FOURTH], []], 'free again once the attacker lets go');
+    assert.ok(respawn.choose > 0, 'and the clock to choose starts');
+    game.ask('ann', BR_REQUEST.RESPAWN, { at: FOURTH });
+    assert.equal(game.who('ann').alive, true);
 });
 
 test('the dead have no ship to jump, dock, refit or call for help with', () => {

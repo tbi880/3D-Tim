@@ -98,4 +98,6 @@ export const RESPAWN_REFUSAL = Object.freeze({
     WAITING: 'waiting',
     /** Their side does not hold that planet's station (any more). */
     NOT_HELD: 'notHeld',
+    /** Another side is docked at it, taking it: nobody comes back there until that is settled. */
+    CONTESTED: 'contested',
 });

@@ -445,14 +445,17 @@ function equipment(presenter, match, t) {
 /**
  * Shot down (ui/multiplayer/MatchHud.jsx RespawnPrompt in the headset): the wait, then a row
  * for each station the side holds - the first is where the pilot is sent if the clock runs
- * out - and the star map. The rows are there during the wait too, but cannot be chosen yet.
+ * out - and the star map. The rows are there during the wait too, but cannot be chosen yet;
+ * a station another side is taking is a row that cannot be chosen until that is settled.
  */
 function respawn(presenter, match, t) {
     const comeback = match.you.respawn;
     const ready = comeback.wait === 0;
-    const none = comeback.stations.length === 0;
+    const open = comeback.stations.length > 0;
+    const none = !open && comeback.contested.length === 0;
     const headline = !ready ? t('mp.respawn.waiting', { seconds: comeback.wait })
-        : none ? t('mp.respawn.noStation') : t('mp.respawn.choose', { seconds: comeback.choose ?? 0 });
+        : none ? t('mp.respawn.noStation')
+            : !open ? t('mp.respawn.allContested') : t('mp.respawn.choose', { seconds: comeback.choose ?? 0 });
     const statusOf = (planetId) => match.planets.find((planet) => planet.id === planetId)?.status ?? PLANET_STATUS.SAFE;
     const items = comeback.stations.map((planetId, index) => ({
         id: `respawn:${planetId}`,
@@ -462,12 +465,16 @@ function respawn(presenter, match, t) {
         disabled: !ready,
         select: () => presenter.respawnAt(planetId),
     }));
+    for (const planetId of comeback.contested) {
+        items.push({ label: t('mp.respawn.station', { planet: t(`mp.planet.${planetId}`) }), value: t('mp.respawn.contested'), disabled: true });
+    }
     items.push({ label: t('mp.map.title'), select: () => presenter.setPanel(MATCH_PANEL.MAP) });
     const lines = [headline, none ? t('mp.respawn.noStationText') : t('mp.respawn.text', { next: comeback.next })];
-    if (ready && !none) lines.push(t('mp.respawn.vrHint'));
+    if (ready && open) lines.push(t('mp.respawn.vrHint'));
     return {
-        // A new key when the stations can be chosen: the selection starts on the first one.
-        key: `match:respawn:${ready && !none ? 'ready' : 'waiting'}`,
+        // A new key when the stations can be chosen, and when one starts or stops being taken:
+        // the selection goes back to the first one offered, never left on one that cannot be chosen.
+        key: `match:respawn:${ready && open ? 'ready' : 'waiting'}:${comeback.contested.join()}`,
         title: t('mp.hud.dead'),
         lines,
         items,

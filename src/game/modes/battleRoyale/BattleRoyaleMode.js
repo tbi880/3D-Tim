@@ -651,18 +651,35 @@ export class BattleRoyaleMode {
     }
 
     /**
-     * The planets whose stations a pilot's side holds - where they may come back - the one they
-     * would be sent to first: a planet that is not falling in, then the one with the most of
-     * their side flying there, then the outermost (nearest the gate).
+     * The planets whose stations a pilot's side holds and nobody is taking from it - where they
+     * may come back - the one they would be sent to first: a planet that is not falling in, then
+     * the one with the most of their side flying there, then the outermost (nearest the gate).
      */
     respawnStations(contestant) {
-        const stations = [...this.places.values()].filter((place) => place.owner === contestant.faction);
+        const stations = [...this.places.values()].filter((place) => place.owner === contestant.faction && !this.beingTaken(place));
         const settled = (place) => (place.status === PLANET_STATUS.SAFE ? 1 : 0);
         const company = new Map(stations.map((place) => [place, this.membersAt(place, contestant.faction).length]));
         return stations.sort((a, b) => settled(b) - settled(a) || company.get(b) - company.get(a) || b.orbit - a.orbit);
     }
 
-    /** True while a side holds at least one station. */
+    /**
+     * True while another side's ship is docked at a held station, taking it. (A side never docks
+     * at its own station, so any ship docked at a held one is taking it.)
+     */
+    beingTaken(place) {
+        if (!place.owner) return false;
+        for (const contestant of this.contestants.values()) {
+            if (contestant.dock?.place === place) return true;
+        }
+        return false;
+    }
+
+    /** The planets whose stations a side holds but another side is docked at, taking them: nobody comes back there meanwhile. */
+    contestedStations(faction) {
+        return [...this.places.values()].filter((place) => place.owner === faction && this.beingTaken(place));
+    }
+
+    /** True while a side holds at least one station (one being taken is still held). */
     holdsStation(faction) {
         for (const place of this.places.values()) {
             if (place.owner === faction) return true;
@@ -675,6 +692,7 @@ export class BattleRoyaleMode {
         if (contestant.alive || contestant.pilot.gone || contestant.respawnAt === null) return RESPAWN_REFUSAL.FLYING;
         if (this.server.time < contestant.respawnAt) return RESPAWN_REFUSAL.WAITING;
         if (!place || place.owner !== contestant.faction) return RESPAWN_REFUSAL.NOT_HELD;
+        if (this.beingTaken(place)) return RESPAWN_REFUSAL.CONTESTED;
         return null;
     }
 
@@ -707,15 +725,17 @@ export class BattleRoyaleMode {
     }
 
     /**
-     * A pilot who is down: once their wait is over and their side holds a station, the clock to
-     * choose one starts; when it runs out they are sent to the first one offered. (Without a
-     * station there is nowhere to go, and nothing to count down.)
+     * A pilot who is down: once their wait is over and there is a station to come back to, the
+     * clock to choose one starts; when it runs out they are sent to the first one offered at that
+     * moment. Without one - their side holds none, or every one is being taken - there is nowhere
+     * to go and nothing to count down; the clock starts again when there is.
      */
     updateRespawn(contestant) {
         if (contestant.alive || contestant.pilot.gone || contestant.respawnAt === null) return;
         const { time } = this.server;
         if (time < contestant.respawnAt) return;
-        if (!this.holdsStation(contestant.faction)) {
+        const [first] = this.holdsStation(contestant.faction) ? this.respawnStations(contestant) : [];
+        if (!first) {
             if (contestant.chooseUntil !== null) {
                 contestant.chooseUntil = null;
                 this.server.publishState();
@@ -726,7 +746,7 @@ export class BattleRoyaleMode {
             contestant.chooseUntil = time + BATTLE_ROYALE.respawn.choose;
             this.server.publishState();
         } else if (time >= contestant.chooseUntil) {
-            this.respawn(contestant, this.respawnStations(contestant)[0]);
+            this.respawn(contestant, first);
         }
     }
 
@@ -1013,8 +1033,9 @@ export class BattleRoyaleMode {
 
     /**
      * Coming back, as a pilot who is down sees it: how long they still wait, the stations they
-     * may choose from (the first is where they are sent if they do not choose), and how long
-     * they have to choose. Null while they fly.
+     * may choose from (the first is where they are sent if they do not choose), those of their
+     * side's that are being taken (not to be chosen meanwhile), and how long they have to
+     * choose. Null while they fly.
      */
     describeRespawn(you) {
         if (you.alive || you.respawnAt === null) return null;
@@ -1022,6 +1043,7 @@ export class BattleRoyaleMode {
         return {
             wait: Math.max(0, Math.ceil(you.respawnAt - time)),
             stations: this.respawnStations(you).map((place) => place.planet.id),
+            contested: this.contestedStations(you.faction).map((place) => place.planet.id),
             choose: you.chooseUntil === null ? null : Math.max(0, Math.ceil(you.chooseUntil - time)),
             next: this.respawnWait(you.respawns + 1),
         };

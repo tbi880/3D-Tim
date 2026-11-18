@@ -133,7 +133,7 @@ export class BotPilot {
         // Shot down: back the moment the wait is over, at the station the rules would send it to anyway.
         if (!contestant.alive && contestant.respawnAt !== null && mode.server.time >= contestant.respawnAt && mode.holdsStation(contestant.faction)) {
             const [station] = mode.respawnStations(contestant);
-            if (mode.respawnRefusal(contestant, station) === null) mode.respawn(contestant, station);
+            if (station && mode.respawnRefusal(contestant, station) === null) mode.respawn(contestant, station);
         }
     }
 

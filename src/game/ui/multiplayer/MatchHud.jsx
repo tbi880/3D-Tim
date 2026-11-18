@@ -162,7 +162,8 @@ export function MatchAlerts() {
 /**
  * Shot down: how long until the pilot may come back, then a button for each station their
  * side holds - the first one (key E) is where they are sent if they let the clock run out.
- * During the wait the buttons are there but not yet live, so the choice can be made ahead.
+ * During the wait the buttons are there but not yet live, so the choice can be made ahead. A
+ * station another side is docked at, taking it, is shown greyed out until that is settled.
  */
 export function RespawnPrompt({ session }) {
     const match = useGameStore((state) => state.match);
@@ -171,12 +172,14 @@ export function RespawnPrompt({ session }) {
     const presenter = session.match?.presenter;
     if (!respawn || !presenter) return null;
     const ready = respawn.wait === 0;
-    const none = respawn.stations.length === 0;
+    const open = respawn.stations.length > 0;
+    const none = !open && respawn.contested.length === 0;
     const headline = !ready ? t('mp.respawn.waiting', { seconds: respawn.wait })
-        : none ? t('mp.respawn.noStation') : t('mp.respawn.choose', { seconds: respawn.choose ?? 0 });
+        : none ? t('mp.respawn.noStation')
+            : !open ? t('mp.respawn.allContested') : t('mp.respawn.choose', { seconds: respawn.choose ?? 0 });
     const statusOf = (planetId) => match.planets.find((planet) => planet.id === planetId)?.status ?? PLANET_STATUS.SAFE;
     return (
-        <div className={`eod-panel eod-match-respawn ${ready && !none ? 'eod-match-respawn--ready' : ''}`}>
+        <div className={`eod-panel eod-match-respawn ${ready && open ? 'eod-match-respawn--ready' : ''}`}>
             <strong>{headline}</strong>
             <p>{none ? t('mp.respawn.noStationText') : t('mp.respawn.text', { next: respawn.next })}</p>
             {!none && (
@@ -196,6 +199,12 @@ export function RespawnPrompt({ session }) {
                             <small className={`eod-match-planet--${statusOf(planetId)}`}>
                                 {t(`mp.hud.status.${statusOf(planetId)}`)}{index === 0 ? ` · ${t('mp.respawn.default')}` : ''}
                             </small>
+                        </button>
+                    ))}
+                    {respawn.contested.map((planetId) => (
+                        <button key={planetId} type="button" className="eod-button eod-match-respawn-contested" disabled>
+                            <span>{t('mp.respawn.station', { planet: t(`mp.planet.${planetId}`) })}</span>
+                            <small>{t('mp.respawn.contested')}</small>
                         </button>
                     ))}
                 </div>
