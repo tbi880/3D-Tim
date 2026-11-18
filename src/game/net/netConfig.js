@@ -10,7 +10,8 @@ export const NET = Object.freeze({
      * 6: holding a planet's station no longer shelters a side from the collapse (and the state
      *    lists stations about to be swallowed): an older host would still play the old rules.
      * 7: an overdrive chip jumps while the drive is still charging, and its jump leaves the
-     *    charge as it was: an older host would refuse the jump the map offers.
+     *    charge as it was: an older host would refuse the jump the map offers. A ship that has
+     *    come back from being shot down charges its drive in 15 s, not a minute.
      */
     protocolVersion: 7,
 

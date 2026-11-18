@@ -149,6 +149,11 @@ export class BattleRoyaleMode {
         return BATTLE_ROYALE.jump.cooldown * this.pace.timeScale;
     }
 
+    /** The charge of a ship that has just come back from being shot down: shorter than after a jump. */
+    get respawnJumpCooldown() {
+        return BATTLE_ROYALE.respawn.jumpCooldown * this.pace.timeScale;
+    }
+
     // ---- Setting up --------------------------------------------------------------------------
 
     /** Stands the stargate up at the last planet: scenery to fly round, or through, until the end. */
@@ -523,12 +528,13 @@ export class BattleRoyaleMode {
 
     /**
      * True when a ship that came out at `place` now could not get away before the planet is
-     * swallowed: a new ship's drive must charge, then spool, before it can jump. Nobody comes
-     * back at such a station, nor is brought back there by taking it.
+     * swallowed: a new ship's drive must charge (the short charge of a ship that has come back),
+     * then spool, before it can jump. Nobody comes back at such a station, nor is brought back
+     * there by taking it.
      */
     strands(place) {
         const left = this.clock.secondsToSwallowed(place.orbit);
-        return left !== null && left <= this.jumpCooldown + BATTLE_ROYALE.jump.spool;
+        return left !== null && left <= this.respawnJumpCooldown + BATTLE_ROYALE.jump.spool;
     }
 
     // ---- Jumping between planets -------------------------------------------------------------
@@ -843,11 +849,12 @@ export class BattleRoyaleMode {
 
     /**
      * A new ship for a pilot who is down, out of the departure hangar of the station at `place`,
-     * throttle open, the helm theirs. The jump drive starts uncharged, as after an ordinary jump.
+     * throttle open, the helm theirs. The jump drive starts uncharged, but needs only the short
+     * charge of a ship that has come back (BATTLE_ROYALE.respawn.jumpCooldown), not a full minute.
      */
     bringBack(contestant, place) {
         this.launch(contestant, place, { fromStation: true });
-        contestant.jumpReadyAt = this.server.time + this.jumpCooldown;
+        contestant.jumpReadyAt = this.server.time + this.respawnJumpCooldown;
     }
 
     /**

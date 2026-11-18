@@ -121,8 +121,9 @@ export const BATTLE_ROYALE = Object.freeze({
 
     jump: Object.freeze({
         /**
-         * Seconds the drive needs after an ordinary jump (or a new ship's arrival) before it can
-         * jump again. An overdrive chip is not held by it, and its jump leaves it as it was.
+         * Seconds the drive needs after an ordinary jump (or entering the system) before it can
+         * jump again - after coming back from being shot down, `respawn.jumpCooldown` instead.
+         * An overdrive chip is not held by it, and its jump leaves it as it was.
          */
         cooldown: 60,
         /** Seconds from choosing a destination to leaving; the ship can still be shot down. */
@@ -225,6 +226,11 @@ export const BATTLE_ROYALE = Object.freeze({
         waitStep: 10,
         /** Seconds a pilot has to choose, once they can, before they are sent to the first station offered. */
         choose: 20,
+        /**
+         * Seconds a ship that has just come back (at a station of the pilot's choice, or brought
+         * back by taking one) needs before its jump drive can go: shorter than `jump.cooldown`.
+         */
+        jumpCooldown: 15,
         /**
          * Where the new ship starts, in the station's own axes: in front of the departure
          * hangar's door (the upper of its two, at z 1653), nose out along the departure lane

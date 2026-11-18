@@ -689,7 +689,8 @@ test('taking a planet brings every fallen pilot of the side back to it at once',
     assert.deepEqual(game.told('di', BR_EVENT.REVIVED), [{ planet: THIRD }]);
     assert.equal(game.state('di').you.respawn, null, 'nothing more to wait for');
     assert.equal(game.who('di').respawns, 0, 'being brought back does not lengthen the next wait');
-    assert.ok(game.who('di').jumpReadyAt > game.server.time, 'the jump drive starts uncharged, as on arriving anywhere');
+    assert.ok(game.who('di').jumpReadyAt > game.server.time, 'the jump drive starts uncharged');
+    assert.ok(game.who('di').jumpReadyAt <= game.server.time + RESPAWN.jumpCooldown, 'but needs only the short charge of a ship that has come back');
 });
 
 test('and the side that took it is paid all the same: there is nothing to choose between', () => {
@@ -761,7 +762,28 @@ test('a pilot shot down waits ten seconds, then comes back at a station their si
     assert.ok(leftTheStation(game, game.ship('ann'), FOURTH), 'out of the departure hangar, throttle open, the helm hers');
     assert.deepEqual(game.told('ann', BR_EVENT.RESPAWNED), [{ planet: FOURTH }]);
     assert.equal(game.state('ann').you.respawn, null);
-    assert.ok(game.who('ann').jumpReadyAt > game.server.time, 'the jump drive starts uncharged');
+    assert.equal(game.state('ann').you.jump.cooldown, RESPAWN.jumpCooldown, 'the jump drive starts uncharged - fifteen seconds, not a minute');
+});
+
+test('a ship that has come back charges its drive in fifteen seconds; after its first jump the minute holds again', () => {
+    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, THIRD], cy: [DAWN, SECOND] });
+    game.empty(SECOND);
+    game.empty(FOURTH);
+    game.place(FOURTH).owner = DAWN;
+    destroyShip(game.world(THIRD), game.ship('ann'), game.ship('bo'));
+    game.run(RESPAWN.wait + 0.1);
+    game.ask('ann', BR_REQUEST.RESPAWN, { at: FOURTH });
+    assert.equal(RESPAWN.jumpCooldown, 15);
+    assert.equal(game.who('ann').jumpReadyAt, game.server.time + RESPAWN.jumpCooldown);
+
+    game.run(RESPAWN.jumpCooldown - 1);
+    game.ask('ann', BR_REQUEST.JUMP, { to: THIRD });
+    assert.deepEqual(game.told('ann', BR_EVENT.JUMP_REFUSED), [{ reason: JUMP_REFUSAL.CHARGING }], 'not a second early');
+    game.run(1.1);
+    game.ask('ann', BR_REQUEST.JUMP, { to: THIRD });
+    game.run(BATTLE_ROYALE.jump.spool + 0.2);
+    assert.equal(game.pilot('ann').zone.id, THIRD);
+    assert.equal(game.state('ann').you.jump.cooldown, BATTLE_ROYALE.jump.cooldown, 'an ordinary jump: a full minute again');
 });
 
 test('every comeback makes the next wait ten seconds longer: 10, 20, 30', () => {
@@ -833,9 +855,11 @@ test('nobody comes back where the planet will be swallowed before a new ship\'s 
     const game = arrange({ ann: [DAWN, THIRD], cy: [DAWN, INNERMOST], bo: [UMBRA, GATE] });
     for (const planet of [INNERMOST, SECOND]) game.place(planet).owner = DAWN;
     destroyShip(game.world(THIRD), game.ship('ann'), null);
-    const away = game.mode.jumpCooldown + BATTLE_ROYALE.jump.spool;
+    // A ship that comes back has the short charge to wait out, then the spool.
+    const away = RESPAWN.jumpCooldown + BATTLE_ROYALE.jump.spool;
     game.skipTo(goneAt(game, 0) - away - 1);
-    assert.deepEqual(game.mode.respawnStations(game.who('ann')).map((place) => place.planet.id), [INNERMOST, SECOND], 'just in time, still - and Cy is there');
+    // (Falling in already, Cy's planet is offered after the one that is not.)
+    assert.deepEqual(game.mode.respawnStations(game.who('ann')).map((place) => place.planet.id), [SECOND, INNERMOST], 'just in time, still');
 
     game.skipTo(goneAt(game, 0) - away + 1);
     assert.deepEqual(game.mode.respawnStations(game.who('ann')).map((place) => place.planet.id), [SECOND]);
@@ -855,13 +879,26 @@ test('taking a station whose planet is about to be swallowed pays, but brings no
     const game = arrange({ ann: [DAWN, INNERMOST], di: [DAWN, THIRD], bo: [UMBRA, GATE] });
     game.empty(INNERMOST);
     destroyShip(game.world(THIRD), game.ship('di'), null);
-    game.skipTo(startsAt(game, 0) + 0.5);
+    // Taken with less left before the planet is swallowed than a ship that came back needs to charge and spool.
+    game.skipTo(goneAt(game, 0) - (RESPAWN.jumpCooldown + BATTLE_ROYALE.jump.spool) - STATION.seconds + 0.5);
     game.take('ann');
 
     assert.equal(game.place(INNERMOST).owner, DAWN);
     assert.equal(game.who('ann').points, BATTLE_ROYALE.capture.points);
     assert.equal(game.who('di').alive, false, 'Di would have come out with an uncharged drive on a planet about to be swallowed');
     assert.deepEqual(game.told('di', BR_EVENT.REVIVED), []);
+});
+
+test('a planet already falling in still brings the fallen back if there is time for a new ship\'s short charge', () => {
+    const game = arrange({ ann: [DAWN, INNERMOST], di: [DAWN, THIRD], bo: [UMBRA, GATE] });
+    game.empty(INNERMOST);
+    destroyShip(game.world(THIRD), game.ship('di'), null);
+    game.skipTo(startsAt(game, 0) + 0.5);
+    game.take('ann');
+
+    assert.equal(game.who('di').alive, true, 'fifteen seconds of charge and the spool fit before it is swallowed');
+    assert.equal(game.pilot('di').zone.id, INNERMOST);
+    assert.ok(game.who('di').jumpReadyAt + BATTLE_ROYALE.jump.spool < goneAt(game, 0), 'and her drive will get her away before it is');
 });
 
 test('with no station held the wait ends and the pilot waits on, until their side takes one', () => {
@@ -1637,6 +1674,8 @@ test('while a gravity shield is on, a pilot can jump out of a swallowed planet -
 test('a gravity shield that has run out frees nothing: the drive is held and the pull is back', () => {
     const game = arrange({ ann: [DAWN, INNERMOST], bex: [UMBRA, GATE] });
     game.empty(INNERMOST);
+    // Nothing at the gate to shoot Bex down: she keeps her side in the match, so that it goes on.
+    game.empty(GATE);
     game.equip('ann', EQUIPMENT.GRAVITY_SHIELD);
     game.skipTo(goneAt(game, 0));
     game.run(GEAR.gravityShieldSeconds + 0.5);
