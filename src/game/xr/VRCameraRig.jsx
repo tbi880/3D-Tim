@@ -15,7 +15,8 @@ import { XRGamepadInput } from './XRGamepadInput.js';
 import { guardXRFrames } from './frameGuard.js';
 import { vrBenchmark } from './vrBenchmark.js';
 import { vrPerformance } from './vrPerformance.js';
-import { getXRStore, useVRActive, vr } from './vrState.js';
+import { resetOrbit, vrOrbit } from './vrOrbit.js';
+import { cameraModeOf, getXRStore, useVRActive, vr } from './vrState.js';
 
 /** Runs before the simulation (-2), so this frame's stick positions are used this frame. */
 const INPUT_PRIORITY = -3;
@@ -86,6 +87,9 @@ export default function VRCameraRig({ game }) {
         return new XRGamepadInput({
             input,
             getInvertY: () => session.settings.invertY,
+            // The camera swings round the ship in the chase view, and round the ship a pilot who is down is watching.
+            canOrbit: () => cameraModeOf(session) === 'chase' || Boolean(session.world.spectating?.alive),
+            orbit: vrOrbit,
             isMenuOpen: () => menu.isOpen(store()),
             onMenuAction: (action) => menu.handle(action, store(), t),
             // What each button does is in XRGamepadInput.js; here is what it means in the campaign and in a match.
@@ -97,6 +101,7 @@ export default function VRCameraRig({ game }) {
                     case 'view':
                         // B: cockpit or chase (the headset keeps a view of its own, apart from the flat page's).
                         vr.view = vr.view === 'chase' ? 'cockpit' : 'chase';
+                        resetOrbit(vrOrbit);
                         if (session.phase === PHASE.PLAYING) session.tutorial.noteAction('toggleView');
                         break;
                     case 'confirm':
@@ -160,6 +165,7 @@ export default function VRCameraRig({ game }) {
             if (state.session) vrPerformance.begin();
             else vrPerformance.end();
             recenterAt.current = [...AUTO_RECENTER];
+            resetOrbit(vrOrbit);
             gamepads.release();
             if (!state.session) game.input.setXRControls(null);
             // The tutorial names the controls in the pilot's hands: the VR controllers while a session runs.

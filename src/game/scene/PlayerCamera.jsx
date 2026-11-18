@@ -6,6 +6,7 @@ import { GAME_EVENTS } from '../core/EventBus.js';
 import { SESSION_EVENTS } from '../state/GameSession.js';
 import { cameraModeOf, vr } from '../xr/vrState.js';
 import { vrRig } from '../xr/VRCameraRig.jsx';
+import { orbitQuaternion, vrOrbit } from '../xr/vrOrbit.js';
 import Cockpit from './Cockpit.jsx';
 import { playerFeedback, underHeavyBeam } from './effects/playerFeedback.js';
 import { viewPose } from './viewPose.js';
@@ -46,6 +47,7 @@ const scratchTarget = new THREE.Vector3();
 const scratchUp = new THREE.Vector3();
 const scratchMatrix = new THREE.Matrix4();
 const scratchScale = new THREE.Vector3();
+const scratchRig = new THREE.Quaternion();
 
 /**
  * The player's camera, with two views switched by `settings.cameraMode`:
@@ -180,8 +182,9 @@ export default function PlayerCamera({ session, children }) {
 
 /**
  * VR: puts the seat (this camera) at the pilot's eye, or rigidly behind and above the ship
- * for the chase view. Its field of view is left at the base value: the cockpit model is laid
- * out for it, and the headset draws with its own lenses' projection anyway.
+ * for the chase view - swung round the ship as far as the pilot has turned it with the right
+ * grip and stick (xr/vrOrbit.js). Its field of view is left at the base value: the cockpit
+ * model is laid out for it, and the headset draws with its own lenses' projection anyway.
  */
 function placeVRSeat(camera, player, isCockpit) {
     if (isCockpit) {
@@ -189,10 +192,12 @@ function placeVRSeat(camera, player, isCockpit) {
         camera.position.copy(COCKPIT_EYE).applyQuaternion(player.quaternion).add(player.position);
     } else {
         const hullScale = Math.max(1, player.cls.radius / 15);
-        scratchOffset.copy(CHASE_OFFSET).multiplyScalar(hullScale).applyQuaternion(player.quaternion);
+        // The whole rig turns about the ship's centre, so the ship stays in frame from any side.
+        const rig = orbitQuaternion(player.quaternion, vrOrbit, scratchRig);
+        scratchOffset.copy(CHASE_OFFSET).multiplyScalar(hullScale).applyQuaternion(rig);
         camera.position.copy(player.position).add(scratchOffset);
-        scratchTarget.set(0, 0, -CHASE_LOOK_AHEAD).applyQuaternion(player.quaternion).add(player.position);
-        scratchUp.set(0, 1, 0).applyQuaternion(player.quaternion);
+        scratchTarget.set(0, 0, -CHASE_LOOK_AHEAD).applyQuaternion(rig).add(player.position);
+        scratchUp.set(0, 1, 0).applyQuaternion(rig);
         camera.quaternion.setFromRotationMatrix(scratchMatrix.lookAt(camera.position, scratchTarget, scratchUp));
     }
     if (camera.fov !== BASE_FOV) {

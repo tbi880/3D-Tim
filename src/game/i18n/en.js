@@ -490,7 +490,7 @@ export default {
     'ui.vr.uploadTest': 'Texture upload test (40 s, the picture goes dark)',
     'ui.vr.menuHint': 'Stick: choose · Trigger / A: select · B: back',
     'ui.vr.refitHint': 'Stick left / right adds or removes a level',
-    'ui.vr.controls': 'Right stick steer · Right stick click lock the target nearest the crosshair (hold: step through) · Left stick throttle / roll · Left stick click re-centre seat · Right trigger beams · Left trigger torpedo · Left grip afterburner · A confirm / skip comms (in a match: star map, hold to dock) · B cockpit / chase view (hold: pause) · X power · Y ship ability',
+    'ui.vr.controls': 'Right stick steer · Right stick click lock the target nearest the crosshair (hold: step through) · Left stick throttle / roll · Left stick click re-centre seat · Right trigger beams · Left trigger torpedo · Left grip afterburner · A confirm / skip comms (in a match: star map, hold to dock) · B cockpit / chase view (hold: pause) · Chase view: hold the right grip + right stick to swing round the ship (tap the grip to go back behind it) · X power · Y ship ability',
     'hud.skip.vr': 'A ▸',
     'hint.flight.vr': 'Right stick steers · left stick: up / down throttle, left / right roll · left grip afterburner · B switches cockpit / chase view',
     'hint.weapons.vr': 'Click the right stick to lock the hostile nearest the crosshair, keep it down to step through the others · hold the RIGHT TRIGGER to fire beam arrays — they track anything inside the ring',
@@ -879,7 +879,7 @@ export default {
     'tutorial.view.title': 'Views',
     'tutorial.view.text': 'V switches between the cockpit and the chase view. Fly in whichever suits you.',
     'tutorial.view.keys': 'V / C',
-    'tutorial.view.text.vr': 'B switches between the cockpit and the chase view. Fly in whichever suits you.',
+    'tutorial.view.text.vr': 'B switches between the cockpit and the chase view. Fly in whichever suits you. In the chase view, hold the right grip and push the right stick to look round the ship; the view stays where you leave it, and a tap of the grip takes it back behind the ship.',
     'tutorial.view.keys.vr': 'B',
 
     'tutorial.radar.title': 'Radar and markers',

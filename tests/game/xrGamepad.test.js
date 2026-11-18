@@ -3,15 +3,17 @@ import { test } from 'node:test';
 import {
     CONFIRM_HOLD_SECONDS, LOCK_HOLD_SECONDS, LOCK_REPEAT_SECONDS, PAUSE_HOLD_SECONDS, XRGamepadInput,
 } from '../../src/game/xr/XRGamepadInput.js';
+import { ORBIT, createOrbit } from '../../src/game/xr/vrOrbit.js';
 
 /** The VR controllers, fed by hand: `press('right', A)` keeps A down until `release`. */
-function controllers({ menuOpen = false } = {}) {
+function controllers({ menuOpen = false, chase = false } = {}) {
     const pad = () => ({ buttons: Array.from({ length: 6 }, () => ({ pressed: false, value: 0 })), axes: [0, 0, 0, 0] });
     const pads = { left: pad(), right: pad() };
     const session = { inputSources: [{ handedness: 'left', gamepad: pads.left }, { handedness: 'right', gamepad: pads.right }] };
     const flight = [];
     const menu = [];
-    const state = { menuOpen };
+    const state = { menuOpen, chase };
+    const orbit = createOrbit();
     let held = null;
     const input = new XRGamepadInput({
         input: { setXRControls(controls) { held = controls && { ...controls }; } },
@@ -19,11 +21,13 @@ function controllers({ menuOpen = false } = {}) {
         onMenuAction: (action) => menu.push(action),
         isMenuOpen: () => state.menuOpen,
         getInvertY: () => false,
+        canOrbit: () => state.chase,
+        orbit,
     });
     const run = (seconds) => { for (let elapsed = 0; elapsed < seconds - 1e-9; elapsed += 1 / 72) input.update(session, 1 / 72); };
     const set = (hand, index, down) => { pads[hand].buttons[index] = { pressed: down, value: down ? 1 : 0 }; };
     return {
-        flight, menu, state, run, pads,
+        flight, menu, state, run, pads, orbit,
         held: () => held,
         press: (hand, index) => set(hand, index, true),
         release: (hand, index) => set(hand, index, false),
@@ -134,7 +138,7 @@ test('a hold cut short by a menu opening counts for nothing', () => {
     assert.deepEqual(pads.flight, ['confirm']);
 });
 
-test('the triggers fire, the left grip is the afterburner, and the right grip does nothing yet', () => {
+test('the triggers fire, the left grip is the afterburner, and in the cockpit the right grip does nothing', () => {
     const pads = controllers();
     pads.press('right', TRIGGER);
     pads.press('left', TRIGGER);
@@ -146,6 +150,69 @@ test('the triggers fire, the left grip is the afterburner, and the right grip do
     assert.equal(held.firePrimary, true, 'right trigger: beams');
     assert.equal(held.fireSecondary, true, 'left trigger: torpedo');
     assert.equal(held.boost, true);
+
+    pads.pads.right.axes = [0, 0, 1, 0];
+    pads.run(0.5);
+    assert.equal(pads.held().yaw, 1, 'the stick still steers');
+    assert.deepEqual(pads.orbit, createOrbit(), 'and the camera stays put');
+});
+
+test('chase view: the right grip held turns the right stick into the camera, which stays where it is left', () => {
+    const pads = controllers({ chase: true });
+    pads.press('right', GRIP);
+    pads.pads.right.axes = [0, 0, 1, -1];
+    pads.run(0.5);
+    assert.equal(pads.held().yaw, 0, 'the ship is not steered');
+    assert.equal(pads.held().pitch, 0);
+    assert.ok(pads.orbit.yaw < -0.5, 'stick right: the view turns right');
+    assert.ok(pads.orbit.pitch > 0.5, 'stick forward: the view tilts up');
+
+    pads.release('right', GRIP);
+    pads.run(1);
+    const left = { ...pads.orbit };
+    assert.equal(pads.held().yaw, 1, 'let go, the stick steers again');
+    assert.equal(pads.held().pitch, 1);
+    pads.pads.right.axes = [0, 0, 0, 0];
+    pads.run(2);
+    assert.deepEqual(pads.orbit, left, 'and the camera stays where it was left');
+
+    pads.pads.right.axes = [0, 0, 0, 1];
+    pads.press('right', GRIP);
+    pads.run(5);
+    assert.equal(pads.orbit.pitch, -ORBIT.maxPitch, 'over or under the ship, never past it');
+    assert.deepEqual(pads.flight, [], 'the grip is no flight action');
+});
+
+test('chase view: a quick squeeze of the right grip on its own swings the camera back behind the ship', () => {
+    const pads = controllers({ chase: true });
+    pads.press('right', GRIP);
+    pads.pads.right.axes = [0, 0, -1, 0];
+    pads.run(1);
+    pads.release('right', GRIP);
+    pads.pads.right.axes = [0, 0, 0, 0];
+    pads.run(0.1);
+    assert.ok(pads.orbit.yaw > 1, 'turned round');
+    assert.equal(pads.orbit.returning, false, 'a long hold that moved the camera is no squeeze');
+
+    pads.tap('right', GRIP);
+    assert.equal(pads.orbit.returning, true);
+    pads.run(2);
+    assert.deepEqual(pads.orbit, createOrbit(), 'back behind the ship');
+
+    // A squeeze held too long, or one that moved the camera, leaves it where it is.
+    pads.press('right', GRIP);
+    pads.pads.right.axes = [0, 0, 1, 0];
+    pads.run(0.2);
+    pads.release('right', GRIP);
+    pads.pads.right.axes = [0, 0, 0, 0];
+    pads.run(1);
+    const turned = pads.orbit.yaw;
+    assert.ok(turned < 0);
+    pads.press('right', GRIP);
+    pads.run(ORBIT.tapSeconds + 0.1);
+    pads.release('right', GRIP);
+    pads.run(1);
+    assert.equal(pads.orbit.yaw, turned);
 });
 
 test('the sticks: right steers, left is throttle and roll; left click re-centres, in flight or in a menu', () => {

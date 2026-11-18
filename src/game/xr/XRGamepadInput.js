@@ -1,3 +1,5 @@
+import { ORBIT, createOrbit, recentreOrbit, stepOrbit } from './vrOrbit.js';
+
 /**
  * Reads the VR controllers (WebXR "xr-standard" gamepads: Pico, Meta Quest Touch) once per
  * frame and turns them into the game's controls, in the same shape the keyboard and mouse
@@ -11,7 +13,10 @@
  *   left stick         up / down = throttle, left / right = roll
  *   left stick click   re-centre the seat
  *   right trigger      beam arrays (hold)        left trigger    torpedo
- *   left grip          afterburner (hold)        right grip      (free)
+ *   left grip          afterburner (hold)
+ *   right grip         chase view: held, the right stick swings the camera round the ship
+ *                      instead of steering, and it stays where it is left; a quick squeeze
+ *                      on its own swings it back behind the ship (xr/vrOrbit.js)
  *   A                  confirm: show the whole comms line, then skip it ("next" on a tutorial
  *                      card). A match has no comms lines: there a press opens the star map,
  *                      and held it docks at a station or lets go of it
@@ -118,13 +123,19 @@ export class XRGamepadInput {
      * @param {(event: string) => void} params.onMenuAction 'up' | 'down' | 'left' | 'right' | 'select' | 'back'
      * @param {() => boolean} params.isMenuOpen
      * @param {() => boolean} params.getInvertY
+     * @param {() => boolean} [params.canOrbit] true when the camera may be swung round the ship (the chase view)
+     * @param {{ yaw: number, pitch: number, returning: boolean }} [params.orbit] the orbit it moves (xr/vrOrbit.js)
      */
-    constructor({ input, onFlightAction, onMenuAction, isMenuOpen, getInvertY }) {
+    constructor({ input, onFlightAction, onMenuAction, isMenuOpen, getInvertY, canOrbit = () => false, orbit = createOrbit() }) {
         this.input = input;
         this.onFlightAction = onFlightAction;
         this.onMenuAction = onMenuAction;
         this.isMenuOpen = isMenuOpen;
         this.getInvertY = getInvertY;
+        this.canOrbit = canOrbit;
+        this.orbit = orbit;
+        /** Whether the stick has moved the camera during this squeeze of the right grip (then it is no squeeze to swing back). */
+        this.orbitMoved = false;
         /** Button states from the previous frame, keyed by `${hand}:${index}`. */
         this.previous = new Map();
         this.menuStick = { armed: true, direction: null, repeat: 0 };
@@ -133,6 +144,7 @@ export class XRGamepadInput {
             lock: new HoldButton(LOCK_HOLD_SECONDS, LOCK_REPEAT_SECONDS),
             confirm: new HoldButton(CONFIRM_HOLD_SECONDS),
             view: new HoldButton(PAUSE_HOLD_SECONDS),
+            orbit: new HoldButton(ORBIT.tapSeconds),
         };
         this.controls = { yaw: 0, pitch: 0, roll: 0, throttle: 0, boost: false, firePrimary: false, fireSecondary: false };
         this.gamepads = { left: null, right: null };
@@ -162,6 +174,7 @@ export class XRGamepadInput {
         if (!left && !right) {
             this.release();
             for (const hold of Object.values(this.holds)) hold.cancel();
+            stepOrbit(this.orbit, null, dt);
             return;
         }
 
@@ -171,6 +184,7 @@ export class XRGamepadInput {
         const edges = {
             leftTrigger: this.edge('left', BUTTON.trigger),
             rightTrigger: this.edge('right', BUTTON.trigger),
+            rightSqueeze: this.edge('right', BUTTON.squeeze),
             leftStick: this.edge('left', BUTTON.stick),
             rightStick: this.edge('right', BUTTON.stick),
             a: this.edge('right', BUTTON.lower),
@@ -184,6 +198,8 @@ export class XRGamepadInput {
         if (menuOpen) {
             this.release();
             for (const hold of Object.values(this.holds)) hold.cancel();
+            // A swing back behind the ship goes on under the menu.
+            stepOrbit(this.orbit, null, dt);
             this.updateMenu(stick(left), stick(right), dt);
             if (edges.rightTrigger || edges.leftTrigger || edges.a || edges.x) this.onMenuAction('select');
             else if (edges.b || edges.y) this.onMenuAction('back');
@@ -195,9 +211,12 @@ export class XRGamepadInput {
         const thrust = stick(left);
         const invert = this.getInvertY() ? -1 : 1;
         const controls = this.controls;
-        controls.yaw = deadZone(steer.x);
-        // Stick forward reports a negative y; forward = nose up, like moving the mouse up.
-        controls.pitch = -deadZone(steer.y) * invert;
+        // Right grip held in the chase view: the right stick moves the camera, not the ship.
+        const orbiting = pressed(right, BUTTON.squeeze) && this.canOrbit();
+        // Stick forward reports a negative y; forward = nose up (or, swinging the camera, look up), like moving the mouse up.
+        const look = { x: deadZone(steer.x), y: -deadZone(steer.y) * invert };
+        controls.yaw = orbiting ? 0 : look.x;
+        controls.pitch = orbiting ? 0 : look.y;
         controls.roll = deadZone(thrust.x);
         controls.throttle = -deadZone(thrust.y);
         controls.boost = pressed(left, BUTTON.squeeze);
@@ -205,7 +224,14 @@ export class XRGamepadInput {
         controls.fireSecondary = pressed(left, BUTTON.trigger);
         this.input.setXRControls(controls);
 
-        const { lock, confirm, view } = this.holds;
+        const { lock, confirm, view, orbit } = this.holds;
+        for (const event of orbit.step(edges.rightSqueeze && this.canOrbit(), orbiting, dt)) {
+            if (event === 'press') this.orbitMoved = false;
+            else if (event === 'tap' && !this.orbitMoved) recentreOrbit(this.orbit);
+        }
+        if (orbiting && (look.x !== 0 || look.y !== 0)) this.orbitMoved = true;
+        stepOrbit(this.orbit, orbiting ? look : null, dt);
+
         for (const event of lock.step(edges.rightStick, pressed(right, BUTTON.stick), dt)) {
             if (event === 'press') this.onFlightAction('targetCrosshair');
             else if (event === 'held') this.onFlightAction('cycleTarget');
