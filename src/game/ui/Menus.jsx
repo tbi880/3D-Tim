@@ -104,8 +104,11 @@ function VRReport() {
     return (
         <p className={`eod-vr-report${failed ? ' eod-vr-report-failed' : ''}`}>
             {summary}
+            {/* How the session was got (xr/vrSession.js): for looking into a headset that refuses some requests. */}
+            {!report.notStarted && report.request && <><br />{t('ui.vr.report.session', { request: report.request, space: report.referenceSpace })}</>}
+            {!report.notStarted && report.refusals && <><br />{t('ui.vr.report.refused')} {report.refusals}</>}
             {report.errors > 0 && <><br />{report.notStarted ? '' : `${t('ui.vr.report.errors', { count: report.errors })} `}{report.firstError}</>}
-            {failed && <><br />{t('ui.vr.report.retry')}</>}
+            {failed && <><br />{t(report.clickAgain ? 'ui.vr.report.clickAgain' : 'ui.vr.report.retry')}</>}
         </p>
     );
 }

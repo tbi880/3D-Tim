@@ -1,5 +1,6 @@
 import { useGameStore } from '../state/gameStore.js';
 import { DynamicResolution } from './DynamicResolution.js';
+import { describeError, summarizeFailures } from './vrSession.js';
 
 /**
  * How a VR session is going: its frame rate (kept up, when the pilot turns that on, by
@@ -19,8 +20,8 @@ const PUBLISH_INTERVAL = 0.5;
 let sincePublish = 0;
 let session = null;
 
-function describe(error) {
-    return String(error?.message ?? error).slice(0, 240);
+function describe(error, length = 240) {
+    return describeError(error).slice(0, length);
 }
 
 export const vrPerformance = {
@@ -33,7 +34,18 @@ export const vrPerformance = {
     begin() {
         resolution.reset();
         sincePublish = 0;
-        session = { frames: 0, seconds: 0, js: 0, width: 0, height: 0, lowestScale: 1, errors: 0, firstError: null };
+        session = { frames: 0, seconds: 0, js: 0, width: 0, height: 0, lowestScale: 1, errors: 0, firstError: null, request: null, referenceSpace: null, refusals: null };
+    },
+
+    /**
+     * How the session that has just begun was got (xr/vrSession.js): the request the browser
+     * granted, the tracking space flown in, and the requests it refused before that.
+     */
+    started({ request, referenceSpace, failures }) {
+        if (!session) return;
+        session.request = request;
+        session.referenceSpace = referenceSpace;
+        session.refusals = failures.length ? describe(summarizeFailures(failures), 400) : null;
     },
 
     /** A frame's script took this long (xr/frameGuard.js). */
@@ -64,9 +76,20 @@ export const vrPerformance = {
         session.firstError ??= describe(error);
     },
 
-    /** The session never started (enterVR was refused or its set-up threw). */
+    /**
+     * The session never started (every request was refused, or its set-up threw): why, for
+     * each request tried (a VRStartError says them all), and whether clicking "Enter VR" again
+     * tries something else (`clickAgain`) or only reloading the page can help.
+     */
     couldNotStart(error) {
-        useGameStore.setState({ vrReport: { frames: 0, seconds: 0, fps: 0, js: 0, width: 0, height: 0, lowestScale: 1, errors: 1, firstError: describe(error), notStarted: true } });
+        useGameStore.setState({
+            vrReport: {
+                frames: 0, seconds: 0, fps: 0, js: 0, width: 0, height: 0, lowestScale: 1, errors: 1,
+                firstError: describe(error?.name === 'VRStartError' ? error.message : error, 400),
+                notStarted: true,
+                clickAgain: Boolean(error?.clickAgain),
+            },
+        });
     },
 
     /**

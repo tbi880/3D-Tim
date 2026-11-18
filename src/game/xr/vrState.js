@@ -3,6 +3,7 @@ import { createXRStore } from '@react-three/xr';
 import { useStore } from 'zustand';
 import VRFlightStick from './VRFlightStick.jsx';
 import { vrPerformance } from './vrPerformance.js';
+import { createVRStarter } from './vrSession.js';
 
 /**
  * WebXR (VR headset) mode of the game.
@@ -24,13 +25,19 @@ import { vrPerformance } from './vrPerformance.js';
  *    the viewport scaling it relies on, and no other headset has tried it;
  *  - 4x multisampling (see `canvasAntialias`): on a headset's tile-based GPU it costs next
  *    to nothing, and without it every hull edge and light line shimmers as the head moves;
- *  - the headset's default refresh rate (72 Hz on a Quest) instead of the highest one.
+ *  - the headset's default refresh rate (72 Hz on a Quest) instead of the highest one;
+ *  - no WebXR feature required, not even the floor-level tracking space: the session is
+ *    started here (vrSession.js), not by the store, which would require 'local-floor' and
+ *    get the whole session refused by a browser that cannot give it.
  *
  * Without a headset, VR can be tried on a desktop browser with Meta's "Immersive Web
  * Emulator" browser extension.
  */
 
 let store = null;
+/** three.js's WebXR manager (the renderer's `xr`), handed to the store by <XR> in GameScene. */
+let xrManager = null;
+const starter = createVRStarter();
 
 const HEADSET_BROWSER = /Pico|OculusBrowser|Quest|\bVR\b/i;
 
@@ -79,6 +86,12 @@ export function getXRStore() {
             meshDetection: false,
             domOverlay: false,
         });
+        // Keep the renderer's XR manager: enterVR hands it the session itself.
+        const setWebXRManager = store.setWebXRManager;
+        store.setWebXRManager = (manager) => {
+            xrManager = manager;
+            setWebXRManager(manager);
+        };
         store.subscribe((state, previous) => {
             vr.active = state.session != null && state.mode === 'immersive-vr';
             // three.js keeps a finished session's reference space, and the store goes on
@@ -138,11 +151,20 @@ export function useVRSupported() {
     return supported;
 }
 
-/** Starts a VR session. Must be called from a click (browsers need a user gesture). */
+/**
+ * Starts a VR session. Must be called from a click (browsers need a user gesture). The store
+ * picks the session up from three.js when it starts.
+ */
 export function enterVR() {
     vr.view = 'cockpit';
-    return getXRStore().enterVR().catch((error) => {
-        console.warn('[Echoes of Dawn] Could not start VR:', error);
+    getXRStore();
+    const xr = typeof navigator !== 'undefined' ? navigator.xr : undefined;
+    return starter.start(xr, xrManager).then((started) => {
+        if (started.failures.length) console.warn('[Echoes of Dawn] VR started after refusals:', started.failures);
+        vrPerformance.started(started);
+        return started.session;
+    }, (error) => {
+        console.warn('[Echoes of Dawn] Could not start VR:', error, error?.failures ?? '');
         // No console in a headset: say so on the page.
         vrPerformance.couldNotStart(error);
         return undefined;
