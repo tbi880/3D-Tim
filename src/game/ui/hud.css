@@ -670,7 +670,7 @@ html.eod-in-game .site-settings-toggle { display: none; }
  * thumb pushing the stick left or down, or reaching for the lowest button, must not slide off
  * the glass (where the touch is lost, and where a phone has its own edge gestures).
  */
-.eod-touch-stick { position: absolute; left: calc(76px + env(safe-area-inset-left, 0px)); bottom: calc(36px + env(safe-area-inset-bottom, 0px)); width: 128px; height: 128px; border-radius: 50%; border: 2px solid var(--eod-border); background: rgba(6, 16, 28, 0.3); pointer-events: auto; touch-action: none; display: grid; place-items: center; }
+.eod-touch-stick { position: absolute; left: calc(36px + env(safe-area-inset-left, 0px)); bottom: calc(36px + env(safe-area-inset-bottom, 0px)); width: 128px; height: 128px; border-radius: 50%; border: 2px solid var(--eod-border); background: rgba(6, 16, 28, 0.3); pointer-events: auto; touch-action: none; display: grid; place-items: center; }
 .eod-touch-knob { width: 50px; height: 50px; border-radius: 50%; background: rgba(89, 208, 255, 0.4); border: 2px solid var(--eod-cyan); }
 /*
  * The right thumb's four buttons sit in a diamond, like the face buttons of a gamepad: one each
