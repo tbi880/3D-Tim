@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { isHeadsetBrowser } from '../../src/utils/headsetBrowser.js';
+import { canDoVR, isHeadsetBrowser, noteVRSupported } from '../../src/utils/headsetBrowser.js';
 import { enterFullscreen } from '../../src/utils/fullscreen.js';
 
 /** A VR headset's own browser, and no fullscreen there (utils/headsetBrowser.js, utils/fullscreen.js). */
@@ -40,4 +40,11 @@ test('a headset browser is never asked for fullscreen (the Pico shows it as its 
 test('other browsers still are', async () => {
     assert.equal(await fullscreenRequests(MAC, async () => assert.equal(await enterFullscreen(), true)), 1);
     assert.equal(await fullscreenRequests(ANDROID, async () => assert.equal(await enterFullscreen(), true)), 1);
+});
+
+test('clicks stop going fullscreen once the browser says it can start VR, whatever it calls itself', () => {
+    // Node's user agent is no headset's, and nothing has said VR works yet.
+    assert.equal(canDoVR(), false);
+    noteVRSupported();
+    assert.equal(canDoVR(), true);
 });

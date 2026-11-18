@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { stageOfENV } from '../Settings';
 import { enterFullscreen, getFullscreenElement, isAutoFullscreenOff } from '../utils/fullscreen';
+import { canDoVR } from '../utils/headsetBrowser';
 
 const GESTURES = ['pointerup', 'touchend', 'click'];
 
@@ -16,7 +17,9 @@ const GESTURES = ['pointerup', 'touchend', 'click'];
  *   false: every click while not fullscreen, so leaving with Esc is undone by the next click (the game)
  * @param {boolean} [options.skipPortrait] leave a portrait screen (a phone held upright) windowed
  *
- * Clicks inside an element with a `data-skip-fullscreen` attribute are left alone.
+ * Clicks inside an element with a `data-skip-fullscreen` attribute are left alone, and so is
+ * every click in a browser that can do VR (a headset's own, or one that has said it can start
+ * a VR session): in a Pico, fullscreen is its immersive mode, after which VR no longer starts.
  */
 export default function useClickToFullscreen({ enabled = stageOfENV === 'prod', once = true, skipPortrait = true } = {}) {
     useEffect(() => {
@@ -26,7 +29,7 @@ export default function useClickToFullscreen({ enabled = stageOfENV === 'prod', 
             for (const type of GESTURES) document.removeEventListener(type, onGesture, true);
         };
         function onGesture(event) {
-            if (getFullscreenElement() || isAutoFullscreenOff()) return;
+            if (getFullscreenElement() || isAutoFullscreenOff() || canDoVR()) return;
             // Controls that need the click for something else (entering VR) opt out.
             if (event?.target?.closest?.('[data-skip-fullscreen]')) return;
             if (skipPortrait && window.innerHeight > window.innerWidth) return;

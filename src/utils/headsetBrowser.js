@@ -12,3 +12,24 @@ const HEADSET_BROWSER = /Pico|OculusBrowser|Quest|\bVR\b/i;
 export function isHeadsetBrowser(userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '') {
     return HEADSET_BROWSER.test(userAgent ?? '');
 }
+
+/** Set once the browser has said it can start an immersive VR session (see noteVRSupported). */
+let vrSupported = false;
+
+/**
+ * The browser has said it can start an immersive VR session (`navigator.xr.isSessionSupported`,
+ * asked by the game page for its "Enter VR" button: xr/vrState.js). Only the game asks: on
+ * some PCs asking wakes the VR runtime (SteamVR), which no other page of the site should do.
+ */
+export function noteVRSupported() {
+    vrSupported = true;
+}
+
+/**
+ * Whether this browser can do VR: a headset's own browser, or one that has said it can start
+ * a VR session. Clicks then leave the page windowed (hooks/useClickToFullscreen.jsx): in a
+ * Pico, fullscreen is its immersive mode, after which VR no longer starts.
+ */
+export function canDoVR() {
+    return vrSupported || isHeadsetBrowser();
+}

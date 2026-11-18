@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createXRStore } from '@react-three/xr';
 import { useStore } from 'zustand';
-import { isHeadsetBrowser } from '../../utils/headsetBrowser.js';
+import { isHeadsetBrowser, noteVRSupported } from '../../utils/headsetBrowser.js';
 import VRFlightStick from './VRFlightStick.jsx';
 import { vrPerformance } from './vrPerformance.js';
 import { createVRStarter } from './vrSession.js';
@@ -137,14 +137,20 @@ export function useVRActive() {
     return useStore(getXRStore(), (state) => state.session != null && state.mode === 'immersive-vr');
 }
 
-/** React: true when this browser can start an immersive VR session (headset connected, or the emulator). */
+/**
+ * React: true when this browser can start an immersive VR session (headset connected, or the
+ * emulator). Also tells the page's click-to-fullscreen to stay off (utils/headsetBrowser.js).
+ */
 export function useVRSupported() {
     const [supported, setSupported] = useState(false);
     useEffect(() => {
         let cancelled = false;
         const xr = typeof navigator !== 'undefined' ? navigator.xr : null;
         if (!xr?.isSessionSupported) return undefined;
-        xr.isSessionSupported('immersive-vr').then((value) => { if (!cancelled) setSupported(value); }).catch(() => {});
+        xr.isSessionSupported('immersive-vr').then((value) => {
+            if (value) noteVRSupported();
+            if (!cancelled) setSupported(value);
+        }).catch(() => {});
         return () => { cancelled = true; };
     }, []);
     return supported;
