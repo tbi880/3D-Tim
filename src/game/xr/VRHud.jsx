@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { BATTLE_ROYALE } from '../config/battleRoyale.js';
 import { CHARACTERS } from '../config/characters.js';
 import { GAME_EVENTS } from '../core/EventBus.js';
 import { translate } from '../i18n/index.js';
@@ -15,6 +16,8 @@ import { abilityStateText } from '../ui/abilityText.js';
 import { drawMarkers, drawRadar } from '../ui/markerRenderer.js';
 import { tutorialKeys, tutorialParams, tutorialText } from '../ui/tutorialText.js';
 import { createCanvasPanel, drawMeter, roundRect, wrapText } from './canvasPanel.js';
+import { isStoryShown } from './menuPlacement.js';
+import { drawStoryCaption, storyCaption } from './vrCaption.js';
 
 /**
  * The flight HUD inside the headset. Everything hangs off the pilot's seat (the player
@@ -85,6 +88,8 @@ const SCORE_FEED_OFFSET = 54;
 const SCORE_ROW_HEIGHT = 22;
 
 const FONT = '"PingFang SC", "Microsoft YaHei", Orbitron, sans-serif';
+/** The last line of the story before a match (it is drawn as the one that matters). */
+const STORY_LAST_LINE = BATTLE_ROYALE.intro.lines.length - 1;
 const percentText = (value) => `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%`;
 
 /** Shared with the controller input: whether the comms line is still being typed out. */
@@ -691,10 +696,19 @@ export default function VRHud({ game, seatRef }) {
 
         // Head-up panes. Hidden when not flying, so nothing needs clearing then - nor while a
         // match's ending plays: it has the view to itself (as on the flat page, ui/GameHud.jsx).
-        const headUp = flying && !store.matchOutro;
+        // So has the story before a match, but for its words: a caption under the line of sight,
+        // on the text pane (xr/vrCaption.js), until the pilot skips it (then it is the menu's).
+        const story = flying && isStoryShown(store);
+        const headUp = flying && !store.matchOutro && store.match?.intro == null;
         markerPane.mesh.visible = headUp;
-        textPane.mesh.visible = headUp;
+        textPane.mesh.visible = headUp || story;
         local.textTimer -= delta;
+        if (story && local.textTimer <= 0) {
+            local.textTimer = 1 / TEXT_RATE;
+            beginLogicalFrame(textPane);
+            drawStoryCaption(textPane.ctx, storyCaption(store.matchIntro, store.match, t, STORY_LAST_LINE), VIEW_LOGICAL[0], FONT);
+            textPane.commit();
+        }
         if (headUp) {
             virtualCamera.matrixWorld.copy(seat.matrixWorld);
             virtualCamera.matrixWorldInverse.copy(seat.matrixWorld).invert();
@@ -707,7 +721,7 @@ export default function VRHud({ game, seatRef }) {
                 drawPaneText(textPane.ctx, store, t, local.time, scoreFeed);
                 textPane.commit();
             }
-        } else {
+        } else if (!story) {
             // Redraw the text as soon as flying resumes.
             local.textTimer = 0;
         }

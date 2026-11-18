@@ -252,6 +252,19 @@ export class ClientMatch {
         this.predictor.reset();
     }
 
+    /**
+     * Gives the picture back to the host (a story the mode told before anybody was anywhere is
+     * over): the stage is emptied, and the next welcome is a whole place again. It is asked for
+     * at once, in case the host's had already come while the stage was the mode's.
+     */
+    leaveStage() {
+        if (!this.staged) return;
+        this.staged = false;
+        this.world.clear();
+        this.welcomed = false;
+        this.lastHelloAt = -Infinity;
+    }
+
     update(dt, controls) {
         const { world } = this;
         this.noteOwnStall();
@@ -263,6 +276,8 @@ export class ClientMatch {
             world.time += dt;
             world.lastStep = dt;
             world.prune();
+            // (A stage set before the host was ever heard from - a story before the match - still needs its welcome.)
+            if (!this.welcomed) this.askAgain();
             return;
         }
         if (!this.welcomed) {
@@ -479,6 +494,8 @@ export class ClientMatch {
             this.welcomed = true;
             this.migrating = false;
             this.applyMatchState(message.match);
+            // Unless that word made the mode give the picture back (`leaveStage`): then this is the place to show.
+            if (!this.staged) this.onWelcome(message);
             return;
         }
         // A welcome is a whole place: whatever was here before is gone.

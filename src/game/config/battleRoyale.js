@@ -53,11 +53,85 @@ export const BATTLE_ROYALE = Object.freeze({
     friendlyFire: true,
 
     /**
-     * Before anybody flies: the story so far and who is on which side. For these seconds the
-     * players are not in the system at all - nothing can touch them - and watch the dying
-     * sun (`sectorId`'s sky) from outside. When it ends every ship drops out of warp at once.
+     * Before anybody flies: the story so far, told as the ending is - a show in two acts that
+     * each device stages for itself (modes/battleRoyale/introShow.js), with a line of words
+     * under it. For these seconds the players are not in the system at all - nothing can touch
+     * them - and look on from outside. The host counts the seconds, so when they are up every
+     * ship drops out of warp at the same moment, whatever a device was showing; and they are up
+     * at once when every player has asked to skip the story (the computer-flown ones are not asked).
+     *
+     * `lines` are the seconds at which each line of the story comes up ('mp.intro.line1'...);
+     * the sides and their pilots stand under the story from `sides` on.
      */
-    intro: Object.freeze({ seconds: 10, sectorId: 'collapse' }),
+    intro: Object.freeze({
+        seconds: 14,
+        lines: Object.freeze([0, 3.5, 7, 9.4, 11.8]),
+        sides: 7,
+        /**
+         * Act one, the dying sun (`sectorId`'s sky: the black hole stands in `hole`'s direction):
+         * seen from `seat` (the sector's own axes), drifting towards the hole at `drift` metres a
+         * second while ships of every side run from it, past the eye and away. One did not get away:
+         * the `straggler` hangs far ahead, engines burning, falling in all the same, and is torn apart.
+         */
+        fall: Object.freeze({
+            seconds: 7,
+            sectorId: 'collapse',
+            hole: Object.freeze([-0.25, 0.14, -1]),
+            seat: Object.freeze([120, 40, 700]),
+            drift: 22,
+            /** The ships that run: [class, side], in the order they pass the eye. */
+            cast: Object.freeze([
+                ['dart', FACTION.DAWN], ['raider', FACTION.UMBRA], ['kestrel', FACTION.PIRATE], ['corvette', FACTION.UMBRA], ['dart', FACTION.DAWN],
+                ['drone', FACTION.UMBRA], ['shrike', FACTION.PIRATE], ['dart', FACTION.DAWN], ['corvette', FACTION.UMBRA], ['raider', FACTION.UMBRA],
+            ]),
+            /**
+             * How fast they come (m/s), how far from the line of sight they pass ([nearest, farthest], a
+             * hull's own radius more for a big one), the shares of `seconds` at which the first and
+             * the last pass the eye, and how far behind it they are let go of.
+             */
+            speed: 330,
+            clear: Object.freeze([45, 230]),
+            passes: Object.freeze([0.16, 1.04]),
+            behind: 500,
+            /**
+             * The one that did not get away: where it starts ([sideways, above, ahead] of the seat, along
+             * the line of sight), how hard it is dragged in (m/s2), the seconds it is drawn out before
+             * it bursts, and the share of `seconds` at which it does.
+             */
+            straggler: Object.freeze({ classId: 'harrier', faction: FACTION.DAWN, from: Object.freeze([-360, 150, 800]), pull: 40, stretch: 1.8, torn: 0.68 }),
+            /** Seconds the picture takes to come up, and to go dark before the next act. */
+            cut: 0.7,
+            dark: 0.5,
+        }),
+        /**
+         * Act two, the way out: the stargate at the last planet, asleep, and the two fleets that
+         * guard it facing each other across the road to it, with the pirates lying low beside
+         * them. Places are in the gate's axes, [sideways, above, back down the approach] in metres.
+         * It ends in the streaks of the jump that brings every ship into the system.
+         */
+        gate: Object.freeze({
+            seconds: 7,
+            seat: Object.freeze([120, -200, 3900]),
+            /** Metres per second the eye closes on the gate. */
+            drift: 35,
+            /** Each side's ships ([class, count] lists, biggest first) and where its fleet waits; `spread` is the box they are scattered in. */
+            fleets: Object.freeze({
+                [FACTION.DAWN]: Object.freeze({ ships: Object.freeze([['harrier', 1], ['dart', 4]]), at: Object.freeze([-520, -100, 2900]), spread: Object.freeze([260, 150, 400]) }),
+                [FACTION.UMBRA]: Object.freeze({ ships: Object.freeze([['warden', 1], ['corvette', 2], ['raider', 3]]), at: Object.freeze([600, 60, 2700]), spread: Object.freeze([280, 160, 420]) }),
+                [FACTION.PIRATE]: Object.freeze({ ships: Object.freeze([['kestrel', 1], ['shrike', 1]]), at: Object.freeze([-40, -330, 3300]), spread: Object.freeze([150, 30, 80]) }),
+            }),
+            /** How far each fleet's noses are turned from the gate towards the road between them (radians). */
+            inward: 0.5,
+            /** The gate stirs in its sleep as the story comes to it: the share of `seconds` at which it flickers, and how strongly. */
+            stir: Object.freeze({ at: 0.36, charge: 0.4, seconds: 1.6 }),
+            /** The black hole, a long way off still, back the way everybody will come (the gate's axes), and how much of the sky it has. */
+            hole: Object.freeze([-0.18, 0.1, -1]),
+            holeSize: 0.02,
+            /** Seconds the picture takes to come up, and the seconds of jump streaks it ends in. */
+            cut: 0.6,
+            warp: 1.6,
+        }),
+    }),
     /**
      * After the match is decided: the ending, played at the stargate before the result screen
      * (modes/battleRoyale/gateCeremony.js). Whoever won flies through the gate; everybody

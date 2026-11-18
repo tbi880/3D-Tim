@@ -9,7 +9,7 @@ import { useLanStore } from '../net/lobby/lanStore.js';
 import { MATCH_PHASE } from '../net/match/matchState.js';
 import { LINK_STATUS } from '../net/transport/PeerLink.js';
 import { PHASE } from '../state/GameSession.js';
-import { matchMenuPlace } from './menuPlacement.js';
+import { isStoryShown, matchMenuPlace } from './menuPlacement.js';
 import { exitVR } from './vrState.js';
 import { drawStarMap, respawnMarks } from './vrStarMap.js';
 
@@ -88,8 +88,8 @@ export function buildMatchMenu(game, state, t, view) {
     }
     if (session.phase !== PHASE.PLAYING || !match.you) return null;
     if (state.matchOutro) return ending(state, t);
-    if (match.intro != null) return introduction(match, t);
     const presenter = session.match?.presenter;
+    if (match.intro != null) return introduction(presenter, state, t);
     if (!presenter) return null;
     if (state.matchPanel === MATCH_PANEL.MAP) return starMap(session, presenter, match, t);
     if (state.matchPanel === MATCH_PANEL.EQUIPMENT) return equipment(presenter, match, t);
@@ -226,9 +226,20 @@ function lobbyRoom(game, state, lanState, t, view, exitItem) {
 
 // ---- The story before a match, and its ending -------------------------------------------------
 
-/** What is happening here, and the three sides with their pilots (ui/multiplayer/MatchCinematic.jsx in the headset). */
-function introduction(match, t) {
-    const lines = [t('mp.intro.story1'), t('mp.intro.story2'), t('mp.intro.story3')];
+/**
+ * The story before a match (ui/multiplayer/MatchCinematic.jsx in the headset). While the pilot
+ * watches it, it plays all round them with its words as a caption (xr/vrCaption.js), so this
+ * panel is not shown (menuPlacement.js): it is open only so that a press of A or a trigger
+ * skips the story. Skipped, it shows what there is to know while the others watch on: the
+ * three sides with their pilots, and how many have skipped.
+ */
+function introduction(presenter, state, t) {
+    const { match } = state;
+    const place = matchMenuPlace(state, false);
+    if (isStoryShown(state)) {
+        return { key: 'match:intro:show', title: '', lines: [], items: [{ label: t('mp.intro.skipVR'), select: () => presenter?.skipIntro() }], footer: '', place };
+    }
+    const lines = [t('mp.intro.line4'), t('mp.intro.line5')];
     for (const side of rosterBySide(match)) {
         const count = side.players.length === 0 ? t('mp.intro.noPilots')
             : side.players.length === 1 ? t('mp.intro.onePilot') : t('mp.intro.pilots', { count: side.players.length });
@@ -236,8 +247,9 @@ function introduction(match, t) {
         const names = side.players.map((player) => player.name).join(', ');
         lines.push(`${t(`mp.faction.${side.faction}`)}${yours} · ${count}${names ? `: ${names}` : ''}`);
     }
+    if (match.skip) lines.push(t('mp.intro.waiting', match.skip));
     lines.push(t('mp.intro.entering', { seconds: match.intro }));
-    return { key: 'match:intro', title: t('mp.intro.title'), lines, items: [], footer: '' };
+    return { key: 'match:intro', title: t('mp.intro.title'), lines, items: [], footer: '', place };
 }
 
 /**

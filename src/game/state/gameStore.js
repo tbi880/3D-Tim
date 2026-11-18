@@ -36,6 +36,12 @@ export const useGameStore = create(() => ({
     matchPanel: null,
     /** VR: a pilot who is down has put their menu away to watch somebody fly (modes/battleRoyale/BattleRoyalePresenter.js setWatchView). */
     matchWatchView: false,
+    /**
+     * The story a match is telling before anybody is in the system ({ act, line, sides, skipped }: the act
+     * on its stage, the line of the story that is up, whether the sides are shown yet, and whether this
+     * player has asked to skip it - modes/battleRoyale/introStage.js), or null.
+     */
+    matchIntro: null,
     /** The ending a match is playing before its result screen ({ winner, won }), or null. */
     matchOutro: null,
 

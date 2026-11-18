@@ -1,36 +1,39 @@
+import { useEffect } from 'react';
 import { BATTLE_ROYALE } from '../../config/battleRoyale.js';
+import { isTouchDevice } from '../../input/device.js';
 import { OUTRO_ACT } from '../../modes/battleRoyale/BattleRoyalePresenter.js';
 import { rosterBySide } from '../../modes/battleRoyale/battleRoyaleState.js';
 import { useGameStore, useT } from '../../state/gameStore.js';
 
 /**
- * The two short ceremonies of a battle royale match, drawn over the 3D view:
+ * The two ceremonies of a battle royale match. Both are shows the 3D view plays; this puts
+ * the words under them, out of their way:
  *
- *  - the introduction (about ten seconds, before anybody is in the system): what is
- *    happening here, why everybody wants the stargate, and the three sides with their pilots;
- *  - the ending (between the deciding moment and the result screen), in two acts that the
- *    3D view plays: at the stargate the winners go through it and everybody else watches it
- *    close; then the black hole takes the system and the fleets left in it. This puts the
- *    words under each.
+ *  - the introduction (before anybody is in the system), in two acts: the dying sun and the
+ *    ships that run from it, then the stargate and the fleets that guard it. Under it the
+ *    story, a line at a time, and from the second act on the three sides with their pilots.
+ *    A key, a click or a tap skips it: the player then looks at the list of the sides, and
+ *    the match starts early once everybody has skipped;
+ *  - the ending (between the deciding moment and the result screen), in two acts too: at the
+ *    stargate the winners go through it and everybody else watches it close; then the black
+ *    hole takes the system and the fleets left in it.
  *
- * Both are timed by the match itself (`match.intro` counts down on the host; the presenter
- * holds `matchOutro` for as long as the ending plays), so every device shows them together.
+ * Both are timed by the match itself (`match.intro` counts down on the host and
+ * `matchIntro` follows it; the presenter holds `matchOutro` for as long as the ending
+ * plays), so every device shows them together.
  */
 
-/**
- * Seconds into the introduction at which each part appears. They follow the match's own
- * countdown, not a clock of this page's, so a device that was slow to draw (or whose page
- * was in the background) shows what everybody else is looking at.
- */
-const INTRO_BEATS = Object.freeze({ story2: 2, story3: 3, sides: 4 });
-const shown = (visible) => (visible ? 'eod-cine-part' : 'eod-cine-part eod-cine-part--waiting');
+const IS_TOUCH = isTouchDevice();
+/** Keys that skip nothing: those that mean nothing by themselves, and those with a job of their own even now (pause, mute, the view). */
+const NOT_SKIP_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab']);
+const NOT_SKIP_CODES = new Set(['Escape', 'KeyP', 'KeyM', 'KeyV', 'KeyC']);
 
 function pilotCount(t, count) {
     if (count === 0) return t('mp.intro.noPilots');
     return count === 1 ? t('mp.intro.onePilot') : t('mp.intro.pilots', { count });
 }
 
-/** One side on the introduction: its name, what it has, and who flies for it. */
+/** One side on the list a player who skipped the story looks at: its name, what it has, and who flies for it. */
 function SideCard({ side, yours, localId }) {
     const t = useT();
     return (
@@ -48,21 +51,73 @@ function SideCard({ side, yours, localId }) {
     );
 }
 
-function MatchIntro({ match }) {
+/** The sides under the story: each one's name and how many fly for it, the player's own marked. */
+function SideChips({ match }) {
     const t = useT();
-    const elapsed = BATTLE_ROYALE.intro.seconds - match.intro;
     return (
-        <div className="eod-cinematic eod-intro">
-            <h2 className="eod-cinematic-title">{t('mp.intro.title')}</h2>
-            <p className="eod-intro-line">{t('mp.intro.story1')}</p>
-            <p className={`eod-intro-line ${shown(elapsed >= INTRO_BEATS.story2)}`}>{t('mp.intro.story2')}</p>
-            <p className={`eod-intro-line eod-intro-line--last ${shown(elapsed >= INTRO_BEATS.story3)}`}>{t('mp.intro.story3')}</p>
-            <ol className={`eod-intro-sides ${shown(elapsed >= INTRO_BEATS.sides)}`}>
-                {rosterBySide(match).map((side) => (
-                    <SideCard key={side.faction} side={side} yours={side.faction === match.you?.faction} localId={match.localId} />
-                ))}
-            </ol>
-            <p className="eod-cinematic-footnote">{t('mp.intro.entering', { seconds: match.intro })}</p>
+        <ol className="eod-intro-chips">
+            {rosterBySide(match).map((side) => {
+                const yours = side.faction === match.you?.faction;
+                return (
+                    <li key={side.faction} className={`eod-intro-chip ${yours ? 'eod-intro-chip--yours' : ''}`}>
+                        {yours && <em>{t('mp.intro.yours')}</em>}
+                        <strong className={`eod-side--${side.faction}`}>{t(`mp.faction.${side.faction}`)}</strong>
+                        <span>{pilotCount(t, side.players.length)}</span>
+                    </li>
+                );
+            })}
+        </ol>
+    );
+}
+
+/**
+ * The introduction's words. `intro` is where the story stands on this device's stage
+ * (`matchIntro` of the game store); `match.intro` the host's count of the seconds left.
+ */
+function MatchIntro({ match, intro, session }) {
+    const t = useT();
+    const { skipped } = intro;
+
+    // (A key or click in the story's first moment is not taken for a wish to skip it: introStage.js.)
+    const skip = () => session.match?.presenter?.skipIntro?.();
+    useEffect(() => {
+        if (skipped) return undefined;
+        const onKey = (event) => {
+            if (event.repeat || NOT_SKIP_KEYS.has(event.key) || NOT_SKIP_CODES.has(event.code) || /^F\d+$/.test(event.key)) return;
+            session.match?.presenter?.skipIntro?.();
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [session, skipped]);
+
+    const entering = t('mp.intro.entering', { seconds: match.intro });
+    const votes = match.skip ?? { voted: 0, voters: 0 };
+    if (skipped) {
+        // Skipped: the show goes on behind, dimmed, until everybody is ready; meanwhile, who is on which side.
+        return (
+            <div className="eod-cinematic eod-intro">
+                <h2 className="eod-cinematic-title">{t('mp.intro.title')}</h2>
+                <p className="eod-intro-line">{t('mp.intro.line4')}</p>
+                <p className="eod-intro-line eod-intro-line--last">{t('mp.intro.line5')}</p>
+                <ol className="eod-intro-sides">
+                    {rosterBySide(match).map((side) => (
+                        <SideCard key={side.faction} side={side} yours={side.faction === match.you?.faction} localId={match.localId} />
+                    ))}
+                </ol>
+                <p className="eod-cinematic-footnote">{t('mp.intro.waiting', votes)} · {entering}</p>
+            </div>
+        );
+    }
+    const last = intro.line === BATTLE_ROYALE.intro.lines.length - 1;
+    return (
+        <div className="eod-cinematic eod-intro eod-intro--show" onClick={skip}>
+            {intro.line === 0 && <h2 className="eod-cinematic-title">{t('mp.intro.title')}</h2>}
+            {/* Keyed by the line, so each comes in afresh. */}
+            <p key={intro.line} className={`eod-intro-caption ${last ? 'eod-intro-caption--last' : ''}`}>{t(`mp.intro.line${intro.line + 1}`)}</p>
+            {intro.sides && <SideChips match={match} />}
+            <p className="eod-cinematic-footnote">
+                {t(IS_TOUCH ? 'mp.intro.skipTouch' : 'mp.intro.skip')} · {votes.voted > 0 ? `${t('mp.intro.votes', votes)} · ` : ''}{entering}
+            </p>
         </div>
     );
 }
@@ -84,11 +139,15 @@ function MatchOutro({ outro }) {
     );
 }
 
-/** Shows whichever ceremony is on; nothing during ordinary play. */
-export default function MatchCinematic() {
+/**
+ * Shows whichever ceremony is on; nothing during ordinary play.
+ * @param {{ session: import('../../state/GameSession.js').GameSession }} props
+ */
+export default function MatchCinematic({ session }) {
     const match = useGameStore((state) => state.match);
+    const intro = useGameStore((state) => state.matchIntro);
     const outro = useGameStore((state) => state.matchOutro);
     if (outro) return <MatchOutro outro={outro} />;
-    if (match?.intro != null && match.players) return <MatchIntro match={match} />;
+    if (intro && match?.intro != null && match.players) return <MatchIntro match={match} intro={intro} session={session} />;
     return null;
 }

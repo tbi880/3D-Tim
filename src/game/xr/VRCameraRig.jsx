@@ -11,7 +11,7 @@ import { useGameStore } from '../state/gameStore.js';
 import { createCanvasPanel } from './canvasPanel.js';
 import VRHud, { vrComms } from './VRHud.jsx';
 import { VRMenu } from './VRMenu.js';
-import { MENU_METERS, MENU_POSITION, MENU_TEXTURE, isMenuShown } from './menuPlacement.js';
+import { MENU_METERS, MENU_POSITION, MENU_TEXTURE, isMenuShown, isStoryShown } from './menuPlacement.js';
 import { XRGamepadInput } from './XRGamepadInput.js';
 import { guardXRFrames } from './frameGuard.js';
 import { vrBenchmark } from './vrBenchmark.js';
@@ -241,7 +241,7 @@ export default function VRCameraRig({ game }) {
         menuTimer.current -= delta;
         // A new screen - a menu opening, the session's phase - is drawn and shown (or not) at
         // once, not up to a redraw interval later with the old one's picture.
-        const screen = `${phase}|${Boolean(state.matchOutro)}`;
+        const screen = `${phase}|${Boolean(state.matchOutro)}|${isStoryShown(state)}`;
         if (menu.dirty || menuTimer.current <= 0 || screen !== menuScreen.current) {
             menuScreen.current = screen;
             menuTimer.current = MENU_REDRAW_INTERVAL;

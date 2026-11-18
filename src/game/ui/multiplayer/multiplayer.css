@@ -312,6 +312,17 @@
 .eod-intro-count { margin-top: 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(225, 240, 255, 0.75); }
 .eod-intro-side ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 12px; margin: 2px 0 0; padding: 0; list-style: none; font-size: 13px; }
 .eod-intro-me { color: var(--eod-amber); font-weight: 700; }
+/* The story is played in the 3D view: its words stand under it, out of its way, and the whole screen is the way to skip it. */
+.eod-intro--show { justify-content: flex-end; padding-bottom: 7vh; background: linear-gradient(to top, rgba(3, 8, 16, 0.7) 0%, rgba(3, 8, 16, 0) 40%); cursor: pointer; }
+.eod-intro--show .eod-cinematic-title { position: absolute; top: 15vh; left: 0; right: 0; padding: 0 16px; animation: eod-intro-title 3.4s ease-out both; }
+.eod-intro-caption { margin: 0; max-width: 780px; font-size: clamp(15px, 2.1vw, 22px); line-height: 1.5; color: rgba(236, 246, 255, 0.96); text-shadow: 0 0 12px #000, 0 1px 2px #000; animation: eod-cine-in 0.7s ease-out both; }
+.eod-intro-caption--last { color: var(--eod-amber); font-weight: 700; }
+.eod-intro-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 4px 0 0; padding: 0; list-style: none; animation: eod-cine-in 0.7s ease-out both; }
+.eod-intro-chip { display: flex; align-items: baseline; gap: 8px; padding: 5px 12px; font-size: 12px; color: rgba(225, 240, 255, 0.8); background: rgba(3, 8, 16, 0.55); border: 1px solid var(--eod-border); }
+.eod-intro-chip strong { letter-spacing: 0.12em; text-transform: uppercase; }
+.eod-intro-chip em { padding: 1px 6px; font-size: 9px; font-style: normal; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #05101c; background: var(--eod-amber); }
+.eod-intro-chip--yours { border-color: var(--eod-amber); }
+@keyframes eod-intro-title { from { opacity: 0; letter-spacing: 0.05em; } 14% { opacity: 1; } 78% { opacity: 1; } to { opacity: 0; letter-spacing: 0.26em; } }
 
 /* The ending is played in the 3D view, at the stargate: the words stand under it, out of its way. */
 .eod-outro { justify-content: flex-end; padding-bottom: 11vh; }
@@ -333,4 +344,7 @@
     .eod-intro-line { font-size: 12px; line-height: 1.35; }
     .eod-intro-side { padding: 10px 8px 6px; }
     .eod-intro-side strong { font-size: 13px; }
+    .eod-intro--show { padding-bottom: 5vh; }
+    .eod-intro--show .eod-cinematic-title { top: 9vh; }
+    .eod-intro-chip { padding: 3px 9px; font-size: 11px; }
 }

@@ -15,6 +15,10 @@ import { EQUIPMENT, EQUIPMENT_ORDER } from './equipment.js';
  *   winner,               the winning side once the match is over, or null (nobody won)
  *   time,                 seconds played
  *   intro,                seconds of introduction left (nobody is in the system yet), or null once it is over
+ *   skip: {               while the introduction is on (else null): it ends early once every player has asked to skip it
+ *     voted, voters,      how many players have asked, of how many (the computer-flown ones are not asked)
+ *     you,                whether this player has
+ *   },
  *   finalStand,           seconds left of the last planet's stand, or null before it
  *   out: [faction],       the sides that are out (every pilot of theirs was down at once)
  *   you: {
@@ -178,6 +182,9 @@ export function sanitizeBattleRoyaleState(raw) {
         winner: sideOrNull(raw.winner),
         time: count(raw.time),
         intro: seconds(raw.intro),
+        skip: seconds(raw.intro) !== null && raw.skip && typeof raw.skip === 'object'
+            ? { voted: count(raw.skip.voted), voters: count(raw.skip.voters), you: Boolean(raw.skip.you) }
+            : null,
         finalStand: seconds(raw.finalStand),
         out: Array.isArray(raw.out) ? [...new Set(raw.out.map(sideOrNull).filter(Boolean))] : [],
         you: cleanYou(raw.you),

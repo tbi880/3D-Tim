@@ -54,6 +54,8 @@ function AbilityButton({ session }) {
 export default function TouchControls({ input, session }) {
     const t = useT();
     const phase = useGameStore((state) => state.phase);
+    // A match's introduction and ending have the screen to themselves (as in ui/GameHud.jsx): there is nothing to fly.
+    const ceremony = useGameStore((state) => Boolean(state.matchOutro) || state.match?.intro != null);
     const [knob, setKnob] = useState({ x: 0, y: 0 });
     const origin = useRef(null);
     const lockTimer = useRef(null);
@@ -74,7 +76,7 @@ export default function TouchControls({ input, session }) {
         };
     }, [input]);
 
-    if (phase !== PHASE.PLAYING) return null;
+    if (phase !== PHASE.PLAYING || ceremony) return null;
 
     const moveStick = (event) => {
         if (!origin.current) return;

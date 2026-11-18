@@ -379,7 +379,7 @@ function MatchPanels({ session }) {
     const panel = useGameStore((state) => state.matchPanel);
     return (
         <>
-            <MatchCinematic />
+            <MatchCinematic session={session} />
             <RefitPanel session={session} />
             {panel === MATCH_PANEL.MAP && <StarMapPanel session={session} />}
             {panel === MATCH_PANEL.EQUIPMENT && <EquipmentPanel session={session} />}

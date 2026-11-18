@@ -11,6 +11,7 @@ import { BR_EVENT, BR_REQUEST } from './battleRoyaleProtocol.js';
 import { PLANET_STATUS } from './collapse.js';
 import { isEquipment } from './equipment.js';
 import { GateCeremony } from './gateCeremony.js';
+import { IntroStage } from './introStage.js';
 import { STATION_TAG, buildGate, gatePose, stationPose } from './station.js';
 import { SystemFall } from './systemFall.js';
 
@@ -66,6 +67,8 @@ export class BattleRoyalePresenter {
         this.refitOpen = false;
         /** Whether the introduction is on screen (null before the first state has said). */
         this.introShowing = null;
+        /** The introduction as this device stages it (introStage.js), while it is on; else null. */
+        this.intro = null;
         /** The ending being played: { act, elapsed, seconds, won, state, showResults, stage }, or null. */
         this.outro = null;
         /** True from the moment the match is decided: the picture is the ending's from then on. */
@@ -90,18 +93,48 @@ export class BattleRoyalePresenter {
         this.client = client;
         this.session = session;
         // Until the introduction is over the player is nowhere: the view is the dying sun, from outside.
-        session.world.setSector(BATTLE_ROYALE.intro.sectorId);
+        session.world.setSector(BATTLE_ROYALE.intro.fall.sectorId);
     }
 
     // ---- The introduction and the ending -------------------------------------------------------
 
-    /** Music and a cue as the introduction starts, and again as the ships enter the system. */
+    /**
+     * The introduction, as the host's word has it: while it is on, this device's picture is the
+     * story's (introStage.js sets the stage, frame by frame, to the host's count of the seconds);
+     * the moment the host says it is over the picture is given back, for the place the player's
+     * ship arrives at. Music and a cue as it starts, and again as the ships enter the system.
+     */
     followIntro(state) {
         const showing = state.intro !== null && state.phase === MATCH_PHASE.PLAYING;
-        if (showing === this.introShowing) return;
-        this.introShowing = showing;
-        this.session.playMusic(showing ? 'calm' : 'battle');
-        if (showing) this.session.playCue(CUE.INTRO);
+        if (showing !== this.introShowing) {
+            this.introShowing = showing;
+            this.session.playMusic(showing ? 'calm' : 'battle');
+            if (showing) {
+                this.session.playCue(CUE.INTRO);
+                this.intro = new IntroStage({ client: this.client, session: this.session });
+            } else {
+                this.endIntro();
+            }
+        }
+        if (showing) this.intro.hear(state);
+    }
+
+    /**
+     * The introduction is over: its stage is struck. Every ship enters the system out of a jump,
+     * so whatever the story was showing, the picture goes out in the jump's streaks - they let go
+     * as the place the player arrives at comes up (`onZoneEntered`).
+     */
+    endIntro() {
+        if (!this.intro) return;
+        this.intro.end();
+        this.intro = null;
+        const seconds = BATTLE_ROYALE.intro.gate.warp;
+        this.warp = { phase: 'spool', elapsed: seconds, seconds };
+    }
+
+    /** The player would rather not watch the introduction (a key, a click, a press of A): it ends for everybody once every player has said so. */
+    skipIntro() {
+        this.intro?.skip();
     }
 
     /**
@@ -582,6 +615,11 @@ export class BattleRoyalePresenter {
             this.updateOutro(dt);
             return;
         }
+        // The story before the match has the picture to itself, as the ending has.
+        if (this.intro) {
+            this.intro.update(dt);
+            return;
+        }
         // Once the match is decided the picture is the ending's stage, and stays as it left it.
         if (this.session && !this.decided) {
             this.markDock();
@@ -626,6 +664,10 @@ export class BattleRoyalePresenter {
         }
         this.warp = null;
         this.outro = null;
+        if (this.intro) {
+            this.intro = null;
+            this.session?.ui.set({ matchIntro: null });
+        }
         this.decided = false;
         this.openPanel = null;
         this.refitOpen = false;

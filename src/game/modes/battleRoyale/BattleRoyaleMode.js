@@ -108,17 +108,21 @@ class Place {
  * and their hangars), equipment (what pilots carry),
  * bots (the computer-flown players), strategy (where each side's bots and reinforcements go)
  * and squads (reinforcements on the move). The ending is the presenter's (gateCeremony.js, then systemFall.js): the rules only say who won.
+ * So is the story before the match (introShow.js, introStage.js): the rules only count its seconds - or end it when every player has asked.
  */
 export class BattleRoyaleMode {
     /**
      * @param {object} info the match as normalizeMatchInfo returns it. `settings.pace` picks its
      *        length; `settings.intro = 'skip'` starts without the introduction (tests, mostly).
+     *        (Players skip it together, by asking: `skipIntro`.)
      */
     constructor(info) {
         this.info = info;
         this.pace = BATTLE_ROYALE.paces[info.settings.pace] ?? BATTLE_ROYALE.paces[BATTLE_ROYALE.defaultPace];
         /** Seconds of introduction left; nobody is in the system until it reaches zero. */
         this.introLeft = info.settings.intro === 'skip' ? 0 : BATTLE_ROYALE.intro.seconds;
+        /** Ids of the players who have asked to skip the introduction: it ends once every player has (`checkIntroSkips`). */
+        this.introSkips = new Set();
         /** Server time at which the ships entered the system: the collapse counts from there. */
         this.startedAt = 0;
         this.rng = createRng(info.seed);
@@ -246,6 +250,7 @@ export class BattleRoyaleMode {
         const { time } = this.server;
         return {
             introLeft: Math.max(0, this.introLeft),
+            introSkips: [...this.introSkips],
             startedAt: this.startedAt,
             result: this.result,
             sidesAtStart: [...this.sidesAtStart],
@@ -299,6 +304,7 @@ export class BattleRoyaleMode {
         const planetId = (value) => (map.has(value) ? value : null);
 
         this.introLeft = Math.max(0, seconds(data.introLeft));
+        this.introSkips = new Set((Array.isArray(data.introSkips) ? data.introSkips : []).filter((id) => server.pilots.has(id)));
         this.startedAt = seconds(data.startedAt);
         this.result = data.result && typeof data.result === 'object' ? { winner: side(data.result.winner) } : null;
         this.sidesAtStart = new Set((Array.isArray(data.sidesAtStart) ? data.sidesAtStart : []).map(side).filter(Boolean));
@@ -961,7 +967,11 @@ export class BattleRoyaleMode {
             this.pickEquipment(contestant, data.item);
             return;
         }
-        if (this.introLeft > 0) return;
+        if (this.introLeft > 0) {
+            // Nothing else can be asked for while the story is told - but not to be told it.
+            if (name === BR_REQUEST.SKIP_INTRO) this.skipIntro(pilot);
+            return;
+        }
         switch (name) {
             case BR_REQUEST.JUMP: this.requestJump(contestant, data.to); break;
             case BR_REQUEST.REFIT: this.spendPoints(contestant, data.added); break;
@@ -1164,6 +1174,40 @@ export class BattleRoyaleMode {
         contestant.watching = null;
         contestant.jump = null;
         this.undock(contestant);
+        // Whoever was still watching the story is no longer waited for.
+        this.checkIntroSkips();
+    }
+
+    // ---- The introduction --------------------------------------------------------------------
+
+    /** The players the introduction is told to: every one with a device behind them who is still in the match. */
+    introAudience() {
+        return [...this.server.pilots.values()].filter((pilot) => !pilot.bot && !pilot.gone);
+    }
+
+    /** A player would rather not watch the introduction. It goes on for the others - until nobody is left watching. */
+    skipIntro(pilot) {
+        if (this.introLeft <= 0 || pilot.bot || pilot.gone || this.introSkips.has(pilot.id)) return;
+        this.introSkips.add(pilot.id);
+        this.checkIntroSkips();
+        // (Entering the system has told everybody already.)
+        if (this.introLeft > 0) this.server.publishState();
+    }
+
+    /**
+     * Ends the introduction at once when every player has asked to skip it: everybody enters
+     * the system at this same moment, as they would have when its seconds ran out.
+     */
+    checkIntroSkips() {
+        if (this.introLeft <= 0 || this.introSkips.size === 0) return;
+        if (this.introAudience().every((pilot) => this.introSkips.has(pilot.id))) this.enterSystem();
+    }
+
+    /** How the skipping of the introduction stands, for one player: how many have asked of how many, and whether they have. Null once it is over. */
+    describeSkips(pilot) {
+        if (this.introLeft <= 0) return null;
+        const audience = this.introAudience();
+        return { voted: audience.filter((other) => this.introSkips.has(other.id)).length, voters: audience.length, you: this.introSkips.has(pilot.id) };
     }
 
     // ---- Winning -----------------------------------------------------------------------------
@@ -1254,6 +1298,7 @@ export class BattleRoyaleMode {
             winner: this.result?.winner ?? null,
             time: Math.round(time),
             intro: this.introLeft > 0 ? Math.ceil(this.introLeft) : null,
+            skip: this.describeSkips(pilot),
             finalStand: this.clock.finalStandLeft === null ? null : Math.ceil(this.clock.finalStandLeft),
             out: [...this.outSides],
             you: you && {

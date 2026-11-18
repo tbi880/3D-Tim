@@ -22,6 +22,8 @@ export const BR_REQUEST = Object.freeze({
     PICK: 'pick',
     /** { to: planetId } - launch a beacon at a neighbouring planet */
     BEACON: 'beacon',
+    /** {} - before the ships enter the system: this player would rather not watch the story (it ends early once every player has asked) */
+    SKIP_INTRO: 'skipIntro',
 });
 
 /** Things the rules announce (WORLD_EVENT.MODE entries). */

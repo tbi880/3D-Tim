@@ -2925,7 +2925,7 @@ test('a player who leaves during the introduction never enters the system', () =
 test('the introduction is not shortened by a quick match', () => {
     const { mode } = createTestServer(['a'], { start: { settings: { intro: 'play', pace: 'quick' } } });
     assert.equal(mode.introLeft, BATTLE_ROYALE.intro.seconds);
-    assert.equal(BATTLE_ROYALE.intro.seconds, 10);
+    assert.equal(BATTLE_ROYALE.intro.seconds, 14);
 });
 
 test('on each device the introduction shows the sides and their pilots before any ship exists', () => {
@@ -2938,10 +2938,11 @@ test('on each device the introduction shows the sides and their pilots before an
 
     for (const device of match.devices) {
         const state = device.ui.match;
-        assert.ok(state.intro >= 8 && state.intro <= 9, `${device.id} is counting down`);
-        assert.equal(device.world.player, null, 'not in the system');
-        assert.equal(device.world.ships.length, 0);
-        assert.equal(device.world.sectorId, BATTLE_ROYALE.intro.sectorId, 'looking at the dying sun');
+        assert.ok(state.intro >= BATTLE_ROYALE.intro.seconds - 2 && state.intro <= BATTLE_ROYALE.intro.seconds - 1, `${device.id} is counting down`);
+        // (What the device does show meanwhile - the story's own stage - is in matchIntro.test.js.)
+        assert.ok(!device.world.player?.alive, 'not in the system');
+        assert.equal(device.world.ships.some((ship) => ship.pilotId != null), false, 'nor is anybody else');
+        assert.equal(device.world.sectorId, BATTLE_ROYALE.intro.fall.sectorId, 'looking at the dying sun');
         assert.equal(device.session.phase, 'playing');
         const roster = rosterBySide(state);
         assert.deepEqual(roster.map((side) => side.faction), [DAWN, UMBRA, PIRATE]);
