@@ -89,11 +89,13 @@ test('so do the stargate\'s, in strength', () => {
     notOneSided(battles(GARRISONS.gate[DAWN], GARRISONS.gate[UMBRA]), 'the gate');
 });
 
-test('a pilot at the dock is under about the same fire from either side\'s garrison', () => {
+test('a pilot at the dock is under fire of the same order from either side\'s garrison, the Umbra\'s the gentler', () => {
+    // (Gentler on purpose: Tim asked for the Umbra's swarms to go easier on pilots - classes raider / drone pilotDamage.)
     for (const [what, lists] of [['an ordinary planet', GARRISONS], ['the gate', GARRISONS.gate]]) {
         const dawn = fireAtTheDock(DAWN, lists[DAWN]);
         const umbra = fireAtTheDock(UMBRA, lists[UMBRA]);
         assert.ok(dawn > 5 && umbra > 5, `${what}: the garrisons do fire (${dawn.toFixed(1)}, ${umbra.toFixed(1)})`);
-        assert.ok(Math.max(dawn, umbra) / Math.min(dawn, umbra) < 1.6, `${what}: Federation ${dawn.toFixed(1)}/s, Umbra ${umbra.toFixed(1)}/s`);
+        const ratio = dawn / umbra;
+        assert.ok(ratio > 1 && ratio < 2, `${what}: Federation ${dawn.toFixed(1)}/s, Umbra ${umbra.toFixed(1)}/s`);
     }
 });
