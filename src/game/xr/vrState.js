@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createXRStore } from '@react-three/xr';
 import { useStore } from 'zustand';
+import { isHeadsetBrowser } from '../../utils/headsetBrowser.js';
 import VRFlightStick from './VRFlightStick.jsx';
 import { vrPerformance } from './vrPerformance.js';
 import { createVRStarter } from './vrSession.js';
@@ -39,8 +40,6 @@ let store = null;
 let xrManager = null;
 const starter = createVRStarter();
 
-const HEADSET_BROWSER = /Pico|OculusBrowser|Quest|\bVR\b/i;
-
 /**
  * Whether the game's WebGL canvas should be created with antialiasing.
  *
@@ -51,7 +50,7 @@ const HEADSET_BROWSER = /Pico|OculusBrowser|Quest|\bVR\b/i;
  * a headset's own browser (Pico, Quest), where VR is what the page is opened for.
  */
 export function canvasAntialias() {
-    return typeof navigator !== 'undefined' && HEADSET_BROWSER.test(navigator.userAgent);
+    return isHeadsetBrowser();
 }
 
 /**

@@ -1,6 +1,14 @@
+import { isHeadsetBrowser } from './headsetBrowser.js';
+
 /**
  * Cross-browser fullscreen helpers. Browsers only allow entering fullscreen from a user
  * gesture (a click, tap or key press), so call `enterFullscreen` from such a handler.
+ *
+ * Never in a VR headset's own browser: the Pico's browser shows a fullscreen page in its
+ * cinema-like "immersive mode" (沉浸模式), and once the page has been there the headset
+ * refuses VR sessions ("The specified session configuration is not supported", Tim's Pico on
+ * 2026-11-18, on the live site, where every click asked for fullscreen). The page already has
+ * a screen of its own in a headset, so fullscreen gains nothing there.
  */
 
 let pending = false;
@@ -28,12 +36,13 @@ export function isFullscreenSupported() {
 
 /**
  * Asks the browser to show the whole page fullscreen. Does nothing if it already is, if a
- * request is still in flight, or if the browser has no fullscreen support.
+ * request is still in flight, if the browser has no fullscreen support, or in a VR headset's
+ * browser (see above).
  * @returns {Promise<boolean>} whether the page ended up fullscreen
  */
 export async function enterFullscreen(element = document.documentElement) {
     if (getFullscreenElement()) return true;
-    if (pending || !isFullscreenSupported()) return false;
+    if (pending || isHeadsetBrowser() || !isFullscreenSupported()) return false;
     const request = element.requestFullscreen ?? element.webkitRequestFullscreen ?? element.mozRequestFullScreen ?? element.msRequestFullscreen;
     pending = true;
     try {
