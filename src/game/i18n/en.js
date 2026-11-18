@@ -771,7 +771,6 @@ export default {
     'mp.vr.watch': 'Watch · {name}',
     'mp.vr.watchStop': 'Stop watching',
     'mp.vr.watchMenuHint': 'A: the menu',
-    'mp.vr.resultBehind': 'The results are behind you · look over your shoulder',
     'mp.equipment.chosen': 'Your choice',
     'mp.refit.text': 'Taking a planet pays in refit points. Each one raises a rating of the {ship} by a level, up to 10, for the rest of the match.',
     'mp.refit.note': 'Installed at once. The ship flies on by itself while this is open.',

@@ -771,7 +771,6 @@ export default {
     'mp.vr.watch': '观看 · {name}',
     'mp.vr.watchStop': '停止观看',
     'mp.vr.watchMenuHint': '按 A 打开菜单',
-    'mp.vr.resultBehind': '比赛结算在你身后 · 回头查看',
     'mp.equipment.chosen': '你的选择',
     'mp.refit.text': '占领行星可以获得改装点数。每一点让{ship}的一项性能提升一级，最高 10 级，本局内一直有效。',
     'mp.refit.note': '立即生效。打开这个窗口时座舰会自行直飞。',

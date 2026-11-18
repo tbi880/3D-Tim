@@ -10,8 +10,8 @@ import { MATCH_ACTION } from '../modes/battleRoyale/BattleRoyalePresenter.js';
 import { useGameStore } from '../state/gameStore.js';
 import { createCanvasPanel } from './canvasPanel.js';
 import VRHud, { vrComms } from './VRHud.jsx';
-import { VRMenu, drawBehindHint } from './VRMenu.js';
-import { BEHIND_HINT, MENU_MESHES, MENU_METERS, MENU_PLACE, MENU_TEXTURE, placeMenuMeshes, showsBehindHint } from './menuPlacement.js';
+import { VRMenu } from './VRMenu.js';
+import { MENU_METERS, MENU_POSITION, MENU_TEXTURE, isMenuShown } from './menuPlacement.js';
 import { XRGamepadInput } from './XRGamepadInput.js';
 import { guardXRFrames } from './frameGuard.js';
 import { vrBenchmark } from './vrBenchmark.js';
@@ -78,29 +78,7 @@ export default function VRCameraRig({ game }) {
 
     const menu = useMemo(() => new VRMenu(game), [game]);
     const menuPanel = useMemo(() => createCanvasPanel({ gl, width: MENU_TEXTURE[0], height: MENU_TEXTURE[1], meters: MENU_METERS, renderOrder: 1003 }), [gl]);
-    // The panel's mesh, and copies of it sharing its picture for a place that hangs it twice
-    // (behind the pilot, over each shoulder: xr/menuPlacement.js). One canvas, one upload.
-    const menuMeshes = useMemo(() => {
-        const meshes = [menuPanel.mesh];
-        while (meshes.length < MENU_MESHES) {
-            const copy = new THREE.Mesh(menuPanel.mesh.geometry, menuPanel.mesh.material);
-            copy.renderOrder = menuPanel.mesh.renderOrder;
-            copy.frustumCulled = false;
-            meshes.push(copy);
-        }
-        placeMenuMeshes(meshes, MENU_PLACE.FRONT, false);
-        return meshes;
-    }, [menuPanel]);
-    // The line in front that says the result is behind the pilot (xr/menuPlacement.js).
-    const hintPanel = useMemo(() => {
-        const panel = createCanvasPanel({ gl, width: BEHIND_HINT.texture[0], height: BEHIND_HINT.texture[1], meters: BEHIND_HINT.meters, renderOrder: 1003, uploadOnlyChanges: true });
-        panel.mesh.visible = false;
-        return panel;
-    }, [gl]);
-    useEffect(() => () => {
-        menuPanel.dispose();
-        hintPanel.dispose();
-    }, [menuPanel, hintPanel]);
+    useEffect(() => () => menuPanel.dispose(), [menuPanel]);
 
     const gamepads = useMemo(() => {
         const { session, input } = game;
@@ -255,25 +233,20 @@ export default function VRCameraRig({ game }) {
         const { phase } = game.session;
         const open = menu.isOpen(state);
         if (!open) {
-            placeMenuMeshes(menuMeshes, menu.place, false);
-            hintPanel.mesh.visible = false;
+            menuPanel.mesh.visible = false;
             menuScreen.current = null;
             return;
         }
         menu.tick(state);
         menuTimer.current -= delta;
-        // A new screen - a menu opening, the session's phase, the ending's second act - is drawn
-        // and hung in its place at once, not up to a redraw interval later in the old one's.
-        const screen = `${phase}|${state.matchOutro?.act ?? ''}`;
+        // A new screen - a menu opening, the session's phase - is drawn and shown (or not) at
+        // once, not up to a redraw interval later with the old one's picture.
+        const screen = `${phase}|${Boolean(state.matchOutro)}`;
         if (menu.dirty || menuTimer.current <= 0 || screen !== menuScreen.current) {
             menuScreen.current = screen;
             menuTimer.current = MENU_REDRAW_INTERVAL;
-            const t = (key, params) => translate(state.settings.locale, key, params);
-            menu.draw(menuPanel, state, t);
-            placeMenuMeshes(menuMeshes, menu.place);
-            const hint = showsBehindHint(menu.place, phase === PHASE.MATCH_OVER);
-            if (hint) drawBehindHint(hintPanel, t, menu.tone);
-            hintPanel.mesh.visible = hint;
+            menu.draw(menuPanel, state, (key, params) => translate(state.settings.locale, key, params));
+            menuPanel.mesh.visible = isMenuShown(menu.place);
         }
     });
 
@@ -283,8 +256,7 @@ export default function VRCameraRig({ game }) {
             {active && (
                 <>
                     <VRHud game={game} seatRef={seatRef} />
-                    {menuMeshes.map((mesh) => <primitive key={mesh.uuid} object={mesh} />)}
-                    <primitive object={hintPanel.mesh} position={BEHIND_HINT.position} rotation={[BEHIND_HINT.tilt, 0, 0]} />
+                    <primitive object={menuPanel.mesh} position={MENU_POSITION} />
                 </>
             )}
         </group>

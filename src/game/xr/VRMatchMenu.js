@@ -241,8 +241,9 @@ function introduction(match, t) {
 }
 
 /**
- * What the ending says, act by act as the flat page's cinematic does. It hangs behind the
- * pilot (menuPlacement.js): the show is straight ahead.
+ * The ending: the show plays straight ahead with nothing over it, so this panel is not shown
+ * (menuPlacement.js). It is open all the same, so that the controllers work the menu, not the
+ * ship; the result comes up in front once the show is over.
  */
 function ending(state, t) {
     const outro = state.matchOutro;
@@ -257,7 +258,6 @@ function ending(state, t) {
         footer: '',
         tone: outro.won ? 'victory' : 'failure',
         place: matchMenuPlace(state, false),
-        large: true,
     };
 }
 
@@ -455,7 +455,7 @@ function watchRows(presenter, match, t) {
     return rows;
 }
 
-/** The result, with the way back to the lobby; after an ending it stays behind the pilot where the ending was. */
+/** The result, with the way back to the lobby. */
 function result(lan, lanState, state, t, exitItem) {
     const { match } = state;
     const disconnected = match.phase === MATCH_PHASE.DISCONNECTED;

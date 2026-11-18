@@ -47,9 +47,8 @@ through and everybody else watches it close. Then the black hole takes the syste
 ones - are dragged in, drawn out (`ship.tidal`) and torn apart with the game's ordinary
 explosions, the station breaks up, and the dark fills the sky. The winners see it from
 outside, everybody else from their cockpit until their own ship goes. Only then the result. In a
-headset nothing hangs in front of the show: what the ending says, and then the result with
-its buttons, are on the cabin's rear wall over each shoulder (`xr/menuPlacement.js`; the seat
-fills the view straight back), and once the result is up a short line in front says so.
+headset nothing is put over the show - no panel, no head-up text (`xr/menuPlacement.js`) - and
+the result comes up in front once it is over.
 
 Every planet's station is guarded by computer-flown ships (`BATTLE_ROYALE.garrisons`): the
 Federation's frigates and darts wait inside the ring, and so do the Umbra's corvettes and
