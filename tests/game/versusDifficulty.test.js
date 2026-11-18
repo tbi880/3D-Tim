@@ -83,7 +83,7 @@ test('a computer-flown ship of either side hurts a player as much as the story\'
     // The pilot's own power mode still counts, on top.
     const braced = put(world, 'kestrel', DAWN);
     braced.powerMode = 'defense';
-    close(dealt(world, braced, put(world, 'raider', UMBRA)), 10 * ADMIRAL.damageTaken * POWER_MODES.defense.damageTaken, 'defense mode');
+    close(dealt(world, braced, put(world, 'raider', UMBRA)), 10 * ADMIRAL.damageTaken * POWER_MODES.defense.damageTaken * share('raider', 'pilotDamage'), 'defense mode');
 });
 
 test('a player\'s guns do a quarter of their damage to another player\'s ship, and all of it to anything else', () => {
@@ -240,7 +240,7 @@ test('a class\'s own shares: what it soaks up, what it fires, and what of that a
         assert.ok(hits.warheads.length > 0, 'the raider hits');
         return { warhead: hits.warheads[0], taken: hits.taken[0] };
     };
-    const plain = perHit(VERSUS);
+    const plain = perHit({ ...VERSUS, classes: {} });
     close(plain.warhead, WEAPONS.raiderBolt.damage, 'a bolt as it is');
     close(perHit({ ...VERSUS, classes: { raider: { damage: 3 } } }).warhead, 3 * plain.warhead, 'three times the bolt');
     close(perHit({ ...VERSUS, classes: { raider: { damage: 3 } } }).taken, 3 * plain.taken, 'and three times what the pilot loses');

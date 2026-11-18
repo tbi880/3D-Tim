@@ -522,10 +522,10 @@ export const BATTLE_ROYALE = Object.freeze({
      * (`classes`), tuned in headless battles and whole matches of bots (the battles are kept
      * in tests/game/fleetBalance.test.js): the Federation's frigate was the story's ally, whose
      * beams never miss a fighter, so they do four tenths of their damage to a player's ship;
-     * the Umbra's cruiser soaks up more. With those (and the garrisons and the mothership's
-     * hangar below) a planet's garrisons fight each other about evenly, a pilot at either
-     * side's dock is under about the same fire, and bots win as often for either side. Both
-     * fleets go for players first (`pilotsFirst`): they are there to keep the station.
+     * the Umbra's cruiser soaks up more, and its raiders and drones do a fifth less to a pilot.
+     * With those (and the garrisons and the mothership's hangar below) a planet's garrisons
+     * fight each other about evenly and bots win about as often for either side. Both fleets
+     * go for players first (`pilotsFirst`): they are there to keep the station.
      * Between players the guns are turned down (`playerDamage`): beams and torpedoes - a breach
      * torpedo's own impact included - do a quarter of what they do to anything else, so a duel
      * is not over in the flight time of two torpedoes and the abilities, which are not turned
@@ -543,6 +543,9 @@ export const BATTLE_ROYALE = Object.freeze({
         classes: Object.freeze({
             harrier: Object.freeze({ toughness: 1, pilotDamage: 0.4 }),
             warden: Object.freeze({ toughness: 1.8 }),
+            // A little gentler on pilots than their numbers alone would be (asked for after play, 2026-11-19).
+            raider: Object.freeze({ pilotDamage: 0.8 }),
+            drone: Object.freeze({ pilotDamage: 0.8 }),
         }),
     }),
 });
