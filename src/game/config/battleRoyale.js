@@ -120,7 +120,10 @@ export const BATTLE_ROYALE = Object.freeze({
     }),
 
     jump: Object.freeze({
-        /** Seconds the drive needs after arriving anywhere before it can jump again. */
+        /**
+         * Seconds the drive needs after an ordinary jump (or a new ship's arrival) before it can
+         * jump again. An overdrive chip is not held by it, and its jump leaves it as it was.
+         */
         cooldown: 60,
         /** Seconds from choosing a destination to leaving; the ship can still be shot down. */
         spool: 3,

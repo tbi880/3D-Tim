@@ -2,7 +2,7 @@ import { LOYALTY } from '../../modes/battleRoyale/allegiance.js';
 import { MATCH_ACTION } from '../../modes/battleRoyale/BattleRoyalePresenter.js';
 import { respawnBlockedKey } from '../../modes/battleRoyale/battleRoyaleState.js';
 import { PLANET_STATUS } from '../../modes/battleRoyale/collapse.js';
-import { EQUIPMENT_ORDER } from '../../modes/battleRoyale/equipment.js';
+import { EQUIPMENT, EQUIPMENT_ORDER } from '../../modes/battleRoyale/equipment.js';
 import { useGameStore, useT } from '../../state/gameStore.js';
 import { EQUIPMENT_ICONS } from './EquipmentPanel.jsx';
 
@@ -41,7 +41,7 @@ function MatchRows({ match }) {
     const here = match.planets.find((planet) => planet.id === you.planet);
     const jump = you.jump.to ? t('mp.hud.jumpSpooling', { planet: t(`mp.planet.${you.jump.to}`) })
         : you.jump.trapped ? t('mp.hud.jumpTrapped')
-            : you.jump.cooldown > 0 ? t('mp.hud.jumpCharging', { seconds: you.jump.cooldown }) : t('mp.hud.jumpReady');
+            : you.jump.cooldown > 0 ? t(you.equipment[EQUIPMENT.OVERDRIVE] > 0 ? 'mp.hud.jumpChargingChip' : 'mp.hud.jumpCharging', { seconds: you.jump.cooldown }) : t('mp.hud.jumpReady');
     const timer = here && here.changesIn !== null
         ? t(here.status === PLANET_STATUS.SAFE ? 'mp.hud.fallsIn' : 'mp.hud.goneIn', { seconds: here.changesIn })
         : null;

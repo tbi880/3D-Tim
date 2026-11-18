@@ -120,6 +120,19 @@ test('a station taken to bring the fallen back must stand long enough for them t
     assert.equal(route(late.units[0], { orbit: 1, task: TASK.REVIVE }, late), null, 'nor one the unit would reach too late to be worth it');
 });
 
+test('an overdrive chip does not wait for the charge on something urgent, and leaves the charge as it was for the next stop', () => {
+    const scene = (reach) => picture({ units: [{ at: EMBER, readyIn: 20, reach }] });
+    const urgent = (situation, orbit) => route(situation.units[0], { orbit, task: TASK.DOCK_ALARM }, situation);
+    assert.deepEqual(urgent(scene(1), 1), { hops: 1, eta: 20 + jump.spool }, 'without a chip: the charge, then the spool');
+    assert.deepEqual(urgent(scene(2), 1), { hops: 1, eta: jump.spool }, 'with one: at once, even to the next planet');
+    assert.deepEqual(urgent(scene(2), 2), { hops: 1, eta: jump.spool }, 'or two orbits out');
+    // Three orbits: two on the chip at once, then the next when the old charge is done - not a new minute after arriving.
+    assert.deepEqual(urgent(scene(2), 3), { hops: 2, eta: 20 + jump.spool });
+    // Nothing urgent: the chip is kept, and the drive waited for.
+    const situation = scene(2);
+    assert.deepEqual(route(situation.units[0], { orbit: 1, task: TASK.TAKE }, situation), { hops: 1, eta: 20 + jump.spool });
+});
+
 test('a jump\'s time is the drive\'s charge, the spool, and a full charge at every stop', () => {
     const situation = picture({ units: [{ at: EMBER, readyIn: 20 }] });
     assert.deepEqual(route(situation.units[0], { orbit: 2, task: TASK.TAKE }, situation), { hops: 2, eta: 20 + jump.spool + jump.cooldown + jump.spool });

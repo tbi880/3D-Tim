@@ -1,7 +1,7 @@
 import { BATTLE_ROYALE, MAX_PLAYERS, PLAYER_FACTIONS, STAR_SYSTEM } from '../config/battleRoyale.js';
 import { PLAYER_SHIPS } from '../config/playerShips.js';
 import { MATCH_ACTION, MATCH_PANEL } from '../modes/battleRoyale/BattleRoyalePresenter.js';
-import { isBattle, rankPlayers, respawnBlockedKey, rosterBySide } from '../modes/battleRoyale/battleRoyaleState.js';
+import { isBattle, jumpChoice, rankPlayers, respawnBlockedKey, rosterBySide } from '../modes/battleRoyale/battleRoyaleState.js';
 import { PLANET_STATUS } from '../modes/battleRoyale/collapse.js';
 import { EQUIPMENT, EQUIPMENT_ORDER } from '../modes/battleRoyale/equipment.js';
 import { LAN_STATUS, LOBBY_SCOPE, ROOM_STATE, ROOM_VISIBILITY } from '../net/lobby/LanMultiplayer.js';
@@ -370,22 +370,21 @@ function planetLine(planet, t) {
 function starMap(session, presenter, match, t) {
     const { you } = match;
     const here = match.planets.find((planet) => planet.id === you.planet);
-    const block = !you.alive ? t('mp.jump.refused.noShip')
-        : you.jump.to ? t('mp.jump.refused.spooling')
-            : you.jump.trapped ? t('mp.hud.jumpTrapped')
-                : you.jump.cooldown > 0 ? t('mp.hud.jumpCharging', { seconds: you.jump.cooldown }) : null;
     const orbitsTo = (planet) => Math.abs(ORBITS.indexOf(planet.id) - ORBITS.indexOf(you.planet));
     const close = () => presenter.setPanel(null);
     const items = [];
     // (Docking is not here: in the headset it is A, kept down - see XRGamepadInput.js.)
     // (What is at each planet is on the map above; the rows only say where a jump - or a beacon - can go.)
     for (const planet of match.planets) {
-        const orbits = orbitsTo(planet);
-        if (orbits < 1 || orbits > you.jump.reach) continue;
+        const jump = jumpChoice(you, orbitsTo(planet));
+        if (!jump) continue;
+        // Going on the chip before the drive has charged: say what it costs.
+        const value = jump.block ? t(jump.block.key, jump.block.params)
+            : jump.overdrive && you.jump.cooldown > 0 ? t('mp.map.overdriveCharging', { seconds: you.jump.cooldown }) : t(`mp.hud.status.${planet.status}`);
         items.push({
-            label: `${orbits > 1 ? t('mp.map.overdrive') : t('mp.map.jump')} · ${t(`mp.planet.${planet.id}`)}`,
-            value: block ?? t(`mp.hud.status.${planet.status}`),
-            disabled: Boolean(block),
+            label: `${jump.overdrive ? t('mp.map.overdrive') : t('mp.map.jump')} · ${t(`mp.planet.${planet.id}`)}`,
+            value,
+            disabled: Boolean(jump.block),
             select: () => presenter.jumpTo(planet.id),
         });
     }

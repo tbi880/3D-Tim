@@ -199,8 +199,9 @@ export class BotPilot {
         const dockable = !mine && place.status !== PLANET_STATUS.SWALLOWED;
 
         const hop = this.nextJump(place);
-        if (hop && mode.jumpRefusal(contestant, hop) === null) {
-            mode.requestJump(contestant, hop);
+        // An overdrive chip is only burned where the bot means to: further than the next orbit, or to go before its drive has charged.
+        if (hop && mode.jumpRefusal(contestant, hop.to) === null && (hop.chip || !mode.isOverdriveJump(contestant, hop.to))) {
+            mode.requestJump(contestant, hop.to);
             return;
         }
         if (contestant.dock) {
@@ -228,26 +229,33 @@ export class BotPilot {
     }
 
     /**
-     * Where to jump now, if anywhere (a planet id; whether the drive allows it is the rules' to say).
+     * Where to jump now, if anywhere: `{ to, chip }` - a planet id, and whether an overdrive chip
+     * may be burned to get there (whether the drive allows it is the rules' to say).
      * First, out of a planet that is falling in - or about to, or swallowed already, if its gravity
      * shield lets the drive work - whoever holds its station: always outwards, where the collapse
-     * comes last. Then towards the planet its side's
-     * war council gives it: at once for something urgent (and as far as an overdrive chip
-     * reaches), otherwise once nothing has been in reach for a moment - not out of a dogfight.
+     * comes last; a chip, if it has one, gets it away when its drive would not be charged before
+     * the planet starts to fall in. Then towards the planet its side's war council gives it: at
+     * once for something urgent (as far as an overdrive chip reaches, and with one aboard
+     * before its drive has charged), otherwise once nothing has been in reach for a moment - not
+     * out of a dogfight, and never on a chip.
      */
     nextJump(place) {
         const { mode, contestant } = this;
         if (contestant.jump) return null;
         if (place.orbit < mode.map.count - 1) {
             const wait = mode.clock.secondsToChange(place.orbit);
-            if (place.status !== PLANET_STATUS.SAFE || (wait !== null && wait < TUNING.fleeAhead)) return mode.map.planets[place.orbit + 1].id;
+            const falling = place.status !== PLANET_STATUS.SAFE;
+            if (falling || (wait !== null && wait < TUNING.fleeAhead)) {
+                const charging = contestant.jumpReadyAt - mode.server.time;
+                return { to: mode.map.planets[place.orbit + 1].id, chip: charging > (falling ? 0 : wait) };
+            }
         }
         if (contestant.dock) return null;
         const order = this.order;
         if (!order || order.planet === place.planet.id) return null;
         if (!order.urgent && this.quietFor < TUNING.leaveQuiet) return null;
         const target = mode.map.orbitOf.get(order.planet);
-        return mode.map.planets[stepToward(place.orbit, target, order.urgent ? mode.jumpReach(contestant) : 1)].id;
+        return { to: mode.map.planets[stepToward(place.orbit, target, order.urgent ? mode.jumpReach(contestant) : 1)].id, chip: order.urgent };
     }
 
     /** The ship of another side's pilot docked at this bot's own side's station here: taking it. */

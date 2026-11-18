@@ -41,7 +41,7 @@ class Contestant {
         this.summons = 0;
         /** Match time at which the jump drive is charged. */
         this.jumpReadyAt = 0;
-        /** The jump being spooled up: { to, left }, or null. */
+        /** The jump being spooled up: { to, left, overdrive (it burns the chip) }, or null. */
         this.jump = null;
         /** The planet they enter the system at, once the introduction is over. */
         this.start = null;
@@ -540,9 +540,18 @@ export class BattleRoyaleMode {
         if (contestant.jump) return JUMP_REFUSAL.SPOOLING;
         const orbits = this.map.distance(here.planet.id, to);
         if (orbits < 1 || orbits > this.jumpReach(contestant)) return JUMP_REFUSAL.NOT_ADJACENT;
-        if (this.server.time < contestant.jumpReadyAt) return JUMP_REFUSAL.CHARGING;
+        // The charge holds the drive, not an overdrive chip: with one aboard the pilot may go at once.
+        if (this.server.time < contestant.jumpReadyAt && !contestant.inventory.has(EQUIPMENT.OVERDRIVE)) return JUMP_REFUSAL.CHARGING;
         if (this.isTrapped(contestant, here)) return JUMP_REFUSAL.TRAPPED;
         return null;
+    }
+
+    /**
+     * True when a jump to `to` would be an overdrive jump, burning the chip: one across more than
+     * the next orbit, or any jump while the drive is still charging.
+     */
+    isOverdriveJump(contestant, to) {
+        return this.map.distance(this.placeOf(contestant).planet.id, to) > 1 || this.server.time < contestant.jumpReadyAt;
     }
 
     /**
@@ -554,7 +563,10 @@ export class BattleRoyaleMode {
         return Boolean(here) && here.status === PLANET_STATUS.SWALLOWED && this.server.time >= contestant.gravityShieldUntil;
     }
 
-    /** Orbits a contestant's next jump can cross: one, or more with an overdrive chip aboard. */
+    /**
+     * Orbits a contestant's next jump can cross: one, or more with an overdrive chip aboard (which
+     * also lets them jump while the drive is still charging).
+     */
     jumpReach(contestant) {
         return contestant.inventory.has(EQUIPMENT.OVERDRIVE) ? BATTLE_ROYALE.equipment.overdriveReach : 1;
     }
@@ -567,8 +579,8 @@ export class BattleRoyaleMode {
         }
         // Leaving is letting go of the station.
         this.undock(contestant, DOCK_END.RELEASED);
-        // Only a jump further than the next orbit burns the overdrive chip.
-        const overdrive = this.map.distance(this.placeOf(contestant).planet.id, to) > 1;
+        // Only a jump further than the next orbit, or one before the drive has charged, burns the overdrive chip.
+        const overdrive = this.isOverdriveJump(contestant, to);
         contestant.jump = { to, left: BATTLE_ROYALE.jump.spool, overdrive };
         this.tellMode(contestant.pilot, BR_EVENT.JUMP_SPOOL, { to, seconds: BATTLE_ROYALE.jump.spool });
         this.server.publishState();
@@ -600,9 +612,12 @@ export class BattleRoyaleMode {
         };
         pilot.zone.world.removeShip(ship, { flash: true });
         contestant.jump = null;
-        contestant.jumpReadyAt = this.server.time + this.jumpCooldown;
+        // An overdrive jump is the chip's, not the drive's: the drive's charge is left as it was,
+        // ready or still charging. An ordinary jump spends it, and the minute starts again.
         if (jump.overdrive && contestant.inventory.use(EQUIPMENT.OVERDRIVE)) {
             this.tellMode(pilot, BR_EVENT.EQUIPMENT_USED, { item: EQUIPMENT.OVERDRIVE });
+        } else {
+            contestant.jumpReadyAt = this.server.time + this.jumpCooldown;
         }
 
         const arrived = this.launch(contestant, this.places.get(jump.to), { hullFraction: carried.hullFraction });
@@ -828,7 +843,7 @@ export class BattleRoyaleMode {
 
     /**
      * A new ship for a pilot who is down, out of the departure hangar of the station at `place`,
-     * throttle open, the helm theirs. The jump drive starts uncharged, as on any arrival.
+     * throttle open, the helm theirs. The jump drive starts uncharged, as after an ordinary jump.
      */
     bringBack(contestant, place) {
         this.launch(contestant, place, { fromStation: true });

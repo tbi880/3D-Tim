@@ -3,7 +3,7 @@ import { RATING_ORDER } from '../../config/playerShips.js';
 import { MATCH_PHASE } from '../../net/match/matchState.js';
 import { LOYALTY } from './allegiance.js';
 import { PLANET_STATUS } from './collapse.js';
-import { EQUIPMENT_ORDER } from './equipment.js';
+import { EQUIPMENT, EQUIPMENT_ORDER } from './equipment.js';
 
 /**
  * The battle royale's match state, as each player's device receives it (built by
@@ -25,7 +25,8 @@ import { EQUIPMENT_ORDER } from './equipment.js';
  *     upgrades,           { rating: levels } installed on their ship
  *     loyalty,            LOYALTY
  *     jump: { cooldown, to, spool, trapped, reach },   seconds until the drive is charged; the jump in progress;
- *                         stuck on a swallowed planet; orbits the next jump can cross
+ *                         stuck on a swallowed planet; orbits the next jump can cross (jumpChoice says what
+ *                         a jump to a planet would be)
  *     dock,               the station where they are: { ready, left, seconds } - can they clamp on; seconds
  *                         left of a docking in progress (else null) out of `seconds`; null while they have no ship
  *     picks,              pieces of equipment they may still choose
@@ -187,6 +188,26 @@ export function rosterBySide(state) {
 export function respawnBlockedKey(respawn) {
     if (respawn.falling.length === 0) return 'mp.respawn.allContested';
     return respawn.contested.length === 0 ? 'mp.respawn.allFalling' : 'mp.respawn.allBlocked';
+}
+
+/**
+ * What a jump to a planet `orbits` away would be for the player (`you` of the match state):
+ * null when no jump of theirs reaches it; otherwise `{ overdrive, block }`. `overdrive` when it
+ * would burn their overdrive chip: a jump across more than the next orbit, or any jump while
+ * the drive is still charging (the chip does not wait for the charge, and leaves it as it was).
+ * `block` is why they cannot go right now (an i18n key and its numbers), or null. The host has
+ * the last word (BattleRoyaleMode.jumpRefusal); this is what the map shows.
+ */
+export function jumpChoice(you, orbits) {
+    if (orbits < 1 || orbits > you.jump.reach) return null;
+    const chip = you.equipment[EQUIPMENT.OVERDRIVE] > 0;
+    const charging = you.jump.cooldown > 0;
+    let block = null;
+    if (!you.alive) block = { key: 'mp.jump.refused.noShip' };
+    else if (you.jump.to) block = { key: 'mp.jump.refused.spooling' };
+    else if (you.jump.trapped) block = { key: 'mp.hud.jumpTrapped' };
+    else if (charging && !chip) block = { key: 'mp.hud.jumpCharging', params: { seconds: you.jump.cooldown } };
+    return { overdrive: orbits > 1 || (charging && chip), block };
 }
 
 /** True when ships of more than one side are at a planet (`forces` of a planet in the match state). */

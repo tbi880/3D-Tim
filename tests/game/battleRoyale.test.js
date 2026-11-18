@@ -9,7 +9,7 @@ import { applyDamage, areHostile, destroyShip, mayAttack } from '../../src/game/
 import { LOYALTY } from '../../src/game/modes/battleRoyale/allegiance.js';
 import { BR_EVENT, BR_REQUEST, DOCK_END, DOCK_REFUSAL, JUMP_REFUSAL, RESPAWN_REFUSAL } from '../../src/game/modes/battleRoyale/battleRoyaleProtocol.js';
 import { MATCH_ACTION, MATCH_PANEL } from '../../src/game/modes/battleRoyale/BattleRoyalePresenter.js';
-import { rosterBySide } from '../../src/game/modes/battleRoyale/battleRoyaleState.js';
+import { jumpChoice, rosterBySide, sanitizeBattleRoyaleState } from '../../src/game/modes/battleRoyale/battleRoyaleState.js';
 import { PLANET_STATUS } from '../../src/game/modes/battleRoyale/collapse.js';
 import { EQUIPMENT } from '../../src/game/modes/battleRoyale/equipment.js';
 import { GATE_TAG, STATION_TAG } from '../../src/game/modes/battleRoyale/station.js';
@@ -1759,6 +1759,95 @@ test('a chip is not burnt by a long jump that never happens', () => {
     game.run(BATTLE_ROYALE.jump.spool + 0.3);
 
     assert.equal(game.who('ann').inventory.counts.overdrive, 1);
+});
+
+test('an overdrive chip does not wait for the drive\'s charge: it jumps at once, to the next planet too, and the charge runs on as it was', () => {
+    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, THIRD] });
+    game.equip('ann', EQUIPMENT.OVERDRIVE, 2);
+    const { time } = game.server;
+    // Both drives still charging: twenty seconds to go.
+    game.who('ann').jumpReadyAt = time + 20;
+    game.who('bo').jumpReadyAt = time + 20;
+
+    game.ask('bo', BR_REQUEST.JUMP, { to: SECOND });
+    assert.deepEqual(game.told('bo', BR_EVENT.JUMP_REFUSED), [{ reason: JUMP_REFUSAL.CHARGING }], 'without a chip the charge holds');
+
+    game.ask('ann', BR_REQUEST.JUMP, { to: SECOND });
+    assert.deepEqual(game.told('ann', BR_EVENT.JUMP_REFUSED), [], 'with one it does not');
+    assert.equal(game.who('ann').jump.overdrive, true, 'before the charge, even the next planet is an overdrive jump');
+    game.run(BATTLE_ROYALE.jump.spool + 0.3);
+    assert.equal(game.pilot('ann').zone.id, SECOND);
+    assert.equal(game.who('ann').inventory.counts.overdrive, 1, 'one chip burnt');
+    assert.deepEqual(game.told('ann', BR_EVENT.EQUIPMENT_USED), [{ item: EQUIPMENT.OVERDRIVE }]);
+    assert.equal(game.who('ann').jumpReadyAt, time + 20, 'and the drive\'s charge is just as it was: no new minute');
+
+    // Another chip, another jump within the same charge.
+    game.ask('ann', BR_REQUEST.JUMP, { to: INNERMOST });
+    game.run(BATTLE_ROYALE.jump.spool + 0.3);
+    assert.equal(game.pilot('ann').zone.id, INNERMOST);
+    assert.equal(game.who('ann').inventory.counts.overdrive, 0);
+    assert.equal(game.who('ann').jumpReadyAt, time + 20);
+
+    // No chip left: the charge holds again, until it is done - the old one, not a new one.
+    game.ask('ann', BR_REQUEST.JUMP, { to: SECOND });
+    assert.deepEqual(game.told('ann', BR_EVENT.JUMP_REFUSED), [{ reason: JUMP_REFUSAL.CHARGING }]);
+    game.skipTo(time + 20);
+    game.ask('ann', BR_REQUEST.JUMP, { to: SECOND });
+    assert.equal(game.who('ann').jump.overdrive, false, 'an ordinary jump');
+    game.run(BATTLE_ROYALE.jump.spool + 0.3);
+    assert.equal(game.pilot('ann').zone.id, SECOND);
+    assert.ok(game.who('ann').jumpReadyAt > game.server.time + BATTLE_ROYALE.jump.cooldown - 1, 'which spends the drive: a full minute again');
+});
+
+test('a jump on a chip leaves a charged drive charged: an ordinary jump can follow at once', () => {
+    const game = arrange({ ann: [DAWN, THIRD] });
+    game.equip('ann', EQUIPMENT.OVERDRIVE);
+    game.chargeJump('ann');
+    game.ask('ann', BR_REQUEST.JUMP, { to: INNERMOST });
+    game.run(BATTLE_ROYALE.jump.spool + 0.3);
+    assert.equal(game.pilot('ann').zone.id, INNERMOST);
+    assert.equal(game.who('ann').inventory.counts.overdrive, 0);
+    assert.equal(game.state('ann').you.jump.cooldown, 0, 'still charged');
+
+    game.ask('ann', BR_REQUEST.JUMP, { to: SECOND });
+    game.run(BATTLE_ROYALE.jump.spool + 0.3);
+    assert.equal(game.pilot('ann').zone.id, SECOND);
+    assert.equal(game.state('ann').you.jump.cooldown, BATTLE_ROYALE.jump.cooldown, 'the ordinary jump spent it');
+});
+
+test('a chip does not get a ship off a swallowed planet, and is not burnt trying', () => {
+    const game = arrange({ ann: [DAWN, INNERMOST] });
+    game.empty(INNERMOST);
+    game.equip('ann', EQUIPMENT.OVERDRIVE);
+    game.skipTo(goneAt(game, 0));
+    game.who('ann').jumpReadyAt = game.server.time + 30;
+    game.ask('ann', BR_REQUEST.JUMP, { to: SECOND });
+    assert.deepEqual(game.told('ann', BR_EVENT.JUMP_REFUSED), [{ reason: JUMP_REFUSAL.TRAPPED }]);
+    assert.equal(game.who('ann').inventory.counts.overdrive, 1);
+});
+
+test('the map offers the jumps the host allows, and calls the ones on a chip overdrive jumps', () => {
+    const game = arrange({ ann: [DAWN, THIRD] });
+    const targets = { 1: SECOND, 2: INNERMOST };
+    for (const chips of [0, 1]) {
+        for (const charging of [false, true]) {
+            for (const orbits of [1, 2]) {
+                const scene = `${chips} chip(s), ${charging ? 'charging' : 'charged'}, ${orbits} orbit(s)`;
+                game.equip('ann', EQUIPMENT.OVERDRIVE, chips);
+                game.who('ann').jumpReadyAt = charging ? game.server.time + 20 : 0;
+                const you = sanitizeBattleRoyaleState(game.state('ann')).you;
+                const choice = jumpChoice(you, orbits);
+                const refusal = game.mode.jumpRefusal(game.who('ann'), targets[orbits]);
+                if (refusal === JUMP_REFUSAL.NOT_ADJACENT) {
+                    assert.equal(choice, null, `${scene}: no button where the jump cannot reach`);
+                    continue;
+                }
+                assert.equal(choice.block === null, refusal === null, `${scene}: the button is live exactly when the host would let it go`);
+                if (refusal === null) assert.equal(choice.overdrive, game.mode.isOverdriveJump(game.who('ann'), targets[orbits]), `${scene}: overdrive exactly when it would burn the chip`);
+            }
+        }
+    }
+    assert.equal(jumpChoice(sanitizeBattleRoyaleState(game.state('ann')).you, 0), null, 'no jump to where one is');
 });
 
 test('a player who leaves is out of the match and off the board', () => {

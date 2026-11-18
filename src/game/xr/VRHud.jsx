@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { CHARACTERS } from '../config/characters.js';
 import { GAME_EVENTS } from '../core/EventBus.js';
 import { translate } from '../i18n/index.js';
+import { EQUIPMENT } from '../modes/battleRoyale/equipment.js';
 import { CABIN_SCALE } from '../scene/CockpitCabin.jsx';
 import layout from '../scene/cockpitLayout.json';
 import { isHullHitOnPlayer, playerFeedback } from '../scene/effects/playerFeedback.js';
@@ -325,7 +326,7 @@ function drawPaneText(ctx, state, t, now, scoreFeed) {
         const here = state.match.planets.find((planet) => planet.id === you.planet);
         const jump = you.jump.to ? t('mp.hud.jumpSpooling', { planet: t(`mp.planet.${you.jump.to}`) })
             : you.jump.trapped ? t('mp.hud.jumpTrapped')
-                : you.jump.cooldown > 0 ? t('mp.hud.jumpCharging', { seconds: you.jump.cooldown }) : t('mp.hud.jumpReady');
+                : you.jump.cooldown > 0 ? t(you.equipment[EQUIPMENT.OVERDRIVE] > 0 ? 'mp.hud.jumpChargingChip' : 'mp.hud.jumpCharging', { seconds: you.jump.cooldown }) : t('mp.hud.jumpReady');
         const place = here ? `${t(`mp.planet.${here.id}`)} · ${t(`mp.hud.status.${here.status}`)}${here.changesIn !== null ? ` ${here.changesIn}s` : ''}` : '';
         ctx.textAlign = 'center';
         ctx.font = `600 11px ${FONT}`;

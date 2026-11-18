@@ -48,7 +48,10 @@ export const TASK = Object.freeze({
     HIDE: 'hide',
 });
 
-/** Jobs a unit drops everything for: it jumps the moment its drive allows, mid-fight or not, and may burn an overdrive chip to get there. */
+/**
+ * Jobs a unit drops everything for: it jumps the moment its drive allows, mid-fight or not, and
+ * may burn an overdrive chip to get there - further in one jump, or before the drive has charged.
+ */
 export const URGENT_TASKS = new Set([TASK.DOCK_ALARM, TASK.DEFEND, TASK.AVENGE, TASK.RESCUE, TASK.REVIVE]);
 
 /**
@@ -152,13 +155,16 @@ export function route(unit, task, situation, tuning = TUNING) {
     const { places, timing } = situation;
     const distance = Math.abs(task.orbit - unit.orbit);
     if (distance === 0) return { hops: 0, eta: 0 };
-    // An overdrive chip is only burned for something urgent.
-    const reach = URGENT_TASKS.has(task.task) ? unit.reach : 1;
+    // An overdrive chip (a unit with `reach` past one orbit carries one) is only burned for
+    // something urgent, on the first jump: when that jump crosses more than one orbit, or the
+    // drive is still charging - the chip does not wait for the charge, and leaves it as it was.
+    const overdrive = URGENT_TASKS.has(task.task) && unit.reach > 1 && (distance > 1 || unit.readyIn > 0);
     let orbit = unit.orbit;
     let hops = 0;
-    let time = unit.readyIn;
+    let time = overdrive ? 0 : unit.readyIn;
     for (;;) {
-        orbit = stepToward(orbit, task.orbit, hops === 0 ? reach : 1);
+        const onChip = overdrive && hops === 0;
+        orbit = stepToward(orbit, task.orbit, onChip ? unit.reach : 1);
         hops += 1;
         time += timing.spool;
         const stop = places[orbit];
@@ -168,8 +174,9 @@ export function route(unit, task, situation, tuning = TUNING) {
             const keep = URGENT_TASKS.has(task.task) && task.task !== TASK.REVIVE ? tuning.routeMargin : tuning.doomSeconds;
             return stop.safeFor > time + keep ? { hops, eta: time } : null;
         }
-        // On the way: it waits out the drive's charge there, and must be gone before the collapse begins.
-        const leaves = time + timing.cooldown;
+        // On the way: it waits out the drive's charge there (after the chip's jump, only what was
+        // left of the charge it had), and must be gone before the collapse begins.
+        const leaves = onChip ? Math.max(time, unit.readyIn) : time + timing.cooldown;
         if (stop.swallowed || stop.safeFor <= leaves + tuning.routeMargin) return null;
         time = leaves;
     }
@@ -204,7 +211,7 @@ function hideout(unit, situation, tuning) {
  *            holdsStation whether it holds any station for them to come back to (not one about to be swallowed)
  *   timing   { cooldown, spool } of a jump drive
  *   units    { key, orbit, readyIn (seconds until its drive is charged), reach (orbits its next jump may
- *            cross), strength, squad (true for reinforcements), current (the planet it was last given),
+ *            cross: more than one with an overdrive chip aboard, which does not wait for the charge), strength, squad (true for reinforcements), current (the planet it was last given),
  *            fixed (a planet it is bound to whatever happens: where it is jumping, docked or called to) }
  * @returns {{ orders: Map<string, { planet: string, task: string | null, urgent: boolean }>, tasks: object[] }}
  *          a unit with no order stays where it is; an urgent order is one to go at once, mid-fight or not

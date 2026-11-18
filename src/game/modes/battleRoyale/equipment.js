@@ -9,7 +9,10 @@ export const EQUIPMENT = Object.freeze({
     GRAVITY_SHIELD: 'gravityShield',
     /** Comes on by itself at a hit that would have killed: for a while the hull holds at a sliver, and nothing mends. */
     EMERGENCY_SHIELD: 'emergencyShield',
-    /** Burns out in one jump that crosses two orbits; an ordinary jump leaves it alone. */
+    /**
+     * Burns out in one overdrive jump: across two orbits, or at once while the drive is still
+     * charging (the charge does not hold it, and runs on as it was); an ordinary jump leaves it alone.
+     */
     OVERDRIVE: 'overdrive',
 });
 

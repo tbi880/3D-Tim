@@ -9,8 +9,10 @@ export const NET = Object.freeze({
      * 5: the battle royale's vote after a capture gave way to coming back at a station.
      * 6: holding a planet's station no longer shelters a side from the collapse (and the state
      *    lists stations about to be swallowed): an older host would still play the old rules.
+     * 7: an overdrive chip jumps while the drive is still charging, and its jump leaves the
+     *    charge as it was: an older host would refuse the jump the map offers.
      */
-    protocolVersion: 6,
+    protocolVersion: 7,
 
     /** World snapshots the host sends each client per second. */
     snapshotHz: 30,

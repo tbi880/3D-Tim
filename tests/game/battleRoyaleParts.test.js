@@ -9,7 +9,7 @@ import { createRng, forwardOf } from '../../src/game/core/math.js';
 import { drainShip } from '../../src/game/core/systems/damage.js';
 import { World } from '../../src/game/core/World.js';
 import { LOYALTY, LoyaltyRecord, dealFactions } from '../../src/game/modes/battleRoyale/allegiance.js';
-import { isBattle, rankPlayers, rankWinners, sanitizeBattleRoyaleState } from '../../src/game/modes/battleRoyale/battleRoyaleState.js';
+import { isBattle, jumpChoice, rankPlayers, rankWinners, sanitizeBattleRoyaleState } from '../../src/game/modes/battleRoyale/battleRoyaleState.js';
 import { CollapseClock, PLANET_STATUS } from '../../src/game/modes/battleRoyale/collapse.js';
 import { EQUIPMENT, EQUIPMENT_ORDER, Inventory, isEquipment } from '../../src/game/modes/battleRoyale/equipment.js';
 import { planGarrisons, stationGarrison } from '../../src/game/modes/battleRoyale/garrisons.js';
@@ -345,6 +345,28 @@ test('odd values are replaced by safe ones, never passed on', () => {
     assert.equal(clean.players[0].score, 0);
     assert.equal(clean.players[0].name.length, 40);
     assert.equal(clean.players[0].faction, 'dawn');
+});
+
+test('what the map makes of a jump: ordinary on a charged drive, overdrive on the chip - across two orbits, or before the charge', () => {
+    const you = (jump, equipment = {}, alive = true) => sanitizeBattleRoyaleState({ ...goodState(), you: { ...goodState().you, alive, jump, equipment } }).you;
+    const charged = { cooldown: 0, to: null, spool: null, trapped: false, reach: 1 };
+    assert.deepEqual(jumpChoice(you(charged), 1), { overdrive: false, block: null });
+    assert.equal(jumpChoice(you(charged), 2), null, 'two orbits are out of reach without a chip');
+    assert.equal(jumpChoice(you(charged), 0), null, 'and there is no jump to where one is');
+    assert.deepEqual(jumpChoice(you({ ...charged, cooldown: 14 }), 1), { overdrive: false, block: { key: 'mp.hud.jumpCharging', params: { seconds: 14 } } });
+
+    const chip = { overdrive: 1 };
+    const reach = { ...charged, reach: 2 };
+    assert.deepEqual(jumpChoice(you(reach, chip), 1), { overdrive: false, block: null }, 'charged: the next planet leaves the chip alone');
+    assert.deepEqual(jumpChoice(you(reach, chip), 2), { overdrive: true, block: null });
+    assert.deepEqual(jumpChoice(you({ ...reach, cooldown: 14 }, chip), 1), { overdrive: true, block: null }, 'charging: the chip goes at once');
+    assert.deepEqual(jumpChoice(you({ ...reach, cooldown: 14 }, chip), 2), { overdrive: true, block: null });
+    assert.equal(jumpChoice(you(reach, chip), 3), null);
+
+    // What holds a chip too.
+    assert.equal(jumpChoice(you({ ...reach, cooldown: 14, trapped: true }, chip), 1).block.key, 'mp.hud.jumpTrapped');
+    assert.equal(jumpChoice(you({ ...reach, to: 'veil' }, chip), 1).block.key, 'mp.jump.refused.spooling');
+    assert.equal(jumpChoice(you(reach, chip, false), 1).block.key, 'mp.jump.refused.noShip');
 });
 
 test('a planet is a battle when more than one side has ships there', () => {

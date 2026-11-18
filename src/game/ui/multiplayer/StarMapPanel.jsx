@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { PLAYER_FACTIONS, STAR_SYSTEM } from '../../config/battleRoyale.js';
-import { isBattle } from '../../modes/battleRoyale/battleRoyaleState.js';
+import { isBattle, jumpChoice } from '../../modes/battleRoyale/battleRoyaleState.js';
 import { PLANET_STATUS } from '../../modes/battleRoyale/collapse.js';
 import { EQUIPMENT } from '../../modes/battleRoyale/equipment.js';
 import { useGameStore, useT } from '../../state/gameStore.js';
@@ -19,15 +19,6 @@ import { EQUIPMENT_ICONS } from './EquipmentPanel.jsx';
 
 const ORBITS = STAR_SYSTEM.planets;
 const orbitOf = (planetId) => ORBITS.findIndex((planet) => planet.id === planetId);
-
-/** Why the player cannot jump right now (an i18n key and its numbers), or null if they can. */
-function jumpBlock(you) {
-    if (!you.alive) return { key: 'mp.jump.refused.noShip' };
-    if (you.jump.to) return { key: 'mp.jump.refused.spooling' };
-    if (you.jump.trapped) return { key: 'mp.hud.jumpTrapped' };
-    if (you.jump.cooldown > 0) return { key: 'mp.hud.jumpCharging', params: { seconds: you.jump.cooldown } };
-    return null;
-}
 
 /** What stands at a planet the player's side can see: ships by side, the station's holder, a docking in progress. */
 function Intel({ planet }) {
@@ -53,7 +44,7 @@ function PlanetCard({ planet, you, presenter }) {
     const here = planet.id === you.planet;
     const orbits = Math.abs(orbitOf(planet.id) - orbitOf(you.planet));
     const gate = ORBITS[ORBITS.length - 1].id === planet.id;
-    const block = jumpBlock(you);
+    const jump = jumpChoice(you, orbits);
     const timer = planet.changesIn === null ? null
         : t(planet.status === PLANET_STATUS.SAFE ? 'mp.hud.fallsIn' : 'mp.hud.goneIn', { seconds: planet.changesIn });
     const canScout = orbits === 1 && you.alive && you.equipment[EQUIPMENT.BEACON] > 0 && !planet.beacon;
@@ -74,10 +65,12 @@ function PlanetCard({ planet, you, presenter }) {
                     {EQUIPMENT_ICONS[EQUIPMENT.BEACON]} {t('mp.map.beacon')}
                 </button>
             )}
-            {orbits >= 1 && orbits <= you.jump.reach && (
-                <button type="button" className="eod-button eod-button--primary eod-map-jump" disabled={Boolean(block)} onClick={() => presenter.jumpTo(planet.id)}>
-                    {orbits > 1 ? `${EQUIPMENT_ICONS[EQUIPMENT.OVERDRIVE]} ${t('mp.map.overdrive')}` : t('mp.map.jump')}
-                    {block && <small>{t(block.key, block.params)}</small>}
+            {jump && (
+                <button type="button" className="eod-button eod-button--primary eod-map-jump" disabled={Boolean(jump.block)} onClick={() => presenter.jumpTo(planet.id)}>
+                    {jump.overdrive ? `${EQUIPMENT_ICONS[EQUIPMENT.OVERDRIVE]} ${t('mp.map.overdrive')}` : t('mp.map.jump')}
+                    {jump.block && <small>{t(jump.block.key, jump.block.params)}</small>}
+                    {/* Going on the chip before the drive has charged: say what it costs. */}
+                    {!jump.block && jump.overdrive && you.jump.cooldown > 0 && <small>{t('mp.map.overdriveCharging', { seconds: you.jump.cooldown })}</small>}
                 </button>
             )}
         </li>

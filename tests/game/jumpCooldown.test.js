@@ -13,6 +13,8 @@ import { createTestServer } from './support/matchHarness.js';
  * (BattleRoyaleMode.jumpRefusal), the reinforcements a pilot calls keep a drive of their own
  * (squads.js, charged by the same clock), and the garrisons and motherships never leave their
  * planet at all. (The player's own side of it is in battleRoyale.test.js, under "Jumping".)
+ * Only an overdrive chip is not held by the charge - for a bot as for a person - and its jump
+ * leaves the charge as it was; a bot burns one only for something that cannot wait.
  */
 
 const { NEUTRAL, PIRATE } = FACTION;
@@ -126,6 +128,61 @@ test('a bot back from being shot down has to charge its drive, as anybody does',
     assert.equal(mode.jumpRefusal(subject, PLANETS[2]), JUMP_REFUSAL.CHARGING, 'not yet');
 });
 
+test('a bot with an overdrive chip sent on something urgent goes at once on the chip, and its drive\'s charge runs on as it was', () => {
+    const { game, mode, server, subject } = sentOn(NEXT_TO_GATE);
+    subject.inventory.counts[EQUIPMENT.OVERDRIVE] = 1;
+    const readyAt = server.time + 30;
+    subject.jumpReadyAt = readyAt;
+    game.run(NOTICE + SPOOL + FRAME);
+    assert.equal(subject.pilot.zone.id, PLANETS[2], 'two orbits out, thirty seconds before its drive could have gone');
+    assert.equal(subject.inventory.counts[EQUIPMENT.OVERDRIVE], 0, 'the chip burnt');
+    assert.equal(subject.jumpReadyAt, readyAt, 'and the drive is no further from charged than it was');
+
+    // No chip now: the rest of the way waits for that charge, and only that.
+    const log = watchJumps(game, readyAt - server.time + NOTICE + SPOOL + FRAME, { where: () => subject.pilot.ship, jumping: () => subject.jump });
+    assert.equal(log.starts.length, 1);
+    assert.ok(log.starts[0] >= readyAt - 1e-6, `not before the charge (${(log.starts[0] - readyAt).toFixed(2)} s)`);
+    assert.ok(log.starts[0] <= readyAt + NOTICE, 'but the moment it is charged');
+    assert.equal(subject.pilot.zone.id, PLANETS[3]);
+});
+
+test('a bot sent on something that can wait keeps its chip and waits for its drive', () => {
+    const { game, mode, server, subject } = sentOn(NEXT_TO_GATE);
+    subject.inventory.counts[EQUIPMENT.OVERDRIVE] = 1;
+    mode.councilOf(subject.faction).orderFor = () => ({ planet: NEXT_TO_GATE, task: 'take', urgent: false });
+    const readyAt = server.time + 20;
+    subject.jumpReadyAt = readyAt;
+    const log = watchJumps(game, 20 + NOTICE + SPOOL + FRAME, { where: () => subject.pilot.ship, jumping: () => subject.jump });
+    assert.equal(log.starts.length, 1);
+    assert.ok(log.starts[0] >= readyAt - 1e-6, 'it waited for the charge');
+    assert.equal(subject.pilot.zone.id, SECOND, 'and went one orbit, on its drive');
+    assert.equal(subject.inventory.counts[EQUIPMENT.OVERDRIVE], 1, 'the chip kept');
+});
+
+test('a bot running from a planet falling in burns its chip only when its drive would not be charged in time', () => {
+    for (const late of [false, true]) {
+        const { game, mode, server, subject } = sentOn(INNERMOST);
+        subject.inventory.counts[EQUIPMENT.OVERDRIVE] = 1;
+        const fallsAt = mode.clock.schedule[0].startsAt;
+        const fleeing = fallsAt - BATTLE_ROYALE.bots.fleeAhead + 2;
+        server.time = fleeing;
+        // Charged a few seconds from now - or only once the planet has begun to fall in.
+        const readyAt = late ? fallsAt + 10 : fleeing + 4;
+        subject.jumpReadyAt = readyAt;
+        game.run(NOTICE + SPOOL + FRAME);
+        if (late) {
+            assert.equal(subject.pilot.zone.id, SECOND, 'out at once, on the chip');
+            assert.equal(subject.inventory.counts[EQUIPMENT.OVERDRIVE], 0);
+            assert.equal(subject.jumpReadyAt, readyAt, 'its drive\'s charge as it was');
+        } else {
+            assert.equal(subject.pilot.zone.id, INNERMOST, 'the drive will do in time: it waits for it');
+            game.run(4);
+            assert.equal(subject.pilot.zone.id, SECOND);
+            assert.equal(subject.inventory.counts[EQUIPMENT.OVERDRIVE], 1, 'the chip kept');
+        }
+    }
+});
+
 test('reinforcements are held to the same charge: none when they are called, a full one after every jump', () => {
     const { game, mode, server, subject } = sentOn(GATE, { start: SECOND, thinking: 'nobody' });
     const cooldown = mode.jumpCooldown;
@@ -166,14 +223,17 @@ test('reinforcements running from a planet falling in still wait for their drive
     assert.ok(squad.readyAt > server.time + mode.jumpCooldown - 1, 'and charging again for the next');
 });
 
-test('in whole matches of bots nothing jumps sooner than the charge allows, and only pilots and reinforcements jump at all', () => {
+test('in whole matches of bots nothing jumps sooner than the charge allows - but on an overdrive chip - and only pilots and reinforcements jump at all', () => {
     let squadJumps = 0;
+    let chipJumps = 0;
     for (const seed of [3, 8]) {
         const { server, mode, run } = createTestServer(['ann'], { start: { seed, settings: { bots: 'fill', pace: 'quick' } } });
         const cooldown = mode.jumpCooldown;
-        // Who arrived where, and when: a pilot's ship, or a squad's planet (all at the start for the pilots).
+        // Who arrived where, and when the drive was last spent: a pilot's ship, or a squad's planet
+        // (all at the start for the pilots). A pilot's jump on an overdrive chip does not spend the
+        // drive: its charge runs on from the arrival before.
         const seen = new Map();
-        for (const contestant of mode.contestants.values()) seen.set(contestant, { at: contestant.pilot.ship, arrived: server.time, spooling: false });
+        for (const contestant of mode.contestants.values()) seen.set(contestant, { at: contestant.pilot.ship, arrived: server.time, spooling: false, jump: null });
         const early = [];
         const strays = [];
         let jumps = 0;
@@ -191,14 +251,24 @@ test('in whole matches of bots nothing jumps sooner than the charge allows, and 
                 return ship;
             };
         }
-        const note = (key, at, spooling, label) => {
-            const entry = seen.get(key) ?? { at, arrived: server.time, spooling: false };
-            if (entry.at !== at) Object.assign(entry, { at, arrived: server.time });
+        /** `jump` is what is spooling up ({ overdrive } for a pilot), `chips` the overdrive chips aboard (a squad has none). */
+        const note = (key, at, jump, label, chips = 0) => {
+            const entry = seen.get(key) ?? { at, arrived: server.time, spooling: false, jump: null };
+            if (entry.at !== at) {
+                // Arrived: a new ship or a new planet. Only an overdrive jump leaves the drive's charge as it was.
+                if (!entry.jump?.overdrive) entry.arrived = server.time;
+                Object.assign(entry, { at, jump: null });
+            }
+            const spooling = Boolean(jump);
             if (spooling && !entry.spooling) {
                 const wait = server.time - entry.arrived;
-                if (wait < cooldown - 1e-6) early.push(`${label} jumped ${wait.toFixed(2)} s after arriving`);
+                if (jump.overdrive) {
+                    if (chips < 1) early.push(`${label} took an overdrive jump with no chip aboard`);
+                    chipJumps += 1;
+                } else if (wait < cooldown - 1e-6) early.push(`${label} jumped ${wait.toFixed(2)} s after its drive was spent`);
                 if (label.startsWith('squad')) squadJumps += 1;
                 else jumps += 1;
+                entry.jump = jump;
             }
             entry.spooling = spooling;
             seen.set(key, entry);
@@ -206,14 +276,21 @@ test('in whole matches of bots nothing jumps sooner than the charge allows, and 
         for (let frame = 0; frame < (12 * 60) / FRAME && !mode.result; frame++) {
             run(FRAME, FRAME);
             for (const contestant of mode.contestants.values()) {
-                if (contestant.pilot.ship?.alive) note(contestant, contestant.pilot.ship, Boolean(contestant.jump), contestant.pilot.name);
+                const entry = seen.get(contestant);
+                if (contestant.pilot.ship?.alive) {
+                    note(contestant, contestant.pilot.ship, contestant.jump, contestant.pilot.name, contestant.inventory.counts[EQUIPMENT.OVERDRIVE]);
+                } else if (entry) {
+                    // Shot down: whatever it was spooling up died with the ship.
+                    Object.assign(entry, { spooling: false, jump: null });
+                }
             }
-            for (const squad of mode.squads) note(squad, squad.place, Boolean(squad.jump), squad.key);
+            for (const squad of mode.squads) note(squad, squad.place, squad.jump ? { overdrive: false } : null, squad.key);
         }
 
         assert.ok(jumps > 10, `seed ${seed}: the bots jumped (${jumps} times)`);
-        assert.deepEqual(early, [], `seed ${seed}: nothing jumped before its drive was charged`);
+        assert.deepEqual(early, [], `seed ${seed}: nothing jumped before its drive was charged, but on a chip it carried`);
         assert.deepEqual(strays, [], `seed ${seed}: garrisons and motherships stay at their planets`);
     }
     assert.ok(squadJumps > 0, `reinforcements jumped too (${squadJumps} times)`);
+    assert.ok(chipJumps > 0, `and some bots went on an overdrive chip (${chipJumps} times)`);
 });
