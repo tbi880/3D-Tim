@@ -40,6 +40,56 @@ const MAX_HALF_ANGLE = THREE.MathUtils.degToRad(62);
 
 const sheetGeometry = new THREE.PlaneGeometry(1, 1);
 const scratchColor = new THREE.Color();
+const scratchToward = new THREE.Vector3();
+const scratchTurn = new THREE.Quaternion();
+
+/**
+ * A body being pulled into a black hole (`tear`): how far it is drawn out towards the hole when
+ * it has fallen all the way (in its own radii), and how many times the picture's size the sheet
+ * is then - room for the body's point and the stream of matter leaving it.
+ */
+const TORN_STRETCH = 1.1;
+const TORN_ROOM = 2.6;
+
+/**
+ * The sheet's texture lookup (three.js's `map_fragment`), bent: the side of the picture
+ * towards the hole is drawn out to a point, the whole of it goes dark and red, a stream of
+ * its matter runs off towards the hole - and, once the hole has it, what is left slides down
+ * that stream and shrinks to nothing. With every `torn*` at rest this is the plain lookup.
+ */
+const TORN_MAP = /* glsl */ `
+    #ifdef USE_MAP
+        // In the picture's own measure: the picture is -0.5..0.5, the sheet tornRoom times that.
+        vec2 tornPoint = ( vMapUv - 0.5 ) * tornRoom;
+        float tornOut = dot( tornPoint, tornToward );
+        vec2 tornAcross = tornPoint - tornOut * tornToward;
+        float tornLeft = max( 1.0 - tornGone, 0.001 );
+        float tornAlong = tornOut - tornGone * 0.26 * tornRoom;
+        float tornNear = max( tornAlong, 0.0 );
+        vec2 tornSource = ( tornToward * ( tornAlong - tornNear * tornAmount / ( 1.0 + tornAmount ) )
+            + tornAcross * ( 1.0 + 2.2 * tornAmount * tornNear ) ) / tornLeft + 0.5;
+        float tornInside = step( 0.0, tornSource.x ) * step( tornSource.x, 1.0 ) * step( 0.0, tornSource.y ) * step( tornSource.y, 1.0 );
+        vec4 sampledDiffuseColor = texture2D( map, clamp( tornSource, 0.0, 1.0 ) ) * tornInside;
+        sampledDiffuseColor.rgb *= mix( vec3( 1.0 ), vec3( 0.5, 0.17, 0.13 ), tornDark );
+        sampledDiffuseColor *= 1.0 - tornGone;
+        // The stream: thin where it has furthest to go, with clots running down it. Light only (no alpha).
+        float tornReach = 0.5 * tornRoom;
+        float tornWidth = 0.004 + 0.032 * ( 1.15 - tornOut / tornReach );
+        float tornFlow = exp( -pow( length( tornAcross ) / tornWidth, 2.0 ) ) * smoothstep( 0.05, 0.4, tornOut ) * smoothstep( tornReach, tornReach * 0.5, tornOut )
+            * ( 0.72 + 0.28 * sin( tornOut * 95.0 - tornTime * 6.0 ) );
+        sampledDiffuseColor.rgb += vec3( 1.0, 0.5, 0.22 ) * tornFlow * tornStream * 0.8;
+        diffuseColor *= sampledDiffuseColor;
+    #endif
+`;
+const TORN_UNIFORMS = /* glsl */ `
+    uniform vec2 tornToward;
+    uniform float tornAmount;
+    uniform float tornDark;
+    uniform float tornGone;
+    uniform float tornStream;
+    uniform float tornRoom;
+    uniform float tornTime;
+`;
 
 export class Impostor {
     /** While true no impostor takes a new picture (for measuring what the pictures cost: xr/vrBenchmark.js). */
@@ -62,6 +112,17 @@ export class Impostor {
             blendSrcAlpha: THREE.OneFactor,
             blendDstAlpha: THREE.OneMinusSrcAlphaFactor,
         });
+        /** How the body is being torn by a black hole (see `tear`); at rest, the picture is shown as it is. */
+        this.torn = {
+            tornToward: { value: new THREE.Vector2(1, 0) }, tornAmount: { value: 0 }, tornDark: { value: 0 }, tornGone: { value: 0 },
+            tornStream: { value: 0 }, tornRoom: { value: 1 }, tornTime: { value: 0 },
+        };
+        this.material.onBeforeCompile = (shader) => {
+            Object.assign(shader.uniforms, this.torn);
+            shader.fragmentShader = shader.fragmentShader
+                .replace('#include <common>', `#include <common>\n${TORN_UNIFORMS}`)
+                .replace('#include <map_fragment>', TORN_MAP);
+        };
         /** The sheet. Add it to the scene; give it the model's parent so both share a frame. */
         this.mesh = new THREE.Mesh(sheetGeometry, this.material);
         this.mesh.visible = false;
@@ -100,8 +161,38 @@ export class Impostor {
         mesh.position.copy(centre);
         parent.worldToLocal(mesh.position);
         mesh.quaternion.copy(camera.quaternion);
-        mesh.scale.setScalar(2 * distance * Math.tan(halfAngle));
+        // (Bigger than the picture while the body is being torn: see `tear`. Nothing of it once it is gone.)
+        mesh.scale.setScalar(this.torn.tornGone.value >= 1 ? 0 : 2 * distance * Math.tan(halfAngle) * this.torn.tornRoom.value);
         this.halfAngle = halfAngle;
+    }
+
+    /**
+     * A black hole is pulling the body in. Call after `aim`, every frame it is so (and once with
+     * `falling` 0 when it is over).
+     * @param {THREE.Vector3} toHole unit direction of the hole in the sky (world)
+     * @param {number} falling 0..1 how far the body has been drawn out towards it
+     * @param {number} gone 0..1 how far it has been torn away altogether (1: nothing is drawn)
+     * @param {number} time seconds, for the stream's flow
+     */
+    tear(toHole, falling, gone, time) {
+        const { torn, mesh } = this;
+        const atRest = falling <= 0 && gone <= 0;
+        if (atRest && torn.tornRoom.value === 1) return;
+        // The hole's direction as the sheet sees it: across its face. A hole dead ahead or dead astern of the body pulls no way one could draw.
+        const across = scratchToward.copy(toHole).applyQuaternion(scratchTurn.copy(mesh.quaternion).invert());
+        const length = Math.hypot(across.x, across.y);
+        if (length > 0.02) torn.tornToward.value.set(across.x / length, across.y / length);
+        const sideways = Math.min(1, length * 2.5);
+        torn.tornAmount.value = TORN_STRETCH * falling ** 1.3 * sideways;
+        torn.tornDark.value = 0.85 * falling;
+        torn.tornStream.value = falling * sideways * (1 - gone);
+        torn.tornGone.value = gone;
+        torn.tornTime.value = time;
+        const room = atRest ? 1 : TORN_ROOM;
+        if (room !== torn.tornRoom.value) {
+            mesh.scale.multiplyScalar(room / torn.tornRoom.value);
+            torn.tornRoom.value = room;
+        }
     }
 
     /**

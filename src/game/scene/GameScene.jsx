@@ -58,7 +58,7 @@ export default function GameScene({ game, markerCanvasRef, radarCanvasRef }) {
                 <PlayerCamera session={session}>
                     <VRCameraRig game={game} />
                 </PlayerCamera>
-                <SectorBackdrop />
+                <SectorBackdrop session={session} />
                 <Singularity session={session} />
                 <AsteroidField session={session} />
                 {/* Late-loading models must never bring the full-screen loader back. */}

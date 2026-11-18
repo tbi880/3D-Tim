@@ -30,6 +30,59 @@ const scratchForward = new THREE.Vector3();
 const TIDAL_STRETCH = 3.2;
 const TIDAL_THINNING = 0.6;
 
+/**
+ * A black hole bearing down on the place (World `tide`, multiplayer): every hull there is
+ * drawn out along the line to the hole - this much longer at full strain, and this much of
+ * its width gone - and shudders by this share of its size (never less than `TIDE_SHUDDER_LEAST`
+ * metres). Not a hull whose pilot's gravity shield is on (`tideProof`). A station only shudders
+ * until the planet is being torn away (`tide.ripped`): while it can still be docked at, its
+ * dock must be where it is drawn. Only a picture: nothing is hit or docked by it.
+ */
+const TIDE_STRETCH = 0.6;
+const TIDE_THINNING = 0.2;
+const TIDE_SHUDDER = 0.012;
+const TIDE_SHUDDER_LEAST = 0.5;
+const Z_AXIS = new THREE.Vector3(0, 0, 1);
+const scratchOffset = new THREE.Vector3();
+
+/**
+ * Draws a hull as the black hole's pull has it: `group` (at the ship's place, turned as the
+ * ship) is turned to point at the hole and stretched that way, and `hull` inside it turned
+ * back so the ship still faces as it does. A part bolted to another ship (a turret) is moved
+ * with that ship's stretched skin, so it stays on it.
+ * @param {number} time the world's clock: what the shudder is timed by (a paused world's hulls hold still)
+ */
+function applyTide(group, hull, ship, world, time) {
+    const { tide } = world;
+    const root = ship.parent ?? ship;
+    const strain = root.tideProof ? 0 : tide.strain;
+    const stretch = strain <= 0 ? 0 : TIDE_STRETCH * (root.cls.kind === 'station' ? tide.ripped : strain ** 1.5);
+    if (stretch > 0) {
+        const toHole = world.singularity.direction;
+        const along = 1 + stretch;
+        const across = 1 - (TIDE_THINNING / TIDE_STRETCH) * stretch;
+        group.quaternion.setFromUnitVectors(Z_AXIS, toHole);
+        hull.quaternion.copy(group.quaternion).invert().multiply(ship.quaternion);
+        group.scale.set(across, across, along);
+        hull.userData.drawnOut = true;
+        if (ship.parent) {
+            const offset = scratchOffset.copy(ship.position).sub(root.position);
+            const out = offset.dot(toHole);
+            group.position.copy(root.position).addScaledVector(offset, across).addScaledVector(toHole, out * (along - across));
+        }
+    } else if (hull.userData.drawnOut) {
+        hull.quaternion.identity();
+        hull.userData.drawnOut = false;
+    }
+    if (strain <= 0) return;
+    // The whole ship shakes as one: its parts by what the hull they ride on shakes by.
+    const shudder = Math.max(TIDE_SHUDDER_LEAST, root.boundingRadius * TIDE_SHUDDER) * strain;
+    const beat = time * 43 + root.id * 1.7;
+    group.position.x += Math.sin(beat) * shudder;
+    group.position.y += Math.sin(beat * 1.31 + 2) * shudder;
+    group.position.z += Math.sin(beat * 0.83 + 4) * shudder;
+}
+
 /** The pilot's own cloaked hull is drawn while sin(9 t) is above this: a fifth of a second in every 0.7. */
 const CLOAK_SHIMMER = 0.55;
 
@@ -174,6 +227,7 @@ function pilotThrust(ship) {
 function ShipView({ ship, session }) {
     const world = session.world;
     const groupRef = useRef(null);
+    const hullRef = useRef(null);
     const streakRef = useRef(null);
     const info = getModelInfo(ship.cls.model);
     // Another player's ship (multiplayer): its model has its own flames, driven like the local ship's.
@@ -187,12 +241,15 @@ function ShipView({ ship, session }) {
         if (!group.visible) return;
         group.quaternion.copy(ship.quaternion);
         applyWarpTransform(group, streakRef.current, ship);
+        if (warpDisplacement(ship) === 0) applyTide(group, hullRef.current, ship, world, world.time);
     });
 
     const streakWidth = ship.boundingRadius * 0.12;
 
     return (
         <group ref={groupRef}>
+          {/* The hull as the ship turns it; the group round it is what a black hole's pull turns and stretches (applyTide). */}
+          <group ref={hullRef}>
             <ShipModel modelId={ship.cls.model} faction={ship.faction} getThrust={getThrust} />
             {info?.engines?.length > 0 && <Exhaust engines={info.engines} faction={ship.faction} ship={ship} session={session} />}
             {ship.maxShield > 0 && <Shield ship={ship} session={session} />}
@@ -203,6 +260,7 @@ function ShipView({ ship, session }) {
                 <sphereGeometry args={[1, 8, 6]} />
                 <meshBasicMaterial color="#dff3ff" transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
             </mesh>
+          </group>
         </group>
     );
 }
@@ -210,6 +268,7 @@ function ShipView({ ship, session }) {
 /** The player's own ship: its hull is drawn only in the third-person (chase) view, its shield in every view. */
 function PlayerShipView({ session }) {
     const groupRef = useRef(null);
+    const turnRef = useRef(null);
     const hullRef = useRef(null);
     // Replaced on every new game or reload, which is also when a different ship may have been chosen.
     const player = useGameStore((state) => state.playerShip);
@@ -225,17 +284,21 @@ function PlayerShipView({ session }) {
         if (hullRef.current) hullRef.current.visible = cameraModeOf(session) === 'chase' && (!player.cloaked || Math.sin(session.world.time * 9) > CLOAK_SHIMMER);
         group.position.copy(player.position);
         group.quaternion.copy(player.quaternion);
+        group.scale.setScalar(1);
+        applyTide(group, turnRef.current, player, session.world, session.world.time);
     });
 
     const getThrust = () => pilotThrust(player);
 
     return (
         <group ref={groupRef} visible={false}>
+          <group ref={turnRef}>
             <group ref={hullRef} visible={false}>
                 <ShipModel modelId={player?.cls.model ?? 'kestrel'} faction={faction} getThrust={getThrust} />
                 {info?.engines?.length > 0 && <EnginePlumes engines={info.engines} faction={faction} getThrust={getThrust} />}
             </group>
             {player && <Shield key={player.id} ship={player} session={session} />}
+          </group>
         </group>
     );
 }

@@ -1,7 +1,8 @@
-import { PLAYER_FACTIONS } from '../config/battleRoyale.js';
+import { BATTLE_ROYALE, PLAYER_FACTIONS } from '../config/battleRoyale.js';
 import { isBattle } from '../modes/battleRoyale/battleRoyaleState.js';
 import { PLANET_STATUS } from '../modes/battleRoyale/collapse.js';
-import { drawCachedBackdrop, isGatePlanet, lookOf, paintPlanet } from '../ui/systemChart.js';
+import { FALL_PHASE } from '../modes/battleRoyale/planetFall.js';
+import { drawCachedBackdrop, isGatePlanet, lookOf, paintPlanet, paintPlanetFall } from '../ui/systemChart.js';
 import { roundRect } from './canvasPanel.js';
 
 /**
@@ -89,11 +90,15 @@ export function focusFrame(cx, y, cell) {
  * @param {CanvasRenderingContext2D} ctx
  * @param {object} match the match state (modes/battleRoyale/battleRoyaleState.js)
  * @param {(key: string, params?: object) => string} t
- * @param {{ marks?: Record<string, string> | null, focus?: string | null }} [options] `marks`: RESPAWN_MARK by planet id
- *   (respawnMarks), drawn above those planets; `focus`: the planet of the row the stick is on, framed
+ * @param {{ marks?: Record<string, string> | null, focus?: string | null, clock?: object | null }} [options] `marks`: RESPAWN_MARK by planet id
+ *   (respawnMarks), drawn above those planets; `focus`: the planet of the row the stick is on, framed;
+ *   `clock`: the presenter's FallClock - with it a planet falling into the black hole is drawn at the
+ *   moment of its fall the host's clock has reached (ui/systemChart.js paintPlanetFall), as on the page
  * @returns {number} the height it took
  */
-export function drawStarMap(ctx, x, y, width, match, t, { marks = null, focus = null } = {}) {
+export function drawStarMap(ctx, x, y, width, match, t, { marks = null, focus = null, clock = null } = {}) {
+    const seconds = fallSeconds(clock);
+    const moment = {};
     const { planets, you } = match;
     const { cell, xs: planetXs } = mapColumns(x, width, planets.length);
     const centreY = y + 62;
@@ -135,9 +140,11 @@ export function drawStarMap(ctx, x, y, width, match, t, { marks = null, focus = 
             ctx.stroke();
         }
         ctx.globalAlpha = swallowed ? 0.6 : 1;
-        paintPlanet(ctx, { x: cx, y: centreY, radius, look, swallowed, gate, scale: 1.5 });
+        const falling = clock ? clock.momentOf(planet, BATTLE_ROYALE.collapse.show, moment).phase !== FALL_PHASE.SAFE : false;
+        if (falling) paintPlanetFall(ctx, { x: cx, y: centreY, radius, look, gate, scale: 1.5, sunEdge: x + 30, moment, time: seconds });
+        else paintPlanet(ctx, { x: cx, y: centreY, radius, look, swallowed, gate, scale: 1.5 });
         // A planet falling in: an amber ring round it (a swallowed one has its red rim already).
-        if (planet.status === PLANET_STATUS.COLLAPSING) {
+        if (planet.status === PLANET_STATUS.COLLAPSING && !falling) {
             ctx.strokeStyle = color;
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -189,6 +196,21 @@ export function drawStarMap(ctx, x, y, width, match, t, { marks = null, focus = 
     });
     ctx.restore();
     return MAP_HEIGHT;
+}
+
+/** Pictures of the map a second while a planet on it is falling in: the headset's panel is redrawn that often, and no oftener. */
+const FALL_RATE = 12;
+
+/** The time what flows and shakes on the map is drawn at: the device's clock, in steps of a picture. */
+const fallSeconds = (clock) => (clock ? Math.floor(clock.now() * FALL_RATE) / FALL_RATE : 0);
+
+/**
+ * What a menu showing the map adds to its `diagramKey` so the map is drawn again while a planet
+ * on it is falling in (and not otherwise): the number of the picture that is due, or 0.
+ * @param {object | null} clock the presenter's FallClock
+ */
+export function fallFrame(clock) {
+    return clock?.isMoving(BATTLE_ROYALE.collapse.show) ? Math.floor(clock.now() * FALL_RATE) : 0;
 }
 
 /**

@@ -5,7 +5,7 @@ import { RATING_ORDER } from '../../config/playerShips.js';
 import { SECTORS } from '../../config/sectors.js';
 import { createRng, randomUnitVector } from '../../core/math.js';
 import { mergeUpgrades } from '../../core/refit.js';
-import { drainShip } from '../../core/systems/damage.js';
+import { destroyShip, drainShip } from '../../core/systems/damage.js';
 import { cleanUpgrades } from '../../net/match/matchInfo.js';
 import { MATCH_PHASE } from '../../net/match/matchState.js';
 import { WORLD_EVENT } from '../../net/protocol.js';
@@ -15,10 +15,11 @@ import { BotPilot, seatBots } from './bots.js';
 import { Hangar, berthCarrier, restoreHangars } from './carriers.js';
 import { CollapseClock, PLANET_STATUS } from './collapse.js';
 import { EQUIPMENT, Inventory } from './equipment.js';
+import { dragOf, holeDirection } from './planetFall.js';
 import { callReinforcements, planGarrisons, stationGarrison } from './garrisons.js';
 import { StarMap } from './starMap.js';
 import { Squad, restoreSquads, squadIdOf, squadTag } from './squads.js';
-import { GATE_TAG, buildGate, buildStation, findStation } from './station.js';
+import { GATE_TAG, buildGate, buildStation, findStation, ghostStation, stationPose } from './station.js';
 import { WarCouncil, shipStrength } from './strategy.js';
 
 const scratchOffset = new Vector3();
@@ -84,6 +85,11 @@ class Place {
         this.status = PLANET_STATUS.SAFE;
         /** The hangars of the motherships holding station here (carriers.js). */
         this.hangars = [];
+        /** Where the black hole stands in this planet's sky (unit vector), and where the station stood before it was dragged that way. */
+        this.hole = holeDirection(planet.sectorId);
+        this.stationHome = stationPose(SECTORS[planet.sectorId].playerStart, BATTLE_ROYALE.station).position;
+        /** True once the station has broken up (some seconds after the planet was swallowed: planetFall.js). */
+        this.stationFell = !station.ship.alive;
     }
 }
 
@@ -319,7 +325,10 @@ export class BattleRoyaleMode {
                 seed: Math.floor(rng() * 0xffffffff), difficulty: BATTLE_ROYALE.difficulty, friendlyFire: BATTLE_ROYALE.friendlyFire,
             }, checkpoint.zones?.[planet.id]);
             // A checkpoint without the station (it never should be) gets a new one: the planet cannot be taken without it.
-            const station = findStation(zone, BATTLE_ROYALE.station) ?? buildStation(zone, BATTLE_ROYALE.station);
+            // But a swallowed planet's station broke up, and stays gone.
+            const brokeUp = (this.clock.secondsSinceSwallowed(orbit) ?? -1) >= BATTLE_ROYALE.collapse.show.stationBreaks;
+            const station = findStation(zone, BATTLE_ROYALE.station)
+                ?? (brokeUp ? ghostStation(planet.sectorId, BATTLE_ROYALE.station) : buildStation(zone, BATTLE_ROYALE.station));
             // (Nor should it be without the gate: a checkpoint from before there was one.)
             if (planet.gate && !zone.world.findByTag(GATE_TAG)) this.raiseGate(zone);
             const place = new Place(planet, orbit, zone, station);
@@ -485,15 +494,63 @@ export class BattleRoyaleMode {
             if (status === PLANET_STATUS.SWALLOWED) this.fallIn(place);
             this.server.publishState();
         }
-        if (status === PLANET_STATUS.SAFE || !place.zone.active) return;
+        if (status === PLANET_STATUS.SAFE) return;
+        if (status === PLANET_STATUS.SWALLOWED) this.dragStation(place);
+        if (!place.zone.active) return;
 
         // The black hole's pull is the same for everybody, whoever holds the station: a share of the whole ship every second.
         const share = status === PLANET_STATUS.COLLAPSING ? BATTLE_ROYALE.collapse.collapsingDrain : 1 / BATTLE_ROYALE.collapse.swallowedSeconds;
         const { world } = place.zone;
+        if (status === PLANET_STATUS.SWALLOWED) this.dragFleets(place, dt);
         for (const ship of world.ships) {
             if (!ship.alive || ship.arriving || isScenery(ship) || this.gravityShieldHolds(ship)) continue;
             drainShip(world, ship, share * (ship.maxHull + ship.maxShield) * dt);
         }
+    }
+
+    /**
+     * A swallowed planet's station is dragged towards the black hole, faster and faster, and
+     * after a while breaks up (BATTLE_ROYALE.collapse.show). Where it is depends on the clock
+     * alone, so it is the same whether or not anybody was there to see it go.
+     */
+    dragStation(place) {
+        if (place.stationFell) return;
+        const { drag, stationBreaks } = BATTLE_ROYALE.collapse.show;
+        const hull = place.station.ship;
+        const gone = this.clock.secondsSinceSwallowed(place.orbit);
+        if (gone < stationBreaks) {
+            hull.position.copy(place.stationHome).addScaledVector(place.hole, 0.5 * drag.station * gone * gone);
+            return;
+        }
+        place.stationFell = true;
+        const { world } = place.zone;
+        // Its wreck keeps falling the way it was going.
+        hull.velocity.copy(place.hole).multiplyScalar(drag.station * stationBreaks);
+        if (place.zone.active) destroyShip(world, hull, null, { shown: true });
+        else world.removeShip(hull);
+    }
+
+    /**
+     * Every computer-flown ship at a swallowed planet is dragged towards the black hole,
+     * whatever its engines do, until the pull has drained it (it never takes long). Pilots'
+     * ships are not moved: they fly as they did - what the hole does to them is the drain, and the picture.
+     */
+    dragFleets(place, dt) {
+        const { drag, fills } = BATTLE_ROYALE.collapse.show;
+        const gone = Math.min(fills, this.clock.secondsSinceSwallowed(place.orbit));
+        for (const ship of place.zone.world.ships) {
+            if (!ship.alive || ship.arriving || ship.isPlayer || ship.parent || isScenery(ship)) continue;
+            ship.position.addScaledVector(place.hole, dragOf(ship, drag) * gone * dt);
+        }
+    }
+
+    /** The pilots at a planet whose gravity shields are on, as player ids: on their ships none of the black hole's pull shows. */
+    shieldedAt(place) {
+        if (!place || place.status === PLANET_STATUS.SAFE) return [];
+        const { time } = this.server;
+        return [...this.contestants.values()]
+            .filter((contestant) => contestant.alive && time < contestant.gravityShieldUntil && this.placeOf(contestant) === place)
+            .map((contestant) => contestant.pilot.id);
     }
 
     /**
@@ -1297,6 +1354,8 @@ export class BattleRoyaleMode {
             phase: this.result ? MATCH_PHASE.OVER : MATCH_PHASE.PLAYING,
             winner: this.result?.winner ?? null,
             time: Math.round(time),
+            // The collapse clock, to a hundredth: what every device times the planets' falls by (planetFall.js).
+            clock: this.introLeft > 0 ? null : Math.round(this.clock.time * 100) / 100,
             intro: this.introLeft > 0 ? Math.ceil(this.introLeft) : null,
             skip: this.describeSkips(pilot),
             finalStand: this.clock.finalStandLeft === null ? null : Math.ceil(this.clock.finalStandLeft),
@@ -1314,6 +1373,7 @@ export class BattleRoyaleMode {
                 picks: you.inventory.picks,
                 equipment: you.inventory.describe(),
                 effects: this.describeEffects(you),
+                shielded: this.shieldedAt(here),
                 respawn: this.describeRespawn(you),
                 out: this.outSides.has(you.faction),
                 watching: you.watching,
@@ -1436,6 +1496,7 @@ export class BattleRoyaleMode {
      */
     describePlace(place, you) {
         const wait = this.clock.secondsToChange(place.orbit);
+        const timetable = this.clock.timetableOf(place.orbit);
         // The pirates are a side like the others in this: they only differ in being free to shoot each other.
         const comrades = you ? this.membersAt(place, you.faction).filter((member) => member !== you).map((member) => member.pilot.name) : [];
         const beacon = Boolean(you) && place.scouts.has(you.faction);
@@ -1444,6 +1505,8 @@ export class BattleRoyaleMode {
             id: place.planet.id,
             status: place.status,
             changesIn: wait === null ? null : Math.ceil(wait),
+            fallsAt: timetable?.fallsAt ?? null,
+            goneAt: timetable?.goneAt ?? null,
             known,
             beacon,
             owner: null,

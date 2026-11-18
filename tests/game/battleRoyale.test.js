@@ -337,7 +337,7 @@ test('the computer-flown ships die with their planet too', () => {
     game.run(BATTLE_ROYALE.collapse.swallowedSeconds + 2);
 
     assert.ok(garrison.every((ship) => !ship.alive));
-    assert.equal(game.place(INNERMOST).station.ship.alive, true, 'the station itself is past hurting');
+    assert.equal(game.place(INNERMOST).station.ship.alive, false, 'and so does the station: it has broken up by then');
 });
 
 test('a deserted planet\'s garrison is gone the moment it is swallowed', () => {

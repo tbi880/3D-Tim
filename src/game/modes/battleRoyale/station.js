@@ -81,6 +81,18 @@ export function findStation(zone, layout) {
 }
 
 /**
+ * What stands in for the station of a planet whose station is no more (it broke up when the
+ * black hole swallowed the planet): the places of its dock, where they were, and no hull.
+ * @param {string} sectorId the zone's sector
+ * @param {object} layout BATTLE_ROYALE.station
+ * @returns {Station}
+ */
+export function ghostStation(sectorId, layout) {
+    const pose = stationPose(SECTORS[sectorId].playerStart, layout);
+    return new Station({ position: pose.position, quaternion: pose.quaternion, alive: false }, pose.lane, layout);
+}
+
+/**
  * Builds a zone's station (belonging to nobody: who holds it is the rules' business) and
  * clears the rocks out of its hull and its approach lane.
  * @param {import('../../net/server/Zone.js').Zone} zone

@@ -223,6 +223,30 @@ export const BATTLE_ROYALE = Object.freeze({
          */
         swallowedSeconds: 20,
         /**
+         * How a planet's fall looks, on the map and at the planet itself
+         * (modes/battleRoyale/planetFall.js): every device works it out from the host's clock, so
+         * all of them show the same moment, and one that comes late shows what is left of it.
+         * While the planet is falling in nothing but the picture changes. Once it is swallowed
+         * the station and every computer-flown ship there are dragged towards the black hole in
+         * earnest - pilots' ships are not: they fly as before, and die as before - and the
+         * station breaks up.
+         */
+        show: Object.freeze({
+            /** How much of the sky the black hole has (0..1): as the planet starts to fall in, as it is swallowed, and `fills` seconds after that. */
+            size: Object.freeze([0.02, 0.2, 1]),
+            fills: 20,
+            /** How hard the pull shows on hulls (0..1) the moment the planet is swallowed; it is at 1 `grip` seconds later. */
+            strain: 0.55,
+            grip: 4,
+            /** Seconds the planet in the sky takes to be torn away once it is swallowed, and seconds the flash of that moment lasts. */
+            rip: 2.6,
+            flash: 1.4,
+            /** Metres per second per second each kind of hull is dragged at once the planet is swallowed (pilots' ships: not at all). */
+            drag: Object.freeze({ station: 16, capital: 30, other: 48 }),
+            /** Seconds after the planet is swallowed at which its station breaks up. */
+            stationBreaks: 9,
+        }),
+        /**
          * Seconds the last planet stands once every other one is gone. Taking the stargate's
          * station does not end the match: the side that holds it when this runs out goes
          * through (if nobody does, the side with the most ships at it). Only the death of

@@ -34,6 +34,21 @@ on the menu panel (`xr/vrStarMap.js`), and a pilot who is shot down chooses wher
 on the same picture: the stations they may (or for now may not) come back to are marked on it,
 and the planet of the row the stick is on - a station, or a comrade to watch - is framed.
 
+A planet's fall into the black hole is a show too, and every device plays the same moment of
+it (`modes/battleRoyale/planetFall.js`): the match state carries the host's collapse clock and
+each planet's two times on it, a device keeps that clock running between states (`FallClock`),
+and everything seen is a function of it (`fallMoment`) - so whoever comes to the planet late,
+or opens the map late, sees what is left of the fall. On the star map (page and headset:
+`ui/systemChart.js` `paintPlanetFall`) the planet shakes, is drawn out towards the sun and
+streams away while a red ring closes on it; a flash as it goes; then its husk. At the planet
+itself (`world.singularity`, `world.tide`): the hole grows where the sun was, the planet in the
+sky is drawn out and torn away (`scene/effects/Impostor.js` `tear`), hulls shudder and stretch
+towards the hole (`scene/ShipsLayer.jsx` `applyTide`; not a pilot's whose gravity shield is on),
+fires break out on the station and the big ships, and the cockpit shakes (in a headset only the
+cabin does). All of that is picture only while the planet is falling in. Once it is swallowed
+the host really drags the station and the computer-flown ships towards the hole, and the
+station breaks up (`BattleRoyaleMode.dragStation` / `dragFleets`); pilots' ships are never moved.
+
 The stargate everybody is fighting towards is a real thing at the last planet: a ring
 2.4 km across (`build_stargate` in `tools/game-models/build_models.py`, ship class
 `stargate`) hanging over that planet's station, with a field across its opening drawn by a

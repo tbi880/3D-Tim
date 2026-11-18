@@ -14,6 +14,8 @@ import { EQUIPMENT, EQUIPMENT_ORDER } from './equipment.js';
  *   phase,                MATCH_PHASE
  *   winner,               the winning side once the match is over, or null (nobody won)
  *   time,                 seconds played
+ *   clock,                seconds on the collapse clock, to a hundredth (null before anybody is in the system):
+ *                         what the planets' `fallsAt` / `goneAt` are times on (planetFall.js FallClock)
  *   intro,                seconds of introduction left (nobody is in the system yet), or null once it is over
  *   skip: {               while the introduction is on (else null): it ends early once every player has asked to skip it
  *     voted, voters,      how many players have asked, of how many (the computer-flown ones are not asked)
@@ -36,6 +38,8 @@ import { EQUIPMENT, EQUIPMENT_ORDER } from './equipment.js';
  *     picks,              pieces of equipment they may still choose
  *     equipment,          { item: count } they carry (equipment.js)
  *     effects,            { gravityShield, emergencyShield }: seconds each is still on (0: off)
+ *     shielded: [id],     the pilots where they are whose gravity shields are on (themself too): the
+ *                         black hole's pull does not show on those ships
  *     respawn,            while they are down: { wait, stations, contested, falling, choose, next } - seconds
  *                         until they may come back (0: now); the planets whose stations their side holds and may
  *                         come back to, the one they would be sent to first; those their side holds but
@@ -64,6 +68,8 @@ import { EQUIPMENT, EQUIPMENT_ORDER } from './equipment.js';
  *   },
  *   planets: [{           innermost first
  *     id, status, changesIn,
+ *     fallsAt, goneAt,    when it starts to fall in and when it is swallowed, on the collapse clock
+ *                         (null for the last planet, which never does)
  *     known,              whether their side has eyes on the planet (a pilot there, its station, or a
  *                         beacon); if not, the next three are null
  *     owner,              the side that holds its station
@@ -141,6 +147,7 @@ function cleanYou(raw) {
         picks: count(raw.picks),
         equipment: cleanEquipment(raw.equipment),
         effects: cleanEffects(raw.effects),
+        shielded: Array.isArray(raw.shielded) ? raw.shielded.slice(0, 16).filter((id) => typeof id === 'string').map((id) => id.slice(0, 64)) : [],
         respawn,
         out: Boolean(raw.out),
         watching: typeof raw.watching === 'string' ? raw.watching.slice(0, 64) : null,
@@ -181,6 +188,7 @@ export function sanitizeBattleRoyaleState(raw) {
         phase: raw.phase,
         winner: sideOrNull(raw.winner),
         time: count(raw.time),
+        clock: seconds(raw.clock),
         intro: seconds(raw.intro),
         skip: seconds(raw.intro) !== null && raw.skip && typeof raw.skip === 'object'
             ? { voted: count(raw.skip.voted), voters: count(raw.skip.voters), you: Boolean(raw.skip.you) }
@@ -192,6 +200,8 @@ export function sanitizeBattleRoyaleState(raw) {
             id: planet.id,
             status: oneOf(Object.values(PLANET_STATUS), planet.status, PLANET_STATUS.SAFE),
             changesIn: seconds(planet.changesIn),
+            fallsAt: seconds(planet.goneAt) === null ? null : seconds(planet.fallsAt),
+            goneAt: seconds(planet.fallsAt) === null ? null : seconds(planet.goneAt),
             known: Boolean(planet.known),
             beacon: Boolean(planet.beacon),
             owner: planet.known ? sideOrNull(planet.owner) : null,

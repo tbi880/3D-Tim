@@ -339,6 +339,12 @@ export class SoundEngine {
                 this.tone({ from: 70, to: 1600, duration: 3.2, gain: 0.2, type: 'sawtooth', delay: 1.6 });
                 break;
             }
+            case 'swallowed':
+                // The planet goes into the black hole: a crack, then everything falling after it.
+                this.noise({ duration: 0.5, frequency: 2400, gain: 0.5 });
+                this.tone({ from: 300, to: 28, duration: 3.2, gain: 0.34, type: 'sawtooth', delay: 0.05 });
+                this.noise({ duration: 3.6, frequency: 140, gain: 0.5, delay: 0.2 });
+                break;
             case 'defeat':
                 // The star going out: a long fall and a rumble.
                 this.tone({ from: 220, to: 36, duration: 4.5, gain: 0.3, type: 'sawtooth' });

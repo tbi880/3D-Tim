@@ -637,6 +637,8 @@ function drawPanel(panel, session, state, t, glitch = 0) {
 }
 
 const VEIL_FLASH_SECONDS = 1.4;
+/** How white the veil goes at most when a planet is swallowed (`world.tide.flash` at 1): less than on a flat screen, which does not fill the eyes. */
+const TIDE_FLASH = 0.45;
 
 export default function VRHud({ game, seatRef }) {
     const { session, input } = game;
@@ -739,7 +741,8 @@ export default function VRHud({ game, seatRef }) {
         // Veil: black for the docking fade, white for a moment after a warp arrival.
         local.flash = Math.max(0, local.flash - delta);
         const fade = session.world.screenFade ?? 0;
-        const white = (local.flash / VEIL_FLASH_SECONDS) ** 2;
+        // (And, more gently, for the flash of the planet the player is at being swallowed by the black hole.)
+        const white = Math.max((local.flash / VEIL_FLASH_SECONDS) ** 2, session.world.tide.flash * TIDE_FLASH);
         if (white > fade) {
             veil.material.color.setRGB(1, 1, 1);
             veil.material.opacity = white;

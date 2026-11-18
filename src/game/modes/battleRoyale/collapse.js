@@ -83,6 +83,18 @@ export class CollapseClock {
         return entry ? Math.max(0, entry.goneAt - this.time) : null;
     }
 
+    /** Seconds since the planet was swallowed, or null if it has not been (or never will be). */
+    secondsSinceSwallowed(orbit) {
+        const entry = this.schedule[orbit];
+        return entry && this.time >= entry.goneAt ? this.time - entry.goneAt : null;
+    }
+
+    /** The planet's two times on this clock - when it starts to fall in, when it is swallowed - or null if it never falls in. */
+    timetableOf(orbit) {
+        const entry = this.schedule[orbit];
+        return entry ? { fallsAt: entry.startsAt, goneAt: entry.goneAt } : null;
+    }
+
     /** True once every planet but the last has been swallowed. */
     get finalStand() {
         const last = this.schedule[this.schedule.length - 1];

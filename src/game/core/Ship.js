@@ -177,6 +177,8 @@ export class Ship {
         this.despawnTimer = null;
         /** 0..1 how far a black hole's tide has drawn the hull out, nose to tail. Only drawn (scene/ShipsLayer.jsx). */
         this.tidal = 0;
+        /** True while the pull of a black hole bearing down on the place (World `tide`) does not show on this hull: a pilot's gravity shield is on. Only drawn. */
+        this.tideProof = false;
 
         // Player-only state.
         /**

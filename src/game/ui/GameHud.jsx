@@ -399,9 +399,14 @@ function WarpFlash({ session }) {
     return <div key={flashId} className="eod-warp-flash" />;
 }
 
+/** How white the screen goes at most when the planet the player is at is swallowed (`world.tide.flash` at 1). */
+const TIDE_FLASH = 0.8;
+
 /**
  * Black-out for docking cut-scenes: follows `world.screenFade` (set by the story's fade beat)
- * every animation frame, so it is smooth however often the rest of the HUD refreshes.
+ * every animation frame, so it is smooth however often the rest of the HUD refreshes. The
+ * same veil goes white for the flash of a planet being swallowed by the black hole
+ * (`world.tide.flash`, multiplayer).
  */
 function ScreenFade({ session }) {
     const ref = useRef(null);
@@ -409,7 +414,12 @@ function ScreenFade({ session }) {
     useEffect(() => {
         let frame = 0;
         const update = () => {
-            if (ref.current) ref.current.style.opacity = String(session.world.screenFade ?? 0);
+            if (ref.current) {
+                const fade = session.world.screenFade ?? 0;
+                const flash = session.world.tide.flash * TIDE_FLASH;
+                ref.current.style.background = flash > fade ? '#fff3dc' : '';
+                ref.current.style.opacity = String(Math.max(fade, flash));
+            }
             frame = requestAnimationFrame(update);
         };
         frame = requestAnimationFrame(update);

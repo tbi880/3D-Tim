@@ -1,4 +1,5 @@
 import { STAR_SYSTEM } from '../config/battleRoyale.js';
+import { FALL_PHASE } from '../modes/battleRoyale/planetFall.js';
 
 /**
  * The star system seen side on: the picture behind the star map, on the page
@@ -10,7 +11,8 @@ import { STAR_SYSTEM } from '../config/battleRoyale.js';
  * furthest out on the right.
  *
  * Plain 2D canvas drawing, made only when something in it changes (its size, the language, a
- * planet swallowed) - never every frame.
+ * planet swallowed) - never every frame, but while a planet is falling in: then that planet
+ * moves (paintPlanetFall), and the map is redrawn a few times a second for as long as it does.
  */
 
 /**
@@ -225,6 +227,133 @@ export function paintPlanet(ctx, { x, y, radius, look, swallowed = false, gate =
         ctx.stroke();
         ctx.restore();
     }
+}
+
+/** A planet falling in is drawn out towards the sun by this much of its width at the end, and squeezed by this much of its height. */
+const FALL_STRETCH = 0.5;
+const FALL_SQUEEZE = 0.2;
+/** How far the warning ring starts from the planet, in its radii (it closes to just outside it). */
+const WARNING_REACH = 2.7;
+const HOT = '255, 140, 70';
+const ALARM = '255, 75, 110';
+
+/**
+ * A planet at a moment of its fall into the black hole (modes/battleRoyale/planetFall.js
+ * `fallMoment`), in place of `paintPlanet`; a planet that is safe is painted as ever.
+ *
+ * Falling in: the planet shakes, is drawn out towards the sun and goes dark from that side;
+ * its matter streams away to the sun's rim; a red ring closes on it again and again, faster
+ * as the end comes. The moment it is swallowed: a flash, a ring of light running outwards,
+ * and what is left of the planet is pulled along the stream and gone. After: a dark husk.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {object} planet as for paintPlanet (without `swallowed`), and:
+ * @param {number} planet.sunEdge where the sun's rim crosses the planets' line (the stream runs to it)
+ * @param {object} planet.moment the fall's moment
+ * @param {number} planet.time seconds, any clock that runs: what flows and shakes is timed by it
+ */
+export function paintPlanetFall(ctx, { x, y, radius, look, gate = false, scale = 1, sunEdge, moment, time }) {
+    if (moment.phase === FALL_PHASE.SAFE) {
+        paintPlanet(ctx, { x, y, radius, look, gate, scale });
+        return;
+    }
+    const gone = moment.phase === FALL_PHASE.GONE;
+    const { falling, ripped, flash } = moment;
+    if (gone && ripped >= 1 && flash <= 0) {
+        paintPlanet(ctx, { x, y, radius, look, swallowed: true, gate, scale });
+        return;
+    }
+    const reach = Math.max(radius * 2, x - radius - sunEdge);
+
+    // The stream: the planet's matter on its way to the sun, thin where it has furthest to go.
+    const length = reach * Math.min(1, 0.3 + falling);
+    const strength = gone ? 1 - ripped : 0.25 + 0.6 * falling;
+    ctx.save();
+    const stream = ctx.createLinearGradient(x - radius, 0, x - radius - length, 0);
+    stream.addColorStop(0, `rgba(${HOT}, ${0.75 * strength})`);
+    stream.addColorStop(1, `rgba(${HOT}, 0)`);
+    ctx.fillStyle = stream;
+    ctx.beginPath();
+    ctx.moveTo(x - radius * 0.5, y - radius * 0.55);
+    ctx.lineTo(x - radius - length, y - 0.5 * scale);
+    ctx.lineTo(x - radius - length, y + 0.5 * scale);
+    ctx.lineTo(x - radius * 0.5, y + radius * 0.55);
+    ctx.closePath();
+    ctx.fill();
+    // Bright clots running down it.
+    ctx.strokeStyle = `rgba(255, 226, 170, ${0.8 * strength})`;
+    ctx.lineWidth = 1.6 * scale;
+    ctx.setLineDash([3 * scale, 9 * scale]);
+    ctx.lineDashOffset = -time * 46 * scale;
+    ctx.beginPath();
+    ctx.moveTo(x - radius, y);
+    ctx.lineTo(x - radius - length, y);
+    ctx.stroke();
+    ctx.restore();
+
+    // What is under the planet once it is torn away: the husk, coming up as it goes.
+    if (gone) {
+        ctx.save();
+        ctx.globalAlpha *= ripped;
+        paintPlanet(ctx, { x, y, radius, look, swallowed: true, gate, scale });
+        ctx.restore();
+    }
+
+    // The planet itself: shaken, drawn out, darkened - and, once swallowed, pulled away along the stream.
+    const shake = (0.5 + 1.3 * falling) * scale * (gone ? 1 - ripped : 1);
+    const stretch = 1 + FALL_STRETCH * falling + 2.4 * ripped;
+    const squeeze = (1 - FALL_SQUEEZE * falling) * (1 - ripped);
+    if (squeeze > 0.01) {
+        ctx.save();
+        ctx.globalAlpha *= 1 - ripped * ripped;
+        ctx.translate(
+            x - radius * (stretch - 1) * 0.7 - ripped * reach * 0.8 + Math.sin(time * 47) * shake,
+            y + Math.sin(time * 61 + 1.3) * shake,
+        );
+        ctx.scale(stretch, squeeze);
+        paintPlanet(ctx, { x: 0, y: 0, radius, look, gate: gate && !gone, scale });
+        // Dark from the sun's side.
+        const shadow = ctx.createLinearGradient(-radius, 0, radius, 0);
+        shadow.addColorStop(0, `rgba(20, 4, 10, ${0.85 * falling})`);
+        shadow.addColorStop(1, `rgba(60, 8, 16, ${0.35 * falling})`);
+        ctx.fillStyle = shadow;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    ctx.save();
+    if (!gone) {
+        // The warning: a red ring closing on the planet, brightest as it gets there.
+        const { beat } = moment;
+        ctx.strokeStyle = `rgba(${ALARM}, ${0.2 + 0.7 * beat})`;
+        ctx.lineWidth = (1.5 + beat) * scale;
+        ctx.beginPath();
+        ctx.arc(x, y, radius * (WARNING_REACH - (WARNING_REACH - 1.25) * beat), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = `rgba(${ALARM}, 0.55)`;
+        ctx.lineWidth = scale;
+        ctx.beginPath();
+        ctx.arc(x, y, radius * WARNING_REACH, 0, Math.PI * 2);
+        ctx.stroke();
+    } else if (flash > 0) {
+        // The moment itself: a burst of light, and a ring of it running outwards.
+        const spread = 1 - flash;
+        const burst = ctx.createRadialGradient(x, y, 0, x, y, radius * (2 + 3 * spread));
+        burst.addColorStop(0, `rgba(255, 250, 235, ${flash})`);
+        burst.addColorStop(0.4, `rgba(255, 200, 140, ${0.6 * flash})`);
+        burst.addColorStop(1, 'rgba(255, 120, 90, 0)');
+        ctx.fillStyle = burst;
+        ctx.beginPath();
+        ctx.arc(x, y, radius * (2 + 3 * spread), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(255, 235, 210, ${flash})`;
+        ctx.lineWidth = 2 * scale;
+        ctx.beginPath();
+        ctx.arc(x, y, radius * (1.2 + 4.5 * spread), 0, Math.PI * 2);
+        ctx.stroke();
+    }
+    ctx.restore();
 }
 
 /**

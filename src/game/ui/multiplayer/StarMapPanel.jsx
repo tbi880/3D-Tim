@@ -1,10 +1,10 @@
-import { useLayoutEffect, useRef, useState } from 'react';
-import { PLAYER_FACTIONS, STAR_SYSTEM } from '../../config/battleRoyale.js';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { BATTLE_ROYALE, PLAYER_FACTIONS, STAR_SYSTEM } from '../../config/battleRoyale.js';
 import { isBattle, jumpChoice } from '../../modes/battleRoyale/battleRoyaleState.js';
 import { PLANET_STATUS } from '../../modes/battleRoyale/collapse.js';
 import { EQUIPMENT } from '../../modes/battleRoyale/equipment.js';
 import { useGameStore, useT } from '../../state/gameStore.js';
-import { isGatePlanet, lookOf, paintPlanet, paintSystemBackdrop } from '../systemChart.js';
+import { isGatePlanet, lookOf, paintPlanetFall, paintSystemBackdrop } from '../systemChart.js';
 import { EQUIPMENT_ICONS } from './EquipmentPanel.jsx';
 
 /**
@@ -116,18 +116,26 @@ function measureChart(list) {
     };
 }
 
+/** Seconds between two pictures of the map while a planet on it is falling in: about 30 a second. */
+const FALL_FRAME = 1 / 30;
+
 /**
  * The system side on, behind the cards: one canvas the size of the list's scrolled content,
- * painted when the layout, the language or a swallowed planet changes - not every frame.
+ * painted when the layout, the language or a planet's state changes - and, while a planet is
+ * falling into the black hole, again and again for as long as that moves (ui/systemChart.js
+ * paintPlanetFall), timed by the host's clock (`clock`: the presenter's FallClock), so every
+ * device's map shows the same moment of it.
  */
-function SystemBackdrop({ planets }) {
+function SystemBackdrop({ planets, clock }) {
     const t = useT();
     const canvasRef = useRef(null);
     const [chart, setChart] = useState(null);
-    const swallowed = planets.map((planet) => (planet.status === PLANET_STATUS.SWALLOWED ? 1 : 0)).join('');
-    const ids = planets.map((planet) => planet.id).join();
+    const states = planets.map((planet) => `${planet.id}:${planet.status}`).join();
     const sunLabel = t('mp.map.sun');
     const outerLabel = t('mp.map.outer');
+    // The newest planets for the painter, which outlives the render that started it.
+    const latest = useRef(planets);
+    latest.current = planets;
 
     useLayoutEffect(() => {
         const list = canvasRef.current?.closest('.eod-map-orbits');
@@ -144,21 +152,46 @@ function SystemBackdrop({ planets }) {
 
     useLayoutEffect(() => {
         const canvas = canvasRef.current;
-        if (!canvas || !chart) return;
+        if (!canvas || !chart) return undefined;
         const { pixelRatio } = chart;
         canvas.width = Math.round(chart.width * pixelRatio);
         canvas.height = Math.round(chart.height * pixelRatio);
         const ctx = canvas.getContext('2d');
-        ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-        ctx.clearRect(0, 0, chart.width, chart.height);
-        paintSystemBackdrop(ctx, { x: 0, y: 0, ...chart }, { sun: sunLabel, outer: outerLabel }, { font: chart.font });
-        ids.split(',').forEach((id, index) => {
-            const x = chart.planetXs[index];
-            if (x === undefined) return;
-            const look = lookOf(id);
-            paintPlanet(ctx, { x, y: chart.eclipticY, radius: look.size * chart.planetMax, look, swallowed: swallowed[index] === '1', gate: isGatePlanet(id) });
-        });
-    }, [chart, ids, swallowed, sunLabel, outerLabel]);
+        const { show } = BATTLE_ROYALE.collapse;
+        const moment = {};
+        const paint = (seconds) => {
+            ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+            ctx.clearRect(0, 0, chart.width, chart.height);
+            paintSystemBackdrop(ctx, { x: 0, y: 0, ...chart }, { sun: sunLabel, outer: outerLabel }, { font: chart.font });
+            latest.current.forEach((planet, index) => {
+                const x = chart.planetXs[index];
+                if (x === undefined) return;
+                const look = lookOf(planet.id);
+                paintPlanetFall(ctx, {
+                    x, y: chart.eclipticY, radius: look.size * chart.planetMax, look, gate: isGatePlanet(planet.id),
+                    sunEdge: chart.sunEdge, moment: clock.momentOf(planet, show, moment), time: seconds,
+                });
+            });
+        };
+        paint(performance.now() / 1000);
+        // A fall in progress: the picture is made again, about thirty times a second, until it is over.
+        let frame = 0;
+        let paintedAt = 0;
+        let moving = true;
+        const tick = (now) => {
+            frame = requestAnimationFrame(tick);
+            const seconds = now / 1000;
+            if (seconds - paintedAt < FALL_FRAME) return;
+            const wasMoving = moving;
+            moving = clock.isMoving(show);
+            // One more picture after the last moving one: the still one that stays.
+            if (!moving && !wasMoving) return;
+            paintedAt = seconds;
+            paint(seconds);
+        };
+        frame = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(frame);
+    }, [chart, states, sunLabel, outerLabel, clock]);
 
     return <canvas ref={canvasRef} className="eod-map-chart" style={chart ? { width: chart.width, height: chart.height } : { display: 'none' }} aria-hidden="true" />;
 }
@@ -180,7 +213,7 @@ export default function StarMapPanel({ session }) {
                 {match.finalStand !== null ? t('mp.map.finalStand', { seconds: match.finalStand }) : t('mp.map.hint')}
             </p>
             <ol className="eod-map-orbits" aria-label={t('mp.map.order')}>
-                <li className="eod-map-sun" aria-hidden="true"><SystemBackdrop planets={match.planets} /></li>
+                <li className="eod-map-sun" aria-hidden="true"><SystemBackdrop planets={match.planets} clock={presenter.fallClock} /></li>
                 {match.planets.map((planet) => <PlanetCard key={planet.id} planet={planet} you={match.you} presenter={presenter} />)}
             </ol>
             <div className="eod-menu">

@@ -233,8 +233,11 @@ const pictures = { frame: 0, takenAt: -1 };
  * The model itself is never drawn into the game's picture: an impostor (effects/Impostor.js)
  * photographs it a few times a second and shows the photograph on one sheet, so a body costs
  * one draw call however detailed its model is. `active` is whether its sector is the current one.
+ *
+ * While a black hole is pulling the place in (multiplayer: `world.tide`) the body is drawn out
+ * towards it, darkens, and is finally torn away (Impostor `tear`).
  */
-function BackdropObject({ config, layer, active }) {
+function BackdropObject({ config, layer, active, world }) {
     const groupRef = useRef(null);
     const truePosition = useMemo(
         () => new THREE.Vector3().fromArray(config.direction).normalize().multiplyScalar(config.distanceKm * KM),
@@ -267,6 +270,7 @@ function BackdropObject({ config, layer, active }) {
         state.bounds ??= localBoundingSphere(group);
         const sphere = sphereToWorld(state.bounds, group);
         impostor.aim(viewPose.position, sphere.center, sphere.radius, group.parent);
+        if (world) impostor.tear(world.singularity.direction, world.tide.falling, world.tide.ripped, clock.elapsedTime);
 
         // Retake the picture when it is due - straight away the first time, otherwise only
         // while the sheet is in view, and never two bodies in one frame.
@@ -359,8 +363,9 @@ function SectorEnvironment({ sector }) {
  * the camera), distant bodies, plus the sector's lighting. All sectors' models stay mounted
  * (only the current sector's are pictured and shown) so a warp jump never has to wait for a
  * download.
+ * @param {{ session?: import('../state/GameSession.js').GameSession }} props `session`: whose world's black hole pulls the bodies in (`world.tide`)
  */
-export default function SectorBackdrop() {
+export default function SectorBackdrop({ session = null }) {
     const sectorId = useGameStore((state) => state.sectorId) ?? DEFAULT_SECTOR;
     const sector = SECTORS[sectorId];
     const skyRef = useRef(null);
@@ -385,7 +390,7 @@ export default function SectorBackdrop() {
                 {Object.values(SECTORS).map((other) => (
                     <group key={other.id} visible={other.id === sectorId}>
                         {other.backdrop.map((config, index) => (
-                            <BackdropObject key={config.model} config={config} layer={FIRST_BODY_LAYER + index} active={other.id === sectorId} />
+                            <BackdropObject key={config.model} config={config} layer={FIRST_BODY_LAYER + index} active={other.id === sectorId} world={session?.world ?? null} />
                         ))}
                     </group>
                 ))}

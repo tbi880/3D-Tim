@@ -11,7 +11,7 @@ import { LINK_STATUS } from '../net/transport/PeerLink.js';
 import { PHASE } from '../state/GameSession.js';
 import { isStoryShown, matchMenuPlace } from './menuPlacement.js';
 import { exitVR } from './vrState.js';
-import { drawStarMap, respawnMarks } from './vrStarMap.js';
+import { drawStarMap, fallFrame, respawnMarks } from './vrStarMap.js';
 
 /**
  * Multiplayer inside the headset: the LAN lobby, and in a match the star map (with the
@@ -336,8 +336,9 @@ function starMap(session, presenter, match, t) {
         lines,
         // The whole system at a glance, as on the flat page; redrawn whenever anything on it changes.
         // The planet a jump or beacon row goes to is framed while the row is selected.
-        diagram: (ctx, x, y, width, row) => drawStarMap(ctx, x, y, width, match, t, { focus: row?.planet ?? null }),
-        diagramKey: JSON.stringify([match.planets, you.planet]),
+        // (And several times a second while a planet on it is falling into the black hole.)
+        diagram: (ctx, x, y, width, row) => drawStarMap(ctx, x, y, width, match, t, { focus: row?.planet ?? null, clock: presenter.fallClock }),
+        diagramKey: JSON.stringify([match.planets, you.planet, fallFrame(presenter.fallClock)]),
         items,
     };
 }
@@ -433,8 +434,8 @@ function respawn(presenter, match, t) {
         key: `match:respawn:${ready && open ? 'ready' : 'waiting'}:${comeback.contested.join()}:${comeback.falling.join()}`,
         title: t('mp.hud.dead'),
         lines,
-        diagram: (ctx, x, y, width, row) => drawStarMap(ctx, x, y, width, match, t, { marks, focus: row?.planet ?? null }),
-        diagramKey: JSON.stringify([match.planets, you.planet, marks]),
+        diagram: (ctx, x, y, width, row) => drawStarMap(ctx, x, y, width, match, t, { marks, focus: row?.planet ?? null, clock: presenter.fallClock }),
+        diagramKey: JSON.stringify([match.planets, you.planet, marks, fallFrame(presenter.fallClock)]),
         items,
         footer: ready && open ? t('mp.respawn.vrFooter') : undefined,
         tone: 'failure',

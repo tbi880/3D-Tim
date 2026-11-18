@@ -28,6 +28,11 @@ const MAX_SHAKE_ROLL = 0.035;
 const BEAM_RUMBLE_SHAKE = 0.07;
 const BEAM_RUMBLE_BARE_HULL = 1.6;
 const RUMBLE_FOLLOW = 7;
+/**
+ * A black hole bearing down on the place (World `tide`): this much shake at full strain, for as
+ * long as it lasts - unless the pilot's gravity shield keeps the pull off (`tideProof`).
+ */
+const TIDE_SHAKE = 0.11;
 /** VR: how far (m) the cabin shudders round the pilot at full shake. The view itself never moves. */
 const VR_CABIN_SHAKE = 0.045;
 
@@ -91,7 +96,8 @@ export default function PlayerCamera({ session, children }) {
                 const distance = world.player.position.distanceTo(position);
                 addTrauma(Math.max(0, 1 - distance / (size * 10 + 1200)) * Math.min(0.75, size / 900));
             }),
-            session.events.on(SESSION_EVENTS.CUE, ({ id }) => { if (id === 'dawnCannon') addTrauma(1); }),
+            // The Dawn's great gun; a planet going into the black hole with the player there.
+            session.events.on(SESSION_EVENTS.CUE, ({ id }) => { if (id === 'dawnCannon' || id === 'swallowed') addTrauma(1); }),
             session.events.on(SESSION_EVENTS.WARP, ({ stage }) => { if (stage === 'arrive') addTrauma(0.8); }),
         ];
         return () => unsubscribe.forEach((off) => off());
@@ -111,8 +117,10 @@ export default function PlayerCamera({ session, children }) {
         const bearing = !watching && player.alive && underHeavyBeam(world, player) ? 1 : 0;
         playerFeedback.beamRumble += (bearing - playerFeedback.beamRumble) * (1 - Math.exp(-RUMBLE_FOLLOW * dt));
         const rumble = playerFeedback.beamRumble * BEAM_RUMBLE_SHAKE * (player.shield > 0 ? 1 : BEAM_RUMBLE_BARE_HULL);
+        // The black hole's pull has the whole ship groaning (not one a gravity shield holds, nor a watcher's view).
+        const tide = !watching && player.alive && !player.tideProof ? world.tide.strain * TIDE_SHAKE : 0;
         // Spooling up the warp drive rattles the ship too.
-        const shake = dt > 0 ? Math.max(trauma.current * trauma.current, world.warpFactor * 0.06, rumble) : 0;
+        const shake = dt > 0 ? Math.max(trauma.current * trauma.current, world.warpFactor * 0.06, rumble, tide) : 0;
         const cabin = cockpitRef.current;
 
         if (vr.active) {

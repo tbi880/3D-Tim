@@ -88,6 +88,15 @@ export class World {
          * game mode: `size` 0 (not there) .. 1 (it fills the sky), and the `direction` it comes from.
          */
         this.singularity = { size: 0, direction: new Vector3(0, 0, -1) };
+        /**
+         * What that black hole is doing to this place, as it shows (the scene's layers read it;
+         * nothing here is simulated), driven by the game mode: `strain` 0..1 how hard hulls are
+         * shaken and drawn out towards it (not those that are `tideProof`), `falling` 0..1 how far
+         * the place's planet has been drawn out in the sky, `ripped` 0..1 how far it has been torn
+         * away, `flash` 1 -> 0 the flash of the moment it is swallowed. The hole is where
+         * `singularity.direction` says.
+         */
+        this.tide = { strain: 0, falling: 0, ripped: 0, flash: 0 };
     }
 
     // ---- Lifecycle ----------------------------------------------------------------------
@@ -111,6 +120,7 @@ export class World {
         this.screenFade = 0;
         Object.assign(this.gateField, { charge: 0, open: 0, shut: 0, pulse: 0, faction: null });
         this.singularity.size = 0;
+        Object.assign(this.tide, { strain: 0, falling: 0, ripped: 0, flash: 0 });
     }
 
     /**

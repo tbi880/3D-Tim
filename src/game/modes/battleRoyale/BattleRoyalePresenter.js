@@ -3,6 +3,7 @@ import { BATTLE_ROYALE, NPC_FACTIONS, STAR_SYSTEM } from '../../config/battleRoy
 import { FACTION, WORLD } from '../../config/gameConfig.js';
 import { SECTORS } from '../../config/sectors.js';
 import { SHIP_CLASSES } from '../../config/shipClasses.js';
+import { GAME_EVENTS } from '../../core/EventBus.js';
 import { destroyShip } from '../../core/systems/damage.js';
 import { t } from '../../i18n/index.js';
 import { MATCH_PHASE } from '../../net/match/matchState.js';
@@ -12,6 +13,7 @@ import { PLANET_STATUS } from './collapse.js';
 import { isEquipment } from './equipment.js';
 import { GateCeremony } from './gateCeremony.js';
 import { IntroStage } from './introStage.js';
+import { FALL_PHASE, FallClock, dragOf, holeDirection } from './planetFall.js';
 import { STATION_TAG, buildGate, gatePose, stationPose } from './station.js';
 import { SystemFall } from './systemFall.js';
 
@@ -24,8 +26,21 @@ export const MATCH_PANEL = Object.freeze({ MAP: 'map', EQUIPMENT: 'equipment' })
 /** The two acts of the ending, in order: through the gate, then the system's fall. */
 export const OUTRO_ACT = Object.freeze({ GATE: 'gate', FALL: 'fall' });
 
-/** Sounds of the match's ceremonies (audio/SoundEngine.js playCue). */
-export const CUE = Object.freeze({ INTRO: 'matchIntro', VICTORY: 'victory', DEFEAT: 'defeat' });
+/** Sounds of the match's ceremonies (audio/SoundEngine.js playCue). `SWALLOWED`: the planet the player is at goes into the black hole. */
+export const CUE = Object.freeze({ INTRO: 'matchIntro', VICTORY: 'victory', DEFEAT: 'defeat', SWALLOWED: 'swallowed' });
+
+/** The sector each planet is fought over in, by planet id. */
+const SECTOR_OF = Object.freeze(Object.fromEntries(STAR_SYSTEM.planets.map((planet) => [planet.id, planet.sectorId])));
+/** Nothing of a black hole to be seen (World `tide`). */
+const NO_TIDE = Object.freeze({ strain: 0, falling: 0, ripped: 0, flash: 0 });
+/**
+ * A place falling in comes apart as one watches: fires break out on the station and the big
+ * hulls there, this many a second at full strain (none on a hull smaller than `FIRE_HULL`
+ * metres), each a blast `FIRE_SIZE` of the hull's size.
+ */
+const FIRES_PER_SECOND = 2.2;
+const FIRE_HULL = 60;
+const FIRE_SIZE = Object.freeze([0.03, 0.08]);
 
 /** Names as the player reads them (the ids come from the host: an unknown one is shown as it came). */
 export const planetName = (planetId) => t(`mp.planet.${String(planetId)}`);
@@ -75,11 +90,20 @@ export class BattleRoyalePresenter {
         this.decided = false;
         /** VR: the menu of a pilot who is down is put away while they watch somebody fly. */
         this.watchView = false;
+        /** The host's collapse clock as this device follows it: what the planets' falls are timed by, on the map and in the sky. */
+        this.fallClock = new FallClock();
+        /** The fall of the planet the player is at, as of this frame (planetFall.js fallMoment). */
+        this.fall = { phase: FALL_PHASE.SAFE };
+        /** The planet that fall was seen at last frame (a planet id), or null. */
+        this.fallPlace = null;
+        /** Ends the presenter's listening to the world (set by `begin`). */
+        this.stopListening = null;
     }
 
     sanitizeState(raw) {
         const state = sanitizeBattleRoyaleState(raw);
         if (!state) return null;
+        this.fallClock.hear(state);
         this.followIntro(state);
         // The host is listening now: ask for what was chosen in the lobby, once.
         if (this.startingEquipment && state.you?.picks > 0) {
@@ -94,6 +118,9 @@ export class BattleRoyalePresenter {
         this.session = session;
         // Until the introduction is over the player is nowhere: the view is the dying sun, from outside.
         session.world.setSector(BATTLE_ROYALE.intro.fall.sectorId);
+        // The fall of a planet is timed by the host's clock, kept between its words by the clock this device's match runs on.
+        if (typeof client.now === 'function') this.fallClock.now = client.now;
+        this.stopListening = session.world.events.on(GAME_EVENTS.SHIP_DESTROYED, ({ ship }) => this.onShipDestroyed(ship));
     }
 
     // ---- The introduction and the ending -------------------------------------------------------
@@ -150,6 +177,8 @@ export class BattleRoyalePresenter {
         this.refitOpen = false;
         this.decided = true;
         session.world.spectating = null;
+        // Whatever the black hole was doing where the player was: the ending has its own.
+        Object.assign(session.world.tide, NO_TIDE);
         session.setWaypoint(null);
         session.ui.set({ refit: null, matchOutro: { winner: state.winner, won, act: OUTRO_ACT.GATE } });
         this.warp = null;
@@ -625,6 +654,7 @@ export class BattleRoyalePresenter {
             this.markDock();
             this.followGate();
             this.followWatched();
+            this.followFall(dt);
         }
         const { warp } = this;
         const world = this.session?.world;
@@ -635,6 +665,67 @@ export class BattleRoyalePresenter {
         // A spool whose jump never came (the ship was shot down first) fades by itself.
         if (warp.phase === 'spool' && warp.elapsed > warp.seconds + 1) this.warp = { phase: 'exit', elapsed: 0, seconds: WARP_EXIT_SECONDS };
         else if (warp.phase === 'exit' && progress >= 1) this.warp = null;
+    }
+
+    // ---- The planet the player is at, falling into the black hole ------------------------------
+
+    /**
+     * What the black hole is doing to the place the player is at (or watches a comrade at), as
+     * the host's clock has it this frame (planetFall.js): the hole in the sky where the sun was,
+     * the planet drawn out towards it and torn away, hulls shaken - but not a pilot's whose
+     * gravity shield is on - and fires on the big ones. Whoever comes to the place late finds
+     * the fall as far along as it is. The moment the planet is swallowed: a flash, and a sound.
+     */
+    followFall(dt) {
+        const { session } = this;
+        const { world } = session;
+        const you = this.client?.state?.you;
+        const here = you?.planet ? this.client.state.planets.find((planet) => planet.id === you.planet) : null;
+        const was = this.fall.phase;
+        const fall = here ? this.fallClock.momentOf(here, BATTLE_ROYALE.collapse.show, this.fall) : Object.assign(this.fall, NO_TIDE, { phase: FALL_PHASE.SAFE, size: 0, gone: 0 });
+        world.singularity.size = fall.size;
+        const { strain, falling, ripped, flash } = fall;
+        Object.assign(world.tide, { strain, falling, ripped, flash });
+        if (fall.phase === FALL_PHASE.SAFE) {
+            this.fallPlace = null;
+            return;
+        }
+        holeDirection(SECTOR_OF[here.id], world.singularity.direction);
+        // Seen happening, not found already done: the planet goes with a crash.
+        if (fall.phase === FALL_PHASE.GONE && was === FALL_PHASE.FALLING && this.fallPlace === here.id) session.playCue(CUE.SWALLOWED);
+        this.fallPlace = here.id;
+
+        const shielded = you.shielded;
+        let burning = null;
+        let hulls = 0;
+        for (const ship of world.ships) {
+            ship.tideProof = ship.isPlayer && shielded.includes(ship.pilotId);
+            // One big hull, picked evenly among those there, has a fire break out on it.
+            if (ship.alive && !ship.arriving && !ship.parent && ship.boundingRadius >= FIRE_HULL && !ship.cls.portal && Math.random() * ++hulls < 1) burning = ship;
+        }
+        if (burning && dt > 0 && Math.random() < FIRES_PER_SECOND * strain * dt) this.lightFire(burning);
+    }
+
+    /** A fire breaks out somewhere on a hull that the black hole is pulling apart. Only a picture, and a sound. */
+    lightFire(ship) {
+        const reach = ship.halfExtents ?? scratchOffset.setScalar(ship.radius);
+        const position = new Vector3((Math.random() * 2 - 1) * reach.x, (Math.random() * 2 - 1) * reach.y, (Math.random() * 2 - 1) * reach.z)
+            .multiplyScalar(0.7).applyQuaternion(ship.quaternion).add(ship.position);
+        const [least, most] = FIRE_SIZE;
+        this.session.world.events.emit(GAME_EVENTS.EXPLOSION, {
+            position, size: ship.boundingRadius * (least + (most - least) * Math.random()), capital: false, color: '#ffb070',
+        });
+    }
+
+    /**
+     * A ship has been destroyed. At a swallowed planet the wreck of anything the hole was
+     * dragging (the station, the computer-flown ships: BattleRoyaleMode.dragFleets) keeps
+     * falling the way it was going.
+     */
+    onShipDestroyed(ship) {
+        if (this.fall.phase !== FALL_PHASE.GONE || this.outro || this.intro || ship.isPlayer || ship.parent) return;
+        const { drag, fills } = BATTLE_ROYALE.collapse.show;
+        ship.velocity.addScaledVector(this.session.world.singularity.direction, dragOf(ship, drag) * Math.min(fills, this.fall.gone));
     }
 
     /** The objective line: where the player stands with the collapse. */
@@ -659,11 +750,15 @@ export class BattleRoyalePresenter {
             this.session.world.screenFade = 0;
             Object.assign(this.session.world.gateField, { charge: 0, open: 0, shut: 0, pulse: 0, faction: null });
             this.session.world.singularity.size = 0;
+            Object.assign(this.session.world.tide, NO_TIDE);
             this.session.world.spectating = null;
             this.session.setWaypoint(null);
         }
         this.warp = null;
         this.outro = null;
+        this.stopListening?.();
+        this.stopListening = null;
+        this.fall = { phase: FALL_PHASE.SAFE };
         if (this.intro) {
             this.intro = null;
             this.session?.ui.set({ matchIntro: null });
