@@ -661,11 +661,13 @@ export default function VRHud({ game, seatRef }) {
         const { scoreFeed } = local;
         if (scoreFeed.popups.length > 0) scoreFeed.popups = scoreFeed.popups.filter((popup) => local.time - popup.at < SCORE_POPUP_SECONDS);
 
-        // Head-up panes. Hidden when not flying, so nothing needs clearing then.
-        markerPane.mesh.visible = flying;
-        textPane.mesh.visible = flying;
+        // Head-up panes. Hidden when not flying, so nothing needs clearing then - nor while a
+        // match's ending plays: it has the view to itself (as on the flat page, ui/GameHud.jsx).
+        const headUp = flying && !store.matchOutro;
+        markerPane.mesh.visible = headUp;
+        textPane.mesh.visible = headUp;
         local.textTimer -= delta;
-        if (flying) {
+        if (headUp) {
             virtualCamera.matrixWorld.copy(seat.matrixWorld);
             virtualCamera.matrixWorldInverse.copy(seat.matrixWorld).invert();
             beginLogicalFrame(markerPane);

@@ -10,7 +10,8 @@ import { MATCH_ACTION } from '../modes/battleRoyale/BattleRoyalePresenter.js';
 import { useGameStore } from '../state/gameStore.js';
 import { createCanvasPanel } from './canvasPanel.js';
 import VRHud, { vrComms } from './VRHud.jsx';
-import { VRMenu } from './VRMenu.js';
+import { VRMenu, drawBehindHint } from './VRMenu.js';
+import { BEHIND_HINT, MENU_MESHES, MENU_METERS, MENU_PLACE, MENU_TEXTURE, placeMenuMeshes, showsBehindHint } from './menuPlacement.js';
 import { XRGamepadInput } from './XRGamepadInput.js';
 import { guardXRFrames } from './frameGuard.js';
 import { vrBenchmark } from './vrBenchmark.js';
@@ -26,9 +27,6 @@ const INPUT_PRIORITY = -3;
  * the first poses were stale and left the pilot's head above or beside the seat.
  */
 const AUTO_RECENTER = [{ frame: 20, turn: true }, { frame: 90, turn: false }];
-const MENU_TEXTURE = [1024, 768];
-const MENU_METERS = [1.48, 1.11];
-const MENU_POSITION = [0, 0.02, -1.5];
 const MENU_REDRAW_INTERVAL = 0.2;
 /**
  * The headset's depth range. three takes it from the camera it renders with, which in VR is
@@ -75,10 +73,34 @@ export default function VRCameraRig({ game }) {
     const frameCount = useRef(0);
     const recenterSoon = () => { recenterAt.current.push({ frame: frameCount.current + 1, turn: true }); };
     const menuTimer = useRef(0);
+    // The screen the menu panel last showed (see the menu's frame callback); null while it is away.
+    const menuScreen = useRef(null);
 
     const menu = useMemo(() => new VRMenu(game), [game]);
     const menuPanel = useMemo(() => createCanvasPanel({ gl, width: MENU_TEXTURE[0], height: MENU_TEXTURE[1], meters: MENU_METERS, renderOrder: 1003 }), [gl]);
-    useEffect(() => () => menuPanel.dispose(), [menuPanel]);
+    // The panel's mesh, and copies of it sharing its picture for a place that hangs it twice
+    // (behind the pilot, over each shoulder: xr/menuPlacement.js). One canvas, one upload.
+    const menuMeshes = useMemo(() => {
+        const meshes = [menuPanel.mesh];
+        while (meshes.length < MENU_MESHES) {
+            const copy = new THREE.Mesh(menuPanel.mesh.geometry, menuPanel.mesh.material);
+            copy.renderOrder = menuPanel.mesh.renderOrder;
+            copy.frustumCulled = false;
+            meshes.push(copy);
+        }
+        placeMenuMeshes(meshes, MENU_PLACE.FRONT, false);
+        return meshes;
+    }, [menuPanel]);
+    // The line in front that says the result is behind the pilot (xr/menuPlacement.js).
+    const hintPanel = useMemo(() => {
+        const panel = createCanvasPanel({ gl, width: BEHIND_HINT.texture[0], height: BEHIND_HINT.texture[1], meters: BEHIND_HINT.meters, renderOrder: 1003, uploadOnlyChanges: true });
+        panel.mesh.visible = false;
+        return panel;
+    }, [gl]);
+    useEffect(() => () => {
+        menuPanel.dispose();
+        hintPanel.dispose();
+    }, [menuPanel, hintPanel]);
 
     const gamepads = useMemo(() => {
         const { session, input } = game;
@@ -230,14 +252,28 @@ export default function VRCameraRig({ game }) {
     useFrame((_, delta) => {
         if (!vr.active) return;
         const state = useGameStore.getState();
+        const { phase } = game.session;
         const open = menu.isOpen(state);
-        menuPanel.mesh.visible = open;
-        if (!open) return;
+        if (!open) {
+            placeMenuMeshes(menuMeshes, menu.place, false);
+            hintPanel.mesh.visible = false;
+            menuScreen.current = null;
+            return;
+        }
         menu.tick(state);
         menuTimer.current -= delta;
-        if (menu.dirty || menuTimer.current <= 0) {
+        // A new screen - a menu opening, the session's phase, the ending's second act - is drawn
+        // and hung in its place at once, not up to a redraw interval later in the old one's.
+        const screen = `${phase}|${state.matchOutro?.act ?? ''}`;
+        if (menu.dirty || menuTimer.current <= 0 || screen !== menuScreen.current) {
+            menuScreen.current = screen;
             menuTimer.current = MENU_REDRAW_INTERVAL;
-            menu.draw(menuPanel, state, (key, params) => translate(state.settings.locale, key, params));
+            const t = (key, params) => translate(state.settings.locale, key, params);
+            menu.draw(menuPanel, state, t);
+            placeMenuMeshes(menuMeshes, menu.place);
+            const hint = showsBehindHint(menu.place, phase === PHASE.MATCH_OVER);
+            if (hint) drawBehindHint(hintPanel, t, menu.tone);
+            hintPanel.mesh.visible = hint;
         }
     });
 
@@ -247,7 +283,8 @@ export default function VRCameraRig({ game }) {
             {active && (
                 <>
                     <VRHud game={game} seatRef={seatRef} />
-                    <primitive object={menuPanel.mesh} position={MENU_POSITION} />
+                    {menuMeshes.map((mesh) => <primitive key={mesh.uuid} object={mesh} />)}
+                    <primitive object={hintPanel.mesh} position={BEHIND_HINT.position} rotation={[BEHIND_HINT.tilt, 0, 0]} />
                 </>
             )}
         </group>

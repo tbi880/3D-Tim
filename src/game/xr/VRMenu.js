@@ -11,6 +11,7 @@ import { roundRect, wrapText } from './canvasPanel.js';
 import { LOBBY_SCOPE, ROOM_STATE } from '../net/lobby/LanMultiplayer.js';
 import { useLanStore } from '../net/lobby/lanStore.js';
 import { buildMatchMenu, isMatchMenuOpen } from './VRMatchMenu.js';
+import { MENU_PLACE } from './menuPlacement.js';
 import { drawShipSheet, shipSheetKey } from './VRShipSheet.js';
 import { vrBenchmark } from './vrBenchmark.js';
 import { vrPerformance } from './vrPerformance.js';
@@ -22,7 +23,9 @@ import { VR_DIAGNOSTICS, exitVR, vr } from './vrState.js';
  * be seen in VR; these offer the same choices, driven by the controller sticks and buttons.
  *
  * A row is { label, sub?, value?, select?, left?, right?, disabled? }: `select` runs on
- * trigger / A, `left` / `right` change the row's value.
+ * trigger / A, `left` / `right` change the row's value. A menu's `place` says where its panel
+ * hangs (xr/menuPlacement.js): in front, unless it says otherwise; `large` draws its few words
+ * larger.
  */
 
 const cycle = (list, current, step) => list[(list.indexOf(current) + step + list.length) % list.length];
@@ -52,6 +55,9 @@ export class VRMenu {
         this.lastKey = null;
         /** The row (by its `id`) the next screen opens on, in place of its first. */
         this.focusId = null;
+        /** Where the menu last drawn hangs (MENU_PLACE), and its tone. */
+        this.place = MENU_PLACE.FRONT;
+        this.tone = undefined;
         this.dirty = true;
     }
 
@@ -397,9 +403,11 @@ export class VRMenu {
         this.dirty = true;
     }
 
-    /** Draws the menu if anything changed since the last call. Returns true when it did. */
+    /** Draws the menu if anything changed since the last call, and notes where it hangs. Returns true when it drew. */
     draw(panel, state, t) {
         const menu = this.build(state, t);
+        this.place = menu.place ?? MENU_PLACE.FRONT;
+        this.tone = menu.tone;
         if (menu.key !== this.lastKey) {
             // A different screen starts at its first row, or on the row it was left by (focusId).
             this.lastKey = menu.key;
@@ -424,6 +432,13 @@ function shipLocked() {
 }
 
 const ACCENT = '#59d0ff';
+/** A menu's frame and title colours by its tone. */
+const TONE_COLORS = Object.freeze({
+    failure: { frame: 'rgba(255, 90, 110, 0.75)', title: '#ff8a9a' },
+    victory: { frame: 'rgba(255, 200, 110, 0.9)', title: '#ffe2a0' },
+    plain: { frame: 'rgba(89, 208, 255, 0.6)', title: '#e8f6ff' },
+});
+const toneColors = (tone) => TONE_COLORS[tone] ?? TONE_COLORS.plain;
 
 function drawMenu(panel, menu, selected, t) {
     const { ctx, canvas } = panel;
@@ -431,28 +446,29 @@ function drawMenu(panel, menu, selected, t) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, width, height);
 
-    const failure = menu.tone === 'failure';
-    const victory = menu.tone === 'victory';
+    const colors = toneColors(menu.tone);
     roundRect(ctx, 8, 8, width - 16, height - 16, 28);
     ctx.fillStyle = 'rgba(4, 14, 26, 0.88)';
     ctx.fill();
     ctx.lineWidth = 3;
-    ctx.strokeStyle = failure ? 'rgba(255, 90, 110, 0.75)' : victory ? 'rgba(255, 200, 110, 0.9)' : 'rgba(89, 208, 255, 0.6)';
+    ctx.strokeStyle = colors.frame;
     ctx.stroke();
 
     const left = 64;
     const contentWidth = width - left * 2;
-    let y = 92;
+    // A panel with only a few words on it (the ending, hung further off) has them larger.
+    const large = Boolean(menu.large);
+    let y = large ? 116 : 92;
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'left';
-    ctx.fillStyle = failure ? '#ff8a9a' : victory ? '#ffe2a0' : '#e8f6ff';
-    ctx.font = '700 46px Orbitron, "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.fillStyle = colors.title;
+    ctx.font = `700 ${large ? 66 : 46}px Orbitron, "PingFang SC", "Microsoft YaHei", sans-serif`;
     ctx.fillText(menu.title, left, y);
-    y += 26;
+    y += large ? 34 : 26;
 
-    ctx.font = '400 25px "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.font = `400 ${large ? 36 : 25}px "PingFang SC", "Microsoft YaHei", sans-serif`;
     ctx.fillStyle = 'rgba(200, 225, 245, 0.85)';
-    const lineHeight = 35;
+    const lineHeight = large ? 52 : 35;
     for (const text of menu.lines) {
         for (const line of wrapText(ctx, text, contentWidth)) {
             y += lineHeight;
@@ -518,5 +534,63 @@ function drawMenu(panel, menu, selected, t) {
     ctx.fillStyle = 'rgba(160, 200, 230, 0.7)';
     // A panel with nothing to choose (the story before a match) has no use for the hint.
     ctx.fillText(menu.footer ?? t('ui.vr.menuHint'), width / 2, height - 30);
+    panel.commit();
+}
+
+/**
+ * The line in front that says the result is behind the pilot (xr/menuPlacement.js): a pill
+ * with a turn-round arrow, in the result's tone.
+ */
+export function drawBehindHint(panel, t, tone) {
+    const { ctx, canvas } = panel;
+    const { width, height } = canvas;
+    const colors = toneColors(tone);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+
+    const text = t('mp.vr.resultBehind');
+    ctx.font = '600 46px "PingFang SC", "Microsoft YaHei", sans-serif';
+    const icon = 30;
+    const gap = 26;
+    const padding = 44;
+    const textWidth = Math.min(ctx.measureText(text).width, width - 16 - padding * 2 - icon * 2 - gap);
+    const pillWidth = padding * 2 + icon * 2 + gap + textWidth;
+    const x = (width - pillWidth) / 2;
+    const top = 14;
+    const pillHeight = height - top * 2;
+    roundRect(ctx, x, top, pillWidth, pillHeight, pillHeight / 2);
+    ctx.fillStyle = 'rgba(4, 14, 26, 0.85)';
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = colors.frame;
+    ctx.stroke();
+
+    // Turn round: most of a circle, and the arrowhead where it ends.
+    const cx = x + padding + icon;
+    const cy = height / 2;
+    const from = -0.35 * Math.PI;
+    const to = 1.25 * Math.PI;
+    ctx.beginPath();
+    ctx.arc(cx, cy, icon * 0.8, from, to);
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = colors.title;
+    ctx.stroke();
+    const tipX = cx + Math.cos(to) * icon * 0.8;
+    const tipY = cy + Math.sin(to) * icon * 0.8;
+    const along = to + Math.PI / 2;
+    const head = 15;
+    ctx.beginPath();
+    ctx.moveTo(tipX + Math.cos(along) * head, tipY + Math.sin(along) * head);
+    ctx.lineTo(tipX + Math.cos(along + 2.5) * head, tipY + Math.sin(along + 2.5) * head);
+    ctx.lineTo(tipX + Math.cos(along - 2.5) * head, tipY + Math.sin(along - 2.5) * head);
+    ctx.closePath();
+    ctx.fillStyle = colors.title;
+    ctx.fill();
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = colors.title;
+    ctx.fillText(text, cx + icon + gap, cy + 2, textWidth);
     panel.commit();
 }

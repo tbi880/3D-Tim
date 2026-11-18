@@ -1,6 +1,6 @@
 import { BATTLE_ROYALE, MAX_PLAYERS, PLAYER_FACTIONS, STAR_SYSTEM } from '../config/battleRoyale.js';
 import { PLAYER_SHIPS } from '../config/playerShips.js';
-import { MATCH_ACTION, MATCH_PANEL } from '../modes/battleRoyale/BattleRoyalePresenter.js';
+import { MATCH_ACTION, MATCH_PANEL, OUTRO_ACT } from '../modes/battleRoyale/BattleRoyalePresenter.js';
 import { isBattle, jumpChoice, rankPlayers, respawnBlockedKey, rosterBySide } from '../modes/battleRoyale/battleRoyaleState.js';
 import { PLANET_STATUS } from '../modes/battleRoyale/collapse.js';
 import { EQUIPMENT, EQUIPMENT_ORDER } from '../modes/battleRoyale/equipment.js';
@@ -10,6 +10,7 @@ import { MATCH_PHASE } from '../net/match/matchState.js';
 import { LINK_STATUS } from '../net/transport/PeerLink.js';
 import { PHASE } from '../state/GameSession.js';
 import { drawCachedBackdrop, isGatePlanet, lookOf, paintPlanet } from '../ui/systemChart.js';
+import { matchMenuPlace } from './menuPlacement.js';
 import { exitVR } from './vrState.js';
 
 /**
@@ -66,7 +67,7 @@ export function buildMatchMenu(game, state, t, view) {
     }
     const match = state.match;
     if (!match) return null;
-    if (session.phase === PHASE.MATCH_OVER) return result(lan, lanState, match, t, exitItem);
+    if (session.phase === PHASE.MATCH_OVER) return result(lan, lanState, state, t, exitItem);
     if (session.phase === PHASE.PAUSED) {
         return {
             key: 'match:menu',
@@ -81,7 +82,7 @@ export function buildMatchMenu(game, state, t, view) {
         };
     }
     if (session.phase !== PHASE.PLAYING || !match.you) return null;
-    if (state.matchOutro) return ending(state.matchOutro, t);
+    if (state.matchOutro) return ending(state, t);
     if (match.intro != null) return introduction(match, t);
     const presenter = session.match?.presenter;
     if (!presenter) return null;
@@ -234,16 +235,24 @@ function introduction(match, t) {
     return { key: 'match:intro', title: t('mp.intro.title'), lines, items: [], footer: '' };
 }
 
-function ending(outro, t) {
+/**
+ * What the ending says, act by act as the flat page's cinematic does. It hangs behind the
+ * pilot (menuPlacement.js): the show is straight ahead.
+ */
+function ending(state, t) {
+    const outro = state.matchOutro;
     const kind = !outro.winner ? 'none' : outro.won ? 'won' : 'lost';
     const faction = outro.winner ? t(`mp.faction.${outro.winner}`) : '';
+    const words = outro.act === OUTRO_ACT.FALL ? `mp.outro.fall.${kind}` : `mp.outro.${kind}`;
     return {
-        key: `match:outro:${kind}`,
-        title: t(`mp.outro.${kind}.title`),
-        lines: [t(`mp.outro.${kind}.text`, { faction })],
+        key: `match:outro:${outro.act}:${kind}`,
+        title: t(`${words}.title`),
+        lines: [t(`${words}.text`, { faction })],
         items: [],
         footer: '',
         tone: outro.won ? 'victory' : 'failure',
+        place: matchMenuPlace(state, false),
+        large: true,
     };
 }
 
@@ -525,7 +534,9 @@ function watchRows(presenter, match, t) {
     return rows;
 }
 
-function result(lan, lanState, match, t, exitItem) {
+/** The result, with the way back to the lobby; after an ending it stays behind the pilot where the ending was. */
+function result(lan, lanState, state, t, exitItem) {
+    const { match } = state;
     const disconnected = match.phase === MATCH_PHASE.DISCONNECTED;
     const won = Boolean(match.winner) && match.you?.faction === match.winner;
     const title = disconnected ? 'mp.result.disconnected' : !match.winner ? 'mp.result.draw' : won ? 'mp.result.victory' : 'mp.result.defeat';
@@ -539,5 +550,5 @@ function result(lan, lanState, match, t, exitItem) {
     if (online && lan.isHost) items.push({ label: t('mp.result.backToLobby'), select: () => lan.returnToLobby() });
     else if (online) lines.push(t('mp.result.waitingForHost'));
     items.push({ label: t('mp.result.leave'), select: () => lan.leaveRoom() }, exitItem);
-    return { key: `match:result:${title}`, title: t(title), lines, items, tone: won ? undefined : 'failure' };
+    return { key: `match:result:${title}`, title: t(title), lines, items, tone: won ? 'victory' : 'failure', place: matchMenuPlace(state, true) };
 }
