@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { BATTLE_ROYALE, STAR_SYSTEM } from '../../src/game/config/battleRoyale.js';
+import { BATTLE_ROYALE, NPC_FACTIONS, STAR_SYSTEM } from '../../src/game/config/battleRoyale.js';
 import { FACTION } from '../../src/game/config/gameConfig.js';
 import { destroyShip } from '../../src/game/core/systems/damage.js';
 import { BR_REQUEST } from '../../src/game/modes/battleRoyale/battleRoyaleProtocol.js';
@@ -165,7 +165,9 @@ test('a pilot waiting to come back waits on where they were on the new host, and
     const game = createTestServer(['ann', 'bo', 'cy'], { start: { settings: {} } });
     const cy = game.mode.contestants.get('cy');
     // Ann on Cy's side, flying: a side with nobody flying is out, and Cy would never come back.
+    // Bo against them: with one side left the match would be over before Cy's wait was.
     game.mode.contestants.get('ann').faction = cy.faction;
+    game.mode.contestants.get('bo').faction = NPC_FACTIONS.find((faction) => faction !== cy.faction);
     const station = [...game.mode.places.values()].find((place) => place.zone !== cy.pilot.zone);
     station.owner = cy.faction;
     cy.respawns = 2;

@@ -1955,6 +1955,21 @@ test('a match short of players is made up with computer-flown ones, dealt into t
     }
 });
 
+test('the bots are the pirates in most matches: a person is one in about one match in five', () => {
+    const MATCHES = 200;
+    let pirateMatches = 0;
+    for (let seed = 1; seed <= MATCHES; seed++) {
+        const { mode } = createTestServer(['ann', 'bo'], { start: { seed, settings: { bots: 'fill' } } });
+        const pirates = [...mode.contestants.values()].filter((contestant) => contestant.faction === PIRATE);
+        assert.equal(pirates.length, 2);
+        const people = pirates.filter((contestant) => !contestant.pilot.bot).length;
+        // Both or neither: when it is the people's turn they are a crew, not one of them beside a bot.
+        assert.ok(people === 0 || people === 2, `seed ${seed}: ${people} of the pirates are people`);
+        if (people > 0) pirateMatches += 1;
+    }
+    assert.ok(pirateMatches / MATCHES > 0.13 && pirateMatches / MATCHES < 0.27, `${pirateMatches} of ${MATCHES} matches`);
+});
+
 test('no bots where the room wants none, or where every seat is taken', () => {
     assert.equal(createTestServer(['ann'], { start: { settings: { bots: 'none' } } }).server.pilots.size, 1);
     const names = Array.from({ length: BOTS.fillTo }, (_, index) => `p${index}`);
@@ -2947,7 +2962,8 @@ test('on each device the introduction shows the sides and their pilots before an
         const roster = rosterBySide(state);
         assert.deepEqual(roster.map((side) => side.faction), [DAWN, UMBRA, PIRATE]);
         assert.equal(roster.reduce((sum, side) => sum + side.players.length, 0), 4, 'every pilot is listed under a side');
-        assert.ok(roster.every((side) => side.players.length >= 1));
+        // (Four people and nobody else: no pirates, unless this is the match in five that has some.)
+        assert.ok(roster.every((side) => side.players.length >= 1 || side.faction === PIRATE));
         const own = roster.find((side) => side.faction === state.you.faction);
         assert.ok(own.players.some((player) => player.id === device.id), 'each under their own');
     }

@@ -33,10 +33,20 @@ export const STAR_SYSTEM = Object.freeze({
 export const PLAYER_FACTIONS = Object.freeze([FACTION.DAWN, FACTION.UMBRA, FACTION.PIRATE]);
 /**
  * Seats in a full match, by side: ten players, four Federation, four Umbra, two pirates. A
- * match with fewer players is dealt in the same proportions (allegiance.js dealFactions), and
+ * match with fewer players is dealt in the same proportions (allegiance.js dealSides), and
  * the computer-flown players fill it up to this (`bots.fillTo`).
  */
 export const SIDE_SEATS = Object.freeze({ [FACTION.DAWN]: 4, [FACTION.UMBRA]: 4, [FACTION.PIRATE]: 2 });
+/**
+ * How seldom a person is a pirate. Each match is rolled once (allegiance.js dealSides): this
+ * often it is a pirates' match for people, and people take the pirates' seats before any
+ * computer-flown player does; in every other match the computer-flown players take them, and
+ * the people are all Federation or Umbra. So a room of one or two people is a pirate crew in
+ * about one match of five, and in a bigger room it is two of them, in one match of five.
+ * (Seats still count: with no computer-flown player to be a pirate, people are pirates only
+ * once the other two sides are full.)
+ */
+export const PEOPLE_AS_PIRATES = Object.freeze({ faction: FACTION.PIRATE, chance: 1 / 5 });
 /** Most players in a match (and in a room: the lobby server's LanRoomOptions.MaxPlayersLimit is the same). */
 export const MAX_PLAYERS = Object.values(SIDE_SEATS).reduce((sum, seats) => sum + seats, 0);
 /**

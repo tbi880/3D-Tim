@@ -1,5 +1,15 @@
 import { FACTION } from '../../config/gameConfig.js';
 
+/** A copy of a list in an order the seed alone decides. */
+function shuffled(list, rng) {
+    const copy = [...list];
+    for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+}
+
 /**
  * Deals players into sides, in proportion to each side's seats: every player goes to the side
  * whose seats are least filled so far (ties in a shuffled order). So every side gets a player
@@ -11,14 +21,7 @@ import { FACTION } from '../../config/gameConfig.js';
  * @returns {Map<string, string>} player id -> faction
  */
 export function dealFactions(playerIds, seats, rng) {
-    const shuffle = (list) => {
-        const copy = [...list];
-        for (let i = copy.length - 1; i > 0; i--) {
-            const j = Math.floor(rng() * (i + 1));
-            [copy[i], copy[j]] = [copy[j], copy[i]];
-        }
-        return copy;
-    };
+    const shuffle = (list) => shuffled(list, rng);
     const order = shuffle(Object.keys(seats));
     const counts = new Map(order.map((faction) => [faction, 0]));
     const dealt = new Map();
@@ -28,6 +31,41 @@ export function dealFactions(playerIds, seats, rng) {
         counts.set(faction, counts.get(faction) + 1);
         dealt.set(id, faction);
     }
+    return dealt;
+}
+
+/**
+ * Deals a match's pilots into sides when one side is seldom for people (the pirates:
+ * PEOPLE_AS_PIRATES). That side has its share of the pilots, as in dealFactions - one seat at
+ * least, all of them in a full match - and the match is rolled once for who sits there:
+ *  - `chance` of the time it is that side's match for people: people take its seats before any
+ *    computer-flown player does (which people, the seed decides);
+ *  - otherwise the computer-flown players take them, and no person is on that side - unless
+ *    the other sides have no seat left for them. Seats nobody may take stay empty: a match of
+ *    people alone is then between the other sides.
+ * Everybody else is dealt into the other sides by dealFactions, people and computer-flown alike.
+ * @param {{ id: string, bot?: boolean }[]} pilots
+ * @param {Record<string, number>} seats side -> seats in a full match (SIDE_SEATS)
+ * @param {() => number} rng 0..1
+ * @param {{ faction: string, chance: number }} seldom the side people are seldom dealt into, and how often a match is theirs there
+ * @returns {Map<string, string>} pilot id -> faction
+ */
+export function dealSides(pilots, seats, rng, seldom) {
+    const { faction, chance } = seldom;
+    const ids = pilots.map((pilot) => pilot.id);
+    if (!(seats[faction] > 0)) return dealFactions(ids, seats, rng);
+    const others = Object.fromEntries(Object.entries(seats).filter(([side]) => side !== faction));
+    const room = Object.values(others).reduce((sum, count) => sum + count, 0);
+    const people = shuffled(pilots.filter((pilot) => !pilot.bot).map((pilot) => pilot.id), rng);
+    const bots = shuffled(pilots.filter((pilot) => pilot.bot).map((pilot) => pilot.id), rng);
+    const forPeople = rng() < chance;
+    const share = Math.min(seats[faction], Math.max(1, Math.round(ids.length * seats[faction] / (room + seats[faction]))));
+    // Who is asked first, and how many of them may sit down; then whoever the other sides cannot seat.
+    const queue = forPeople ? [...people, ...bots] : [...bots, ...people];
+    const willing = forPeople ? ids.length : bots.length;
+    const crew = new Set(queue.slice(0, Math.max(Math.min(share, willing), ids.length - room)));
+    const dealt = dealFactions(ids.filter((id) => !crew.has(id)), others, rng);
+    for (const id of crew) dealt.set(id, faction);
     return dealt;
 }
 

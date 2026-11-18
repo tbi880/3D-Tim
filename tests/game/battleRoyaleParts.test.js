@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { BATTLE_ROYALE, MAX_PLAYERS, NPC_FACTIONS, PLAYER_FACTIONS, SIDE_SEATS, STAR_SYSTEM } from '../../src/game/config/battleRoyale.js';
+import { BATTLE_ROYALE, MAX_PLAYERS, NPC_FACTIONS, PEOPLE_AS_PIRATES, PLAYER_FACTIONS, SIDE_SEATS, STAR_SYSTEM } from '../../src/game/config/battleRoyale.js';
 import { FACTION } from '../../src/game/config/gameConfig.js';
 import { SECTORS } from '../../src/game/config/sectors.js';
 import { SHIP_CLASSES } from '../../src/game/config/shipClasses.js';
@@ -8,7 +8,7 @@ import { Quaternion, Vector3 } from 'three';
 import { createRng, forwardOf } from '../../src/game/core/math.js';
 import { drainShip } from '../../src/game/core/systems/damage.js';
 import { World } from '../../src/game/core/World.js';
-import { LOYALTY, LoyaltyRecord, dealFactions } from '../../src/game/modes/battleRoyale/allegiance.js';
+import { LOYALTY, LoyaltyRecord, dealFactions, dealSides } from '../../src/game/modes/battleRoyale/allegiance.js';
 import { isBattle, jumpChoice, jumpStatusText, rankPlayers, rankWinners, sanitizeBattleRoyaleState, upgradesText, watchedPilot } from '../../src/game/modes/battleRoyale/battleRoyaleState.js';
 import { CollapseClock, PLANET_STATUS } from '../../src/game/modes/battleRoyale/collapse.js';
 import { EQUIPMENT, EQUIPMENT_ORDER, Inventory, isEquipment } from '../../src/game/modes/battleRoyale/equipment.js';
@@ -180,6 +180,90 @@ test('who lands where depends on the seed alone', () => {
     assert.deepEqual([...dealFactions(ids, SIDE_SEATS, createRng(5))], [...dealFactions(ids, SIDE_SEATS, createRng(5))]);
     const outcomes = new Set(Array.from({ length: 20 }, (_, seed) => dealFactions(ids, SIDE_SEATS, createRng(seed + 1)).get('a')));
     assert.equal(outcomes.size, 3, 'over many seeds a player sees every side');
+});
+
+/** A match of `people` people and `bots` computer-flown players, dealt: how many of each are on each side. */
+function dealMatch(people, bots, seed) {
+    const pilots = [
+        ...Array.from({ length: people }, (_, i) => ({ id: `p${i}`, bot: false })),
+        ...Array.from({ length: bots }, (_, i) => ({ id: `bot:${i}`, bot: true })),
+    ];
+    const dealt = dealSides(pilots, SIDE_SEATS, createRng(seed), PEOPLE_AS_PIRATES);
+    const count = (bot) => PLAYER_FACTIONS.map((faction) => pilots.filter((pilot) => pilot.bot === bot && dealt.get(pilot.id) === faction).length);
+    const [peopleBySide, botsBySide] = [count(false), count(true)];
+    return { dealt, peopleBySide, botsBySide, sizes: peopleBySide.map((size, index) => size + botsBySide[index]), piratePeople: peopleBySide[2], pirateBots: botsBySide[2] };
+}
+const MATCHES = 2000;
+/** Of `MATCHES` matches, the share for which `test` holds. */
+const shareOf = (people, bots, test) => Array.from({ length: MATCHES }, (_, seed) => dealMatch(people, bots, seed + 1)).filter(test).length / MATCHES;
+
+test('a person is a pirate in about one match in five', () => {
+    assert.equal(PEOPLE_AS_PIRATES.faction, FACTION.PIRATE);
+    assert.equal(PEOPLE_AS_PIRATES.chance, 1 / 5);
+    // Alone among computer-flown players, and with a friend: each of them, one match in five.
+    for (const people of [1, 2]) {
+        const share = shareOf(people, MAX_PLAYERS - people, (match) => match.dealt.get('p0') === FACTION.PIRATE);
+        assert.ok(share > 0.17 && share < 0.23, `${people} people: ${share}`);
+    }
+});
+
+test('a room has pirates among its people in about one match in five, however many they are', () => {
+    for (let people = 1; people <= 8; people++) {
+        const share = shareOf(people, MAX_PLAYERS - people, (match) => match.piratePeople > 0);
+        assert.ok(share > 0.17 && share < 0.23, `${people} people: ${share}`);
+    }
+});
+
+test('in the pirates\' match people are the pirates before any bot is; in the others the bots are, and no person', () => {
+    for (let people = 1; people <= 8; people++) {
+        for (let seed = 1; seed <= 300; seed++) {
+            const match = dealMatch(people, MAX_PLAYERS - people, seed);
+            assert.deepEqual(match.sizes, [4, 4, 2], 'a full match keeps its shape');
+            if (match.piratePeople > 0) assert.equal(match.piratePeople, Math.min(2, people), `${people} people, seed ${seed}`);
+            else assert.equal(match.pirateBots, 2);
+        }
+    }
+});
+
+test('people are pirates in any match once the other sides have no seat left for them', () => {
+    for (let seed = 1; seed <= 300; seed++) {
+        // Nine people and a bot: the bot is a pirate, and one of the people has to be.
+        const nine = dealMatch(9, 1, seed);
+        assert.deepEqual(nine.sizes, [4, 4, 2]);
+        assert.ok(nine.piratePeople === 1 || (nine.piratePeople === 2 && nine.pirateBots === 0), `seed ${seed}`);
+        // Ten people: two of them.
+        assert.deepEqual(dealMatch(10, 0, seed).peopleBySide, [4, 4, 2]);
+    }
+    const share = shareOf(9, 1, (match) => match.piratePeople === 2);
+    assert.ok(share > 0.17 && share < 0.23, `both pirates are people in one match in five: ${share}`);
+});
+
+test('people with no bots among them are Federation and Umbra, and a pirate or two in one match in five', () => {
+    for (let people = 1; people <= 8; people++) {
+        let piratesMatches = 0;
+        for (let seed = 1; seed <= MATCHES; seed++) {
+            const { sizes } = dealMatch(people, 0, seed);
+            const [dawn, umbra, pirates] = sizes;
+            assert.equal(dawn + umbra + pirates, people);
+            assert.ok(Math.abs(dawn - umbra) <= 1, `${people} people -> ${sizes}: the two fleets' pilots are as many`);
+            assert.ok(dawn <= 4 && umbra <= 4);
+            if (pirates > 0) {
+                piratesMatches += 1;
+                assert.equal(pirates, people === 8 ? 2 : 1, `${people} people -> ${sizes}: the pirates' share of them`);
+            }
+        }
+        assert.ok(piratesMatches / MATCHES > 0.17 && piratesMatches / MATCHES < 0.23, `${people} people: ${piratesMatches / MATCHES}`);
+    }
+});
+
+test('computer-flown players alone are dealt as ever: four, four and two', () => {
+    for (let seed = 1; seed <= 100; seed++) assert.deepEqual(dealMatch(0, 10, seed).sizes, [4, 4, 2]);
+});
+
+test('the same seed deals the same sides, pirates and all', () => {
+    for (let seed = 1; seed <= 50; seed++) assert.deepEqual([...dealMatch(3, 7, seed).dealt], [...dealMatch(3, 7, seed).dealt]);
+    const sidesSeen = new Set(Array.from({ length: 60 }, (_, seed) => dealMatch(3, 7, seed + 1).dealt.get('p0')));
+    assert.equal(sidesSeen.size, 3, 'over many seeds a person sees every side');
 });
 
 const limits = { warnDamage: 40, treasonDamage: 100, forgivePerSecond: 5 };

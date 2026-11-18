@@ -1,5 +1,5 @@
 import { Vector3 } from 'three';
-import { BATTLE_ROYALE, NPC_FACTIONS, PLAYER_FACTIONS, SIDE_SEATS, STAR_SYSTEM } from '../../config/battleRoyale.js';
+import { BATTLE_ROYALE, NPC_FACTIONS, PEOPLE_AS_PIRATES, PLAYER_FACTIONS, SIDE_SEATS, STAR_SYSTEM } from '../../config/battleRoyale.js';
 import { FACTION } from '../../config/gameConfig.js';
 import { RATING_ORDER } from '../../config/playerShips.js';
 import { SECTORS } from '../../config/sectors.js';
@@ -9,7 +9,7 @@ import { destroyShip, drainShip } from '../../core/systems/damage.js';
 import { cleanUpgrades } from '../../net/match/matchInfo.js';
 import { MATCH_PHASE } from '../../net/match/matchState.js';
 import { WORLD_EVENT } from '../../net/protocol.js';
-import { LOYALTY, LoyaltyRecord, dealFactions, isPirate } from './allegiance.js';
+import { LOYALTY, LoyaltyRecord, dealSides, isPirate } from './allegiance.js';
 import { BR_EVENT, BR_REQUEST, DOCK_END, DOCK_REFUSAL, JUMP_REFUSAL, RESPAWN_REFUSAL } from './battleRoyaleProtocol.js';
 import { BotPilot, seatBots } from './bots.js';
 import { Hangar, berthCarrier, restoreHangars } from './carriers.js';
@@ -98,7 +98,8 @@ class Place {
  *
  * A star system whose sun is collapsing: planets are swallowed one by one from the inside,
  * and three sides - the Federation, the Umbra and the pirates - fight their way outwards to
- * the stargate on the last one. Players are dealt into the sides at random; every planet has
+ * the stargate on the last one. Players are dealt into the sides at random (people seldom
+ * into the pirates: PEOPLE_AS_PIRATES); every planet has
  * a station, guarded by the Federation's or the Umbra's computer-flown garrison or fought
  * over by both. A side takes a planet by docking a ship at its station - and loses it the
  * same way. A pilot who is shot down comes back, after a wait that grows each time, at a
@@ -195,9 +196,10 @@ export class BattleRoyaleMode {
             }
         });
 
-        // A match short of players is made up with computer-flown ones, dealt in like everybody else.
+        // A match short of players is made up with computer-flown ones. They are dealt in with
+        // everybody else - and are the pirates, four matches in five (PEOPLE_AS_PIRATES).
         seatBots(server, this.info.settings, rng);
-        const sides = dealFactions([...server.pilots.keys()], SIDE_SEATS, rng);
+        const sides = dealSides([...server.pilots.values()], SIDE_SEATS, rng, PEOPLE_AS_PIRATES);
         const startOf = new Map();
         for (const pilot of server.pilots.values()) {
             const faction = sides.get(pilot.id);
