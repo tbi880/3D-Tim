@@ -318,7 +318,7 @@ const Menu = forwardRef(({ isPortraitPhoneScreen, setDisplayOverlayCallback }, r
 
                             <div className="vr-container" style={{ marginTop: '10%' }}>
                                 <FontAwesomeIcon icon={faVrCardboard} className="vr-icon" />
-                                <span>VR is now supported</span>
+                                <span>VR is now supported in Echoes of Dawn</span>
                             </div>
                             <br /><br />
                             <a
