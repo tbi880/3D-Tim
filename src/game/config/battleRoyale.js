@@ -202,8 +202,9 @@ export const BATTLE_ROYALE = Object.freeze({
 
     /**
      * Coming back after being shot down: once the wait is over, a pilot chooses a station their
-     * side holds, and a new ship (with their refits, score and equipment) drops out of warp at
-     * that planet where jumps arrive: at the head of the station's approach lane.
+     * side holds, and a new ship (with their refits, score and equipment) comes out of its
+     * departure hangar - as the Kestrel leaves Lantern in the story, but with no traffic control:
+     * the throttle is open all the way and the helm is the pilot's from the first moment.
      * The wait is `wait` seconds the first time and `waitStep` more after every such comeback:
      * 10, 20, 30 ... Being brought back by a capture (above) does not lengthen it. A side whose
      * pilots are all down is still in the match while it holds a station to come back to.
@@ -213,6 +214,14 @@ export const BATTLE_ROYALE = Object.freeze({
         waitStep: 10,
         /** Seconds a pilot has to choose, once they can, before they are sent to the first station offered. */
         choose: 20,
+        /**
+         * Where the new ship starts, in the station's own axes: in front of the departure
+         * hangar's door (the upper of its two, at z 1653), nose out along the departure lane
+         * (-z). Ships coming back together are spread up to `spread` metres across the door
+         * ([sideways, up and down]); the door is 280 x 124 m.
+         */
+        exit: Object.freeze([0, 300, 1535]),
+        spread: Object.freeze([100, 40]),
     }),
 
     /**

@@ -320,26 +320,49 @@ export class BattleRoyaleMode {
     }
 
     /**
-     * Puts a contestant in a (new) ship at a planet, scattered around the far end of its
-     * station's approach lane: where every ship arriving there drops out of warp - by jump, or
-     * coming back - out of reach of the garrisons by the dock, looking down the lane at it.
+     * Puts a contestant in a (new) ship at a planet. Arriving (by jump, or at the start) it drops
+     * out of warp scattered around the far end of the station's approach lane, engines idle: a
+     * pilot who is still reading the map does not drift into the garrison. Coming back after
+     * being shot down (`fromStation`) it comes out of the station's departure hangar under full
+     * throttle (stationExit).
      */
-    launch(contestant, place, { warpIn = true, hullFraction = 1 } = {}) {
-        const start = SECTORS[place.zone.sectorId].playerStart;
-        randomUnitVector(this.rng, scratchOffset);
-        scratchOffset.y *= 0.3;
-        const position = new Vector3().fromArray(start.position).addScaledVector(scratchOffset, BATTLE_ROYALE.jump.scatter * (0.3 + this.rng() * 0.7));
+    launch(contestant, place, { warpIn = true, hullFraction = 1, fromStation = false } = {}) {
+        const { position, facing } = fromStation ? this.stationExit(place) : this.arrivalPoint(place);
         contestant.alive = true;
         contestant.respawnAt = null;
         contestant.chooseUntil = null;
         const ship = this.server.spawnPilotShip(contestant.pilot, place.zone, {
-            faction: contestant.faction, position, facing: start.facing, warpIn, hullFraction,
+            faction: contestant.faction, position, facing, warpIn: warpIn && !fromStation, hullFraction,
         });
-        // Engines idle: a pilot who is still reading the map does not drift into the garrison.
-        ship.throttle = 0;
+        ship.throttle = fromStation ? 1 : 0;
         contestant.seenDamageAt = ship.lastDamagedAt;
         this.armEmergencyShield(contestant);
         return ship;
+    }
+
+    /** Where a ship arriving at a planet drops out of warp: somewhere round the sector's start point. */
+    arrivalPoint(place) {
+        const start = SECTORS[place.zone.sectorId].playerStart;
+        randomUnitVector(this.rng, scratchOffset);
+        scratchOffset.y *= 0.3;
+        const position = new Vector3().fromArray(start.position).addScaledVector(scratchOffset, BATTLE_ROYALE.jump.scatter * (0.3 + this.rng() * 0.7));
+        return { position, facing: start.facing };
+    }
+
+    /**
+     * Where a ship leaving a planet's station starts: in front of the door of its departure
+     * hangar, nose out along the departure lane - where the Kestrel is let go of when it leaves
+     * Lantern in the story (BATTLE_ROYALE.respawn `exit`).
+     */
+    stationExit(place) {
+        const { exit, spread } = BATTLE_ROYALE.respawn;
+        const across = (reach) => (this.rng() * 2 - 1) * reach;
+        const local = [exit[0] + across(spread[0]), exit[1] + across(spread[1]), exit[2]];
+        const { station } = place;
+        return {
+            position: station.toWorld(local, new Vector3()),
+            facing: new Vector3(0, 0, -1).applyQuaternion(station.ship.quaternion),
+        };
     }
 
     placeOf(contestant) {
@@ -675,13 +698,11 @@ export class BattleRoyaleMode {
     }
 
     /**
-     * A new ship for a pilot who is down, at the planet whose station is `place`'s: it drops out
-     * of warp where jumps arrive, at the head of the station's approach lane - not at the dock,
-     * where whoever is trying to take the station would be waiting for it. The jump drive starts
-     * uncharged, as on any arrival.
+     * A new ship for a pilot who is down, out of the departure hangar of the station at `place`,
+     * throttle open, the helm theirs. The jump drive starts uncharged, as on any arrival.
      */
     bringBack(contestant, place) {
-        this.launch(contestant, place);
+        this.launch(contestant, place, { fromStation: true });
         contestant.jumpReadyAt = this.server.time + this.jumpCooldown;
     }
 

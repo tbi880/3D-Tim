@@ -149,6 +149,22 @@ test('no ship to fly, no swipe (a menu, a cutscene)', () => {
     assert.deepEqual(told, []);
 });
 
+test('a ship lost lets go of the throttle a finger set: the next one keeps the throttle it is given', () => {
+    const flying = { ship: { throttle: 0 } };
+    globalThis.window = { innerWidth: 800, innerHeight: HEIGHT };
+    const input = new InputController({ onAction: () => {}, getInvertY: () => false, getThrottle: () => flying.ship?.throttle ?? null });
+    input.handlePointerDown(touch(1, 300));
+    input.handlePointerMove(touch(1, 290));
+    input.handlePointerMove(touch(1, 190));
+    input.handlePointerUp(touch(1, 190));
+    near(input.getControls().throttleTarget, 0.5);
+
+    flying.ship = null; // shot down
+    assert.equal(input.getControls().throttleTarget, null);
+    flying.ship = { throttle: 1 }; // back, out of a station under full throttle
+    assert.equal(input.getControls().throttleTarget, null, 'nothing pulls it back to the old setting');
+});
+
 test('a cancelled touch or a lost window ends the swipe and keeps the throttle', () => {
     const { input, told } = controller({ throttle: 0 });
     input.handlePointerDown(touch(1, 300));

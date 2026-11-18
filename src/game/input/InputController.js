@@ -239,8 +239,10 @@ export class InputController {
         controls.pitch = clampUnit((this.pointerStick.y * pointer + this.touchStick.y) * invert + axis('pitchDown', 'pitchUp') + (xr?.pitch ?? 0));
         controls.roll = clampUnit(axis('rollLeft', 'rollRight') + (xr?.roll ?? 0));
         controls.throttle = clampUnit(axis('throttleDown', 'throttleUp') + (xr?.throttle ?? 0));
-        // Touching W / S (or the VR throttle stick) hands the throttle back to the keyboard.
-        if (controls.throttle !== 0) this.throttleTarget = null;
+        // Touching W / S (or the VR throttle stick) hands the throttle back to the keyboard. So
+        // does having no ship to fly (shot down, a menu, a cutscene): the next ship - one coming
+        // back under full throttle, say - keeps the throttle it is given, not an old swipe's.
+        if (controls.throttle !== 0 || (this.getThrottle() == null && !this.throttleSwipe.swiping)) this.throttleTarget = null;
         controls.throttleTarget = this.throttleTarget;
         controls.boost = held.has('boost') || Boolean(xr?.boost);
         controls.firePrimary = this.pointerButtons.primary || held.has('firePrimary') || Boolean(xr?.firePrimary);

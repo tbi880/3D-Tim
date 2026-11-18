@@ -37,7 +37,8 @@ function createGame() {
     const input = new InputController({
         onAction: (action) => session.handleAction(action),
         getInvertY: () => session.settings.invertY,
-        getThrottle: () => (session.phase === PHASE.PLAYING ? session.world?.player?.throttle ?? null : null),
+        // A ship that has been shot down is not being flown.
+        getThrottle: () => (session.phase === PHASE.PLAYING && session.world?.player?.alive ? session.world.player.throttle : null),
     });
     const sound = new SoundEngine({ assetBaseUrl: bucketURL });
     sound.attach(session);
