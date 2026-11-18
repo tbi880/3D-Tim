@@ -5,7 +5,7 @@ import { GAME_EVENTS } from '../EventBus.js';
 import { Projectile } from '../Projectile.js';
 import { degToRad, forwardOf, randomInCone, randomRange } from '../math.js';
 import { endAbility } from './abilities.js';
-import { applyDamage, applyTrueDamage, areHostile, isEnemyFleet, mayAttack } from './damage.js';
+import { applyDamage, applyTrueDamage, areHostile, classScale, isEnemyFleet, mayAttack } from './damage.js';
 import { damageObstacle, raycastObstacles } from './obstacles.js';
 import { IDLE_CONTROLS } from './playerFlight.js';
 import { aimPointOn, angleOffAxis, isValidTarget } from './targeting.js';
@@ -131,6 +131,7 @@ function refreshTurretTarget(world, ship, weapon, dt) {
 
 function spawnBolt(world, ship, weapon, origin, direction) {
     const bolt = new Projectile('bolt', weapon.def, ship);
+    bolt.damageScale = classScale(world, ship, 'damage');
     bolt.position.copy(origin);
     bolt.previousPosition.copy(origin);
     randomInCone(world.rng, direction, degToRad(weapon.def.spreadDeg ?? 0), bolt.velocity).multiplyScalar(weapon.def.speed);
@@ -406,7 +407,7 @@ function updateAiBeam(world, ship, weapon, dt) {
 
     impactPoint(target, ship.position, scratchImpact);
     ship.closestPoint(scratchImpact, scratchOrigin);
-    const beamScale = isEnemyFleet(world, ship) ? world.difficulty.enemyBeamDamage : 1;
+    const beamScale = (isEnemyFleet(world, ship) ? world.difficulty.enemyBeamDamage : 1) * classScale(world, ship, 'damage');
     applyDamage(world, target, def.dps * beamScale * dt, {
         source: ship, weapon: def, point: scratchImpact, shieldMult: def.shieldMult, hullMult: def.hullMult, continuous: true,
     });
@@ -464,7 +465,7 @@ function updateAiTorpedo(world, ship, weapon, dt) {
     scratchDirection.copy(target.position).sub(ship.position).normalize();
     if (!def.turret && scratchDirection.angleTo(scratchForward) > degToRad(def.aimConeDeg ?? 30)) return;
     ship.closestPoint(scratchLead.copy(ship.position).addScaledVector(scratchDirection, ship.boundingRadius + 10), scratchOrigin);
-    spawnTorpedo(world, ship, weapon, scratchOrigin, def.turret ? scratchDirection : scratchForward, target);
+    spawnTorpedo(world, ship, weapon, scratchOrigin, def.turret ? scratchDirection : scratchForward, target, classScale(world, ship, 'damage'));
     weapon.cooldown = def.cooldown * randomRange(world.rng, 0.85, 1.2);
     ship.ai.firedThisFrame = true;
 }
@@ -500,7 +501,7 @@ function applyLanceDamage(world, ship, weapon, origin, dt) {
             hit = other.distanceToPoint(scratchSample, def.corridorRadius) < def.corridorRadius;
         }
         if (hit) {
-            applyDamage(world, other, def.dps * dt, {
+            applyDamage(world, other, def.dps * classScale(world, ship, 'damage') * dt, {
                 source: ship, weapon: def, shieldMult: def.shieldMult, hullMult: def.hullMult, continuous: true,
             });
         }
@@ -558,7 +559,8 @@ export function updateShipWeapons(world, ship, dt) {
         return;
     }
     if (!ship.weaponsOnline) return;
-    // Difficulty: the enemy fleet's guns cycle faster or slower; its beams hit harder or softer.
+    // Difficulty: the enemy fleet's guns cycle faster or slower; its beams hit harder or softer
+    // (and in a match each class's shots carry its own `classes` share: see spawnBolt and below).
     const reloadStep = dt * (isEnemyFleet(world, ship) ? world.difficulty.enemyFireRate : 1);
     for (const weapon of ship.weapons) {
         weapon.cooldown = Math.max(0, weapon.cooldown - reloadStep);

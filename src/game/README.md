@@ -279,7 +279,11 @@ A multiplayer match has its own, `BATTLE_ROYALE.difficulty` in `config/battleRoy
 (`NPC_LEVEL`, Admiral) - as tough, as quick to fire and as painful to a player's ship as Umbra
 are there, whichever side they fly for. Between one player and another the beams and torpedoes
 do a quarter of their damage (`playerDamage`), so that duels last and the abilities - true
-damage, never scaled - matter.
+damage, never scaled - matter. The two fleets are built differently, so a few classes carry a
+share of their own (`classes`: the Federation's frigate does far less to a player's ship than
+its beams would, the Umbra's cruiser soaks up more), and both fleets go for players first
+(`pilotsFirst`); `tests/game/fleetBalance.test.js` fights the garrisons out headless and fails
+if either side comes out much the stronger.
 
 **Change the story** – edit the chapter's module in `story/chapters/` (`story/campaign.js` puts
 the chapters in order; what several chapters share is in `chapters/common.js` and

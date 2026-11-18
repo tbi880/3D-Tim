@@ -42,6 +42,8 @@ function dealt(world, target, source) {
 }
 
 const close = (actual, expected, message) => assert.ok(Math.abs(actual - expected) < 1e-9, `${message}: ${actual} is not ${expected}`);
+/** A class's own share of its fleet's numbers in a match (VERSUS.classes; 1 where it has none). */
+const share = (classId, key) => VERSUS.classes?.[classId]?.[key] ?? 1;
 
 test('a match\'s computer-flown ships fight at the story\'s Admiral level', () => {
     assert.equal(VERSUS.versus, true);
@@ -75,7 +77,7 @@ test('a computer-flown ship of either side hurts a player as much as the story\'
         for (const [classId, fleet] of [['dart', DAWN], ['harrier', DAWN], ['raider', UMBRA], ['corvette', UMBRA]]) {
             if (fleet === pilotSide) continue;
             const hit = dealt(world, put(world, 'kestrel', pilotSide), put(world, classId, fleet));
-            close(hit, fromUmbraInStory, `${classId} on a ${pilotSide} pilot`);
+            close(hit, fromUmbraInStory * share(classId, 'pilotDamage'), `${classId} on a ${pilotSide} pilot`);
         }
     }
     // The pilot's own power mode still counts, on top.
@@ -153,9 +155,9 @@ test('abilities are not turned down between pilots: the lance, the breach and th
 test('the fleets of both sides are as tough as each other, to players and to one another', () => {
     const world = worldAt(VERSUS);
     const expected = 10 / ADMIRAL.enemyToughness;
-    for (const [classId, fleet] of [['dart', DAWN], ['harrier', DAWN], ['raider', UMBRA], ['corvette', UMBRA]]) {
+    for (const [classId, fleet] of [['dart', DAWN], ['harrier', DAWN], ['raider', UMBRA], ['corvette', UMBRA], ['warden', UMBRA], ['penumbra', UMBRA]]) {
         for (const pilotSide of [DAWN, UMBRA, PIRATE]) {
-            close(dealt(world, put(world, classId, fleet), put(world, 'kestrel', pilotSide)), expected, `a ${pilotSide} pilot on a ${classId}`);
+            close(dealt(world, put(world, classId, fleet), put(world, 'kestrel', pilotSide)), expected / share(classId, 'toughness'), `a ${pilotSide} pilot on a ${classId}`);
         }
     }
     close(dealt(world, put(world, 'raider', UMBRA), put(world, 'dart', DAWN)), expected, 'Dawn on Umbra');
@@ -174,7 +176,7 @@ test('the guns of both fleets cycle at the Admiral rate', () => {
     }
 });
 
-test('a Dawn ship of the line\'s beams burn a player as an Umbra ship\'s would on Admiral', () => {
+test('a Dawn ship of the line\'s beams burn a player as an Umbra ship\'s would on Admiral, times the frigate\'s own share', () => {
     /** Shield a harrier's beams take off an enemy pilot in ten seconds (a shield too big to give out or to recharge). */
     const burn = (difficulty) => {
         const world = worldAt(difficulty);
@@ -183,9 +185,10 @@ test('a Dawn ship of the line\'s beams burn a player as an Umbra ship\'s would o
         for (let elapsed = 0; elapsed < 10 - 1e-9; elapsed += STEP) world.update(STEP, idle());
         return 1e6 - pilot.shield;
     };
-    const unscaled = burn({ ...VERSUS, damageTaken: 1, enemyBeamDamage: 1 });
+    const unscaled = burn({ ...VERSUS, damageTaken: 1, enemyBeamDamage: 1, classes: {} });
     assert.ok(unscaled > 0, 'the beams reach');
-    assert.ok(Math.abs(burn(VERSUS) / unscaled - ADMIRAL.enemyBeamDamage * ADMIRAL.damageTaken) < 1e-6);
+    const harrier = share('harrier', 'damage') * share('harrier', 'pilotDamage');
+    assert.ok(Math.abs(burn(VERSUS) / unscaled - ADMIRAL.enemyBeamDamage * ADMIRAL.damageTaken * harrier) < 1e-6);
 });
 
 test('the story\'s levels are what they were: allies chip at Umbra ships, and only Umbra is scaled', () => {
@@ -202,4 +205,80 @@ test('the story\'s levels are what they were: allies chip at Umbra ships, and on
     for (let elapsed = 0; elapsed < 1 - 1e-9; elapsed += STEP) admiral.update(STEP, idle());
     assert.ok(Math.abs(dart.weapons[0].cooldown - 2) < 1e-6, 'an ally\'s guns cycle as ever');
     assert.ok(Math.abs(raider.weapons[0].cooldown - (3 - ADMIRAL.enemyFireRate)) < 1e-6);
+});
+
+// ---- What some classes carry of their own ------------------------------------------------------
+
+test('a class\'s own shares: what it soaks up, what it fires, and what of that a pilot takes', () => {
+    const classes = { raider: { toughness: 2, damage: 3, pilotDamage: 0.5 } };
+    const world = worldAt({ ...VERSUS, classes });
+    // Toughness: a hit on one is cut by its fleet's toughness and then by its own.
+    close(dealt(world, put(world, 'raider', UMBRA), put(world, 'kestrel', DAWN)), 10 / ADMIRAL.enemyToughness / 2, 'a pilot on it');
+    close(dealt(world, put(world, 'drone', UMBRA), put(world, 'kestrel', DAWN)), 10 / ADMIRAL.enemyToughness, 'a class it does not name');
+    // pilotDamage: only what it does to a player's ship.
+    close(dealt(world, put(world, 'kestrel', DAWN), put(world, 'raider', UMBRA)), 10 * ADMIRAL.damageTaken * 0.5, 'it on a pilot');
+    close(dealt(world, put(world, 'dart', DAWN), put(world, 'raider', UMBRA)), 10 / ADMIRAL.enemyToughness, 'it on a ship of the other fleet');
+
+    // Damage: every shot it fires carries it - here a raider's bolts on a pilot sitting in front of
+    // it - and a pilot takes `pilotDamage` of that. (Per hit: how many of the bolts land is luck.)
+    const perHit = (difficulty) => {
+        const scene = worldAt(difficulty);
+        const pilot = scene.spawnShip('kestrel', { position: [0, 0, -300], facing: [0, 0, 1], faction: DAWN, local: false, maxShield: 1e6 });
+        pilot.throttle = 0;
+        scene.spawnShip('raider', { position: [0, 0, 0], facing: [0, 0, -1], faction: UMBRA, maxShield: 1e6 });
+        const hits = { warheads: [], taken: [] };
+        scene.onDamage = (target, source, amount) => {
+            if (target !== pilot) return;
+            hits.warheads.push(amount);
+            hits.taken.push(1e6 - pilot.shield - hits.taken.reduce((sum, each) => sum + each, 0));
+        };
+        for (let elapsed = 0; elapsed < 6; elapsed += STEP) {
+            pilot.velocity.set(0, 0, 0);
+            pilot.position.set(0, 0, -300);
+            scene.update(STEP, idle());
+        }
+        assert.ok(hits.warheads.length > 0, 'the raider hits');
+        return { warhead: hits.warheads[0], taken: hits.taken[0] };
+    };
+    const plain = perHit(VERSUS);
+    close(plain.warhead, WEAPONS.raiderBolt.damage, 'a bolt as it is');
+    close(perHit({ ...VERSUS, classes: { raider: { damage: 3 } } }).warhead, 3 * plain.warhead, 'three times the bolt');
+    close(perHit({ ...VERSUS, classes: { raider: { damage: 3 } } }).taken, 3 * plain.taken, 'and three times what the pilot loses');
+    const gentle = perHit({ ...VERSUS, classes: { raider: { pilotDamage: 0.5 } } });
+    close(gentle.warhead, plain.warhead, 'the bolt is the same');
+    close(gentle.taken, 0.5 * plain.taken, 'a pilot takes half of it');
+});
+
+test('in the story no class carries a share of its own', () => {
+    const story = worldAt('admiral');
+    close(dealt(story, put(story, 'harrier', DAWN), put(story, 'raider', UMBRA)), 10 * ADMIRAL.allyDamageTaken, 'a frigate is an ally there');
+    close(dealt(story, put(story, 'warden', UMBRA), put(story, 'kestrel', DAWN)), 10 / ADMIRAL.enemyToughness, 'a cruiser');
+});
+
+test('in a match both fleets go for players first, as the story\'s Umbra do; torpedo bombers keep to big ships', () => {
+    assert.equal(VERSUS.pilotsFirst, true);
+    /**
+     * What ten ships of `classId` go for, with a pilot and one of the other fleet's fighters the
+     * same distance off and a ship of the line a little further. (Ten, because a squadron spreads
+     * itself over targets that are otherwise alike: aiPilot.js chooseTarget's jitter.)
+     */
+    const choices = (difficulty, classId, faction) => {
+        const scene = worldAt(difficulty);
+        const enemy = faction === DAWN ? UMBRA : DAWN;
+        const hunters = Array.from({ length: 10 }, (_, i) => scene.spawnShip(classId, { position: [0, i * 4, 0], facing: [0, 0, -1], faction }));
+        const pilot = scene.spawnShip('kestrel', { position: [700, 0, 0], facing: [0, 0, 1], faction: enemy, local: false });
+        const fighter = scene.spawnShip(enemy === UMBRA ? 'raider' : 'dart', { position: [-700, 0, 0], facing: [0, 0, 1], faction: enemy, aiMode: 'hold' });
+        scene.spawnShip(enemy === UMBRA ? 'corvette' : 'harrier', { position: [0, 0, 760], facing: [0, 0, 1], faction: enemy, aiMode: 'hold' });
+        scene.update(STEP, idle());
+        const count = { pilot: 0, fighter: 0, capital: 0 };
+        for (const hunter of hunters) count[hunter.target === pilot ? 'pilot' : hunter.target === fighter ? 'fighter' : 'capital'] += 1;
+        return count;
+    };
+    assert.equal(choices(VERSUS, 'dart', DAWN).pilot, 10, 'every dart goes for the pilot');
+    assert.equal(choices(VERSUS, 'raider', UMBRA).pilot, 10, 'so does every raider');
+    for (const difficulty of [{ ...VERSUS, pilotsFirst: false }, 'admiral']) {
+        const count = choices(difficulty, 'dart', DAWN);
+        assert.ok(count.pilot < 10 && count.fighter > 0, `of its own accord a dart sees just another fighter: ${JSON.stringify(count)}`);
+    }
+    assert.equal(choices(VERSUS, 'lancer', UMBRA).capital, 10, 'a bomber goes for the ship of the line');
 });

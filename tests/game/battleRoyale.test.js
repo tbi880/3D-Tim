@@ -1577,6 +1577,8 @@ test('the pirates share what their beacons see like any side, and a traitor trad
 test('the gravity shield comes on by itself and keeps the black hole off for thirty seconds - but not the guns', () => {
     const game = arrange({ ann: [DAWN, INNERMOST], bo: [UMBRA, INNERMOST], bex: [UMBRA, GATE] });
     game.empty(INNERMOST);
+    // (Bex keeps the Umbra in the match - and it going - while the gate's garrisons leave her be.)
+    game.empty(GATE);
     game.equip('ann', EQUIPMENT.GRAVITY_SHIELD);
     game.run(2);
     assert.equal(game.who('ann').inventory.counts.gravityShield, 1, 'nothing to shield against yet');

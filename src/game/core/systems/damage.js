@@ -30,6 +30,15 @@ export function mayAttack(world, ship, target) {
 }
 
 /**
+ * A computer-flown ship's own multiplier on top of its fleet's numbers, by its class: `key` is
+ * 'toughness', 'damage' or 'pilotDamage' (a `versus` difficulty's `classes`, config/gameConfig.js).
+ * 1 for a class it does not name, and everywhere in the story.
+ */
+export function classScale(world, ship, key) {
+    return world.difficulty.classes?.[ship.classId]?.[key] ?? 1;
+}
+
+/**
  * Whether a computer-flown ship belongs to the fleet the difficulty's `enemy...` numbers are
  * about: Umbra in the story; in multiplayer (a `versus` difficulty) the fleets of every side.
  */
@@ -164,10 +173,10 @@ export function applyDamage(world, target, amount, options = {}) {
         if (target.isPlayer) {
             let scale = 1;
             if (source?.isPlayer) scale = world.difficulty.playerDamage ?? 1;
-            else if (source && isEnemyFleet(world, source)) scale = world.difficulty.damageTaken;
+            else if (source && isEnemyFleet(world, source)) scale = world.difficulty.damageTaken * classScale(world, source, 'pilotDamage');
             remaining *= scale * POWER_MODES[target.powerMode].damageTaken;
         } else if (isEnemyFleet(world, target)) {
-            remaining /= world.difficulty.enemyToughness;
+            remaining /= world.difficulty.enemyToughness * classScale(world, target, 'toughness');
         }
     } else if (target.isPlayer) {
         remaining *= world.difficulty.damageTaken * POWER_MODES[target.powerMode].damageTaken;

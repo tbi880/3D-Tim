@@ -73,6 +73,13 @@ export const POWER_MODE_ORDER = ['balanced', 'attack', 'defense'];
  *   playerDamage     - with `versus`: damage of a player's beams and torpedoes on another
  *                      player's ship (0.25 = a quarter). What is true damage is not touched: a
  *                      lance, a breach blast's shield strip, a dying Bulwark's reactor.
+ *   classes          - with `versus`: optional shares of their own for some computer-flown
+ *                      classes, on top of the fleet's numbers: `{ [classId]: { toughness,
+ *                      damage, pilotDamage } }` - how much more it soaks up, how much more
+ *                      everything it fires does, and how much more of that a player's ship
+ *                      takes (1 where not given).
+ *   pilotsFirst      - with `versus`: every fleet's pilots go for players' ships before
+ *                      anything else, as the story's Umbra do (torpedo bombers excepted).
  */
 export const DIFFICULTY = Object.freeze({
     cadet: {

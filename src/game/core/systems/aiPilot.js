@@ -26,8 +26,18 @@ const SOLID_KINDS = new Set(['capital', 'station', 'object']);
 /** Bolt speed assumed when leading a target (close enough for every fighter weapon). */
 const LEAD_SPEED = 640;
 
-function targetKindFor(ship, other) {
+/**
+ * The kinds of ship a pilot goes for, most wanted first: its class's - or, where the
+ * difficulty says every fleet goes for players first (`pilotsFirst`, a match), players and then
+ * its class's. Torpedo bombers keep to the big ships they are built for.
+ */
+function preferencesOf(world, ship) {
     const prefers = ship.cls.ai?.prefers ?? DEFAULT_PREFERENCES;
+    if (!world.difficulty.pilotsFirst || prefers[0] === 'player' || ship.cls.behavior === 'bomber') return prefers;
+    return ['player', ...prefers.filter((kind) => kind !== 'player')];
+}
+
+function targetKindFor(prefers, other) {
     if (other.isPlayer && prefers.includes('player')) return 'player';
     if (other.cls.behavior === 'bomber' && prefers.includes('bomber')) return 'bomber';
     return other.cls.kind;
@@ -40,14 +50,14 @@ function chooseTarget(world, ship) {
         const forced = world.findByTag(ai.forcedTargetTag);
         if (isValidTarget(forced)) return forced;
     }
-    const prefers = ship.cls.ai?.prefers ?? DEFAULT_PREFERENCES;
+    const prefers = preferencesOf(world, ship);
     let best = null;
     let bestScore = Infinity;
     for (const other of world.ships) {
         if (!isValidTarget(other) || !areHostile(ship, other)) continue;
         // Modules and shielded hulls are the player's job; AI gunners ignore them.
         if (other.cls.kind === 'module' || other.invulnerable) continue;
-        let rank = prefers.indexOf(targetKindFor(ship, other));
+        let rank = prefers.indexOf(targetKindFor(prefers, other));
         if (rank < 0) rank = prefers.length + 1;
         const distance = ship.position.distanceTo(other.position);
         // A ship on guard leaves alone whatever keeps its distance - unless it has been shot at.
