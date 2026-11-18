@@ -1,8 +1,9 @@
-# The VR cockpit cabin and flight stick
+# The cockpit cabin and the VR flight stick
 
-The cabin the pilot sits in when the game runs in a headset
-(`src/game/xr/VRCockpitShell.jsx`) and the flight stick drawn in each hand in place of the
-headset's controller model (`src/game/xr/VRFlightStick.jsx`). Both are modelled by one
+The cabin the pilot sits in, in every first-person view: on a screen and in a headset
+(`src/game/scene/CockpitCabin.jsx`; it was built for VR first and replaced the flat screen's
+own cockpit model in 2026-11, hence the "vr" in the file names), and the flight stick drawn in
+each hand in place of the headset's controller model (`src/game/xr/VRFlightStick.jsx`). Both are modelled by one
 Blender script, baked into texture atlases and web-optimised with `npx gltfjsx --transform`.
 
 ```sh
@@ -29,7 +30,7 @@ In production the files have to be uploaded to the asset bucket like the other m
      rose-champagne metal trim, gloss black, and a glass roof.
    All of it is plain Python at the top of the file: sizes are constants, surfaces are the
    `SURFACES` table, painted surfaces (the wood's grain) are in `PATTERNS`.
-2. **Places the display glass** from `src/game/xr/cockpitLayout.json`. VRHud reads the same
+2. **Places the display glass** from `src/game/scene/cockpitLayout.json`. VRHud reads the same
    file for where it draws the instrument panel, so the picture always sits on the glass.
    Change the display there, then rebuild.
 3. **Removes what the pilot cannot see**: every face that no head position in `HEAD_BOX`

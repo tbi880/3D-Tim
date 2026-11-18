@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import { CHARACTERS } from '../config/characters.js';
 import { GAME_EVENTS } from '../core/EventBus.js';
 import { translate } from '../i18n/index.js';
+import { CABIN_SCALE } from '../scene/CockpitCabin.jsx';
+import layout from '../scene/cockpitLayout.json';
 import { isHullHitOnPlayer, playerFeedback } from '../scene/effects/playerFeedback.js';
 import { PHASE, SESSION_EVENTS } from '../state/GameSession.js';
 import { useGameStore } from '../state/gameStore.js';
@@ -11,9 +13,7 @@ import { TUTORIAL_STATE } from '../state/Tutorial.js';
 import { abilityStateText } from '../ui/abilityText.js';
 import { drawMarkers, drawRadar } from '../ui/markerRenderer.js';
 import { tutorialKeys, tutorialParams, tutorialText } from '../ui/tutorialText.js';
-import { CABIN_SCALE } from './VRCockpitShell.jsx';
 import { createCanvasPanel, drawMeter, roundRect, wrapText } from './canvasPanel.js';
-import layout from './cockpitLayout.json';
 
 /**
  * The flight HUD inside the headset. Everything hangs off the pilot's seat (the player

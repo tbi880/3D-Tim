@@ -1,15 +1,16 @@
 """
-Builds the VR models for "Echoes of Dawn" (Blender 4.2, run headless):
+Builds the cockpit cabin and the VR flight stick for "Echoes of Dawn" (Blender 4.2, run headless):
 
     /Applications/Blender.app/Contents/MacOS/Blender -b --python build_cockpit.py -- [--only cockpit|stick] [--preview] [--no-bake]
 
-Writes build/vr-cockpit.glb (the cabin) and build/vr-stick.glb (the flight stick shown in
+Writes build/vr-cockpit.glb (the cabin of every first-person view, on a screen and in a
+headset; first built for VR, hence the name) and build/vr-stick.glb (the flight stick shown in
 place of each VR controller). With --preview it also renders build/preview-*.png from the
 pilot's eye. The GLBs are then web-optimised with `npx gltfjsx --transform` (see README.md).
 
 The cabin's frame is the game's cockpit frame, in three.js axes - the pilot's eye at the
 origin, -z ahead, +y up, metres. The game draws the cabin `cabinScale` times larger
-(src/game/xr/cockpitLayout.json), and that same file gives the place, tilt and size of the
+(src/game/scene/cockpitLayout.json), and that same file gives the place, tilt and size of the
 flight display the dashboard's glass carries.
 
 The cabin file holds three meshes, one draw call each:
@@ -38,7 +39,7 @@ from mathutils.bvhtree import BVHTree
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BUILD = os.path.join(HERE, 'build')
-LAYOUT = json.load(open(os.path.join(HERE, '..', '..', '..', 'src', 'game', 'xr', 'cockpitLayout.json')))
+LAYOUT = json.load(open(os.path.join(HERE, '..', '..', '..', 'src', 'game', 'scene', 'cockpitLayout.json')))
 ARGS = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 
 # ---- The cabin's envelope --------------------------------------------------------------------

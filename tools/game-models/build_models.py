@@ -48,11 +48,6 @@ def wreck_palette():
     return sf.palette(hull="#4a4d52", panel="#2c2e33", accent="#3a3020", glow="#000000", window="#000000", glow_strength=0.0, hull_metallic=0.5, hull_roughness=1.3)
 
 
-def cockpit_palette():
-    """Dim interior so the instruments and the view outside stand out."""
-    return sf.palette(hull="#2b323d", panel="#1b2029", accent="#2f6fd6", glow="#45cfff", window="#ffb648", glow_strength=0.12, hull_metallic=0.15, hull_roughness=1.7)
-
-
 def strut(b, x_start, x_end, z, y_start, y_end, chord, thickness, mat=HULL, steps=2, mirror=True):
     """A flat pylon running sideways from x_start to x_end (wing roots, nacelle pylons). Returns its faces."""
     return b.loft([
@@ -535,45 +530,6 @@ def build_wreck(b):
     b.box((-2.6, -1.8, 5.4), (1.4, 0.1, 1.9), PANEL, rot=(-0.4, 0.2, -0.6))
 
 
-def build_cockpit(b):
-    """
-    The Kestrel's cockpit, in metres around the pilot's eye at the origin (looking down -Z).
-    It is attached to the camera as-is, so it is not rescaled or recentred.
-    """
-    # Wrap-around dashboard: a console running across the view, nearer the pilot at the sides.
-    dash = b.loft([
-        dict(z=-2.1, x=0.95, y=-0.86, w=0.3, h=0.16, p=3.0),
-        dict(z=-1.2, x=1.3, y=-0.92, w=0.34, h=0.2, p=3.0),
-        dict(z=0.0, x=1.45, y=-0.96, w=0.36, h=0.22, p=3.0),
-        dict(z=1.2, x=1.3, y=-0.92, w=0.34, h=0.2, p=3.0),
-        dict(z=2.1, x=0.95, y=-0.86, w=0.3, h=0.16, p=3.0),
-    ], segments=8, steps=3, matrix=SPINE_STARBOARD)
-    b.detail(dash, plate_height=0.006, machinery=0.2, windows=0.0, recess=0.15, panels=0.4)
-    # Instrument screens along the top edge of the dash.
-    for x, width, mat in ((-0.72, 0.5, WINDOW), (0.0, 0.62, GLOW), (0.72, 0.5, WINDOW)):
-        b.box((x, -0.735, -1.3 - 0.08 * (1 - abs(x))), (width, 0.012, 0.2), DARK, rot=(0.9, 0, 0))
-        b.box((x, -0.728, -1.3 - 0.08 * (1 - abs(x))), (width * 0.9, 0.004, 0.16), mat, rot=(0.9, 0, 0))
-    # Side consoles.
-    consoles = b.loft([
-        dict(z=-1.5, x=1.15, y=-0.95, w=0.2, h=0.14, p=3.4),
-        dict(z=-0.4, x=1.05, y=-0.9, w=0.22, h=0.16, p=3.4),
-        dict(z=0.6, x=1.0, y=-0.86, w=0.22, h=0.16, p=3.4),
-    ], segments=8, steps=3, mat=PANEL, mirror=True)
-    b.detail(consoles, plate_height=0.005, machinery=0.25, windows=0.12, recess=0.15)
-    # Canopy frame.
-    for start, end in (((1.85, -0.72, -1.55), (1.0, 0.98, -1.45)), ((1.0, 0.98, -1.45), (0.9, 1.1, 0.6)), ((1.85, -0.72, -1.55), (1.75, -0.6, 0.4))):
-        b.tube(start, end, 0.035, 0.035, 6, HULL, mirror=True)
-    b.tube((-1.0, 0.98, -1.45), (1.0, 0.98, -1.45), 0.035, 0.035, 6, HULL)
-    b.tube((0, 1.0, -1.45), (0, 1.14, 0.6), 0.03, 0.03, 6, HULL)
-    b.box((0, 0.955, -1.45), (0.5, 0.008, 0.02), GLOW)
-    # The ship's nose, seen over the dash.
-    nose = b.loft([
-        dict(z=-9.5, y=-1.75, w=0.15, h=0.1),
-        dict(z=-6.0, y=-1.55, w=0.8, h=0.3, p=2.4),
-        dict(z=-2.0, y=-1.4, w=1.5, h=0.45, p=2.8),
-    ], segments=10, steps=3)
-    b.detail(nose, plate_height=0.012, machinery=0.06, windows=0.0, recess=0.05, panels=0.3)
-
 # ---- Registry -----------------------------------------------------------------------------
 
 # id -> (builder, palette factory, nose-to-tail length in metres, random seed)
@@ -594,12 +550,11 @@ MODELS = {
     "stationTurret": (build_station_turret, umbra_palette, 90, 24, 20),
     "buoy": (build_buoy, neutral_palette, 12, 25, 6),
     "wreck": (build_wreck, wreck_palette, 190, 26, 30),
-    "cockpit": (build_cockpit, cockpit_palette, None, 27, 2.6),
     "stargate": (build_stargate, gate_palette, None, 28, 150),
 }
 
 # Models whose origin is meaningful and must not be moved to the bounding-box centre.
-KEEP_ORIGIN = {"forge", "cockpit", "stargate"}
+KEEP_ORIGIN = {"forge", "stargate"}
 
 
 def compress(path):

@@ -3,14 +3,14 @@ import { createRoot } from 'react-dom/client';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, Lightformer, Stars } from '@react-three/drei';
 import * as THREE from 'three';
-import VRCockpitShell, { CABIN_SCALE } from '../../../src/game/xr/VRCockpitShell.jsx';
+import CockpitCabin, { CABIN_SCALE } from '../../../src/game/scene/CockpitCabin.jsx';
 import { FlightStickModel } from '../../../src/game/xr/VRFlightStick.jsx';
-import { ambientLight } from '../../../src/game/xr/cabinLighting.js';
-import layout from '../../../src/game/xr/cockpitLayout.json';
+import { ambientLight } from '../../../src/game/scene/cabinLighting.js';
+import layout from '../../../src/game/scene/cockpitLayout.json';
 import { useGameStore } from '../../../src/game/state/gameStore.js';
 
 /**
- * Shows the VR cabin from the pilot's eye without a headset, lit roughly like a sector of the
+ * Shows the cockpit cabin from the pilot's eye at a headset's field of view, lit roughly like a sector of the
  * game (one sun, a little ambient light, a dim sky to reflect), with a test card where the
  * game draws the flight display and a flight stick where each hand would hold one.
  * `?yaw=..&pitch=..&mode=..&x=..&y=..&z=..` set the view; `?stick=1` shows a stick close up.
@@ -97,7 +97,7 @@ function Preview() {
             </Environment>
             <Eye />
             <Suspense fallback={null}>
-                <VRCockpitShell />
+                <CockpitCabin />
                 {HANDS.map((position, index) => (
                     <group key={index} position={position} rotation={GRIP_ROTATION}>
                         <FlightStickModel getTrigger={() => view.trigger ?? 0} />

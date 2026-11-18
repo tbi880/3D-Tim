@@ -8,7 +8,7 @@ import { World } from '../../src/game/core/World.js';
 import { applyDamage } from '../../src/game/core/systems/damage.js';
 import { isHullHitOnPlayer, underHeavyBeam } from '../../src/game/scene/effects/playerFeedback.js';
 import { MAX_SHARDS, ShieldImpacts } from '../../src/game/scene/effects/ShieldImpacts.js';
-import { ambientLight } from '../../src/game/xr/cabinLighting.js';
+import { ambientLight } from '../../src/game/scene/cabinLighting.js';
 
 /**
  * What the presentation is told about a hit, and the parts of the hit effects that are plain

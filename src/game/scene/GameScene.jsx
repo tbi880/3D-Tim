@@ -8,6 +8,7 @@ import BeamsLayer from './BeamsLayer.jsx';
 import ExplosionsLayer from './ExplosionsLayer.jsx';
 import GameLoop from './GameLoop.jsx';
 import HudCanvasBridge from './HudCanvasBridge.jsx';
+import { CockpitPreloader } from './Cockpit.jsx';
 import PlayerCamera from './PlayerCamera.jsx';
 import PostEffects from './PostEffects.jsx';
 import ProjectilesLayer from './ProjectilesLayer.jsx';
@@ -53,6 +54,7 @@ export default function GameScene({ game, markerCanvasRef, radarCanvasRef }) {
             <XR store={getXRStore()}>
                 <SuspenseGate gate={gate} />
                 <ShipModelPreloader />
+                <CockpitPreloader />
                 <GameLoop game={game} />
                 <PlayerCamera session={session}>
                     <VRCameraRig game={game} />

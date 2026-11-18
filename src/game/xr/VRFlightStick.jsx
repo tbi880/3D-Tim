@@ -3,7 +3,7 @@ import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { XRSpace, useXRInputSourceStateContext } from '@react-three/xr';
 import { bucketURL } from '../../Settings';
-import { GLOW_BRIGHTNESS, addSelfLight, ambientLight } from './cabinLighting.js';
+import { GLOW_BRIGHTNESS, addSelfLight, ambientLight } from '../scene/cabinLighting.js';
 
 /**
  * The flight stick drawn in each of the pilot's hands in VR, in place of the headset's own

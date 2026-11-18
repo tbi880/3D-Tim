@@ -5,16 +5,17 @@ import * as THREE from 'three';
 import { bucketURL } from '../../Settings';
 import { GLOW_BRIGHTNESS, LINE_BRIGHTNESS, PULSE_SPACING, addSelfLight, ambientLight } from './cabinLighting.js';
 import layout from './cockpitLayout.json';
+import { HEADSET_SPARK_EMITTERS, SCREEN_SPARK_EMITTERS } from './sparkEmitters.js';
 
 /**
- * The cockpit interior for VR: a cabin built round the pilot, modelled in Blender
- * (tools/game-models/vr-cockpit) and web-optimised with `npx gltfjsx --transform`.
+ * The cabin the pilot sits in, in every first-person view: on a screen and in a headset.
+ * Modelled in Blender (tools/game-models/vr-cockpit) and web-optimised with
+ * `npx gltfjsx --transform`. It was built for VR first, so its file and tool folder still
+ * say "vr" (the file is in the asset bucket under that name).
  *
- * cockpit.glb was built for a flat screen (only what lies ahead is ever seen, and it is
- * steel ship plating with the long nose out in front), so in VR it is not drawn and this
- * cabin replaces it, in the cockpit model's own frame (eye at the origin, -z ahead, metres).
- *
- * The file holds three meshes, so the whole cabin is three draw calls and no light:
+ * It sits in the cockpit's frame (eye at the origin, -z ahead, metres); Cockpit.jsx hangs it
+ * off the camera. The file holds three meshes, so the whole cabin is three draw calls and
+ * no light:
  *  - `cabin`: every opaque surface in one material. Its colour (with the cabin's own
  *    shading), roughness / metalness and the glow the ambient lights cast on each surface
  *    were baked into one texture atlas; that glow is the material's emissive map, tinted
@@ -25,34 +26,34 @@ import layout from './cockpitLayout.json';
  *  - `glass`: the tinted glass roof.
  * Faces the pilot's head can never see were removed in Blender.
  *
- * The ambient light follows the ship, and stutters when the hull is hit (cabinLighting.js).
+ * The ambient light follows the ship, and stutters when the hull is hit (cabinLighting.js;
+ * Cockpit.jsx keeps it up to date).
  */
 
 /**
  * The whole cabin (seat included) is drawn this much larger round the pilot's eye, so it
- * sits further away in the headset. VRHud scales the instrument display the same way.
+ * sits further away. VRHud scales the instrument display the same way.
  */
 export const CABIN_SCALE = layout.cabinScale;
 
-/**
- * Where sparks can burst from when the hull is hit, each [x, y, z, dx, dy, dz] in the cabin
- * as drawn (see scene/CockpitSparks.jsx): the tips of the display glass, the dash top, under
- * the display, the side sills, the canopy rails and the arch overhead.
- */
-export const SPARK_EMITTERS = [
-    [-0.86, -0.46, -0.6, 0.3, 1, 0.5], [0.86, -0.46, -0.6, -0.3, 1, 0.5],
-    [-0.45, -0.57, -1.15, 0, 1, 0.4], [0.45, -0.57, -1.15, 0, 1, 0.4],
-    [-0.3, -0.7, -0.55, 0, 0.7, 0.7], [0.3, -0.7, -0.55, 0, 0.7, 0.7],
-    [-2.1, -0.6, -0.2, 0.8, 0.7, 0], [2.1, -0.6, -0.2, -0.8, 0.7, 0],
-    [-1.95, 0.9, -0.5, 0.8, -0.5, 0.2], [1.95, 0.9, -0.5, -0.8, -0.5, 0.2],
-    [-0.9, 1.52, 0.6, 0, -1, -0.3], [0.9, 1.52, 0.6, 0, -1, -0.3],
-].map(([x, y, z, ...direction]) => [x * layout.cabinScale, y * layout.cabinScale, z * layout.cabinScale, ...direction]);
+/** [x, y, z, dx, dy, dz] in the model's metres -> the same in the cabin as drawn. */
+const scaledEmitters = (emitters) => emitters.map(([x, y, z, ...direction]) => [x * CABIN_SCALE, y * CABIN_SCALE, z * CABIN_SCALE, ...direction]);
 
-/** Same arguments as GltfModel (Draco + Meshopt decoders), so the file is fetched once. */
-const MODEL_FILE = 'game/vr-cockpit-transformed.glb';
-const useCabinModel = () => useGLTF(bucketURL + MODEL_FILE, true, true);
-/** Starts downloading the cabin (when the browser can do VR) so it is there on entering VR. */
-export const preloadVRCockpit = () => useGLTF.preload(bucketURL + MODEL_FILE, true, true);
+/**
+ * Where sparks can burst from when the hull is hit, in the cabin as drawn (CockpitSparks.jsx;
+ * the places are in sparkEmitters.js): all round the pilot in a headset, along the dashboard
+ * on a screen.
+ */
+export const SPARK_EMITTERS = Object.freeze({
+    headset: scaledEmitters(HEADSET_SPARK_EMITTERS),
+    screen: scaledEmitters(SCREEN_SPARK_EMITTERS),
+});
+
+/** Loaded with the same arguments as GltfModel (Draco + Meshopt decoders), so the file is fetched once. */
+export const CABIN_FILE = 'game/vr-cockpit-transformed.glb';
+const useCabinModel = () => useGLTF(bucketURL + CABIN_FILE, true, true);
+/** Starts downloading the cabin without waiting for it. */
+export const preloadCockpitCabin = () => useGLTF.preload(bucketURL + CABIN_FILE, true, true);
 
 /**
  * The material of the ambient light strips: the ambient colour, brightest along the middle
@@ -95,7 +96,7 @@ function createLightMaterial(profile) {
     });
 }
 
-export default function VRCockpitShell() {
+export default function CockpitCabin() {
     const { nodes, materials } = useCabinModel();
     const lightMaterial = useMemo(() => createLightMaterial(materials.ambientLight.emissiveMap), [materials]);
     useEffect(() => () => lightMaterial.dispose(), [lightMaterial]);

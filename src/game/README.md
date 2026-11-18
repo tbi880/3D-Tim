@@ -79,7 +79,7 @@ and react to `world.events` (explosions, hits...).
 
 * Planets, the black hole and Captain Tim's ship reuse the site's existing GLB files
   (`ship-upgrade-transformed.glb` is the Dawnbreaker).
-* Every other ship, the station and the cockpit are GLB files in `public/assets/game/`,
+* Every other ship, the station and the cockpit cabin are GLB files in `public/assets/game/`,
   and they all share six tiling textures in `public/assets/game/textures/` (plating
   albedo / normal / occlusion-roughness-metalness / window lights, rock albedo / normal).
   About 1.8 MB in total. **For production the whole `game/` folder must be uploaded to the
@@ -117,6 +117,11 @@ and react to `world.events` (explosions, hits...).
   whose blinking is computed in a shader from its vertex colours
   (`scene/models/guideLightMaterial.js`): pulses run outwards along the departure lane and
   inwards along the arrival lane.
+* **The cockpit** is one cabin for every first-person view, on a screen and in a headset
+  (`scene/Cockpit.jsx`, `scene/CockpitCabin.jsx`): modelled and baked in Blender, three draw
+  calls and no light, its ambient light following the ship (`scene/cabinLighting.js`):
+  `tools/game-models/vr-cockpit/README.md`. Phones fly in the chase view only, so outside VR
+  they never fetch it.
 * Music reuses `music/bgm2|5|6.mp3`; sound effects are synthesised.
 
 ### Rendering notes
@@ -196,7 +201,7 @@ and react to `world.events` (explosions, hits...).
   fighter keeps the camera trembling; with the shield down, hits shower sparks inside the
   cockpit (`CockpitSparks.jsx`) and scramble the instruments for a moment. In VR the view
   never shakes: the cabin shudders round the pilot instead, its lights stutter and the
-  instrument display tears (`xr/cabinLighting.js`, `xr/VRHud.jsx`).
+  instrument display tears (`scene/cabinLighting.js`, `xr/VRHud.jsx`).
 * Ships arriving by warp are invulnerable and untargetable until they land
   (`ship.arriving`); `ShipsLayer` draws the streak, `ExplosionsLayer` the flash and ring.
 

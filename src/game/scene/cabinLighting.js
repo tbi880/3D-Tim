@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 
 /**
- * The cabin's ambient light in VR: one colour that follows the ship, shared by everything
- * that shows it - the cabin's light strips and the glow they cast (VRCockpitShell) and the
- * flight sticks in the pilot's hands (VRFlightStick). VRCameraRig updates it once a frame.
+ * The cabin's ambient light: one colour that follows the ship, shared by everything that
+ * shows it - the cabin's light strips and the glow they cast (CockpitCabin) and, in VR, the
+ * flight sticks in the pilot's hands (xr/VRFlightStick). Cockpit.jsx updates it once a frame.
  *
  *  - its colour is the power mode's - blue balanced, cyan defense, red attack - and fades
  *    between them;

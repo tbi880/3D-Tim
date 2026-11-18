@@ -12,7 +12,6 @@ import { createCanvasPanel } from './canvasPanel.js';
 import VRHud, { vrComms } from './VRHud.jsx';
 import { VRMenu } from './VRMenu.js';
 import { XRGamepadInput } from './XRGamepadInput.js';
-import { ambientLight } from './cabinLighting.js';
 import { guardXRFrames } from './frameGuard.js';
 import { vrBenchmark } from './vrBenchmark.js';
 import { vrPerformance } from './vrPerformance.js';
@@ -166,8 +165,6 @@ export default function VRCameraRig({ game }) {
             events.on(GAME_EVENTS.HIT, ({ target, amount, shield }) => {
                 if (!vr.active || !isOwnShip(target) || amount <= 0) return;
                 gamepads.pulse((shield ? 0.25 : 0.5) + amount / 200, shield ? 40 : 80);
-                // With the shield down the hit reaches the ship's power: the cabin lights stutter.
-                if (!shield) ambientLight.disturb(0.55 + amount / 30);
             }),
             events.on(GAME_EVENTS.PLAYER_COLLISION, ({ ship }) => { if (vr.active && isOwnShip(ship)) gamepads.pulse(1, 160); }),
         ];
@@ -202,7 +199,6 @@ export default function VRCameraRig({ game }) {
             xrCamera.far = XR_FAR;
         }
         gamepads.update(gl.xr.getSession(), delta);
-        ambientLight.update(useGameStore.getState().hud, delta);
         const origin = originRef.current;
         frameCount.current += 1;
         const pending = recenterAt.current;

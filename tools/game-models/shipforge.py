@@ -448,7 +448,7 @@ class ShipBuilder:
         """
         Scales the model so it is `length` metres from nose to tail and, unless `recentre`
         is False, moves its bounding-box centre to the origin. With `length=None` the model
-        is left exactly as authored (used by the cockpit). A builder that set `unit` (metres
+        is left exactly as authored. A builder that set `unit` (metres
         per unit) is scaled by exactly that instead. Returns the final [x, y, z] size.
         """
         low, high = self.bounds()
