@@ -39,6 +39,8 @@ export class Station {
     constructor(ship, lane, layout) {
         this.ship = ship;
         this.range = layout.range;
+        /** The unit direction ships fly in to dock: back down it is the way out. */
+        this.lane = lane.clone();
         /** The mouth of the dock: within `range` of it a ship can clamp on. */
         this.mouth = this.toWorld(layout.mouth, new Vector3());
         /** Where a docked ship is held, and how it is turned: nose to the door. */
@@ -49,6 +51,11 @@ export class Station {
     /** A point given in the station's own axes, in the world's. */
     toWorld(local, out) {
         return out.fromArray(local).applyQuaternion(this.ship.quaternion).add(this.ship.position);
+    }
+
+    /** The point `distance` metres back down the approach lane from the dock's mouth: where a ship leaving the station is. */
+    departure(distance, out) {
+        return out.copy(this.mouth).addScaledVector(this.lane, -distance);
     }
 
     /** True when a ship at `position` is close enough to the dock's mouth to clamp on. */

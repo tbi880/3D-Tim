@@ -350,7 +350,7 @@ function drawPaneText(ctx, state, t, now, scoreFeed) {
             if (here.status === 'swallowed') warnings.push(t('mp.alert.swallowed'));
         }
         if (you.loyalty === 'warned') warnings.push(t('mp.alert.warned'));
-        if (!you.alive) warnings.push(t('mp.hud.dead'));
+        if (!you.alive && !you.respawn) warnings.push(t('mp.hud.dead'));
         ctx.font = `700 12px ${FONT}`;
         warnings.slice(0, 2).forEach((text, index) => drawShadowedText(ctx, text, centre, height / 2 - 104 - index * 17, '#ffb648'));
     }

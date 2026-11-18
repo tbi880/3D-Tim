@@ -7,7 +7,7 @@ import { PLAYER_SHIPS } from '../../src/game/config/playerShips.js';
 import { SHIP_CLASSES } from '../../src/game/config/shipClasses.js';
 import { applyDamage, areHostile, destroyShip, mayAttack } from '../../src/game/core/systems/damage.js';
 import { LOYALTY } from '../../src/game/modes/battleRoyale/allegiance.js';
-import { BR_EVENT, BR_REQUEST, DOCK_END, DOCK_REFUSAL, JUMP_REFUSAL, VOTE } from '../../src/game/modes/battleRoyale/battleRoyaleProtocol.js';
+import { BR_EVENT, BR_REQUEST, DOCK_END, DOCK_REFUSAL, JUMP_REFUSAL, RESPAWN_REFUSAL } from '../../src/game/modes/battleRoyale/battleRoyaleProtocol.js';
 import { MATCH_ACTION, MATCH_PANEL } from '../../src/game/modes/battleRoyale/BattleRoyalePresenter.js';
 import { rosterBySide } from '../../src/game/modes/battleRoyale/battleRoyaleState.js';
 import { PLANET_STATUS } from '../../src/game/modes/battleRoyale/collapse.js';
@@ -627,104 +627,240 @@ test('a garrison under its side\'s bubble survives the planet being swallowed', 
     assert.ok(game.npcs(INNERMOST, DAWN).length > 0);
 });
 
-// ---- Reward or revive ------------------------------------------------------------------------
+// ---- Taking a planet brings the fallen back ----------------------------------------------------
 
-/** Ann and Cy (Federation) at a planet whose station Ann has just taken; Di, of their side, is already dead. */
+const { respawn: RESPAWN } = BATTLE_ROYALE;
+
+/** True when a ship is where pilots come out of a station: a little way back down its approach lane, heading out. */
+function leftTheStation(game, ship, planet) {
+    const { station } = game.place(planet);
+    const out = station.departure(RESPAWN.launch, new Vector3());
+    const heading = new Vector3(0, 0, -1).applyQuaternion(ship.quaternion);
+    return ship.position.distanceTo(out) <= RESPAWN.scatter + 1 && heading.dot(station.lane) < -0.99;
+}
+
+/** Ann and Cy (Federation) at a planet whose station Ann has just taken; Di, of their side, was shot down elsewhere. */
 function captureWithFallen() {
-    const game = arrange({ ann: [DAWN, THIRD], cy: [DAWN, THIRD], di: [DAWN, THIRD], bo: [UMBRA, GATE] });
+    const game = arrange({ ann: [DAWN, THIRD], cy: [DAWN, THIRD], di: [DAWN, SECOND], bo: [UMBRA, GATE] });
     game.empty(THIRD);
-    destroyShip(game.world(THIRD), game.ship('di'), null);
+    destroyShip(game.world(SECOND), game.ship('di'), null);
     game.take('ann');
     return game;
 }
 
-test('with a pilot down, the side that took the planet is asked: reward, or bring them back', () => {
+test('taking a planet brings every fallen pilot of the side back at once, out of the station just taken', () => {
     const game = captureWithFallen();
 
-    assert.equal(game.place(THIRD).owner, DAWN, 'the bubble is up either way');
-    assert.equal(game.who('ann').points, 0, 'nothing is handed out yet');
-    const vote = game.state('ann').you.vote;
-    assert.equal(vote.planet, THIRD);
-    assert.equal(vote.choice, null);
-    assert.ok(vote.endsIn > 0 && vote.endsIn <= BATTLE_ROYALE.capture.voteSeconds);
-    assert.equal(game.state('di').you.vote, null, 'the dead have no say');
-    assert.equal(game.state('bo').you.vote, null, 'nor do other sides');
-});
-
-test('choosing to revive brings the fallen back and gives nobody a reward', () => {
-    const game = captureWithFallen();
-    game.ask('ann', BR_REQUEST.VOTE, { choice: VOTE.REVIVE });
-    game.ask('cy', BR_REQUEST.VOTE, { choice: VOTE.REVIVE });
-    game.run(0.3);
-
+    assert.equal(game.place(THIRD).owner, DAWN);
     assert.equal(game.who('di').alive, true);
     assert.equal(game.ship('di').alive, true);
-    assert.equal(game.pilot('di').zone.id, THIRD, 'at the planet that was taken');
+    assert.equal(game.pilot('di').zone.id, THIRD, 'at the planet that was taken, wherever they fell');
     assert.equal(game.ship('di').faction, DAWN);
-    assert.deepEqual([game.who('ann').points, game.who('cy').points, game.who('di').points], [0, 0, 0]);
-    assert.equal(game.who('ann').summons, 0);
-    assert.equal(game.place(THIRD).vote, null);
-    const picks = (name) => game.who(name).inventory.picks;
-    assert.deepEqual([picks('ann'), picks('cy'), picks('di')], [GEAR.startingPicks + 1, GEAR.startingPicks + 1, GEAR.startingPicks],
-        'the equipment was theirs whatever they chose');
+    assert.ok(leftTheStation(game, game.ship('di'), THIRD), 'just out of its dock, heading out');
+    assert.deepEqual(game.told('di', BR_EVENT.REVIVED), [{ planet: THIRD }]);
+    assert.equal(game.state('di').you.respawn, null, 'nothing more to wait for');
+    assert.equal(game.who('di').respawns, 0, 'being brought back does not lengthen the next wait');
+    assert.ok(game.who('di').jumpReadyAt > game.server.time, 'the jump drive starts uncharged, as on arriving anywhere');
 });
 
-test('choosing the reward leaves the fallen where they fell', () => {
+test('and the side that took it is paid all the same: there is nothing to choose between', () => {
     const game = captureWithFallen();
-    game.ask('ann', BR_REQUEST.VOTE, { choice: VOTE.REWARD });
-    game.ask('cy', BR_REQUEST.VOTE, { choice: VOTE.REWARD });
-    game.run(0.3);
 
-    assert.equal(game.who('di').alive, false);
     assert.deepEqual([game.who('ann').points, game.who('cy').points], [3, 3]);
     assert.deepEqual([game.who('ann').summons, game.who('cy').summons], [1, 1]);
-    assert.equal(game.who('di').points, 0);
+    assert.deepEqual([game.who('di').points, game.who('di').summons], [0, 0], 'only those who were there are paid');
+    const picks = (name) => game.who(name).inventory.picks;
+    assert.deepEqual([picks('ann'), picks('cy'), picks('di')], [GEAR.startingPicks + 1, GEAR.startingPicks + 1, GEAR.startingPicks]);
+    assert.equal('vote' in game.state('ann').you, false, 'nobody is asked anything');
 });
 
-test('a split vote brings the fallen back', () => {
-    const game = captureWithFallen();
-    game.ask('ann', BR_REQUEST.VOTE, { choice: VOTE.REVIVE });
-    game.ask('cy', BR_REQUEST.VOTE, { choice: VOTE.REWARD });
-    game.run(0.3);
+test('the fallen of other sides, and players who have left, stay where they are', () => {
+    const game = arrange({ ann: [DAWN, THIRD], di: [DAWN, THIRD], bo: [UMBRA, SECOND], pip: [PIRATE, GATE] });
+    game.empty(THIRD);
+    destroyShip(game.world(SECOND), game.ship('bo'), null);
+    destroyShip(game.world(THIRD), game.ship('di'), null);
+    game.server.removePlayer('di');
+    game.take('ann');
 
-    assert.equal(game.who('di').alive, true);
-    assert.equal(game.who('cy').points, 0);
-});
-
-test('if nobody chooses in time, the reward is taken', () => {
-    const game = captureWithFallen();
-    game.run(BATTLE_ROYALE.capture.voteSeconds + 0.5);
-
-    assert.equal(game.place(THIRD).vote, null);
+    assert.equal(game.who('bo').alive, false);
     assert.equal(game.who('di').alive, false);
-    assert.equal(game.who('ann').points, 3);
+    assert.equal(game.pilot('di').ship, null);
 });
 
-test('only the pilots who took the planet vote, once each, and only for a real choice', () => {
-    const game = captureWithFallen();
-    game.ask('bo', BR_REQUEST.VOTE, { choice: VOTE.REVIVE });
-    game.ask('di', BR_REQUEST.VOTE, { choice: VOTE.REVIVE });
-    for (const choice of ['both', '', null, 1, { choice: VOTE.REVIVE }]) game.ask('ann', BR_REQUEST.VOTE, { choice });
-    game.run(0.3);
-    assert.ok(game.place(THIRD).vote, 'still open: nobody entitled has chosen');
-
-    game.ask('ann', BR_REQUEST.VOTE, { choice: VOTE.REWARD });
-    game.ask('ann', BR_REQUEST.VOTE, { choice: VOTE.REVIVE });
-    assert.equal(game.state('ann').you.vote.choice, VOTE.REVIVE, 'a pilot may change their mind while it is open');
-});
-
-test('a station lost while its side was still choosing settles the choice at once', () => {
-    const game = captureWithFallen();
-    game.ask('ann', BR_REQUEST.VOTE, { choice: VOTE.REVIVE });
-    game.chargeJump('bo');
-    game.who('bo').pilot.zone.world.removeShip(game.ship('bo'));
-    game.mode.launch(game.who('bo'), game.place(THIRD), { warpIn: false });
-    game.dock('bo');
-    game.who('bo').dock.left = 0.05;
-    game.run(0.2);
+test('a station taken back from a side brings back that side\'s fallen too', () => {
+    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, THIRD], cy: [UMBRA, SECOND] });
+    game.empty(THIRD);
+    game.place(THIRD).owner = DAWN;
+    destroyShip(game.world(SECOND), game.ship('cy'), null);
+    game.ship('ann').position.set(0, 0, 9000);
+    game.take('bo');
 
     assert.equal(game.place(THIRD).owner, UMBRA);
-    assert.equal(game.who('di').alive, true, 'Ann had asked for Di back');
+    assert.equal(game.who('cy').alive, true);
+    assert.equal(game.pilot('cy').zone.id, THIRD);
+});
+
+// ---- Coming back at a station -------------------------------------------------------------------
+
+test('a pilot shot down waits ten seconds, then comes back at a station their side holds', () => {
+    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, THIRD] });
+    game.place(FOURTH).owner = DAWN;
+    destroyShip(game.world(THIRD), game.ship('ann'), game.ship('bo'));
+    game.run(0.1);
+
+    const waiting = game.state('ann').you.respawn;
+    assert.equal(waiting.wait, RESPAWN.wait);
+    assert.deepEqual(waiting.stations, [FOURTH]);
+    assert.equal(waiting.choose, null, 'no clock to choose while the wait is on');
+    assert.equal(waiting.next, RESPAWN.wait + RESPAWN.waitStep, 'the wait after this comeback');
+    game.ask('ann', BR_REQUEST.RESPAWN, { at: FOURTH });
+    assert.equal(game.who('ann').alive, false);
+    assert.deepEqual(game.told('ann', BR_EVENT.RESPAWN_REFUSED), [{ reason: RESPAWN_REFUSAL.WAITING }]);
+
+    game.run(RESPAWN.wait);
+    const ready = game.state('ann').you.respawn;
+    assert.equal(ready.wait, 0);
+    assert.ok(ready.choose > 0 && ready.choose <= RESPAWN.choose);
+    game.ask('ann', BR_REQUEST.RESPAWN, { at: FOURTH });
+
+    assert.equal(game.who('ann').alive, true);
+    assert.equal(game.pilot('ann').zone.id, FOURTH);
+    assert.equal(game.ship('ann').faction, DAWN);
+    assert.equal(game.ship('ann').hull, game.ship('ann').maxHull, 'a new ship');
+    assert.ok(leftTheStation(game, game.ship('ann'), FOURTH));
+    assert.deepEqual(game.told('ann', BR_EVENT.RESPAWNED), [{ planet: FOURTH }]);
+    assert.equal(game.state('ann').you.respawn, null);
+    assert.ok(game.who('ann').jumpReadyAt > game.server.time, 'the jump drive starts uncharged');
+});
+
+test('every comeback makes the next wait ten seconds longer: 10, 20, 30', () => {
+    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, GATE] });
+    game.empty(GATE);
+    game.place(THIRD).owner = DAWN;
+    const waits = [];
+    for (let round = 0; round < 3; round++) {
+        destroyShip(game.world(THIRD), game.ship('ann'), null);
+        game.run(0.1);
+        waits.push(game.state('ann').you.respawn.wait);
+        game.run(game.state('ann').you.respawn.wait);
+        game.ask('ann', BR_REQUEST.RESPAWN, { at: THIRD });
+        assert.equal(game.who('ann').alive, true, `round ${round + 1}`);
+    }
+    assert.deepEqual(waits, [10, 20, 30]);
+    assert.equal(game.who('ann').respawns, 3);
+});
+
+test('a ship can only come back at a station its side holds, and only once it is down', () => {
+    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, SECOND] });
+    game.place(FOURTH).owner = DAWN;
+    game.place(SECOND).owner = UMBRA;
+    game.ask('ann', BR_REQUEST.RESPAWN, { at: FOURTH });
+    assert.deepEqual(game.told('ann', BR_EVENT.RESPAWN_REFUSED), [{ reason: RESPAWN_REFUSAL.FLYING }], 'a pilot still flying cannot');
+
+    destroyShip(game.world(THIRD), game.ship('ann'), null);
+    game.run(RESPAWN.wait + 0.1);
+    for (const at of [SECOND, THIRD, 'pluto', '__proto__', 5, null, { at: FOURTH }]) game.ask('ann', BR_REQUEST.RESPAWN, { at });
+    game.ask('ann', BR_REQUEST.RESPAWN);
+
+    assert.equal(game.who('ann').alive, false);
+    assert.equal(game.told('ann', BR_EVENT.RESPAWN_REFUSED).filter(({ reason }) => reason === RESPAWN_REFUSAL.NOT_HELD).length, 8);
+});
+
+test('a pilot who does not choose is sent to the first station offered when the clock runs out', () => {
+    const game = arrange({ ann: [DAWN, THIRD], cy: [DAWN, SECOND], bo: [UMBRA, GATE] });
+    game.empty(SECOND);
+    game.empty(GATE);
+    for (const planet of [SECOND, FOURTH]) game.place(planet).owner = DAWN;
+    destroyShip(game.world(THIRD), game.ship('ann'), null);
+    game.run(RESPAWN.wait + 0.1);
+    assert.deepEqual(game.state('ann').you.respawn.stations, [SECOND, FOURTH], 'where a comrade is flying first');
+
+    game.run(RESPAWN.choose - 0.5);
+    assert.equal(game.who('ann').alive, false, 'not before the clock has run out');
+    game.run(1);
+    assert.equal(game.who('ann').alive, true);
+    assert.equal(game.pilot('ann').zone.id, SECOND);
+    assert.equal(game.who('ann').respawns, 1, 'it counts as a comeback like any');
+});
+
+test('the first station offered is one on a planet that is not falling in, then where comrades are, then the outermost', () => {
+    const game = arrange({ ann: [DAWN, THIRD], cy: [DAWN, INNERMOST], bo: [UMBRA, GATE] });
+    for (const planet of [INNERMOST, SECOND, FOURTH]) game.place(planet).owner = DAWN;
+    destroyShip(game.world(THIRD), game.ship('ann'), null);
+    assert.deepEqual(game.mode.respawnStations(game.who('ann')).map((place) => place.planet.id), [INNERMOST, FOURTH, SECOND]);
+
+    game.skipTo(startsAt(game, 0) + 0.5);
+    assert.equal(game.place(INNERMOST).status, PLANET_STATUS.COLLAPSING);
+    assert.deepEqual(game.mode.respawnStations(game.who('ann')).map((place) => place.planet.id), [FOURTH, SECOND, INNERMOST],
+        'Cy is there, but the planet is going');
+});
+
+test('with no station held the wait ends and the pilot waits on, until their side takes one', () => {
+    const game = arrange({ ann: [DAWN, THIRD], cy: [DAWN, FOURTH], bo: [UMBRA, GATE] });
+    game.empty(FOURTH);
+    game.empty(GATE);
+    destroyShip(game.world(THIRD), game.ship('ann'), null);
+    game.run(RESPAWN.wait + RESPAWN.choose + 5);
+
+    assert.deepEqual(game.state('ann').you.respawn, { wait: 0, stations: [], choose: null, next: RESPAWN.wait + RESPAWN.waitStep });
+    assert.equal(game.who('ann').alive, false);
+
+    game.take('cy');
+    assert.equal(game.who('ann').alive, true, 'taking a station brings them straight back');
+    assert.equal(game.pilot('ann').zone.id, FOURTH);
+});
+
+test('a station lost while a pilot was choosing it is refused, and the clock to choose stops with the last one', () => {
+    // (Cy keeps the Federation in the match once its last station is gone.)
+    const game = arrange({ ann: [DAWN, THIRD], cy: [DAWN, SECOND], bo: [UMBRA, FOURTH] });
+    game.empty(SECOND);
+    game.place(FOURTH).owner = DAWN;
+    destroyShip(game.world(THIRD), game.ship('ann'), null);
+    game.run(RESPAWN.wait + 0.1);
+    assert.ok(game.state('ann').you.respawn.choose > 0);
+
+    game.empty(FOURTH);
+    game.take('bo');
+    game.ask('ann', BR_REQUEST.RESPAWN, { at: FOURTH });
+    game.run(0.1);
+    assert.deepEqual(game.told('ann', BR_EVENT.RESPAWN_REFUSED), [{ reason: RESPAWN_REFUSAL.NOT_HELD }]);
+    assert.equal(game.state('ann').you.respawn.choose, null);
+});
+
+test('the dead have no ship to jump, dock, refit or call for help with', () => {
+    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, GATE] });
+    game.place(THIRD).owner = DAWN;
+    game.who('ann').points = 3;
+    game.who('ann').summons = 1;
+    destroyShip(game.world(THIRD), game.ship('ann'), null);
+    game.chargeJump('ann');
+    game.ask('ann', BR_REQUEST.JUMP, { to: FOURTH });
+    game.ask('ann', BR_REQUEST.DOCK);
+    game.ask('ann', BR_REQUEST.REFIT, { added: { hull: 1 } });
+    game.ask('ann', BR_REQUEST.SUMMON);
+    game.run(0.2);
+
+    assert.deepEqual([game.who('ann').points, game.who('ann').summons], [3, 1], 'what they had is kept for the next ship');
+    assert.equal(game.who('ann').jump, null);
+    assert.equal(game.who('ann').dock, null);
+});
+
+test('a comeback keeps the pilot\'s refits, score and equipment', () => {
+    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, GATE] });
+    game.place(THIRD).owner = DAWN;
+    game.who('ann').points = 2;
+    game.ask('ann', BR_REQUEST.REFIT, { added: { hull: 2 } });
+    game.equip('ann', EQUIPMENT.BEACON, 2);
+    game.who('ann').score = 900;
+    const maxHull = game.ship('ann').maxHull;
+    destroyShip(game.world(THIRD), game.ship('ann'), null);
+    game.run(RESPAWN.wait + 0.1);
+    game.ask('ann', BR_REQUEST.RESPAWN, { at: THIRD });
+
+    assert.equal(game.ship('ann').maxHull, maxHull);
+    assert.equal(game.who('ann').inventory.counts[EQUIPMENT.BEACON], 2);
+    assert.equal(game.who('ann').score, 900);
+    assert.equal(game.who('ann').deaths, 1);
 });
 
 // ---- Spending the reward ---------------------------------------------------------------------
@@ -1014,6 +1150,30 @@ test('everybody dead is nobody\'s win', () => {
 
     assert.equal(game.state('ann').phase, MATCH_PHASE.OVER);
     assert.equal(game.state('ann').winner, null);
+});
+
+test('a side with every pilot down is still in the match while it holds a station to come back to', () => {
+    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, FOURTH] });
+    game.place(FOURTH).owner = DAWN;
+    destroyShip(game.world(THIRD), game.ship('ann'), game.ship('bo'));
+    game.run(0.2);
+    assert.equal(game.state('bo').phase, MATCH_PHASE.PLAYING, 'Ann can still come back at the fourth planet');
+
+    game.empty(FOURTH);
+    game.take('bo');
+    game.run(0.2);
+    assert.equal(game.state('bo').phase, MATCH_PHASE.OVER, 'with the station gone, so is the Federation');
+    assert.equal(game.state('bo').winner, UMBRA);
+});
+
+test('a side whose pilots are down but can come back goes on, and wins if it outlasts the rest', () => {
+    const game = arrange({ ann: [DAWN, THIRD], bo: [UMBRA, THIRD] });
+    game.place(SECOND).owner = DAWN;
+    destroyShip(game.world(THIRD), game.ship('ann'), game.ship('bo'));
+    destroyShip(game.world(THIRD), game.ship('bo'), null);
+    game.run(0.2);
+
+    assert.equal(game.state('ann').winner, DAWN, 'nobody flying, but only the Federation can come back');
 });
 
 test('holding the stargate when the last stand runs out wins the match for the whole side - taking it does not end it early', () => {
@@ -1688,25 +1848,32 @@ test('a bot flies to an unguarded station, docks, and takes the planet for its s
     assert.equal(bot.pilot.ship.alive, true, 'without flying into the station on the way');
 });
 
-test('a bot spends what it is given: equipment, refit points, and its vote for fallen comrades', () => {
+test('a bot spends what it is given: equipment and refit points', () => {
     const game = withBots(['ann', 'bo']);
     const bot = game.bots[0];
-    const comrade = [...game.mode.contestants.values()].find((other) => other !== bot && other.faction === bot.faction);
     game.alone(bot, THIRD, THIRD);
-    const world = game.place(THIRD).zone.world;
-    destroyShip(world, comrade.pilot.ship, null);
     bot.points = 2;
     game.run(0.5);
     assert.equal(bot.inventory.picks, 0, 'its piece of equipment is chosen');
     assert.equal(bot.points, 0);
     assert.equal(Object.values(bot.pilot.upgrades).reduce((sum, levels) => sum + levels, 0), 2, 'its points are in its ship');
+});
 
-    for (const other of game.mode.contestants.values()) {
-        if (other !== bot && other.pilot.ship?.alive) world.removeShip(other.pilot.ship);
-    }
-    game.mode.capture(game.place(THIRD), bot.faction);
-    game.run(0.5);
-    assert.equal(comrade.alive, true, 'it voted to bring its comrade back');
+test('a bot shot down comes back the moment its wait is over, at the station it would be sent to anyway', () => {
+    const game = withBots(['ann']);
+    const bot = game.bots[0];
+    game.alone(bot, THIRD);
+    game.place(FOURTH).owner = bot.faction;
+    game.place(SECOND).owner = bot.faction;
+    destroyShip(game.place(THIRD).zone.world, bot.pilot.ship, null);
+    game.run(BATTLE_ROYALE.respawn.wait - 0.5);
+    assert.equal(bot.alive, false);
+    assert.equal(bot.pilot.zone, null, 'nothing is kept running for a bot that is down');
+
+    game.run(1);
+    assert.equal(bot.alive, true);
+    assert.equal(bot.pilot.zone.id, game.mode.respawnStations(bot)[0].planet.id);
+    assert.equal(bot.respawns, 1);
 });
 
 test('a bot jumps outwards before its planet falls in', () => {
@@ -1820,6 +1987,48 @@ test('on a player\'s device a jump is a new sky, a warp, and the same ship', () 
     assert.deepEqual(warps, ['spool', 'arrive']);
     assert.ok(ann.world.warpFactor < 0.2, 'and lets go on arrival');
     assert.ok(ann.ui.match.you.jump.cooldown > 0);
+});
+
+test('on a player\'s device a pilot shot down sees the wait, then the dock key brings them back at the station offered', () => {
+    const match = createTestMatch(['host', 'ann'], { start: { settings: { pace: 'quick' } } });
+    match.run(0.5);
+    const [ann] = match.clients;
+    const mode = match.server.mode;
+    // Nothing computer-flown anywhere: only what the test does happens.
+    for (const place of mode.places.values()) {
+        for (const ship of [...place.zone.world.ships]) if (!ship.isPlayer && ship.faction !== FACTION.NEUTRAL) place.zone.world.removeShip(ship);
+    }
+    const contestant = mode.contestants.get('ann');
+    const from = mode.placeOf(contestant);
+    const home = mode.places.get(mode.map.neighbours(from.planet.id)[0]);
+    home.owner = contestant.faction;
+    const toasts = [];
+    const showToast = ann.session.showToast.bind(ann.session);
+    ann.session.showToast = (key, params) => { toasts.push(key); showToast(key, params); };
+
+    destroyShip(from.zone.world, contestant.pilot.ship, null);
+    match.run(1);
+    const { respawn } = ann.ui.match.you;
+    assert.equal(ann.ui.match.you.alive, false);
+    assert.ok(respawn.wait > 0 && respawn.wait <= BATTLE_ROYALE.respawn.wait);
+    assert.deepEqual(respawn.stations, [home.planet.id]);
+    ann.session.handleAction(MATCH_ACTION.DOCK);
+    match.run(0.5);
+    assert.equal(contestant.alive, false, 'during the wait the key asks for nothing');
+    assert.deepEqual(toasts, []);
+
+    match.run(BATTLE_ROYALE.respawn.wait);
+    assert.equal(ann.ui.match.you.respawn.wait, 0);
+    assert.ok(ann.ui.match.you.respawn.choose > 0);
+    ann.session.handleAction(MATCH_ACTION.DOCK);
+    match.run(1);
+
+    assert.equal(ann.ui.match.you.alive, true);
+    assert.equal(ann.ui.match.you.respawn, null);
+    assert.equal(ann.ui.match.you.planet, home.planet.id);
+    assert.equal(ann.world.sectorId, home.zone.sectorId, 'a new sky');
+    assert.equal(ann.world.player?.pilotId, 'ann', 'and a ship to fly');
+    assert.deepEqual(toasts, ['mp.respawned']);
 });
 
 test('on a player\'s device one key docks and lets go; while docked the helm is the station\'s', () => {

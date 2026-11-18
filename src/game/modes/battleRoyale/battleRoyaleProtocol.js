@@ -11,8 +11,8 @@ export const BR_REQUEST = Object.freeze({
     REFIT: 'refit',
     /** {} - call reinforcements */
     SUMMON: 'summon',
-    /** { choice: VOTE } */
-    VOTE: 'vote',
+    /** { at: planetId } - come back, after being shot down, at the station of a planet the player's side holds */
+    RESPAWN: 'respawn',
     /** {} - clamp on to the station's dock (the ship must be at its mouth), and let go again */
     DOCK: 'dock',
     UNDOCK: 'undock',
@@ -36,8 +36,12 @@ export const BR_EVENT = Object.freeze({
     CAPTURED: 'captured',
     /** { points, summons } */
     REWARD: 'reward',
-    /** { planet } - the player's side brought them back */
+    /** { planet } - the player's side took a planet and brought them back there */
     REVIVED: 'revived',
+    /** { planet } - the player came back at a station of their side's */
+    RESPAWNED: 'respawned',
+    /** { reason: RESPAWN_REFUSAL } */
+    RESPAWN_REFUSED: 'respawnRefused',
     /** { faction } - the player has been firing on their own side */
     WARNING: 'warning',
     /** { former } - the player is a pirate now */
@@ -86,5 +90,12 @@ export const DOCK_END = Object.freeze({
     TAKEN: 'taken',
 });
 
-/** After taking a planet: bring the side's fallen pilots back, or take the reward. */
-export const VOTE = Object.freeze({ REVIVE: 'revive', REWARD: 'reward' });
+/** Why a pilot cannot come back where they asked to. */
+export const RESPAWN_REFUSAL = Object.freeze({
+    /** Their ship is still flying (or they are out of the match). */
+    FLYING: 'flying',
+    /** Their wait is not over yet. */
+    WAITING: 'waiting',
+    /** Their side does not hold that planet's station (any more). */
+    NOT_HELD: 'notHeld',
+});

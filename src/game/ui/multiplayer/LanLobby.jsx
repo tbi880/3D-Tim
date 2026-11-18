@@ -276,7 +276,7 @@ function Loadout({ lan, editable }) {
                         aria-pressed={chosen === item}
                         onClick={() => lan.setLoadout({ equipment: chosen === item ? null : item })}
                     >
-                        {chosen === item ? t('mp.vote.chosen') : t('mp.equipment.take')}
+                        {chosen === item ? t('mp.equipment.chosen') : t('mp.equipment.take')}
                     </button>
                 )}
             />

@@ -3,8 +3,12 @@
  * client logic (and their tests) can read it in Node.
  */
 export const NET = Object.freeze({
-    /** Bumped whenever packets change shape; a host refuses a client that speaks another version. */
-    protocolVersion: 4,
+    /**
+     * Bumped whenever packets change shape; a host refuses a client that speaks another version,
+     * and the lobby server only puts players whose games speak the same one in a room together.
+     * 5: the battle royale's vote after a capture gave way to coming back at a station.
+     */
+    protocolVersion: 5,
 
     /** World snapshots the host sends each client per second. */
     snapshotHz: 30,

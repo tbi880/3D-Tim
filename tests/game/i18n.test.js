@@ -14,6 +14,7 @@ import { SHIP_CLASSES } from '../../src/game/config/shipClasses.js';
 import en from '../../src/game/i18n/en.js';
 import { translate } from '../../src/game/i18n/index.js';
 import zh from '../../src/game/i18n/zh.js';
+import { DOCK_END, DOCK_REFUSAL, JUMP_REFUSAL, RESPAWN_REFUSAL } from '../../src/game/modes/battleRoyale/battleRoyaleProtocol.js';
 import { EQUIPMENT_ORDER } from '../../src/game/modes/battleRoyale/equipment.js';
 
 /**
@@ -79,6 +80,11 @@ test('everything the tables name has its texts', () => {
         ...STAR_SYSTEM.planets.map((planet) => `mp.planet.${planet.id}`),
         ...PLAYER_FACTIONS.map((faction) => `mp.faction.${faction}`),
         ...EQUIPMENT_ORDER.flatMap((item) => [`mp.equipment.${item}.name`, `mp.equipment.${item}.text`]),
+        // The host's reasons for saying no, and for a docking ending, are shown as `...${reason}`.
+        ...Object.values(JUMP_REFUSAL).map((reason) => `mp.jump.refused.${reason}`),
+        ...Object.values(DOCK_REFUSAL).map((reason) => `mp.dock.refused.${reason}`),
+        ...Object.values(DOCK_END).map((reason) => `mp.dock.ended.${reason}`),
+        ...Object.values(RESPAWN_REFUSAL).map((reason) => `mp.respawn.refused.${reason}`),
         ...DIFFICULTY_ORDER.flatMap((level) => [`ui.difficulty.${level}`, `ui.difficultyHint.${level}`]),
         ...GRAPHICS_ORDER.flatMap((level) => [`ui.graphics.${level}`, `ui.graphicsHint.${level}`]),
     ];

@@ -2,7 +2,6 @@ import { PLAYER_FACTIONS, STAR_SYSTEM } from '../../config/battleRoyale.js';
 import { RATING_ORDER } from '../../config/playerShips.js';
 import { MATCH_PHASE } from '../../net/match/matchState.js';
 import { LOYALTY } from './allegiance.js';
-import { VOTE } from './battleRoyaleProtocol.js';
 import { PLANET_STATUS } from './collapse.js';
 import { EQUIPMENT_ORDER } from './equipment.js';
 
@@ -31,7 +30,10 @@ import { EQUIPMENT_ORDER } from './equipment.js';
  *     picks,              pieces of equipment they may still choose
  *     equipment,          { item: count } they carry (equipment.js)
  *     effects,            { gravityShield, emergencyShield }: seconds each is still on (0: off)
- *     vote,               { planet, endsIn, choice } while their side is choosing after taking a planet, else null
+ *     respawn,            while they are down: { wait, stations, choose, next } - seconds until they may come
+ *                         back (0: now); the planets whose stations their side holds, the one they would be
+ *                         sent to first; seconds left to choose before they are (null: not counting); the
+ *                         wait after their next comeback. Null while they fly.
  *   },
  *   planets: [{           innermost first
  *     id, status, changesIn,
@@ -58,8 +60,13 @@ function cleanYou(raw) {
     if (!raw || typeof raw !== 'object') return null;
     const upgrades = {};
     for (const rating of RATING_ORDER) upgrades[rating] = count(raw.upgrades?.[rating]);
-    const vote = raw.vote && typeof raw.vote === 'object'
-        ? { planet: planetId(raw.vote.planet), endsIn: seconds(raw.vote.endsIn) ?? 0, choice: oneOf(Object.values(VOTE), raw.vote.choice, null) }
+    const respawn = raw.respawn && typeof raw.respawn === 'object'
+        ? {
+            wait: seconds(raw.respawn.wait) ?? 0,
+            stations: Array.isArray(raw.respawn.stations) ? [...new Set(raw.respawn.stations.map(planetId).filter(Boolean))] : [],
+            choose: seconds(raw.respawn.choose),
+            next: seconds(raw.respawn.next) ?? 0,
+        }
         : null;
     return {
         faction: oneOf(PLAYER_FACTIONS, raw.faction, PLAYER_FACTIONS[0]),
@@ -82,7 +89,7 @@ function cleanYou(raw) {
         picks: count(raw.picks),
         equipment: Object.fromEntries(EQUIPMENT_ORDER.map((item) => [item, count(raw.equipment?.[item])])),
         effects: { gravityShield: count(raw.effects?.gravityShield), emergencyShield: count(raw.effects?.emergencyShield) },
-        vote,
+        respawn,
     };
 }
 

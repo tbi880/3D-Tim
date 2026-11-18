@@ -1,7 +1,6 @@
 import { BATTLE_ROYALE, PLAYER_FACTIONS, STAR_SYSTEM } from '../config/battleRoyale.js';
 import { PLAYER_SHIPS } from '../config/playerShips.js';
 import { MATCH_ACTION, MATCH_PANEL } from '../modes/battleRoyale/BattleRoyalePresenter.js';
-import { VOTE } from '../modes/battleRoyale/battleRoyaleProtocol.js';
 import { isBattle, rankPlayers, rosterBySide } from '../modes/battleRoyale/battleRoyaleState.js';
 import { PLANET_STATUS } from '../modes/battleRoyale/collapse.js';
 import { EQUIPMENT, EQUIPMENT_ORDER } from '../modes/battleRoyale/equipment.js';
@@ -14,7 +13,8 @@ import { exitVR } from './vrState.js';
 
 /**
  * Multiplayer inside the headset: the LAN lobby, and in a match the star map (with the
- * beacon on it), the equipment, the vote after a capture, the menu and the result. The flat page's screens for these (ui/
+ * beacon on it), the equipment, where to come back after being shot down, the menu and the
+ * result. The flat page's screens for these (ui/
  * multiplayer) cannot be seen in VR; these are the same choices as rows for VRMenu, which
  * draws them and moves the selection (see there for what a row is).
  *
@@ -30,10 +30,10 @@ const EQUIPMENT_PARAMS = Object.freeze({
 });
 const ORBITS = STAR_SYSTEM.planets.map((planet) => planet.id);
 
-/** True when a multiplayer panel should be up over the flight view: the story, the map, a vote. */
+/** True when a multiplayer panel should be up over the flight view: the story, the map, where to come back once shot down. */
 export function isMatchMenuOpen(state) {
     const { match } = state;
-    return Boolean(match) && (match.intro != null || Boolean(state.matchOutro) || Boolean(state.matchPanel) || Boolean(match.you?.vote));
+    return Boolean(match) && (match.intro != null || Boolean(state.matchOutro) || Boolean(state.matchPanel) || Boolean(match.you?.respawn));
 }
 
 /**
@@ -75,9 +75,10 @@ export function buildMatchMenu(game, state, t, view) {
     if (match.intro != null) return introduction(match, t);
     const presenter = session.match?.presenter;
     if (!presenter) return null;
-    if (match.you.vote) return vote(presenter, match.you.vote, t);
     if (state.matchPanel === MATCH_PANEL.MAP) return starMap(session, presenter, match, t);
     if (state.matchPanel === MATCH_PANEL.EQUIPMENT) return equipment(presenter, match, t);
+    // Shot down: the choice of where to come back stays up until the pilot is (the map can be looked at meanwhile).
+    if (match.you.respawn) return respawn(presenter, match, t);
     return null;
 }
 
@@ -441,13 +442,36 @@ function equipment(presenter, match, t) {
     };
 }
 
-function vote(presenter, ballot, t) {
-    const row = (choice, label) => ({ label: t(label), value: ballot.choice === choice ? t('mp.vote.chosen') : null, select: () => presenter.vote(choice) });
+/**
+ * Shot down (ui/multiplayer/MatchHud.jsx RespawnPrompt in the headset): the wait, then a row
+ * for each station the side holds - the first is where the pilot is sent if the clock runs
+ * out - and the star map. The rows are there during the wait too, but cannot be chosen yet.
+ */
+function respawn(presenter, match, t) {
+    const comeback = match.you.respawn;
+    const ready = comeback.wait === 0;
+    const none = comeback.stations.length === 0;
+    const headline = !ready ? t('mp.respawn.waiting', { seconds: comeback.wait })
+        : none ? t('mp.respawn.noStation') : t('mp.respawn.choose', { seconds: comeback.choose ?? 0 });
+    const statusOf = (planetId) => match.planets.find((planet) => planet.id === planetId)?.status ?? PLANET_STATUS.SAFE;
+    const items = comeback.stations.map((planetId, index) => ({
+        id: `respawn:${planetId}`,
+        label: t('mp.respawn.station', { planet: t(`mp.planet.${planetId}`) }),
+        sub: index === 0 ? t('mp.respawn.default') : null,
+        value: t(`mp.hud.status.${statusOf(planetId)}`),
+        disabled: !ready,
+        select: () => presenter.respawnAt(planetId),
+    }));
+    items.push({ label: t('mp.map.title'), select: () => presenter.setPanel(MATCH_PANEL.MAP) });
+    const lines = [headline, none ? t('mp.respawn.noStationText') : t('mp.respawn.text', { next: comeback.next })];
+    if (ready && !none) lines.push(t('mp.respawn.vrHint'));
     return {
-        key: 'match:vote',
-        title: t('mp.vote.title', { planet: t(`mp.planet.${ballot.planet}`) }),
-        lines: [t('mp.vote.text'), t('mp.vote.endsIn', { seconds: ballot.endsIn })],
-        items: [row(VOTE.REWARD, 'mp.vote.reward'), row(VOTE.REVIVE, 'mp.vote.revive')],
+        // A new key when the stations can be chosen: the selection starts on the first one.
+        key: `match:respawn:${ready && !none ? 'ready' : 'waiting'}`,
+        title: t('mp.hud.dead'),
+        lines,
+        items,
+        tone: 'failure',
     };
 }
 

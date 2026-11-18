@@ -227,7 +227,7 @@ const goodState = () => ({
     mode: 'battleRoyale', matchId: 'm', phase: 'playing', winner: null, time: 12, finalStand: null,
     you: {
         faction: 'umbra', planet: 'rust', alive: true, points: 3, summons: 1, upgrades: { hull: 2 }, loyalty: 'warned',
-        jump: { cooldown: 14, to: null, spool: null, trapped: false, reach: 2 }, vote: { planet: 'rust', endsIn: 7, choice: null },
+        jump: { cooldown: 14, to: null, spool: null, trapped: false, reach: 2 }, respawn: { wait: 0, stations: ['rust', 'veil'], choose: 17, next: 30 },
         dock: { ready: false, left: 6.5, seconds: 15 }, picks: 1, equipment: { beacon: 2, overdrive: 1 }, effects: { gravityShield: 12, emergencyShield: 0 },
     },
     planets: STAR_SYSTEM.planets.map((planet) => ({
@@ -242,7 +242,7 @@ test('a well-formed state comes through unchanged in substance', () => {
     assert.equal(clean.you.upgrades.hull, 2);
     assert.equal(clean.you.upgrades.speed, 0, 'every rating is present');
     assert.equal(clean.you.loyalty, 'warned');
-    assert.deepEqual(clean.you.vote, { planet: 'rust', endsIn: 7, choice: null });
+    assert.deepEqual(clean.you.respawn, { wait: 0, stations: ['rust', 'veil'], choose: 17, next: 30 });
     assert.equal(clean.planets.length, STAR_SYSTEM.planets.length);
     assert.deepEqual(clean.planets[0].forces, { dawn: 4, umbra: 0, pirate: 1 });
     assert.deepEqual([clean.planets[0].known, clean.planets[0].beacon, clean.planets[0].owner, clean.planets[0].docking], [true, true, 'umbra', 'pirate']);
@@ -269,7 +269,7 @@ test('odd values are replaced by safe ones, never passed on', () => {
     raw.you.points = 'lots';
     raw.you.upgrades = { hull: 1e9, evil: 3, speed: -2 };
     raw.you.jump = { cooldown: NaN, to: 'pluto', spool: -3, trapped: 'yes' };
-    raw.you.vote.choice = 'both';
+    raw.you.respawn = { wait: -3, stations: ['rust', 'pluto', 'rust', 7, null, 'veil'], choose: 'soon', next: NaN };
     raw.you.dock = { ready: 'yes', left: -2, seconds: 'soon' };
     raw.you.picks = -1;
     raw.you.equipment = { beacon: 'all', nuke: 5, overdrive: 2.9 };
@@ -295,7 +295,8 @@ test('odd values are replaced by safe ones, never passed on', () => {
     assert.equal(clean.you.upgrades.evil, undefined);
     assert.equal(clean.you.upgrades.speed, 0);
     assert.deepEqual(clean.you.jump, { cooldown: 0, to: null, spool: 0, trapped: true, reach: 1 });
-    assert.equal(clean.you.vote.choice, null);
+    assert.deepEqual(clean.you.respawn, { wait: 0, stations: ['rust', 'veil'], choose: null, next: 0 },
+        'only real planets, each once, in the order sent; no time is ever negative');
     assert.deepEqual(clean.you.dock, { ready: true, left: 0, seconds: 1 });
     assert.equal(clean.you.picks, 0);
     assert.deepEqual(clean.you.equipment, { beacon: 0, gravityShield: 0, emergencyShield: 0, overdrive: 2 });

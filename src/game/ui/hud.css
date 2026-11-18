@@ -110,8 +110,8 @@ html.eod-in-game .site-settings-toggle { display: none; }
  * stacks what is in it, so panels that come up together push each other along instead of
  * covering each other:
  *   left    top left, a column: the objective, the match status (on a phone: ship panel, objective)
- *   centre  top centre, a column: boss / escort bars, the hint, the match vote (a phone: the
- *           match strip; its vote goes to the bottom) - and at its foot the warnings, a third
+ *   centre  top centre, a column: boss / escort bars, the hint, where to come back (a phone: the
+ *           match strip; the comeback goes to the bottom) - and at its foot the warnings, a third
  *           of the way down the screen (lower if the rest needs it)
  *   right   top right: the target, the toast under it
  *   and at the bottom centre the dock prompt and the comms line (.eod-centre-stack).
@@ -651,7 +651,7 @@ html.eod-in-game .site-settings-toggle { display: none; }
     .eod-hud--touch .eod-score-feed { left: calc(50% + 30px); top: 50%; transform: translateY(-50%); align-items: flex-start; }
 }
 
-/* Bottom centre, between the thumbs: the match's vote and dock prompt, the comms line (tap it to
+/* Bottom centre, between the thumbs: where to come back, the match's dock prompt, the comms line (tap it to
    show it all, again to skip), the match's buttons. Clear of the stick on the left and of the
    ability button on the right; above the home bar. */
 .eod-hud--touch .eod-centre-stack {
@@ -845,7 +845,7 @@ html.eod-in-game .site-settings-toggle { display: none; }
 
 /* Smaller corner gauges, and the comms and radar between them (not lifted over them: that put the radar on the reticle). */
 @media (max-width: 900px) {
-    /* A narrower left column, so the top centre (and the vote in it) keeps some width. */
+    /* A narrower left column, so the top centre (and the comeback in it) keeps some width. */
     .eod-hud--desktop { --eod-side: 210px; }
     .eod-hud--desktop .eod-status, .eod-hud--desktop .eod-weapons { width: 200px; }
     .eod-hud--desktop .eod-target { width: 180px; }

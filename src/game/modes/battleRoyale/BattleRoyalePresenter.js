@@ -313,6 +313,13 @@ export class BattleRoyalePresenter {
                 break;
             case BR_EVENT.REVIVED:
                 session.showToast('mp.revived', { planet: planetName(data?.planet) });
+                session.playCue('power');
+                break;
+            case BR_EVENT.RESPAWNED:
+                session.showToast('mp.respawned', { planet: planetName(data?.planet) });
+                break;
+            case BR_EVENT.RESPAWN_REFUSED:
+                session.showToast(`mp.respawn.refused.${String(data?.reason)}`);
                 break;
             case BR_EVENT.WARNING:
                 session.showToast('mp.loyalty.warning');
@@ -373,7 +380,9 @@ export class BattleRoyalePresenter {
                 return true;
             case MATCH_ACTION.DOCK:
                 // One key clamps on and lets go; if the ship cannot dock here the host says why.
+                // Shot down, the same key comes back at the first station offered, once the wait is over.
                 if (state?.you?.alive) this.client.request(this.docked ? BR_REQUEST.UNDOCK : BR_REQUEST.DOCK);
+                else if (state?.you?.respawn) this.respawnAtFirst();
                 return true;
             case MATCH_ACTION.EQUIPMENT:
                 this.setPanel(this.panel === MATCH_PANEL.EQUIPMENT ? null : MATCH_PANEL.EQUIPMENT);
@@ -435,11 +444,18 @@ export class BattleRoyalePresenter {
         this.setPanel(null);
     }
 
-    vote(choice) {
-        this.client.request(BR_REQUEST.VOTE, { choice });
+    /** Shot down: asks to come back at the station of `planetId` (one the player's side holds; the host checks). */
+    respawnAt(planetId) {
+        this.client.request(BR_REQUEST.RESPAWN, { at: planetId });
     }
 
-    /** The player is somewhere new (a jump, a revival, or the start): the streaks let go. */
+    /** Comes back at the first station offered - where the host would send the player anyway - if the wait is over. */
+    respawnAtFirst() {
+        const respawn = this.client.state?.you?.respawn;
+        if (respawn && respawn.wait === 0 && respawn.stations.length > 0) this.respawnAt(respawn.stations[0]);
+    }
+
+    /** The player is somewhere new (a jump, a comeback, or the start): the streaks let go. */
     onZoneEntered() {
         if (this.warp?.phase !== 'spool') return;
         this.warp = { phase: 'exit', elapsed: 0, seconds: WARP_EXIT_SECONDS };

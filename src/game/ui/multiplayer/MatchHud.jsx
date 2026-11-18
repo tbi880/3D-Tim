@@ -1,6 +1,5 @@
 import { LOYALTY } from '../../modes/battleRoyale/allegiance.js';
 import { MATCH_ACTION } from '../../modes/battleRoyale/BattleRoyalePresenter.js';
-import { VOTE } from '../../modes/battleRoyale/battleRoyaleProtocol.js';
 import { PLANET_STATUS } from '../../modes/battleRoyale/collapse.js';
 import { EQUIPMENT_ORDER } from '../../modes/battleRoyale/equipment.js';
 import { useGameStore, useT } from '../../state/gameStore.js';
@@ -9,8 +8,9 @@ import { EQUIPMENT_ICONS } from './EquipmentPanel.jsx';
 /**
  * The battle royale's part of the in-flight HUD: which side the pilot is on, where they
  * are and how long that will last, the jump drive, what they carry and have to spend, the
- * station's dock when the ship is in it - and the buttons for the map, the refit window,
- * reinforcements, docking and the equipment (keys G, U, B, E and I).
+ * station's dock when the ship is in it, where to come back after being shot down - and the
+ * buttons for the map, the refit window, reinforcements, docking and the equipment (keys G,
+ * U, B, E and I).
  *
  * Each part is placed by ui/GameHud.jsx in one of its docks, so that it stacks with the
  * panels it shows up with instead of covering them. GameHud shows none of them during a
@@ -153,31 +153,53 @@ export function MatchAlerts() {
         if (here.status === PLANET_STATUS.SWALLOWED) alerts.push(t('mp.alert.swallowed'));
     }
     if (you.loyalty === LOYALTY.WARNED) alerts.push(t('mp.alert.warned'));
-    if (!you.alive) alerts.push(t('mp.hud.dead'));
+    // (Shot down, the choice of where to come back says so: RespawnPrompt.)
+    if (!you.alive && !you.respawn) alerts.push(t('mp.hud.dead'));
     if (alerts.length === 0) return null;
     return alerts.map((text) => <span key={text} className="eod-alert">{text}</span>);
 }
 
-/** After taking a planet with comrades down: the reward, or bring them back. */
-export function VotePrompt({ session }) {
-    const vote = useGameStore((state) => state.match?.you?.vote);
+/**
+ * Shot down: how long until the pilot may come back, then a button for each station their
+ * side holds - the first one (key E) is where they are sent if they let the clock run out.
+ * During the wait the buttons are there but not yet live, so the choice can be made ahead.
+ */
+export function RespawnPrompt({ session }) {
+    const match = useGameStore((state) => state.match);
     const t = useT();
+    const respawn = match?.you?.respawn;
     const presenter = session.match?.presenter;
-    if (!vote || !presenter) return null;
-    const choice = (value, label) => (
-        <button type="button" className={`eod-button ${vote.choice === value ? 'eod-button--primary' : ''}`} onClick={() => presenter.vote(value)}>
-            {t(label)}
-            {vote.choice === value && <small>{t('mp.vote.chosen')}</small>}
-        </button>
-    );
+    if (!respawn || !presenter) return null;
+    const ready = respawn.wait === 0;
+    const none = respawn.stations.length === 0;
+    const headline = !ready ? t('mp.respawn.waiting', { seconds: respawn.wait })
+        : none ? t('mp.respawn.noStation') : t('mp.respawn.choose', { seconds: respawn.choose ?? 0 });
+    const statusOf = (planetId) => match.planets.find((planet) => planet.id === planetId)?.status ?? PLANET_STATUS.SAFE;
     return (
-        <div className="eod-panel eod-match-vote">
-            <strong>{t('mp.vote.title', { planet: t(`mp.planet.${vote.planet}`) })} · {t('mp.vote.endsIn', { seconds: vote.endsIn })}</strong>
-            <p>{t('mp.vote.text')}</p>
-            <div className="eod-match-vote-choices">
-                {choice(VOTE.REWARD, 'mp.vote.reward')}
-                {choice(VOTE.REVIVE, 'mp.vote.revive')}
-            </div>
+        <div className={`eod-panel eod-match-respawn ${ready && !none ? 'eod-match-respawn--ready' : ''}`}>
+            <strong>{headline}</strong>
+            <p>{none ? t('mp.respawn.noStationText') : t('mp.respawn.text', { next: respawn.next })}</p>
+            {!none && (
+                <div className="eod-match-respawn-stations">
+                    {respawn.stations.map((planetId, index) => (
+                        <button
+                            key={planetId}
+                            type="button"
+                            className={`eod-button ${index === 0 ? 'eod-button--primary' : ''}`}
+                            disabled={!ready}
+                            onClick={() => presenter.respawnAt(planetId)}
+                        >
+                            <span>
+                                {index === 0 && <kbd>{t('mp.hud.keyDock')}</kbd>}
+                                {t('mp.respawn.station', { planet: t(`mp.planet.${planetId}`) })}
+                            </span>
+                            <small className={`eod-match-planet--${statusOf(planetId)}`}>
+                                {t(`mp.hud.status.${statusOf(planetId)}`)}{index === 0 ? ` · ${t('mp.respawn.default')}` : ''}
+                            </small>
+                        </button>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

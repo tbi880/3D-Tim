@@ -8,7 +8,7 @@ import { areHostile } from '../../core/systems/damage.js';
 import { applyPilotAction } from '../../core/systems/pilotActions.js';
 import { isValidTarget } from '../../core/systems/targeting.js';
 import { playerBeamRange, playerTorpedoRange } from '../../core/systems/weapons.js';
-import { JUMP_REFUSAL, VOTE } from './battleRoyaleProtocol.js';
+import { JUMP_REFUSAL } from './battleRoyaleProtocol.js';
 import { PLANET_STATUS } from './collapse.js';
 import { EQUIPMENT } from './equipment.js';
 
@@ -19,7 +19,7 @@ import { EQUIPMENT } from './equipment.js';
  * person's (MatchServer.addBot) and the rules treat it as a contestant like any other; all
  * that is here is what a person's hands and head would do: every frame it sets the same
  * controls a device would send - stick, throttle, afterburner, triggers - and now and then
- * it asks the rules for the things a player asks for: a jump, a docking, a refit, a vote -
+ * it asks the rules for the things a player asks for: a jump, a docking, a refit, a comeback -
  * and it presses its ship's ability button (config/abilities.js) when the moment suits it.
  * It can do nothing a player cannot, and its ship answers exactly as a player's would.
  */
@@ -124,15 +124,17 @@ export class BotPilot {
         controls.throttleTarget = 0;
     }
 
-    // ---- What a player does in the windows: equipment, refits, the vote --------------------------
+    // ---- What a player does in the windows: equipment, refits, coming back ---------------------
 
     attendToChoices() {
         const { mode, contestant, rng } = this;
         if (contestant.inventory.picks > 0) mode.pickEquipment(contestant, pick(rng, BOT_EQUIPMENT));
         if (contestant.alive && contestant.points > 0) mode.spendPoints(contestant, { [pick(rng, RATING_ORDER)]: 1 });
-        // After taking a planet with comrades down: a bot always wants them back.
-        const vote = mode.placeOf(contestant)?.vote;
-        if (vote?.ballots.get(this.pilot.id) === null) mode.castVote(contestant, VOTE.REVIVE);
+        // Shot down: back the moment the wait is over, at the station the rules would send it to anyway.
+        if (!contestant.alive && contestant.respawnAt !== null && mode.server.time >= contestant.respawnAt && mode.holdsStation(contestant.faction)) {
+            const [station] = mode.respawnStations(contestant);
+            if (mode.respawnRefusal(contestant, station) === null) mode.respawn(contestant, station);
+        }
     }
 
     // ---- Deciding ------------------------------------------------------------------------------

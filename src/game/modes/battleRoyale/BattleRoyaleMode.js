@@ -10,7 +10,7 @@ import { cleanUpgrades } from '../../net/match/matchInfo.js';
 import { MATCH_PHASE } from '../../net/match/matchState.js';
 import { WORLD_EVENT } from '../../net/protocol.js';
 import { LOYALTY, LoyaltyRecord, dealFactions, isPirate } from './allegiance.js';
-import { BR_EVENT, BR_REQUEST, DOCK_END, DOCK_REFUSAL, JUMP_REFUSAL, VOTE } from './battleRoyaleProtocol.js';
+import { BR_EVENT, BR_REQUEST, DOCK_END, DOCK_REFUSAL, JUMP_REFUSAL, RESPAWN_REFUSAL } from './battleRoyaleProtocol.js';
 import { BotPilot, seatBots } from './bots.js';
 import { CollapseClock, PLANET_STATUS } from './collapse.js';
 import { EQUIPMENT, Inventory } from './equipment.js';
@@ -50,6 +50,12 @@ class Contestant {
         this.emergencyShieldUntil = 0;
         /** When their ship was last hurt, as of the last look (see updateEmergencyShield). */
         this.seenDamageAt = -Infinity;
+        /** Times they have come back at a station after being shot down: each one makes the next wait longer. */
+        this.respawns = 0;
+        /** While they are down: the match time from which they may come back (null while they fly). */
+        this.respawnAt = null;
+        /** Once they may come back and their side has a station: the match time they are sent to the first one offered. */
+        this.chooseUntil = null;
     }
 }
 
@@ -65,8 +71,6 @@ class Place {
         this.owner = null;
         /** The sides whose beacons watch the planet: what one pilot's beacon sees, their whole side sees. */
         this.scouts = new Set();
-        /** The choice a side is making after taking the planet: { faction, endsAt, ballots: Map<pilotId, choice | null> }. */
-        this.vote = null;
         this.status = PLANET_STATUS.SAFE;
     }
 }
@@ -79,7 +83,8 @@ class Place {
  * the stargate on the last one. Players are dealt into the sides at random; every planet has
  * a station, guarded by the Federation's or the Umbra's computer-flown garrison or fought
  * over by both. A side takes a planet by docking a ship at its station - and loses it the
- * same way.
+ * same way. A pilot who is shot down comes back, after a wait that grows each time, at a
+ * station their side holds; and taking a planet brings every one of the side's fallen back.
  *
  * Tuning is in config/battleRoyale.js. The pieces: StarMap (who can jump where), CollapseClock
  * (what falls in when), allegiance (sides and treason), station (the docks, and where the
@@ -205,7 +210,6 @@ export class BattleRoyaleMode {
                 id: place.planet.id,
                 owner: place.owner,
                 scouts: [...place.scouts],
-                vote: place.vote && { faction: place.vote.faction, endsIn: place.vote.endsAt - time, ballots: [...place.vote.ballots] },
             })),
             contestants: [...this.contestants.values()].map((contestant) => ({
                 id: contestant.pilot.id,
@@ -225,6 +229,9 @@ export class BattleRoyaleMode {
                 equipment: contestant.inventory.describe(),
                 gravityShieldLeft: contestant.gravityShieldUntil - time,
                 emergencyShieldLeft: contestant.emergencyShieldUntil - time,
+                respawns: contestant.respawns,
+                respawnIn: contestant.respawnAt === null ? null : contestant.respawnAt - time,
+                chooseIn: contestant.chooseUntil === null ? null : contestant.chooseUntil - time,
             })),
         };
     }
@@ -266,11 +273,6 @@ export class BattleRoyaleMode {
             place.owner = side(saved.owner);
             place.scouts = new Set((Array.isArray(saved.scouts) ? saved.scouts : []).map(side).filter(Boolean));
             place.status = this.clock.statusOf(orbit);
-            if (saved.vote && side(saved.vote.faction) && Array.isArray(saved.vote.ballots)) {
-                const ballots = saved.vote.ballots.filter((entry) => Array.isArray(entry) && server.pilots.has(entry[0]))
-                    .map(([id, choice]) => [id, choice === VOTE.REVIVE || choice === VOTE.REWARD ? choice : null]);
-                place.vote = { faction: saved.vote.faction, endsAt: time + seconds(saved.vote.endsIn), ballots: new Map(ballots) };
-            }
             this.places.set(planet.id, place);
         });
 
@@ -295,6 +297,12 @@ export class BattleRoyaleMode {
             for (const item of Object.keys(contestant.inventory.counts)) contestant.inventory.counts[item] = Math.min(contestant.inventory.stack, count(saved.equipment?.[item]));
             contestant.gravityShieldUntil = time + seconds(saved.gravityShieldLeft, -1);
             contestant.emergencyShieldUntil = time + seconds(saved.emergencyShieldLeft, -1);
+            contestant.respawns = count(saved.respawns);
+            // Down, and not yet back: the wait goes on where it was (a checkpoint without one starts it again).
+            if (!contestant.alive && !pilot.gone && this.introLeft <= 0) {
+                contestant.respawnAt = time + seconds(saved.respawnIn, this.respawnWait(contestant.respawns));
+                contestant.chooseUntil = Number.isFinite(saved.chooseIn) ? time + saved.chooseIn : null;
+            }
             if (contestant.alive) {
                 contestant.seenDamageAt = pilot.ship.lastDamagedAt;
                 if (saved.jump && planetId(saved.jump.to)) contestant.jump = { to: saved.jump.to, left: Math.max(0, seconds(saved.jump.left)), overdrive: Boolean(saved.jump.overdrive) };
@@ -311,21 +319,42 @@ export class BattleRoyaleMode {
         server.publishState();
     }
 
-    /** Puts a contestant in a (new) ship at a planet, scattered around the far end of its station's approach lane. */
-    launch(contestant, place, { warpIn = true, hullFraction = 1 } = {}) {
-        const start = SECTORS[place.zone.sectorId].playerStart;
-        randomUnitVector(this.rng, scratchOffset);
-        scratchOffset.y *= 0.3;
-        const position = new Vector3().fromArray(start.position).addScaledVector(scratchOffset, BATTLE_ROYALE.jump.scatter * (0.3 + this.rng() * 0.7));
+    /**
+     * Puts a contestant in a (new) ship at a planet: where jumps arrive, scattered around the far
+     * end of its station's approach lane - or (`fromStation`) just out of the station's dock,
+     * nose away from it, as a pilot coming back there is.
+     */
+    launch(contestant, place, { warpIn = true, hullFraction = 1, fromStation = false } = {}) {
+        const { position, facing } = fromStation ? this.stationDeparture(place) : this.arrivalPoint(place);
         contestant.alive = true;
+        contestant.respawnAt = null;
+        contestant.chooseUntil = null;
         const ship = this.server.spawnPilotShip(contestant.pilot, place.zone, {
-            faction: contestant.faction, position, facing: start.facing, warpIn, hullFraction,
+            faction: contestant.faction, position, facing, warpIn, hullFraction,
         });
         // Engines idle: a pilot who is still reading the map does not drift into the garrison.
         ship.throttle = 0;
         contestant.seenDamageAt = ship.lastDamagedAt;
         this.armEmergencyShield(contestant);
         return ship;
+    }
+
+    /** Where a ship arriving at a planet by jump drops out of warp: somewhere round the sector's start point. */
+    arrivalPoint(place) {
+        const start = SECTORS[place.zone.sectorId].playerStart;
+        randomUnitVector(this.rng, scratchOffset);
+        scratchOffset.y *= 0.3;
+        const position = new Vector3().fromArray(start.position).addScaledVector(scratchOffset, BATTLE_ROYALE.jump.scatter * (0.3 + this.rng() * 0.7));
+        return { position, facing: start.facing };
+    }
+
+    /** Where a ship leaving a planet's station comes out: a little way back down its approach lane, heading out. */
+    stationDeparture(place) {
+        const { launch, scatter } = BATTLE_ROYALE.respawn;
+        const position = place.station.departure(launch, new Vector3());
+        randomUnitVector(this.rng, scratchOffset);
+        position.addScaledVector(scratchOffset, scatter * this.rng());
+        return { position, facing: place.station.lane.clone().negate() };
     }
 
     placeOf(contestant) {
@@ -354,11 +383,9 @@ export class BattleRoyaleMode {
             this.updateJump(contestant, dt);
             this.updateDock(contestant, dt);
             this.updateEmergencyShield(contestant);
+            this.updateRespawn(contestant);
         }
         for (const bot of this.bots) bot.update(dt);
-        for (const place of this.places.values()) {
-            if (place.vote && time >= place.vote.endsAt) this.resolveVote(place);
-        }
         this.checkVictory();
     }
 
@@ -565,11 +592,12 @@ export class BattleRoyaleMode {
         }
     }
 
-    /** A side's ship has stayed docked long enough: the station, and the planet with it, is that side's. */
+    /**
+     * A side's ship has stayed docked long enough: the station, and the planet with it, is that
+     * side's. Its pilots there are paid, and every pilot of the side who is down comes back here.
+     */
     capture(place, faction) {
         const former = place.owner;
-        // A choice the last holder had not finished making is made for them now.
-        if (place.vote) this.resolveVote(place);
         place.owner = faction;
         // The station has changed hands: every clamp lets go, the winners' and the too-late alike.
         for (const contestant of this.contestants.values()) {
@@ -581,53 +609,20 @@ export class BattleRoyaleMode {
         const members = this.membersAt(place, faction);
         for (const member of members) {
             member.score += BATTLE_ROYALE.capture.score;
-            // Equipment is theirs whatever the side decides about the reward.
             member.inventory.grant(BATTLE_ROYALE.capture.picks);
             this.tellMode(member.pilot, BR_EVENT.PICKS, { picks: member.inventory.picks });
         }
-
-        const fallen = [...this.contestants.values()].some((contestant) => !contestant.alive && !contestant.pilot.gone && contestant.faction === faction);
-        if (fallen) {
-            place.vote = {
-                faction,
-                endsAt: this.server.time + BATTLE_ROYALE.capture.voteSeconds,
-                ballots: new Map(members.map((member) => [member.pilot.id, null])),
-            };
-        } else {
-            this.reward(members);
+        this.reward(members);
+        // Only those who were there are paid; the fallen are brought back after it.
+        for (const contestant of this.contestants.values()) {
+            if (contestant.alive || contestant.pilot.gone || contestant.faction !== faction) continue;
+            this.bringBack(contestant, place);
+            this.tellMode(contestant.pilot, BR_EVENT.REVIVED, { planet: place.planet.id });
         }
         this.server.publishState();
     }
 
-    castVote(contestant, choice) {
-        const vote = this.placeOf(contestant)?.vote;
-        if (!vote || !vote.ballots.has(contestant.pilot.id) || (choice !== VOTE.REVIVE && choice !== VOTE.REWARD)) return;
-        vote.ballots.set(contestant.pilot.id, choice);
-        // Everyone has spoken: no need to wait for the clock.
-        if ([...vote.ballots.values()].every(Boolean)) vote.endsAt = this.server.time;
-        this.server.publishState();
-    }
-
-    /** Most votes wins; a tie brings the fallen back; if nobody chose, the reward is taken. */
-    resolveVote(place) {
-        const { faction, ballots } = place.vote;
-        place.vote = null;
-        const votes = [...ballots.values()];
-        const revive = votes.filter((choice) => choice === VOTE.REVIVE).length;
-        const reward = votes.filter((choice) => choice === VOTE.REWARD).length;
-        if (revive > 0 && revive >= reward) {
-            for (const contestant of this.contestants.values()) {
-                if (contestant.alive || contestant.pilot.gone || contestant.faction !== faction) continue;
-                this.launch(contestant, place);
-                contestant.jumpReadyAt = this.server.time + this.jumpCooldown;
-                this.tellMode(contestant.pilot, BR_EVENT.REVIVED, { planet: place.planet.id });
-            }
-        } else {
-            this.reward(this.membersAt(place, faction));
-        }
-        this.server.publishState();
-    }
-
+    /** Refit points and calls for reinforcements for the pilots who took a planet (pirates: more points, no calls). */
     reward(members) {
         for (const member of members) {
             const pirate = isPirate(member.faction);
@@ -636,6 +631,91 @@ export class BattleRoyaleMode {
             member.points += points;
             member.summons += summons;
             this.tellMode(member.pilot, BR_EVENT.REWARD, { points, summons });
+        }
+    }
+
+    // ---- Coming back -------------------------------------------------------------------------
+
+    /** Seconds a pilot who has come back at a station `respawns` times so far must wait after being shot down. */
+    respawnWait(respawns) {
+        const { wait, waitStep } = BATTLE_ROYALE.respawn;
+        return wait + waitStep * respawns;
+    }
+
+    /**
+     * The planets whose stations a pilot's side holds - where they may come back - the one they
+     * would be sent to first: a planet that is not falling in, then the one with the most of
+     * their side flying there, then the outermost (nearest the gate).
+     */
+    respawnStations(contestant) {
+        const stations = [...this.places.values()].filter((place) => place.owner === contestant.faction);
+        const settled = (place) => (place.status === PLANET_STATUS.SAFE ? 1 : 0);
+        const company = new Map(stations.map((place) => [place, this.membersAt(place, contestant.faction).length]));
+        return stations.sort((a, b) => settled(b) - settled(a) || company.get(b) - company.get(a) || b.orbit - a.orbit);
+    }
+
+    /** True while a side holds at least one station. */
+    holdsStation(faction) {
+        for (const place of this.places.values()) {
+            if (place.owner === faction) return true;
+        }
+        return false;
+    }
+
+    /** Why a pilot cannot come back at `place` right now (RESPAWN_REFUSAL), or null if they can. */
+    respawnRefusal(contestant, place) {
+        if (contestant.alive || contestant.pilot.gone || contestant.respawnAt === null) return RESPAWN_REFUSAL.FLYING;
+        if (this.server.time < contestant.respawnAt) return RESPAWN_REFUSAL.WAITING;
+        if (!place || place.owner !== contestant.faction) return RESPAWN_REFUSAL.NOT_HELD;
+        return null;
+    }
+
+    /** A player asks to come back at the station of `to` (a planet id from their device: checked). */
+    requestRespawn(contestant, to) {
+        const place = typeof to === 'string' ? this.places.get(to) : null;
+        const refusal = this.respawnRefusal(contestant, place ?? null);
+        if (refusal) {
+            this.tellMode(contestant.pilot, BR_EVENT.RESPAWN_REFUSED, { reason: refusal });
+            return;
+        }
+        this.respawn(contestant, place);
+    }
+
+    /** Launches a pilot whose wait is over from their side's station at `place`; the next wait will be longer. */
+    respawn(contestant, place) {
+        contestant.respawns += 1;
+        this.bringBack(contestant, place);
+        this.tellMode(contestant.pilot, BR_EVENT.RESPAWNED, { planet: place.planet.id });
+        this.server.publishState();
+    }
+
+    /** A new ship for a pilot who is down, out of the station at `place`; the jump drive starts uncharged, as on arrival. */
+    bringBack(contestant, place) {
+        this.launch(contestant, place, { fromStation: true });
+        contestant.jumpReadyAt = this.server.time + this.jumpCooldown;
+    }
+
+    /**
+     * A pilot who is down: once their wait is over and their side holds a station, the clock to
+     * choose one starts; when it runs out they are sent to the first one offered. (Without a
+     * station there is nowhere to go, and nothing to count down.)
+     */
+    updateRespawn(contestant) {
+        if (contestant.alive || contestant.pilot.gone || contestant.respawnAt === null) return;
+        const { time } = this.server;
+        if (time < contestant.respawnAt) return;
+        if (!this.holdsStation(contestant.faction)) {
+            if (contestant.chooseUntil !== null) {
+                contestant.chooseUntil = null;
+                this.server.publishState();
+            }
+            return;
+        }
+        if (contestant.chooseUntil === null) {
+            contestant.chooseUntil = time + BATTLE_ROYALE.respawn.choose;
+            this.server.publishState();
+        } else if (time >= contestant.chooseUntil) {
+            this.respawn(contestant, this.respawnStations(contestant)[0]);
         }
     }
 
@@ -655,7 +735,7 @@ export class BattleRoyaleMode {
             case BR_REQUEST.JUMP: this.requestJump(contestant, data.to); break;
             case BR_REQUEST.REFIT: this.spendPoints(contestant, data.added); break;
             case BR_REQUEST.SUMMON: this.summon(contestant); break;
-            case BR_REQUEST.VOTE: this.castVote(contestant, data.choice); break;
+            case BR_REQUEST.RESPAWN: this.requestRespawn(contestant, data.at); break;
             case BR_REQUEST.DOCK: this.requestDock(contestant); break;
             case BR_REQUEST.UNDOCK: this.undock(contestant, DOCK_END.RELEASED); break;
             case BR_REQUEST.BEACON: this.launchBeacon(contestant, data.to); break;
@@ -781,6 +861,8 @@ export class BattleRoyaleMode {
         if (victim) {
             victim.alive = false;
             victim.deaths += 1;
+            victim.respawnAt = this.server.time + this.respawnWait(victim.respawns);
+            victim.chooseUntil = null;
             victim.jump = null;
             victim.gravityShieldUntil = 0;
             victim.emergencyShieldUntil = 0;
@@ -802,9 +884,10 @@ export class BattleRoyaleMode {
         const contestant = this.contestants.get(pilot.id);
         if (!contestant) return;
         contestant.alive = false;
+        contestant.respawnAt = null;
+        contestant.chooseUntil = null;
         contestant.jump = null;
         this.undock(contestant);
-        for (const place of this.places.values()) place.vote?.ballots.delete(pilot.id);
     }
 
     // ---- Winning -----------------------------------------------------------------------------
@@ -818,16 +901,28 @@ export class BattleRoyaleMode {
         return sides;
     }
 
+    /**
+     * Sides still in the match: with a pilot flying, or with a pilot down who can come back -
+     * the side holds a station somewhere. A side with nobody flying and no station is out.
+     */
+    sidesInPlay() {
+        const sides = this.standingSides();
+        for (const contestant of this.contestants.values()) {
+            if (!contestant.alive && !contestant.pilot.gone && contestant.respawnAt !== null
+                && this.holdsStation(contestant.faction)) sides.add(contestant.faction);
+        }
+        return sides;
+    }
+
     checkVictory() {
         if (this.result) return;
-        const standing = this.standingSides();
-        // A dead side cannot be brought back by anyone but itself.
+        const standing = this.sidesInPlay();
         if (standing.size === 0) this.finish(null);
         else if (standing.size === 1 && this.sidesAtStart.size > 1) this.finish([...standing][0]);
         else if (this.clock.finalStandLeft === 0) this.finish(this.holderOfGate() ?? this.strongestAtGate());
     }
 
-    /** The side that holds the stargate's station, if it still has a pilot flying. */
+    /** The side that holds the stargate's station, if it still has a pilot flying (one waiting to come back holds nothing). */
     holderOfGate() {
         const { owner } = this.places.get(this.map.gate.id);
         return owner && this.standingSides().has(owner) ? owner : null;
@@ -858,7 +953,6 @@ export class BattleRoyaleMode {
         const you = this.contestants.get(pilot.id);
         const { time } = this.server;
         const here = you ? this.placeOf(you) : null;
-        const vote = here?.vote?.ballots.has(pilot.id) ? here.vote : null;
         return {
             mode: 'battleRoyale',
             matchId: this.info.matchId,
@@ -889,7 +983,7 @@ export class BattleRoyaleMode {
                     gravityShield: Math.max(0, Math.ceil(you.gravityShieldUntil - time)),
                     emergencyShield: Math.max(0, Math.ceil(you.emergencyShieldUntil - time)),
                 },
-                vote: vote && { planet: here.planet.id, endsIn: Math.max(0, Math.ceil(vote.endsAt - time)), choice: vote.ballots.get(pilot.id) },
+                respawn: this.describeRespawn(you),
             },
             planets: [...this.places.values()].map((place) => this.describePlace(place, you)),
             players: [...this.contestants.values()].filter((contestant) => !contestant.pilot.gone).map((contestant) => ({
@@ -903,6 +997,22 @@ export class BattleRoyaleMode {
                 kills: contestant.kills,
                 deaths: contestant.deaths,
             })),
+        };
+    }
+
+    /**
+     * Coming back, as a pilot who is down sees it: how long they still wait, the stations they
+     * may choose from (the first is where they are sent if they do not choose), and how long
+     * they have to choose. Null while they fly.
+     */
+    describeRespawn(you) {
+        if (you.alive || you.respawnAt === null) return null;
+        const { time } = this.server;
+        return {
+            wait: Math.max(0, Math.ceil(you.respawnAt - time)),
+            stations: this.respawnStations(you).map((place) => place.planet.id),
+            choose: you.chooseUntil === null ? null : Math.max(0, Math.ceil(you.chooseUntil - time)),
+            next: this.respawnWait(you.respawns + 1),
         };
     }
 

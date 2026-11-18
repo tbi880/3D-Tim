@@ -89,7 +89,7 @@ export class VRMenu {
         if (this.shipPage && (session.phase !== PHASE.TITLE || this.launch || shipLocked())) this.shipPage = null;
         if (this.shipPage) return this.buildShipPage(state, t);
 
-        // Multiplayer has menus of its own: the lobby, and in a match the map, the vote and the result.
+        // Multiplayer has menus of its own: the lobby, and in a match the map, where to come back and the result.
         const matchMenu = buildMatchMenu(this.game, state, t, {
             lobbyOpen: this.lobbyOpen,
             setLobbyOpen: (open) => { this.lobbyOpen = open; },
@@ -387,7 +387,7 @@ export class VRMenu {
                 else if (this.launch) this.launch = null;
                 else if (menu.key === 'ship') this.closeShipPage(false);
                 else if (menu.key === 'multiplayer') this.closeMultiplayer();
-                // In a match: closes the star map (a vote has to be answered, or it runs out).
+                // In a match: closes the star map (back to where to come back, for a pilot who is down).
                 else if (state.matchPanel) this.game.session.match?.presenter?.setPanel(null);
                 break;
             default: break;

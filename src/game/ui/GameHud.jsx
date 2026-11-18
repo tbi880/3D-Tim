@@ -6,7 +6,7 @@ import { PHASE, SESSION_EVENTS } from '../state/GameSession.js';
 import { useGameStore, useT } from '../state/gameStore.js';
 import { abilityStateText } from './abilityText.js';
 import CommsPanel from './CommsPanel.jsx';
-import { DockPrompt, MatchAlerts, MatchButtons, MatchStatus, VotePrompt } from './multiplayer/MatchHud.jsx';
+import { DockPrompt, MatchAlerts, MatchButtons, MatchStatus, RespawnPrompt } from './multiplayer/MatchHud.jsx';
 
 /**
  * The in-flight HUD. Each panel subscribes to one slice of the game store (refreshed about
@@ -15,8 +15,8 @@ import { DockPrompt, MatchAlerts, MatchButtons, MatchStatus, VotePrompt } from '
  *
  * Panels are not placed one by one. Each goes into one of a few docks - a column top left,
  * one top centre, one top right, a stack at the bottom centre - and a dock stacks what is in
- * it, so panels that come up together (the objective and the match status, a hint and a
- * vote, a dock prompt and the comms line) push each other along instead of covering each
+ * it, so panels that come up together (the objective and the match status, a hint and the
+ * choice of where to come back, a dock prompt and the comms line) push each other along instead of covering each
  * other. The docks are sized in hud.css to keep clear of one another, of the corners (the
  * gauges on a desktop; the stick and the buttons on a touch screen) and of the reticle.
  */
@@ -408,7 +408,7 @@ function ScreenFade({ session }) {
 /**
  * Phones and tablets: a pared-down HUD. The lower corners belong to the thumbs (stick, buttons:
  * ui/TouchControls.jsx), so what is there to be read hugs the top edge, small, and what is
- * there to be pressed - the match's vote, dock and buttons - sits between the thumbs with the
+ * there to be pressed - the match's comeback, dock and buttons - sits between the thumbs with the
  * comms line, leaving the middle of the screen to the fight.
  */
 function TouchHud({ session, radarCanvasRef }) {
@@ -436,7 +436,7 @@ function TouchHud({ session, radarCanvasRef }) {
             <TitleCard />
             <ScoreFeed session={session} />
             <div className="eod-centre-stack">
-                <VotePrompt session={session} />
+                <RespawnPrompt session={session} />
                 <DockPrompt session={session} />
                 <CommsPanel session={session} />
                 <MatchButtons session={session} />
@@ -456,7 +456,7 @@ function DesktopHud({ session, radarCanvasRef }) {
             <div className="eod-dock eod-dock--centre">
                 <FleetBars />
                 <HintBar touch={false} />
-                <VotePrompt session={session} />
+                <RespawnPrompt session={session} />
                 <AlertStack />
             </div>
             <div className="eod-dock eod-dock--right">

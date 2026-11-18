@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { BATTLE_ROYALE, STAR_SYSTEM } from '../../src/game/config/battleRoyale.js';
 import { FACTION } from '../../src/game/config/gameConfig.js';
+import { destroyShip } from '../../src/game/core/systems/damage.js';
 import { BR_REQUEST } from '../../src/game/modes/battleRoyale/battleRoyaleProtocol.js';
 import { EQUIPMENT } from '../../src/game/modes/battleRoyale/equipment.js';
 import { STATION_TAG } from '../../src/game/modes/battleRoyale/station.js';
@@ -81,7 +82,7 @@ test('a checkpoint is plain data, small enough to send every few seconds', () =>
     assert.ok(text.length < 80000, `${text.length} characters for six pilots and six garrisoned planets`);
 });
 
-test('what was going on goes on: a jump being spooled, a docking, equipment in use, a vote', () => {
+test('what was going on goes on: a jump being spooled, a docking, equipment in use', () => {
     const game = createTestServer(['ann', 'bo', 'cy'], { start: { settings: {} } });
     const { mode, server } = game;
     const [ann, bo, cy] = ['ann', 'bo', 'cy'].map((id) => mode.contestants.get(id));
@@ -120,7 +121,7 @@ test('what was going on goes on: a jump being spooled, a docking, equipment in u
     assert.equal(server.pilots.get('bo').zone.id, bo2.pilot.zone.id);
 });
 
-test('a player who has left stays out, and the dead stay dead until their side brings them back', () => {
+test('a player who has left stays out, and the dead stay dead until they come back', () => {
     const game = createTestServer(['ann', 'bo', 'cy'], { start: { settings: {} } });
     game.server.removePlayer('bo');
     const cy = game.mode.contestants.get('cy');
@@ -137,6 +138,30 @@ test('a player who has left stays out, and the dead stay dead until their side b
     assert.equal(next.mode.contestants.get('cy').alive, false);
     assert.equal(next.pilots.get('cy').ship, null);
     assert.equal(typeof cyZone, 'string');
+});
+
+test('a pilot waiting to come back waits on where they were on the new host, and their waits keep growing', () => {
+    const game = createTestServer(['ann', 'bo', 'cy'], { start: { settings: {} } });
+    const cy = game.mode.contestants.get('cy');
+    const station = [...game.mode.places.values()].find((place) => place.zone !== cy.pilot.zone);
+    station.owner = cy.faction;
+    cy.respawns = 2;
+    destroyShip(cy.pilot.zone.world, cy.pilot.ship, null);
+    game.run(3);
+    const left = cy.respawnAt - game.server.time;
+
+    const next = resumeFrom(game, { hostPlayerId: 'ann' });
+    const cy2 = next.mode.contestants.get('cy');
+
+    assert.equal(cy2.alive, false);
+    assert.equal(cy2.respawns, 2);
+    assert.ok(Math.abs((cy2.respawnAt - next.time) - left) < 0.01, 'the same wait left');
+    assert.equal(left > BATTLE_ROYALE.respawn.wait, true, 'the third wait is the longest yet');
+    for (let step = 0; step < 30 * (left + 0.5); step++) next.update(1 / 30);
+    next.mode.onRequest(cy2.pilot, BR_REQUEST.RESPAWN, { at: station.planet.id });
+    assert.equal(cy2.alive, true);
+    assert.equal(cy2.pilot.zone.id, station.planet.id);
+    assert.equal(cy2.respawns, 3);
 });
 
 test('a checkpoint of another match, or of another version, is refused', () => {

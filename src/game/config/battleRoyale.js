@@ -185,17 +185,36 @@ export const BATTLE_ROYALE = Object.freeze({
         charge: Object.freeze({ asleep: 0.1, lastStand: 0.35, ready: 0.85 }),
     }),
 
+    /**
+     * Taking a planet pays every pilot of the side who is there, and brings every pilot of the
+     * side who is down back at once, at the station just taken: no choosing between the two.
+     */
     capture: Object.freeze({
-        /** Refit points for every player of the side that takes a planet, if it takes the reward. */
+        /** Refit points for every player of the side who is at the planet when it is taken. */
         points: 3,
         piratePoints: 9,
         /** Calls for reinforcements earned with it (never by pirates). */
         summons: 1,
-        /** Pieces of equipment each of them may choose (config `equipment`), whatever the side decides. */
+        /** Pieces of equipment each of them may choose (config `equipment`). */
         picks: 1,
-        /** Seconds the side has to choose between the reward and bringing its fallen back. */
-        voteSeconds: 12,
         score: 400,
+    }),
+
+    /**
+     * Coming back after being shot down: once the wait is over, a pilot chooses a station their
+     * side holds and is launched from it in a new ship (with their refits, score and equipment).
+     * The wait is `wait` seconds the first time and `waitStep` more after every such comeback:
+     * 10, 20, 30 ... Being brought back by a capture (above) does not lengthen it. A side whose
+     * pilots are all down is still in the match while it holds a station to come back to.
+     */
+    respawn: Object.freeze({
+        wait: 10,
+        waitStep: 10,
+        /** Seconds a pilot has to choose, once they can, before they are sent to the first station offered. */
+        choose: 20,
+        /** Where a new ship comes out: metres back down the station's approach lane from its dock, and how far apart. */
+        launch: 450,
+        scatter: 120,
     }),
 
     /**
@@ -266,7 +285,7 @@ export const BATTLE_ROYALE = Object.freeze({
      * Computer-flown players ("bots"). When a match starts with fewer than `fillTo` players the
      * empty seats are taken by bots, unless the room's `bots` setting says "none". A bot is a
      * player in everything the rules know: it is dealt a side, flies one of the players' ships
-     * with the players' own flight model and weapons, scores, docks, votes and wins or loses
+     * with the players' own flight model and weapons, scores, docks, comes back and wins or loses
      * with its side. Only its decisions are a program's (modes/battleRoyale/bots.js), and they
      * run on the host's device.
      */
