@@ -110,6 +110,14 @@ test('each planet says how long until its state changes', () => {
     assert.equal(clockAt(40).secondsToChange(3), null, 'the gate planet never changes');
 });
 
+test('each planet says how long until it is swallowed', () => {
+    assert.equal(clockAt(40).secondsToSwallowed(0), 90, 'the wait and the fall');
+    assert.equal(clockAt(110).secondsToSwallowed(0), 20);
+    assert.equal(clockAt(140).secondsToSwallowed(0), 0, 'gone already');
+    assert.equal(clockAt(40).secondsToSwallowed(1), 320);
+    assert.equal(clockAt(40).secondsToSwallowed(3), null, 'the gate planet never is');
+});
+
 test('the final stand starts when only the last planet is left', () => {
     assert.equal(clockAt(589).finalStand, false);
     assert.equal(clockAt(589).finalStandLeft, null);
@@ -237,7 +245,7 @@ const goodState = () => ({
     mode: 'battleRoyale', matchId: 'm', phase: 'playing', winner: null, time: 12, finalStand: null,
     you: {
         faction: 'umbra', planet: 'rust', alive: true, points: 3, summons: 1, upgrades: { hull: 2 }, loyalty: 'warned',
-        jump: { cooldown: 14, to: null, spool: null, trapped: false, reach: 2 }, respawn: { wait: 0, stations: ['rust', 'veil'], contested: ['ember'], choose: 17, next: 30 },
+        jump: { cooldown: 14, to: null, spool: null, trapped: false, reach: 2 }, respawn: { wait: 0, stations: ['rust', 'veil'], contested: ['ember'], falling: ['haven'], choose: 17, next: 30 },
         dock: { ready: false, left: 6.5, seconds: 15 }, picks: 1, equipment: { beacon: 2, overdrive: 1 }, effects: { gravityShield: 12, emergencyShield: 0 },
         out: false, watching: 'b',
         team: [
@@ -258,7 +266,7 @@ test('a well-formed state comes through unchanged in substance', () => {
     assert.equal(clean.you.upgrades.hull, 2);
     assert.equal(clean.you.upgrades.speed, 0, 'every rating is present');
     assert.equal(clean.you.loyalty, 'warned');
-    assert.deepEqual(clean.you.respawn, { wait: 0, stations: ['rust', 'veil'], contested: ['ember'], choose: 17, next: 30 });
+    assert.deepEqual(clean.you.respawn, { wait: 0, stations: ['rust', 'veil'], contested: ['ember'], falling: ['haven'], choose: 17, next: 30 });
     assert.deepEqual([clean.you.out, clean.you.watching, clean.out], [false, 'b', ['pirate']]);
     assert.deepEqual(clean.you.team, goodState().you.team);
     assert.equal(clean.planets.length, STAR_SYSTEM.planets.length);
@@ -287,7 +295,7 @@ test('odd values are replaced by safe ones, never passed on', () => {
     raw.you.points = 'lots';
     raw.you.upgrades = { hull: 1e9, evil: 3, speed: -2 };
     raw.you.jump = { cooldown: NaN, to: 'pluto', spool: -3, trapped: 'yes' };
-    raw.you.respawn = { wait: -3, stations: ['rust', 'pluto', 'rust', 7, null, 'veil'], contested: 'ember', choose: 'soon', next: NaN };
+    raw.you.respawn = { wait: -3, stations: ['rust', 'pluto', 'rust', 7, null, 'veil'], contested: 'ember', falling: ['haven', 'haven', 'sol'], choose: 'soon', next: NaN };
     raw.you.watching = { id: 'b' };
     raw.you.team = [{ id: 7, name: 'n'.repeat(500), planet: 'pluto', alive: 'yes', hull: 900, shield: -4, wait: 5 }, null, 'x'];
     raw.out = ['pirate', 'gods', 'pirate'];
@@ -316,7 +324,7 @@ test('odd values are replaced by safe ones, never passed on', () => {
     assert.equal(clean.you.upgrades.evil, undefined);
     assert.equal(clean.you.upgrades.speed, 0);
     assert.deepEqual(clean.you.jump, { cooldown: 0, to: null, spool: 0, trapped: true, reach: 1 });
-    assert.deepEqual(clean.you.respawn, { wait: 0, stations: ['rust', 'veil'], contested: [], choose: null, next: 0 },
+    assert.deepEqual(clean.you.respawn, { wait: 0, stations: ['rust', 'veil'], contested: [], falling: ['haven'], choose: null, next: 0 },
         'only real planets, each once, in the order sent; no time is ever negative');
     assert.equal(clean.you.watching, null);
     assert.deepEqual(clean.you.team, [{ id: '7', name: 'n'.repeat(40), classId: '', bot: false, planet: null, alive: true, hull: 100, shield: 0, docking: false, wait: null }],

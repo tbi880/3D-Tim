@@ -31,10 +31,11 @@ import { EQUIPMENT_ORDER } from './equipment.js';
  *     picks,              pieces of equipment they may still choose
  *     equipment,          { item: count } they carry (equipment.js)
  *     effects,            { gravityShield, emergencyShield }: seconds each is still on (0: off)
- *     respawn,            while they are down: { wait, stations, contested, choose, next } - seconds until
- *                         they may come back (0: now); the planets whose stations their side holds and may
+ *     respawn,            while they are down: { wait, stations, contested, falling, choose, next } - seconds
+ *                         until they may come back (0: now); the planets whose stations their side holds and may
  *                         come back to, the one they would be sent to first; those their side holds but
- *                         another side is docked at, taking them (not to be chosen); seconds left to choose
+ *                         another side is docked at, taking them (not to be chosen); those their side holds on
+ *                         a planet that will be swallowed before a new ship could jump away (not to be chosen); seconds left to choose
  *                         before they are sent (null: not counting); the wait after their next comeback.
  *                         Null while they fly.
  *     out,                whether their side is out of the match (they do not come back)
@@ -80,6 +81,7 @@ function cleanYou(raw) {
             wait: seconds(raw.respawn.wait) ?? 0,
             stations: planetList(raw.respawn.stations),
             contested: planetList(raw.respawn.contested),
+            falling: planetList(raw.respawn.falling),
             choose: seconds(raw.respawn.choose),
             next: seconds(raw.respawn.next) ?? 0,
         }
@@ -175,6 +177,16 @@ export function sanitizeBattleRoyaleState(raw) {
 /** The sides with their players, in the order sides are always shown: `[{ faction, players }]`. */
 export function rosterBySide(state) {
     return PLAYER_FACTIONS.map((faction) => ({ faction, players: state.players.filter((player) => player.faction === faction) }));
+}
+
+/**
+ * The headline (an i18n key) for a pilot whose wait is over but who has no station to choose
+ * (`you.respawn`, its `stations` empty): every one their side holds is being taken, or about to
+ * be swallowed, or some of each.
+ */
+export function respawnBlockedKey(respawn) {
+    if (respawn.falling.length === 0) return 'mp.respawn.allContested';
+    return respawn.contested.length === 0 ? 'mp.respawn.allFalling' : 'mp.respawn.allBlocked';
 }
 
 /** True when ships of more than one side are at a planet (`forces` of a planet in the match state). */

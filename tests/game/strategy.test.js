@@ -94,6 +94,32 @@ test('nobody is sent through a planet that falls in before the drive has charged
     assert.deepEqual(plan(scene(2)), [['bot:1', VEIL, TASK.DOCK_ALARM, true]]);
 });
 
+test('a station of the side\'s own is no shelter on the way: nobody waits out the drive\'s charge where the collapse will catch them', () => {
+    const scene = picture({
+        places: { [HAVEN]: { mine: true, safeFor: 40 }, [VEIL]: { mine: true, beingTaken: true, enemy: 1 }, [RUST]: { mine: true } },
+        units: [{ at: RUST }],
+    });
+    assert.equal(route(scene.units[0], { orbit: 3, task: TASK.DOCK_ALARM }, scene), null);
+    assert.notEqual(plan(scene)[0]?.[1], VEIL);
+});
+
+test('nothing is done at a station of the side\'s own once its planet is about to fall in - it is not even watched', () => {
+    const tasks = listTasks(picture({
+        places: { [EMBER]: { mine: true, safeFor: 0 }, [RUST]: { mine: true, safeFor: TUNING.routeMargin - 1, enemy: 1 }, [HAVEN]: { mine: true, beingTaken: true, enemy: 1 } },
+        units: [{ at: HAVEN }, { at: HAVEN }],
+    }));
+    assert.deepEqual(tasks.filter((task) => task.planet === EMBER || task.planet === RUST), []);
+    assert.ok(tasks.some((task) => task.planet === HAVEN && task.task === TASK.DOCK_ALARM), 'a station that will stand still is defended');
+});
+
+test('a station taken to bring the fallen back must stand long enough for them to get away again', () => {
+    const scene = (safeFor) => picture({ fallen: 2, holdsStation: false, places: { [RUST]: { safeFor, enemy: 0 } }, units: [{ at: EMBER }] });
+    assert.ok(listTasks(scene(TUNING.doomSeconds + 60)).some((task) => task.planet === RUST && task.task === TASK.REVIVE));
+    assert.ok(!listTasks(scene(TUNING.doomSeconds - 1)).some((task) => task.planet === RUST && task.task === TASK.REVIVE), 'not one that falls in soon');
+    const late = scene(TUNING.doomSeconds + 1);
+    assert.equal(route(late.units[0], { orbit: 1, task: TASK.REVIVE }, late), null, 'nor one the unit would reach too late to be worth it');
+});
+
 test('a jump\'s time is the drive\'s charge, the spool, and a full charge at every stop', () => {
     const situation = picture({ units: [{ at: EMBER, readyIn: 20 }] });
     assert.deepEqual(route(situation.units[0], { orbit: 2, task: TASK.TAKE }, situation), { hops: 2, eta: 20 + jump.spool + jump.cooldown + jump.spool });

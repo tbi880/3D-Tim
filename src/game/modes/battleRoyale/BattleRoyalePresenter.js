@@ -606,7 +606,7 @@ export class BattleRoyalePresenter {
             if (this.docked) objective = { key: 'mp.objective.docking', params: { seconds: Math.ceil(state.you.dock.left) } };
             else if (state.finalStand !== null && here.status === PLANET_STATUS.SAFE) objective = { key: 'mp.objective.gate', params: { seconds: state.finalStand } };
             else if (here.status === PLANET_STATUS.COLLAPSING) objective = { key: 'mp.objective.flee', params: { seconds: here.changesIn ?? 0 } };
-            else if (here.status === PLANET_STATUS.SWALLOWED) objective = { key: mine ? 'mp.objective.sheltered' : 'mp.objective.doomed', params: null };
+            else if (here.status === PLANET_STATUS.SWALLOWED) objective = { key: 'mp.objective.doomed', params: null };
             else objective = { key: mine ? 'mp.objective.outward' : 'mp.objective.station', params: null };
         }
         return { escort: null, boss: null, progress: null, objective };

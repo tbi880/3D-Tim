@@ -1,7 +1,7 @@
 import { BATTLE_ROYALE, MAX_PLAYERS, PLAYER_FACTIONS, STAR_SYSTEM } from '../config/battleRoyale.js';
 import { PLAYER_SHIPS } from '../config/playerShips.js';
 import { MATCH_ACTION, MATCH_PANEL } from '../modes/battleRoyale/BattleRoyalePresenter.js';
-import { isBattle, rankPlayers, rosterBySide } from '../modes/battleRoyale/battleRoyaleState.js';
+import { isBattle, rankPlayers, respawnBlockedKey, rosterBySide } from '../modes/battleRoyale/battleRoyaleState.js';
 import { PLANET_STATUS } from '../modes/battleRoyale/collapse.js';
 import { EQUIPMENT, EQUIPMENT_ORDER } from '../modes/battleRoyale/equipment.js';
 import { LAN_STATUS, LOBBY_SCOPE, ROOM_STATE, ROOM_VISIBILITY } from '../net/lobby/LanMultiplayer.js';
@@ -295,7 +295,7 @@ function drawStarMap(ctx, x, y, width, match, t) {
             ctx.font = `700 17px ${MAP_FONT}`;
             ctx.fillText(`▼ ${t('mp.lan.you')}`, cx, y + 20);
         }
-        // The side whose bubble covers the planet.
+        // The side that holds the planet's station.
         if (planet.owner) {
             ctx.strokeStyle = SIDE_COLORS[planet.owner];
             ctx.lineWidth = 5;
@@ -468,10 +468,10 @@ function respawn(presenter, match, t) {
     const comeback = match.you.respawn;
     const ready = comeback.wait === 0;
     const open = comeback.stations.length > 0;
-    const none = !open && comeback.contested.length === 0;
+    const none = !open && comeback.contested.length === 0 && comeback.falling.length === 0;
     const headline = !ready ? t('mp.respawn.waiting', { seconds: comeback.wait })
         : none ? t('mp.respawn.noStation')
-            : !open ? t('mp.respawn.allContested') : t('mp.respawn.choose', { seconds: comeback.choose ?? 0 });
+            : !open ? t(respawnBlockedKey(comeback)) : t('mp.respawn.choose', { seconds: comeback.choose ?? 0 });
     const statusOf = (planetId) => match.planets.find((planet) => planet.id === planetId)?.status ?? PLANET_STATUS.SAFE;
     const items = comeback.stations.map((planetId, index) => ({
         id: `respawn:${planetId}`,
@@ -484,13 +484,16 @@ function respawn(presenter, match, t) {
     for (const planetId of comeback.contested) {
         items.push({ label: t('mp.respawn.station', { planet: t(`mp.planet.${planetId}`) }), value: t('mp.respawn.contested'), disabled: true });
     }
+    for (const planetId of comeback.falling) {
+        items.push({ label: t('mp.respawn.station', { planet: t(`mp.planet.${planetId}`) }), value: t('mp.respawn.falling'), disabled: true });
+    }
     items.push(...watchRows(presenter, match, t), { label: t('mp.map.title'), select: () => presenter.setPanel(MATCH_PANEL.MAP) });
     const lines = [headline, none ? t('mp.respawn.noStationText') : t('mp.respawn.text', { next: comeback.next })];
     if (ready && open) lines.push(t('mp.respawn.vrHint'));
     return {
-        // A new key when the stations can be chosen, and when one starts or stops being taken:
-        // the selection goes back to the first one offered, never left on one that cannot be chosen.
-        key: `match:respawn:${ready && open ? 'ready' : 'waiting'}:${comeback.contested.join()}`,
+        // A new key when the stations can be chosen, and when one starts or stops being taken or
+        // starts to fall: the selection goes back to the first one offered, never left on one that cannot be chosen.
+        key: `match:respawn:${ready && open ? 'ready' : 'waiting'}:${comeback.contested.join()}:${comeback.falling.join()}`,
         title: t('mp.hud.dead'),
         lines,
         items,

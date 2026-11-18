@@ -1,5 +1,6 @@
 import { LOYALTY } from '../../modes/battleRoyale/allegiance.js';
 import { MATCH_ACTION } from '../../modes/battleRoyale/BattleRoyalePresenter.js';
+import { respawnBlockedKey } from '../../modes/battleRoyale/battleRoyaleState.js';
 import { PLANET_STATUS } from '../../modes/battleRoyale/collapse.js';
 import { EQUIPMENT_ORDER } from '../../modes/battleRoyale/equipment.js';
 import { useGameStore, useT } from '../../state/gameStore.js';
@@ -146,9 +147,9 @@ export function MatchAlerts() {
     const you = match?.you;
     if (!you) return null;
     const here = match.planets.find((planet) => planet.id === you.planet);
-    const sheltered = here?.owner === you.faction;
     const alerts = [];
-    if (you.alive && here && !sheltered) {
+    // (Holding the planet's station is no shelter: the collapse is everybody's.)
+    if (you.alive && here) {
         if (here.status === PLANET_STATUS.COLLAPSING) alerts.push(t('mp.alert.collapsing', { seconds: here.changesIn ?? 0 }));
         if (here.status === PLANET_STATUS.SWALLOWED) alerts.push(t('mp.alert.swallowed'));
     }
@@ -184,10 +185,10 @@ export function RespawnPrompt({ session }) {
     const { respawn } = you;
     const ready = respawn.wait === 0;
     const open = respawn.stations.length > 0;
-    const none = !open && respawn.contested.length === 0;
+    const none = !open && respawn.contested.length === 0 && respawn.falling.length === 0;
     const headline = !ready ? t('mp.respawn.waiting', { seconds: respawn.wait })
         : none ? t('mp.respawn.noStation')
-            : !open ? t('mp.respawn.allContested') : t('mp.respawn.choose', { seconds: respawn.choose ?? 0 });
+            : !open ? t(respawnBlockedKey(respawn)) : t('mp.respawn.choose', { seconds: respawn.choose ?? 0 });
     const statusOf = (planetId) => match.planets.find((planet) => planet.id === planetId)?.status ?? PLANET_STATUS.SAFE;
     return (
         <div className={`eod-panel eod-match-respawn ${ready && open ? 'eod-match-respawn--ready' : ''}`}>
@@ -216,6 +217,12 @@ export function RespawnPrompt({ session }) {
                         <button key={planetId} type="button" className="eod-button eod-match-respawn-contested" disabled>
                             <span>{t('mp.respawn.station', { planet: t(`mp.planet.${planetId}`) })}</span>
                             <small>{t('mp.respawn.contested')}</small>
+                        </button>
+                    ))}
+                    {respawn.falling.map((planetId) => (
+                        <button key={planetId} type="button" className="eod-button eod-match-respawn-contested" disabled>
+                            <span>{t('mp.respawn.station', { planet: t(`mp.planet.${planetId}`) })}</span>
+                            <small>{t('mp.respawn.falling')}</small>
                         </button>
                     ))}
                 </div>

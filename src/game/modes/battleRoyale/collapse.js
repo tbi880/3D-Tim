@@ -10,7 +10,7 @@ export const PLANET_STATUS = Object.freeze({
     SAFE: 'safe',
     /** Falling in: ships bleed, but can still jump away. */
     COLLAPSING: 'collapsing',
-    /** Gone: nothing jumps out, and nothing lives long. */
+    /** Gone: nothing jumps out, and nothing lives long - whoever held its station included. */
     SWALLOWED: 'swallowed',
 });
 
@@ -75,6 +75,12 @@ export class CollapseClock {
         const entry = this.schedule[orbit];
         if (!entry || this.time >= entry.goneAt) return null;
         return (this.time < entry.startsAt ? entry.startsAt : entry.goneAt) - this.time;
+    }
+
+    /** Seconds until the planet is swallowed (0 once it has been), or null if it never will be. */
+    secondsToSwallowed(orbit) {
+        const entry = this.schedule[orbit];
+        return entry ? Math.max(0, entry.goneAt - this.time) : null;
     }
 
     /** True once every planet but the last has been swallowed. */

@@ -84,6 +84,8 @@ export const DOCK_REFUSAL = Object.freeze({
     HELD: 'held',
     /** The jump drive is spooling up. */
     JUMPING: 'jumping',
+    /** The planet has been swallowed, and its station with it. */
+    SWALLOWED: 'swallowed',
 });
 
 /** Why a docking ended before the station was taken. */
@@ -92,6 +94,8 @@ export const DOCK_END = Object.freeze({
     RELEASED: 'released',
     /** Somebody else took the station first. */
     TAKEN: 'taken',
+    /** The planet was swallowed, and its station with it. */
+    SWALLOWED: 'swallowed',
 });
 
 /** Why a pilot cannot come back where they asked to. */
@@ -104,6 +108,8 @@ export const RESPAWN_REFUSAL = Object.freeze({
     NOT_HELD: 'notHeld',
     /** Another side is docked at it, taking it: nobody comes back there until that is settled. */
     CONTESTED: 'contested',
+    /** Its planet will be swallowed before a new ship's jump drive could get it away. */
+    FALLING: 'falling',
     /** The player's side is out of the match: nobody of it comes back any more. */
     OUT: 'out',
 });

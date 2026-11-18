@@ -26,7 +26,8 @@ import { PLANET_STATUS } from './collapse.js';
  * has that, the next unit goes to the next job - so the side spreads out over what needs
  * doing instead of piling into one place. A job further away is worth less (each jump on
  * the way costs a minute of the drive), and one that cannot be reached before the collapse
- * gets there is not offered at all.
+ * gets there is not offered at all - a station of the side's own no more than any other:
+ * holding it is no shelter from the collapse.
  *
  * Only what the side could know is used: what stands where it has eyes (a pilot there, a
  * station it holds, a beacon), the alarms its pilots hear, the losses they see on the team list.
@@ -103,7 +104,8 @@ export function listTasks(situation, tuning = TUNING) {
     const stranded = fallen > 0 && !holdsStation;
     const tasks = [];
     for (const place of places) {
-        if (place.swallowed) continue;
+        // Nothing is worth doing where the collapse is about to come (or has come), the side's own station included.
+        if (place.swallowed || place.safeFor <= tuning.routeMargin) continue;
         const gate = place.orbit === gateOrbit && reachable(place);
         const add = (task, worth, need) => tasks.push({ planet: place.id, orbit: place.orbit, task, priority: worth, need });
         if (place.mine) {
@@ -126,7 +128,7 @@ export function listTasks(situation, tuning = TUNING) {
         // Outnumbered and being shot at, not merely in sight of a garrison on guard.
         const outnumbered = place.pilots > 0 && place.underFire && place.enemy > place.friends + place.units;
         if (outnumbered) add(TASK.RESCUE, priority.rescue, Math.max(1, wanted(place)));
-        else if (stranded && place.safeFor > tuning.routeMargin) {
+        else if (stranded && place.safeFor > tuning.doomSeconds) {
             add(TASK.REVIVE, priority.revive + priority.takePerOrbit * place.orbit + priority.reviveEach * fallen, Math.max(1, wanted(place)));
         } else if (reachable(place) && place.safeFor > tuning.doomSeconds) {
             add(TASK.TAKE, priority.take + priority.takePerOrbit * place.orbit + priority.reviveEach * fallen + (gate ? priority.gate : 0), Math.max(1, wanted(place)));
@@ -137,8 +139,8 @@ export function listTasks(situation, tuning = TUNING) {
 
 /**
  * How a unit would get to a planet: the jumps, and whether the way is open. Every planet it
- * stops at on the way must still be standing when it leaves again (or under its side's
- * bubble), and where it is going must still be worth being at when it arrives.
+ * stops at on the way must still be standing when it leaves again (whoever holds its station:
+ * that is no shelter), and where it is going must still be worth being at when it arrives.
  * @param {{ orbit: number, task: string }} task where to, and what for (an urgent job may burn an overdrive chip)
  * @returns {{ hops: number, eta: number } | null} null when it cannot get there in time
  */
@@ -157,15 +159,14 @@ export function route(unit, task, situation, tuning = TUNING) {
         time += timing.spool;
         const stop = places[orbit];
         if (orbit === task.orbit) {
-            const lasts = stop.mine ? Infinity : stop.safeFor;
-            // Somewhere to take or guard is only worth it with time to do so; a station of the side's own is shelter whatever comes.
-            const keep = URGENT_TASKS.has(task.task) ? tuning.routeMargin : tuning.doomSeconds;
-            return lasts > time + keep ? { hops, eta: time } : null;
+            // Somewhere to take or guard is only worth it with time to do so; something urgent needs less -
+            // but a station taken to bring the fallen back must stand long enough for them to get away again.
+            const keep = URGENT_TASKS.has(task.task) && task.task !== TASK.REVIVE ? tuning.routeMargin : tuning.doomSeconds;
+            return stop.safeFor > time + keep ? { hops, eta: time } : null;
         }
         // On the way: it waits out the drive's charge there, and must be gone before the collapse begins.
         const leaves = time + timing.cooldown;
-        if (stop.swallowed && !stop.mine) return null;
-        if (!stop.mine && stop.safeFor <= leaves + tuning.routeMargin) return null;
+        if (stop.swallowed || stop.safeFor <= leaves + tuning.routeMargin) return null;
         time = leaves;
     }
 }
@@ -196,7 +197,7 @@ function hideout(unit, situation, tuning) {
  *            bots included), underFire (one of them was hit just now), losses (strength the side has lost there lately) }
  *   front    the innermost orbit still standing; gateOrbit the stargate's
  *   flying   the side's pilots in the air (people too); fallen those who are down and may come back;
- *            holdsStation whether it holds any station for them to come back to
+ *            holdsStation whether it holds any station for them to come back to (not one about to be swallowed)
  *   timing   { cooldown, spool } of a jump drive
  *   units    { key, orbit, readyIn (seconds until its drive is charged), reach (orbits its next jump may
  *            cross), strength, squad (true for reinforcements), current (the planet it was last given),
@@ -227,9 +228,9 @@ export function planSide(situation, tuning = TUNING) {
     const pilots = free.filter((unit) => !unit.squad);
     if (situation.flying === 1 && situation.fallen > 0 && situation.holdsStation && pilots.length === 1) {
         const [last] = pilots;
-        const shelter = hideout(last, situation, tuning);
-        if (shelter) {
-            order(last, shelter.id, TASK.HIDE, true);
+        const hiding = hideout(last, situation, tuning);
+        if (hiding) {
+            order(last, hiding.id, TASK.HIDE, true);
             free.splice(free.indexOf(last), 1);
         }
     }

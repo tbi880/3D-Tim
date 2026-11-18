@@ -7,8 +7,10 @@ export const NET = Object.freeze({
      * Bumped whenever packets change shape; a host refuses a client that speaks another version,
      * and the lobby server only puts players whose games speak the same one in a room together.
      * 5: the battle royale's vote after a capture gave way to coming back at a station.
+     * 6: holding a planet's station no longer shelters a side from the collapse (and the state
+     *    lists stations about to be swallowed): an older host would still play the old rules.
      */
-    protocolVersion: 5,
+    protocolVersion: 6,
 
     /** World snapshots the host sends each client per second. */
     snapshotHz: 30,

@@ -195,8 +195,10 @@ export class BotPilot {
         const enemy = this.nearestHostile(ship, world, place);
         this.quietFor = enemy ? 0 : this.quietFor + TUNING.thinkInterval;
         const mine = place.owner === contestant.faction;
+        // (A swallowed planet's station has gone down with it: there is nothing to dock at.)
+        const dockable = !mine && place.status !== PLANET_STATUS.SWALLOWED;
 
-        const hop = this.nextJump(place, mine);
+        const hop = this.nextJump(place);
         if (hop && mode.jumpRefusal(contestant, hop) === null) {
             mode.requestJump(contestant, hop);
             return;
@@ -206,16 +208,14 @@ export class BotPilot {
             if (enemy && ship.shieldFraction < TUNING.undockShield) mode.undock(contestant);
             else return;
         }
-        // In danger with no way out, the only shelter is the station's bubble: go for the dock whatever is shooting.
-        const desperate = !mine && place.status !== PLANET_STATUS.SAFE;
         const dockIsClear = !enemy || enemy.position.distanceTo(place.station.mouth) > TUNING.dockClearRange;
-        // Shot nearly bare: run until the shield is back, unless running is no use here. (The side's
-        // last pilot in the air does not stay to fight at all: it is all that keeps the side in.)
+        // Shot nearly bare: run until the shield is back. (The side's last pilot in the air does
+        // not stay to fight at all: it is all that keeps the side in.)
         const running = this.goal.kind === 'evade';
         const lyingLow = this.order?.task === TASK.HIDE;
-        if (enemy && !desperate && (lyingLow || ship.shieldFraction < (running ? TUNING.recoverShield : TUNING.retreatShield))) {
+        if (enemy && (lyingLow || ship.shieldFraction < (running ? TUNING.recoverShield : TUNING.retreatShield))) {
             this.goal = { kind: 'evade', from: enemy };
-        } else if (!mine && (desperate || dockIsClear)) {
+        } else if (dockable && dockIsClear) {
             this.goal = { kind: 'dock' };
         } else if (enemy) {
             if (this.goal.target !== enemy) world.setPlayerTarget(enemy, ship);
@@ -229,15 +229,15 @@ export class BotPilot {
 
     /**
      * Where to jump now, if anywhere (a planet id; whether the drive allows it is the rules' to say).
-     * First, out of a planet that is falling in - or about to - and is not under the bot's own
-     * bubble: always outwards, where the collapse comes last. Then towards the planet its side's
+     * First, out of a planet that is falling in - or about to - whoever holds its station: always
+     * outwards, where the collapse comes last. Then towards the planet its side's
      * war council gives it: at once for something urgent (and as far as an overdrive chip
      * reaches), otherwise once nothing has been in reach for a moment - not out of a dogfight.
      */
-    nextJump(place, mine) {
+    nextJump(place) {
         const { mode, contestant } = this;
         if (contestant.jump) return null;
-        if (!mine && place.orbit < mode.map.count - 1 && place.status !== PLANET_STATUS.SWALLOWED) {
+        if (place.orbit < mode.map.count - 1 && place.status !== PLANET_STATUS.SWALLOWED) {
             const wait = mode.clock.secondsToChange(place.orbit);
             if (place.status === PLANET_STATUS.COLLAPSING || (wait !== null && wait < TUNING.fleeAhead)) return mode.map.planets[place.orbit + 1].id;
         }

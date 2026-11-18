@@ -63,6 +63,9 @@ class Contestant {
     }
 }
 
+/** True for ships nothing in the match touches - the stations, the stargate: the black hole drains and sweeps everything else. */
+const isScenery = (ship) => ship.invulnerable || ship.faction === FACTION.NEUTRAL;
+
 /** What the rules know about one planet. */
 class Place {
     constructor(planet, orbit, zone, station) {
@@ -71,7 +74,7 @@ class Place {
         this.zone = zone;
         /** The planet's station (station.js): who docks at it long enough holds the planet. */
         this.station = station;
-        /** The side that holds the station - its anti-gravity bubble covers the planet - or null. */
+        /** The side that holds the station, or null. Holding it is no shelter from the collapse. */
         this.owner = null;
         /** The sides whose beacons watch the planet: what one pilot's beacon sees, their whole side sees. */
         this.scouts = new Set();
@@ -90,6 +93,8 @@ class Place {
  * same way. A pilot who is shot down comes back, after a wait that grows each time, at a
  * station their side holds - and may watch a comrade fly meanwhile; taking a planet brings
  * every one of the side's fallen back. A side whose pilots are all down at once is out.
+ * The collapse spares nobody: holding a planet's station does not keep its pull off, and once
+ * the planet is swallowed its station falls in with it and every ship there dies.
  * Ten players at most: four Federation, four Umbra, two pirates (SIDE_SEATS).
  *
  * Tuning is in config/battleRoyale.js. The pieces: StarMap (who can jump where), CollapseClock
@@ -287,9 +292,10 @@ export class BattleRoyaleMode {
             if (planet.gate && !zone.world.findByTag(GATE_TAG)) this.raiseGate(zone);
             const place = new Place(planet, orbit, zone, station);
             const saved = savedPlaces.get(planet.id) ?? {};
-            place.owner = side(saved.owner);
-            place.scouts = new Set((Array.isArray(saved.scouts) ? saved.scouts : []).map(side).filter(Boolean));
             place.status = this.clock.statusOf(orbit);
+            // (A checkpoint from just before the planet was swallowed: its station has fallen in since.)
+            place.owner = place.status === PLANET_STATUS.SWALLOWED ? null : side(saved.owner);
+            place.scouts = new Set((Array.isArray(saved.scouts) ? saved.scouts : []).map(side).filter(Boolean));
             this.places.set(planet.id, place);
         });
 
@@ -430,24 +436,31 @@ export class BattleRoyaleMode {
         if (status !== place.status) {
             place.status = status;
             for (const pilot of this.server.pilots.values()) this.tellMode(pilot, BR_EVENT.COLLAPSE, { planet: place.planet.id, status });
-            // Nobody is there to watch a deserted planet's garrison die: it is simply gone.
-            if (status === PLANET_STATUS.SWALLOWED && !place.zone.active) this.sweep(place);
+            if (status === PLANET_STATUS.SWALLOWED) this.fallIn(place);
             this.server.publishState();
         }
         if (status === PLANET_STATUS.SAFE || !place.zone.active) return;
 
-        // The black hole's pull is the same for everybody: a share of the whole ship every second.
+        // The black hole's pull is the same for everybody, whoever holds the station: a share of the whole ship every second.
         const share = status === PLANET_STATUS.COLLAPSING ? BATTLE_ROYALE.collapse.collapsingDrain : 1 / BATTLE_ROYALE.collapse.swallowedSeconds;
         const { world } = place.zone;
         for (const ship of world.ships) {
-            if (!ship.alive || ship.arriving || this.isShielded(place, ship) || this.gravityShieldHolds(ship)) continue;
+            if (!ship.alive || ship.arriving || isScenery(ship) || this.gravityShieldHolds(ship)) continue;
             drainShip(world, ship, share * (ship.maxHull + ship.maxShield) * dt);
         }
     }
 
-    /** True for ships the black hole cannot touch here: scenery, and the side whose bubble covers the planet. */
-    isShielded(place, ship) {
-        return ship.invulnerable || ship.faction === FACTION.NEUTRAL || ship.faction === place.owner;
+    /**
+     * A planet has been swallowed: its station goes with it. Nobody holds it any more, whoever is
+     * docked there is let go, and nobody comes back or is brought back there again.
+     */
+    fallIn(place) {
+        for (const contestant of this.contestants.values()) {
+            if (contestant.dock?.place === place) this.undock(contestant, DOCK_END.SWALLOWED);
+        }
+        place.owner = null;
+        // Nobody is there to watch a deserted planet's ships die: they are simply gone.
+        if (!place.zone.active) this.sweep(place);
     }
 
     /**
@@ -469,8 +482,18 @@ export class BattleRoyaleMode {
     sweep(place) {
         const { world } = place.zone;
         for (const ship of [...world.ships]) {
-            if (ship.alive && !this.isShielded(place, ship)) world.removeShip(ship);
+            if (ship.alive && !isScenery(ship)) world.removeShip(ship);
         }
+    }
+
+    /**
+     * True when a ship that came out at `place` now could not get away before the planet is
+     * swallowed: a new ship's drive must charge, then spool, before it can jump. Nobody comes
+     * back at such a station, nor is brought back there by taking it.
+     */
+    strands(place) {
+        const left = this.clock.secondsToSwallowed(place.orbit);
+        return left !== null && left <= this.jumpCooldown + BATTLE_ROYALE.jump.spool;
     }
 
     // ---- Jumping between planets -------------------------------------------------------------
@@ -483,8 +506,8 @@ export class BattleRoyaleMode {
         const orbits = this.map.distance(here.planet.id, to);
         if (orbits < 1 || orbits > this.jumpReach(contestant)) return JUMP_REFUSAL.NOT_ADJACENT;
         if (this.server.time < contestant.jumpReadyAt) return JUMP_REFUSAL.CHARGING;
-        // A swallowed planet lets nothing go - except the side whose bubble holds the gravity off.
-        if (here.status === PLANET_STATUS.SWALLOWED && here.owner !== contestant.faction) return JUMP_REFUSAL.TRAPPED;
+        // A swallowed planet lets nothing go, whoever held its station.
+        if (here.status === PLANET_STATUS.SWALLOWED) return JUMP_REFUSAL.TRAPPED;
         return null;
     }
 
@@ -566,6 +589,8 @@ export class BattleRoyaleMode {
         const ship = contestant.pilot.ship;
         if (!contestant.alive || !ship?.alive || ship.arriving || !here) return DOCK_REFUSAL.NO_SHIP;
         if (contestant.jump) return DOCK_REFUSAL.JUMPING;
+        // The station has gone down with its planet.
+        if (here.status === PLANET_STATUS.SWALLOWED) return DOCK_REFUSAL.SWALLOWED;
         if (here.owner === contestant.faction) return DOCK_REFUSAL.HELD;
         if (!here.station.inRange(ship.position)) return DOCK_REFUSAL.TOO_FAR;
         return null;
@@ -648,9 +673,11 @@ export class BattleRoyaleMode {
         }
         this.reward(members);
         // Only those who were there are paid; the fallen are brought back after it (unless the side is out:
-        // a pilot who turned pirate after the pirates were wiped out flies for nobody who can come back).
+        // a pilot who turned pirate after the pirates were wiped out flies for nobody who can come back) -
+        // but not to a planet that will be gone before a new ship could jump away: they wait for a better one.
+        const revives = !this.outSides.has(faction) && !this.strands(place);
         for (const contestant of this.contestants.values()) {
-            if (contestant.alive || contestant.pilot.gone || contestant.faction !== faction || this.outSides.has(faction)) continue;
+            if (!revives || contestant.alive || contestant.pilot.gone || contestant.faction !== faction) continue;
             this.bringBack(contestant, place);
             this.tellMode(contestant.pilot, BR_EVENT.REVIVED, { planet: place.planet.id });
         }
@@ -678,12 +705,13 @@ export class BattleRoyaleMode {
     }
 
     /**
-     * The planets whose stations a pilot's side holds and nobody is taking from it - where they
-     * may come back - the one they would be sent to first: a planet that is not falling in, then
-     * the one with the most of their side flying there, then the outermost (nearest the gate).
+     * The planets whose stations a pilot's side holds and nobody is taking from it, and that will
+     * stand long enough for a new ship to jump away again - where they may come back - the one
+     * they would be sent to first: a planet that is not falling in, then the one with the most of
+     * their side flying there, then the outermost (nearest the gate).
      */
     respawnStations(contestant) {
-        const stations = [...this.places.values()].filter((place) => place.owner === contestant.faction && !this.beingTaken(place));
+        const stations = [...this.places.values()].filter((place) => place.owner === contestant.faction && !this.beingTaken(place) && !this.strands(place));
         const settled = (place) => (place.status === PLANET_STATUS.SAFE ? 1 : 0);
         const company = new Map(stations.map((place) => [place, this.membersAt(place, contestant.faction).length]));
         return stations.sort((a, b) => settled(b) - settled(a) || company.get(b) - company.get(a) || b.orbit - a.orbit);
@@ -701,15 +729,26 @@ export class BattleRoyaleMode {
         return false;
     }
 
-    /** The planets whose stations a side holds but another side is docked at, taking them: nobody comes back there meanwhile. */
+    /**
+     * The planets whose stations a side holds but another side is docked at, taking them: nobody
+     * comes back there meanwhile. (Not those about to be swallowed: see `fallingStations`.)
+     */
     contestedStations(faction) {
-        return [...this.places.values()].filter((place) => place.owner === faction && this.beingTaken(place));
+        return [...this.places.values()].filter((place) => place.owner === faction && !this.strands(place) && this.beingTaken(place));
     }
 
-    /** True while a side holds at least one station (one being taken is still held). */
+    /** The planets whose stations a side holds but that will be swallowed before a new ship could jump away: nobody comes back there. */
+    fallingStations(faction) {
+        return [...this.places.values()].filter((place) => place.owner === faction && this.strands(place));
+    }
+
+    /**
+     * True while a side holds at least one station its pilots could come back to - now, or once
+     * nobody is taking it from them. One about to be swallowed is no such station.
+     */
     holdsStation(faction) {
         for (const place of this.places.values()) {
-            if (place.owner === faction) return true;
+            if (place.owner === faction && !this.strands(place)) return true;
         }
         return false;
     }
@@ -720,6 +759,7 @@ export class BattleRoyaleMode {
         if (contestant.alive || contestant.pilot.gone || contestant.respawnAt === null) return RESPAWN_REFUSAL.FLYING;
         if (this.server.time < contestant.respawnAt) return RESPAWN_REFUSAL.WAITING;
         if (!place || place.owner !== contestant.faction) return RESPAWN_REFUSAL.NOT_HELD;
+        if (this.strands(place)) return RESPAWN_REFUSAL.FALLING;
         if (this.beingTaken(place)) return RESPAWN_REFUSAL.CONTESTED;
         return null;
     }
@@ -755,7 +795,7 @@ export class BattleRoyaleMode {
     /**
      * A pilot who is down: once their wait is over and there is a station to come back to, the
      * clock to choose one starts; when it runs out they are sent to the first one offered at that
-     * moment. Without one - their side holds none, or every one is being taken - there is nowhere
+     * moment. Without one - their side holds none, every one is being taken or about to be swallowed - there is nowhere
      * to go and nothing to count down; the clock starts again when there is.
      */
     updateRespawn(contestant) {
@@ -1067,7 +1107,7 @@ export class BattleRoyaleMode {
     /**
      * A side whose pilots - those still in the match, bots included - are all down at the same
      * moment is out: none of them comes back, by choice or by a capture, and every station it
-     * holds is nobody's again at once (its bubble with it). Waiting, choosing or with nowhere to
+     * holds is nobody's again at once. Waiting, choosing or with nowhere to
      * go makes no difference; nor does a station of its being taken or not.
      */
     checkEliminations() {
@@ -1155,7 +1195,7 @@ export class BattleRoyaleMode {
                     cooldown: Math.max(0, Math.ceil(you.jumpReadyAt - time)),
                     to: you.jump?.to ?? null,
                     spool: you.jump ? Math.max(0, you.jump.left) : null,
-                    trapped: Boolean(here) && here.status === PLANET_STATUS.SWALLOWED && here.owner !== you.faction,
+                    trapped: Boolean(here) && here.status === PLANET_STATUS.SWALLOWED,
                     reach: this.jumpReach(you),
                 },
                 dock: this.describeDock(you, here),
@@ -1188,8 +1228,8 @@ export class BattleRoyaleMode {
     /**
      * Coming back, as a pilot who is down sees it: how long they still wait, the stations they
      * may choose from (the first is where they are sent if they do not choose), those of their
-     * side's that are being taken (not to be chosen meanwhile), and how long they have to
-     * choose. Null while they fly.
+     * side's that are being taken (not to be chosen meanwhile) or about to be swallowed (not to
+     * be chosen at all), and how long they have to choose. Null while they fly.
      */
     describeRespawn(you) {
         if (you.alive || you.respawnAt === null) return null;
@@ -1198,6 +1238,7 @@ export class BattleRoyaleMode {
             wait: Math.max(0, Math.ceil(you.respawnAt - time)),
             stations: this.respawnStations(you).map((place) => place.planet.id),
             contested: this.contestedStations(you.faction).map((place) => place.planet.id),
+            falling: this.fallingStations(you.faction).map((place) => place.planet.id),
             choose: you.chooseUntil === null ? null : Math.max(0, Math.ceil(you.chooseUntil - time)),
             next: this.respawnWait(you.respawns + 1),
         };

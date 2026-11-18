@@ -9,7 +9,7 @@ import { shipStrength, stepToward } from './strategy.js';
  * goes where its side's war council sends it (strategy.js): the ships fight as every
  * computer-flown ship does (core/systems/aiPilot.js), and the squad between planets by a
  * pilot's rules - one orbit a jump, `jump.spool` seconds to leave, the drive's cooldown after
- * every arrival, nothing out of a swallowed planet but under the side's bubble. For the first
+ * every arrival, nothing out of a swallowed planet (whoever holds its station). For the first
  * `strategy.summonCommit` seconds they stay with the fight they were called into.
  *
  * A squad's ships carry its tag (`squad:<id>`), so a checkpoint's ships find their squad again.
@@ -99,11 +99,10 @@ export class Squad {
         const { place, faction } = this;
         const { time } = mode.server;
         if (time < this.readyAt) return null;
-        const sheltered = place.owner === faction;
-        // A swallowed planet lets nothing go but the side whose bubble is there.
-        if (place.status === PLANET_STATUS.SWALLOWED && !sheltered) return null;
+        // A swallowed planet lets nothing go, and holding its station is no shelter from the collapse.
+        if (place.status === PLANET_STATUS.SWALLOWED) return null;
         const outermost = place.orbit >= mode.map.count - 1;
-        if (!sheltered && !outermost) {
+        if (!outermost) {
             const wait = mode.clock.secondsToChange(place.orbit);
             const falling = place.status === PLANET_STATUS.COLLAPSING || (wait !== null && wait < BATTLE_ROYALE.bots.fleeAhead);
             if (falling) return mode.map.planets[place.orbit + 1].id;

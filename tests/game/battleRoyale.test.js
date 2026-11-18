@@ -572,10 +572,10 @@ test('a pilot who turns pirate at the dock takes the station for nobody but them
     assert.equal(game.who('cy').points, 0);
 });
 
-// ---- The bubble ------------------------------------------------------------------------------
+// ---- No shelter from the collapse --------------------------------------------------------------
 
-/** Ann (Federation) has just taken the innermost planet; Bo (Umbra) is there too in the bubble tests that need him. */
-function withBubble(seats) {
+/** Ann (Federation) has just taken the innermost planet; Bo (Umbra) and Pip (pirate) are there too in the tests that need them. */
+function heldInnermost(seats) {
     const game = arrange(seats);
     game.clear(INNERMOST, DAWN);
     game.clear(INNERMOST, UMBRA);
@@ -583,49 +583,71 @@ function withBubble(seats) {
     return game;
 }
 
-test('inside its own bubble a side is safe from the collapse and can still jump out of a swallowed planet', () => {
-    const game = withBubble({ ann: [DAWN, INNERMOST] });
-    game.skipTo(goneAt(game, 0) + 0.1);
-    const before = game.ship('ann').hull + game.ship('ann').shield;
-    game.run(10);
-
-    assert.equal(game.ship('ann').alive, true);
-    assert.ok(game.ship('ann').hull + game.ship('ann').shield >= before - 0.01);
-    assert.equal(game.state('ann').you.jump.trapped, false);
-
-    game.chargeJump('ann');
-    game.ask('ann', BR_REQUEST.JUMP, { to: SECOND });
-    game.run(BATTLE_ROYALE.jump.spool + 0.3);
-    assert.equal(game.pilot('ann').zone.id, SECOND);
-});
-
-test('the bubble protects nobody else', () => {
-    const game = withBubble({ ann: [DAWN, INNERMOST], bo: [UMBRA, INNERMOST], pip: [PIRATE, INNERMOST] });
+test('holding a planet\'s station is no shelter: the side that holds it bleeds as the planet falls in, like everybody', () => {
+    const game = heldInnermost({ ann: [DAWN, INNERMOST], bo: [UMBRA, INNERMOST], pip: [PIRATE, INNERMOST] });
     game.skipTo(startsAt(game, 0) + 0.1);
-    const start = (name) => game.ship(name).hull + game.ship(name).shield;
-    const before = { ann: start('ann'), bo: start('bo'), pip: start('pip') };
+    const whole = (name) => game.ship(name).hull + game.ship(name).shield;
+    const before = { ann: whole('ann'), bo: whole('bo'), pip: whole('pip') };
     game.run(5);
 
-    assert.ok(start('ann') >= before.ann - 0.01);
-    assert.ok(start('bo') < before.bo - 5);
-    assert.ok(start('pip') < before.pip - 5);
-
-    game.skipTo(goneAt(game, 0) + 0.1);
-    assert.equal(game.state('bo').you.jump.trapped, true);
-    game.chargeJump('bo');
-    game.ask('bo', BR_REQUEST.JUMP, { to: SECOND });
-    assert.equal(game.who('bo').jump, null);
+    const lost = (name) => before[name] - whole(name);
+    assert.ok(lost('ann') > 5, `Ann, who holds it, lost ${lost('ann')}`);
+    assert.ok(lost('bo') > 5 && lost('pip') > 5);
 });
 
-test('a garrison under its side\'s bubble survives the planet being swallowed', () => {
-    const game = arrange({ ann: [DAWN, INNERMOST] });
+test('once the countdown runs out nobody leaves a swallowed planet, and nobody there survives - its holders included', () => {
+    const game = heldInnermost({ ann: [DAWN, INNERMOST], bo: [UMBRA, INNERMOST], bex: [UMBRA, GATE] });
+    game.skipTo(goneAt(game, 0) + 0.1);
+    assert.equal(game.state('ann').you.jump.trapped, true);
+    game.chargeJump('ann');
+    game.ask('ann', BR_REQUEST.JUMP, { to: SECOND });
+    assert.equal(game.who('ann').jump, null);
+    assert.deepEqual(game.told('ann', BR_EVENT.JUMP_REFUSED), [{ reason: JUMP_REFUSAL.TRAPPED }]);
+
+    game.run(BATTLE_ROYALE.collapse.swallowedSeconds + 1);
+    assert.deepEqual([game.who('ann').alive, game.who('bo').alive], [false, false]);
+});
+
+test('a swallowed planet\'s station goes down with it: nobody holds it, whoever was docked is let go, nobody docks again', () => {
+    const game = heldInnermost({ ann: [DAWN, INNERMOST], bo: [UMBRA, INNERMOST], bex: [UMBRA, GATE] });
+    game.skipTo(goneAt(game, 0) - 2);
+    game.dock('bo');
+    assert.ok(game.who('bo').dock, 'Bo starts taking it while the planet is still falling in');
+    game.run(2.2);
+
+    assert.equal(game.place(INNERMOST).status, PLANET_STATUS.SWALLOWED);
+    assert.equal(game.place(INNERMOST).owner, null);
+    assert.equal(game.who('bo').dock, null);
+    assert.deepEqual(game.told('bo', BR_EVENT.UNDOCKED), [{ reason: DOCK_END.SWALLOWED }]);
+    assert.equal(game.state('ann').planets.find((planet) => planet.id === INNERMOST).owner, null, 'and the map says so');
+
+    game.dock('ann');
+    assert.equal(game.who('ann').dock, null);
+    assert.deepEqual(game.told('ann', BR_EVENT.DOCK_REFUSED), [{ reason: DOCK_REFUSAL.SWALLOWED }]);
+});
+
+test('a garrison at its side\'s station dies with the planet like anybody', () => {
+    // (Ann's gravity shield keeps her there to watch - and the planet's ships in play - a little longer than the garrison lasts.)
+    const game = arrange({ ann: [DAWN, INNERMOST], cy: [DAWN, GATE], bex: [UMBRA, GATE] });
     game.clear(INNERMOST, UMBRA);
     if (game.npcs(INNERMOST, DAWN).length === 0) game.world(INNERMOST).spawnShip('dart', { position: [0, 0, 0] });
     game.place(INNERMOST).owner = DAWN;
+    game.equip('ann', EQUIPMENT.GRAVITY_SHIELD);
     game.skipTo(goneAt(game, 0) + 0.1);
     game.run(BATTLE_ROYALE.collapse.swallowedSeconds + 2);
 
-    assert.ok(game.npcs(INNERMOST, DAWN).length > 0);
+    assert.equal(game.npcs(INNERMOST, DAWN).length, 0);
+});
+
+test('a deserted planet is swept clean when it is swallowed, its holder\'s garrison too; the station itself is scenery and stays', () => {
+    const game = arrange({ ann: [DAWN, GATE], bex: [UMBRA, GATE] });
+    game.place(INNERMOST).owner = DAWN;
+    if (game.npcs(INNERMOST, DAWN).length === 0) game.world(INNERMOST).spawnShip('dart', { position: [0, 0, 0] });
+    assert.equal(game.place(INNERMOST).zone.active, false, 'nobody is there');
+    game.skipTo(goneAt(game, 0) + 0.1);
+
+    assert.equal(game.npcs(INNERMOST, DAWN).length + game.npcs(INNERMOST, UMBRA).length, 0);
+    assert.ok(game.world(INNERMOST).findByTag(STATION_TAG), 'the station model is left to the scenery');
 });
 
 // ---- Taking a planet brings the fallen back ----------------------------------------------------
@@ -795,7 +817,8 @@ test('a pilot who does not choose is sent to the first station offered when the 
 });
 
 test('the first station offered is one on a planet that is not falling in, then where comrades are, then the outermost', () => {
-    const game = arrange({ ann: [DAWN, THIRD], cy: [DAWN, INNERMOST], bo: [UMBRA, GATE] });
+    // (At the quick pace the drive charges fast enough to get away from a planet that has only just started to fall in.)
+    const game = arrange({ ann: [DAWN, THIRD], cy: [DAWN, INNERMOST], bo: [UMBRA, GATE] }, { pace: 'quick' });
     for (const planet of [INNERMOST, SECOND, FOURTH]) game.place(planet).owner = DAWN;
     destroyShip(game.world(THIRD), game.ship('ann'), null);
     assert.deepEqual(game.mode.respawnStations(game.who('ann')).map((place) => place.planet.id), [INNERMOST, FOURTH, SECOND]);
@@ -806,6 +829,41 @@ test('the first station offered is one on a planet that is not falling in, then 
         'Cy is there, but the planet is going');
 });
 
+test('nobody comes back where the planet will be swallowed before a new ship\'s drive could get it away', () => {
+    const game = arrange({ ann: [DAWN, THIRD], cy: [DAWN, INNERMOST], bo: [UMBRA, GATE] });
+    for (const planet of [INNERMOST, SECOND]) game.place(planet).owner = DAWN;
+    destroyShip(game.world(THIRD), game.ship('ann'), null);
+    const away = game.mode.jumpCooldown + BATTLE_ROYALE.jump.spool;
+    game.skipTo(goneAt(game, 0) - away - 1);
+    assert.deepEqual(game.mode.respawnStations(game.who('ann')).map((place) => place.planet.id), [INNERMOST, SECOND], 'just in time, still - and Cy is there');
+
+    game.skipTo(goneAt(game, 0) - away + 1);
+    assert.deepEqual(game.mode.respawnStations(game.who('ann')).map((place) => place.planet.id), [SECOND]);
+    assert.deepEqual(game.state('ann').you.respawn.falling, [INNERMOST], 'shown, not to be chosen');
+    game.who('ann').respawnAt = 0;
+    game.ask('ann', BR_REQUEST.RESPAWN, { at: INNERMOST });
+    assert.equal(game.who('ann').alive, false);
+    assert.deepEqual(game.told('ann', BR_EVENT.RESPAWN_REFUSED), [{ reason: RESPAWN_REFUSAL.FALLING }]);
+
+    game.place(SECOND).owner = null;
+    game.run(RESPAWN.choose + 2);
+    assert.equal(game.who('ann').alive, false, 'with nothing else held there is nowhere to go: no clock sends her there');
+    assert.equal(game.state('ann').you.respawn.choose, null);
+});
+
+test('taking a station whose planet is about to be swallowed pays, but brings nobody back to it', () => {
+    const game = arrange({ ann: [DAWN, INNERMOST], di: [DAWN, THIRD], bo: [UMBRA, GATE] });
+    game.empty(INNERMOST);
+    destroyShip(game.world(THIRD), game.ship('di'), null);
+    game.skipTo(startsAt(game, 0) + 0.5);
+    game.take('ann');
+
+    assert.equal(game.place(INNERMOST).owner, DAWN);
+    assert.equal(game.who('ann').points, BATTLE_ROYALE.capture.points);
+    assert.equal(game.who('di').alive, false, 'Di would have come out with an uncharged drive on a planet about to be swallowed');
+    assert.deepEqual(game.told('di', BR_EVENT.REVIVED), []);
+});
+
 test('with no station held the wait ends and the pilot waits on, until their side takes one', () => {
     const game = arrange({ ann: [DAWN, THIRD], cy: [DAWN, FOURTH], bo: [UMBRA, GATE] });
     game.empty(FOURTH);
@@ -813,7 +871,7 @@ test('with no station held the wait ends and the pilot waits on, until their sid
     destroyShip(game.world(THIRD), game.ship('ann'), null);
     game.run(RESPAWN.wait + RESPAWN.choose + 5);
 
-    assert.deepEqual(game.state('ann').you.respawn, { wait: 0, stations: [], contested: [], choose: null, next: RESPAWN.wait + RESPAWN.waitStep });
+    assert.deepEqual(game.state('ann').you.respawn, { wait: 0, stations: [], contested: [], falling: [], choose: null, next: RESPAWN.wait + RESPAWN.waitStep });
     assert.equal(game.who('ann').alive, false);
 
     game.take('cy');
@@ -869,7 +927,7 @@ test('with every station of the side being taken there is nowhere to come back t
     game.dock('bo');
     game.run(RESPAWN.wait + 1);
 
-    assert.deepEqual(game.state('ann').you.respawn, { wait: 0, stations: [], contested: [FOURTH], choose: null, next: RESPAWN.wait + RESPAWN.waitStep });
+    assert.deepEqual(game.state('ann').you.respawn, { wait: 0, stations: [], contested: [FOURTH], falling: [], choose: null, next: RESPAWN.wait + RESPAWN.waitStep });
     assert.equal(game.place(FOURTH).owner, DAWN, 'a station being taken is still held');
 
     game.ask('bo', BR_REQUEST.UNDOCK);
@@ -1224,7 +1282,7 @@ test('a side whose pilots are all down at once is out: nobody of it comes back, 
     assert.equal(game.state('ann').you.out, true);
     assert.equal(game.state('ann').you.respawn, null);
     assert.deepEqual(game.state('bo').out, [DAWN], 'everybody is told');
-    assert.deepEqual([game.place(FOURTH).owner, game.place(INNERMOST).owner], [null, null], 'its stations and their bubbles are gone');
+    assert.deepEqual([game.place(FOURTH).owner, game.place(INNERMOST).owner], [null, null], 'its stations are nobody\'s again');
     assert.deepEqual(game.told('bo', BR_EVENT.SIDE_OUT), [{ faction: DAWN }]);
     game.ask('ann', BR_REQUEST.RESPAWN, { at: FOURTH });
     assert.deepEqual(game.told('ann', BR_EVENT.RESPAWN_REFUSED), [{ reason: RESPAWN_REFUSAL.OUT }]);
@@ -1544,29 +1602,30 @@ test('the gravity shield comes on by itself and keeps the black hole off for thi
     assert.equal(game.who('ann').alive, false);
 });
 
-test('a gravity shield is not spent where the pilot\'s own bubble already holds the pull off', () => {
-    const game = arrange({ ann: [DAWN, INNERMOST] });
+test('holding the station is no reason for the gravity shield to stay off: it comes on all the same', () => {
+    const game = arrange({ ann: [DAWN, INNERMOST], bex: [UMBRA, GATE] });
     game.empty(INNERMOST);
     game.equip('ann', EQUIPMENT.GRAVITY_SHIELD);
     game.place(INNERMOST).owner = DAWN;
-    game.skipTo(goneAt(game, 0));
-    game.run(5);
+    game.skipTo(startsAt(game, 0) + 0.1);
 
-    assert.equal(game.who('ann').inventory.counts.gravityShield, 1);
+    assert.equal(game.who('ann').inventory.counts.gravityShield, 0);
+    assert.deepEqual(game.told('ann', BR_EVENT.EQUIPMENT_USED), [{ item: EQUIPMENT.GRAVITY_SHIELD }]);
 });
 
-test('thirty shielded seconds are enough to take a swallowed station from its holder', () => {
-    const game = arrange({ ann: [DAWN, INNERMOST] });
+test('a gravity shield buys time at a swallowed planet, never a way out: its station cannot be taken and the drive stays locked', () => {
+    const game = arrange({ ann: [DAWN, INNERMOST], bex: [UMBRA, GATE] });
     game.empty(INNERMOST);
     game.equip('ann', EQUIPMENT.GRAVITY_SHIELD);
     game.place(INNERMOST).owner = UMBRA;
     game.skipTo(goneAt(game, 0));
-    game.take('ann');
+    game.dock('ann');
 
-    assert.equal(game.place(INNERMOST).owner, DAWN);
-    assert.equal(game.state('ann').you.jump.trapped, false, 'and under her own bubble the drive works again');
-    game.run(GEAR.gravityShieldSeconds);
-    assert.equal(game.ship('ann').alive, true);
+    assert.equal(game.who('ann').dock, null);
+    assert.equal(game.place(INNERMOST).owner, null);
+    assert.equal(game.state('ann').you.jump.trapped, true);
+    game.run(GEAR.gravityShieldSeconds + BATTLE_ROYALE.collapse.swallowedSeconds + 1);
+    assert.equal(game.who('ann').alive, false);
 });
 
 test('the emergency shield catches the hit that would have killed and holds the hull at a sliver for ten seconds', () => {
@@ -1959,6 +2018,31 @@ test('a bot jumps outwards before its planet falls in', () => {
     assert.equal(bot.alive, true);
 });
 
+test('a bot at a station its side holds jumps outwards before the planet falls in all the same: holding it is no shelter', () => {
+    const game = withBots(['ann']);
+    const [bot] = game.bots;
+    game.alone(bot, INNERMOST);
+    game.place(INNERMOST).owner = bot.faction;
+    bot.jumpReadyAt = 0;
+    game.skipTo(game.mode.clock.schedule[0].startsAt - BOTS.fleeAhead + 2);
+    game.run(BATTLE_ROYALE.jump.spool + 2);
+
+    assert.equal(bot.pilot.zone.id, SECOND);
+    assert.equal(bot.alive, true);
+});
+
+test('a bot caught at a swallowed planet does not go for its station: there is none left to dock at', () => {
+    const game = withBots(['ann']);
+    const [contestant] = game.bots;
+    const bot = game.mode.bots.find((brain) => brain.contestant === contestant);
+    game.alone(contestant, INNERMOST);
+    game.skipTo(game.mode.clock.schedule[0].goneAt + 0.1);
+    game.run(BOTS.thinkInterval * 2 + 0.1);
+
+    assert.notEqual(bot.goal.kind, 'dock');
+    assert.equal(contestant.dock, null);
+});
+
 test('a bot on its own takes the stations the collapse is coming for one after another - it does not sit on the first, nor race ahead', () => {
     const game = withBots(['ann']);
     const [bot] = game.bots;
@@ -2122,6 +2206,22 @@ test('reinforcements get out of a planet that is about to fall in, whatever thei
     game.skipTo(mode.clock.schedule[0].startsAt - BOTS.fleeAhead + 1);
     game.run(BATTLE_ROYALE.jump.spool + 1);
     assert.equal(squad.place.planet.id, SECOND, 'even straight after being called (they stay with the fight, not with a planet falling in)');
+});
+
+test('reinforcements at a station their side holds get out before the collapse too', () => {
+    const game = withBots(['ann']);
+    const { mode } = game;
+    mode.bots = [];
+    const caller = game.bots.find((bot) => bot.faction !== PIRATE);
+    game.alone(caller, INNERMOST);
+    game.place(INNERMOST).owner = caller.faction;
+    caller.summons = 1;
+    mode.summon(caller);
+    const [squad] = mode.squads;
+    squad.readyAt = 0;
+    game.skipTo(mode.clock.schedule[0].startsAt - BOTS.fleeAhead + 1);
+    game.run(BATTLE_ROYALE.jump.spool + 1);
+    assert.equal(squad.place.planet.id, SECOND);
 });
 
 test('a bot at its side\'s station goes first for a ship docked there, taking it - and with nothing about, keeps watch on the way in', () => {

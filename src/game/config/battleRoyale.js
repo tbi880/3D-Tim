@@ -139,9 +139,9 @@ export const BATTLE_ROYALE = Object.freeze({
         collapsingDrain: 0.022,
         /**
          * Seconds an undamaged ship lasts at a planet that has been swallowed: the black hole takes
-         * shield and hull at a steady rate that nothing softens, and nothing jumps out. It is
-         * shorter than taking a held station needs (`station.heldSeconds` plus the flight to
-         * its dock), so jumping into a swallowed planet to steal its bubble cannot work.
+         * shield and hull at a steady rate that nothing softens - holding the planet's station
+         * included (it goes down with the planet: nobody holds or docks at it any more) - and
+         * nothing jumps out.
          */
         swallowedSeconds: 20,
         /**
@@ -331,7 +331,7 @@ export const BATTLE_ROYALE = Object.freeze({
         undockShield: 0.35,
         /**
          * Whatever its orders (strategy, below), it jumps outwards this many seconds before its
-         * planet starts to fall in, if the drive is charged and its side's bubble is not there.
+         * planet starts to fall in, if the drive is charged - whoever holds the station there.
          * (Reinforcements do the same.)
          */
         fleeAhead: 45,
@@ -442,7 +442,10 @@ export const BATTLE_ROYALE = Object.freeze({
         /** Seconds a pilot's loss at a place counts as a sign of trouble there, and since a hit that a pilot is under fire. */
         lossMemory: 30,
         underFireSeconds: 4,
-        /** A planet due to start falling in sooner than this is not worth guarding or taking... */
+        /**
+         * A planet due to start falling in sooner than this is not worth guarding or taking (nor
+         * taking to bring the fallen back: they would come out where the collapse is coming)...
+         */
         doomSeconds: 90,
         /** ...and a route must leave each planet on the way this long before its collapse begins. */
         routeMargin: 15,
