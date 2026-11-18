@@ -51,9 +51,13 @@ export const TASK = Object.freeze({
 /** Jobs a unit drops everything for: it jumps the moment its drive allows, mid-fight or not, and may burn an overdrive chip to get there. */
 export const URGENT_TASKS = new Set([TASK.DOCK_ALARM, TASK.DEFEND, TASK.AVENGE, TASK.RESCUE, TASK.REVIVE]);
 
-/** How much a ship counts for in a fight (BATTLE_ROYALE.strategy `strength`). */
+/**
+ * How much a ship counts for in a fight (BATTLE_ROYALE.strategy `strength`). What is bolted on
+ * another ship (a mothership's gun battery) counts as part of it.
+ */
 export function shipStrength(ship, tuning = TUNING) {
     if (ship.isPlayer) return tuning.strength.player;
+    if (ship.parent) return 0;
     return ship.cls.kind === 'capital' ? tuning.strength.capital : tuning.strength.other;
 }
 

@@ -251,13 +251,21 @@ export const BATTLE_ROYALE = Object.freeze({
     }),
 
     /**
-     * Ships that answer a call for reinforcements, and how far behind the caller they arrive.
-     * They stay with the fight they were called into for a while (`strategy.summonCommit`),
-     * then go where their side needs them, jumping as a squad by a pilot's rules (squads.js).
+     * Ships that answer a call for reinforcements, and where they drop out of warp: in front of
+     * the caller, where its pilot sees them streak in (garrisons.js reinforcementSpots: `ahead`
+     * metres along its nose, on an arc of `arc` radians above its line of sight `ring` metres out,
+     * give or take `scatter`; a spot less than `clearance` metres from a hull or a rock is used
+     * behind the caller instead). They stay with the fight they were called into for a while
+     * (`strategy.summonCommit`), then go where their side needs them, jumping as a squad by a
+     * pilot's rules (squads.js).
      */
     summon: Object.freeze({
         count: 3,
-        distance: 600,
+        ahead: 700,
+        ring: 260,
+        arc: (2 * Math.PI) / 3,
+        scatter: 50,
+        clearance: 120,
         ships: Object.freeze({ [FACTION.DAWN]: 'dart', [FACTION.UMBRA]: 'raider' }),
     }),
 
@@ -272,7 +280,9 @@ export const BATTLE_ROYALE = Object.freeze({
     score: Object.freeze({
         playerKill: 500,
         /** Points for destroying a computer-flown ship, by class; classes not listed score nothing. */
-        ships: Object.freeze({ drone: 100, raider: 150, lancer: 250, corvette: 600, warden: 1000, dart: 120, harrier: 900 }),
+        ships: Object.freeze({
+            drone: 100, raider: 150, lancer: 250, corvette: 600, warden: 1000, penumbra: 2500, eclipseCannon: 300, dart: 120, harrier: 900,
+        }),
     }),
 
     /**
@@ -281,10 +291,10 @@ export const BATTLE_ROYALE = Object.freeze({
      */
     garrisons: Object.freeze({
         [FACTION.DAWN]: Object.freeze([['harrier', 1], ['dart', 3]]),
-        [FACTION.UMBRA]: Object.freeze([['corvette', 2], ['raider', 3], ['drone', 2]]),
+        [FACTION.UMBRA]: Object.freeze([['penumbra', 1], ['corvette', 2], ['raider', 3], ['drone', 2]]),
         gate: Object.freeze({
             [FACTION.DAWN]: Object.freeze([['harrier', 2], ['dart', 5]]),
-            [FACTION.UMBRA]: Object.freeze([['warden', 1], ['corvette', 2], ['raider', 4]]),
+            [FACTION.UMBRA]: Object.freeze([['penumbra', 1], ['warden', 1], ['corvette', 2], ['raider', 4]]),
         }),
         /**
          * Where each side holds station - inside the station's ring, either side of the lane to
@@ -298,6 +308,35 @@ export const BATTLE_ROYALE = Object.freeze({
          * that, so a pilot can look before they leap. Two garrisons at war hunt freely.
          */
         guardRange: 2800,
+    }),
+
+    /**
+     * The Umbra's motherships: a 'penumbra' in a garrison list above (one at most per side and
+     * planet) does not go in the ring with the rest - it is far too big - but holds station
+     * outside it at `berth` (the station's own axes: off to the Umbra's side of the approach
+     * lane, beyond the ring), facing the station, and never moves from there. Its two gun
+     * batteries (`cannonClassId`) are bolted on; neither they nor its beam reach the dock or
+     * where ships arrive. Its hangar (modes/battleRoyale/carriers.js) puts out a flight while an
+     * enemy is within `alertRange` metres of its hull or `dockRange` of the station's dock: the
+     * first `scramble` seconds after one comes, then one every `launchSeconds`, as long as fewer than
+     * `wingMax` of its fighters fly - `flights` in all. A flight is `drones` drones, or (by a
+     * chance of `lancerChance`, when an enemy ship of the line is there) `lancers` torpedo bombers.
+     */
+    carrier: Object.freeze({
+        classId: 'penumbra',
+        cannonClassId: 'eclipseCannon',
+        berth: Object.freeze([5600, 500, -900]),
+        /** Rocks closer than this to its hull are cleared away (metres). */
+        clearance: 200,
+        alertRange: 3000,
+        dockRange: 2800,
+        scramble: 6,
+        launchSeconds: 22,
+        flights: 8,
+        wingMax: 6,
+        drones: 3,
+        lancers: 2,
+        lancerChance: 0.35,
     }),
 
     /**

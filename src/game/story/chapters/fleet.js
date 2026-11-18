@@ -1,18 +1,16 @@
 import { Quaternion, Vector3 } from 'three';
 import { FACTION } from '../../config/gameConfig.js';
+import { SHIP_CLASSES } from '../../config/shipClasses.js';
 import { lookRotation } from '../../core/math.js';
 import { background, repeatWhile, run, spawnShips, wait, waitUntil } from '../beats.js';
 import { TAG, shipByTag, underBattleBudget } from './common.js';
-import { ECLIPSE_CANNON_MOUNTS } from './eclipse.js';
 
 /**
  * Tim's fleet and the Penumbra carriers, shared by the last chapters (Lantern, the Muster, Home).
  */
 
-/** The Penumbra carriers' gun batteries: one on each blade (two of the Eclipse's four mounts). */
-const PENUMBRA_CANNON_MOUNTS = ECLIPSE_CANNON_MOUNTS.slice(0, 2);
-/** Under the carrier's aft hull, where its fighters come out. */
-const PENUMBRA_HANGAR = [0, -650, 500];
+/** The Penumbra carriers' gun batteries and hangar (config/shipClasses.js `carrier`). */
+const { cannonMounts: PENUMBRA_CANNON_MOUNTS, hangar: PENUMBRA_HANGAR } = SHIP_CLASSES.penumbra.carrier;
 /** Seconds between two carrier launches (one carrier launches each time; see launchFromCarriers). */
 const CARRIER_LAUNCH_SECONDS = 22;
 

@@ -45,6 +45,13 @@ ones - are dragged in, drawn out (`ship.tidal`) and torn apart with the game's o
 explosions, the station breaks up, and the dark fills the sky. The winners see it from
 outside, everybody else from their cockpit until their own ship goes. Only then the result.
 
+Every planet's station is guarded by computer-flown ships (`BATTLE_ROYALE.garrisons`): the
+Federation's frigates and darts wait inside the ring, and so do the Umbra's corvettes and
+fighters - but an Umbra garrison also brings a mothership, a Penumbra (`BATTLE_ROYALE.carrier`,
+`modes/battleRoyale/carriers.js`), far too big for the ring. It holds station outside it with
+its two gun batteries, out of reach of the dock, and launches drones (or torpedo bombers, when
+a Federation frigate is about) while an enemy is near it or the dock, until its hangar is empty.
+
 ## Architecture
 
 The game is split into layers that only depend downwards. The simulation knows nothing

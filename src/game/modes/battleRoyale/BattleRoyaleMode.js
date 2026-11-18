@@ -12,6 +12,7 @@ import { WORLD_EVENT } from '../../net/protocol.js';
 import { LOYALTY, LoyaltyRecord, dealFactions, isPirate } from './allegiance.js';
 import { BR_EVENT, BR_REQUEST, DOCK_END, DOCK_REFUSAL, JUMP_REFUSAL, RESPAWN_REFUSAL } from './battleRoyaleProtocol.js';
 import { BotPilot, seatBots } from './bots.js';
+import { Hangar, berthCarrier, restoreHangars } from './carriers.js';
 import { CollapseClock, PLANET_STATUS } from './collapse.js';
 import { EQUIPMENT, Inventory } from './equipment.js';
 import { callReinforcements, planGarrisons, stationGarrison } from './garrisons.js';
@@ -22,6 +23,8 @@ import { WarCouncil, shipStrength } from './strategy.js';
 
 const scratchOffset = new Vector3();
 const sumLevels = (upgrades) => Object.values(upgrades).reduce((sum, levels) => sum + levels, 0);
+/** `[those that pass, the rest]`. */
+const partition = (list, test) => [list.filter(test), list.filter((item) => !test(item))];
 
 /** What the rules know about one player. */
 class Contestant {
@@ -79,6 +82,8 @@ class Place {
         /** The sides whose beacons watch the planet: what one pilot's beacon sees, their whole side sees. */
         this.scouts = new Set();
         this.status = PLANET_STATUS.SAFE;
+        /** The hangars of the motherships holding station here (carriers.js). */
+        this.hangars = [];
     }
 }
 
@@ -99,7 +104,8 @@ class Place {
  *
  * Tuning is in config/battleRoyale.js. The pieces: StarMap (who can jump where), CollapseClock
  * (what falls in when), allegiance (sides and treason), station (the docks, and where the
- * stargate stands), garrisons (the computer-flown ships), equipment (what pilots carry),
+ * stargate stands), garrisons (the computer-flown ships), carriers (the Umbra's motherships
+ * and their hangars), equipment (what pilots carry),
  * bots (the computer-flown players), strategy (where each side's bots and reinforcements go)
  * and squads (reinforcements on the move). The ending is the presenter's (gateCeremony.js, then systemFall.js): the rules only say who won.
  */
@@ -133,6 +139,8 @@ export class BattleRoyaleMode {
         /** Reinforcements called by pilots (squads.js), as long as any of their ships is left. */
         this.squads = [];
         this.squadSerial = 0;
+        /** The last number given to a mothership (carriers.js carrierTag). */
+        this.carrierSerial = 0;
         /** @type {Map<string, WarCouncil>} by side: where its bots and reinforcements go (strategy.js) */
         this.councils = new Map();
     }
@@ -160,11 +168,15 @@ export class BattleRoyaleMode {
             });
             const station = buildStation(zone, BATTLE_ROYALE.station);
             if (planet.gate) this.raiseGate(zone);
-            this.places.set(planet.id, new Place(planet, orbit, zone, station));
+            const place = new Place(planet, orbit, zone, station);
+            this.places.set(planet.id, place);
             const sidesHere = garrisons.get(planet.id);
             for (const faction of sidesHere) {
                 const ships = planet.gate ? BATTLE_ROYALE.garrisons.gate[faction] : BATTLE_ROYALE.garrisons[faction];
-                stationGarrison(zone, station, faction, ships, BATTLE_ROYALE.garrisons, sidesHere.length === 1);
+                // A mothership holds station outside the ring; the rest of the garrison waits inside it.
+                const [carriers, escorts] = partition(ships, ([classId]) => classId === BATTLE_ROYALE.carrier.classId);
+                stationGarrison(zone, station, faction, escorts, BATTLE_ROYALE.garrisons, sidesHere.length === 1);
+                if (carriers.some(([, count]) => count > 0)) this.berthCarrier(place, faction);
             }
         });
 
@@ -183,6 +195,14 @@ export class BattleRoyaleMode {
             contestant.start = startOf.get(faction);
         }
         if (this.introLeft <= 0) this.enterSystem({ warpIn: false });
+    }
+
+    /** Brings a side's mothership to a planet's station, with a full hangar. */
+    berthCarrier(place, faction) {
+        this.carrierSerial += 1;
+        const layout = BATTLE_ROYALE.carrier;
+        const ship = berthCarrier(place.zone, place.station, faction, layout, this.carrierSerial);
+        place.hangars.push(new Hangar({ id: this.carrierSerial, ship, dock: place.station.mouth, layout }));
     }
 
     /** The introduction is over: every pilot's ship arrives at its side's planet, and the clocks start. */
@@ -230,6 +250,7 @@ export class BattleRoyaleMode {
                 id: place.planet.id,
                 owner: place.owner,
                 scouts: [...place.scouts],
+                hangars: place.hangars.filter((hangar) => hangar.alive).map((hangar) => hangar.save()),
             })),
             contestants: [...this.contestants.values()].map((contestant) => ({
                 id: contestant.pilot.id,
@@ -296,6 +317,9 @@ export class BattleRoyaleMode {
             // (A checkpoint from just before the planet was swallowed: its station has fallen in since.)
             place.owner = place.status === PLANET_STATUS.SWALLOWED ? null : side(saved.owner);
             place.scouts = new Set((Array.isArray(saved.scouts) ? saved.scouts : []).map(side).filter(Boolean));
+            // The motherships are found again by the tags on their hulls.
+            place.hangars = restoreHangars(zone.world, station, saved.hangars, BATTLE_ROYALE.carrier);
+            this.carrierSerial = place.hangars.reduce((most, hangar) => Math.max(most, hangar.id), this.carrierSerial);
             this.places.set(planet.id, place);
         });
 
@@ -412,7 +436,10 @@ export class BattleRoyaleMode {
         const { time } = this.server;
         this.clock.advanceTo(time - this.startedAt);
 
-        for (const place of this.places.values()) this.updateCollapse(place, dt);
+        for (const place of this.places.values()) {
+            this.updateCollapse(place, dt);
+            this.updateHangars(place, dt);
+        }
         for (const contestant of this.contestants.values()) {
             contestant.loyalty.update(dt);
             this.updateJump(contestant, dt);
@@ -427,6 +454,14 @@ export class BattleRoyaleMode {
         for (const bot of this.bots) bot.update(dt);
         this.checkEliminations();
         this.checkVictory();
+    }
+
+    /** Motherships launch their fighters, where anybody is there to see it (an empty planet is frozen). */
+    updateHangars(place, dt) {
+        if (place.hangars.length === 0) return;
+        place.hangars = place.hangars.filter((hangar) => hangar.alive);
+        if (!place.zone.active) return;
+        for (const hangar of place.hangars) hangar.update(place.zone.world, dt);
     }
 
     // ---- The collapse ------------------------------------------------------------------------
@@ -995,7 +1030,8 @@ export class BattleRoyaleMode {
         contestant.summons -= 1;
         this.squadSerial += 1;
         const id = this.squadSerial;
-        const ships = callReinforcements(pilot.zone, pilot.ship, classId, BATTLE_ROYALE.summon.count, BATTLE_ROYALE.summon.distance, [squadTag(id)]);
+        // They drop out of warp in front of the caller, where its pilot sees them come.
+        const ships = callReinforcements(pilot.zone, pilot.ship, classId, BATTLE_ROYALE.summon, [squadTag(id)]);
         // They stay with the fight they were called into for a while; after that they go where the side needs them.
         const { time } = this.server;
         this.squads.push(new Squad({

@@ -248,10 +248,17 @@ export const SHIP_CLASSES = Object.freeze({
         // An Eclipse-class carrier of the old pattern, out of the Barrens. Built before Umbra had
         // shield generators, it carries an ordinary shield: beams strip it, torpedoes break the hull
         // behind it, no generators to knock out first. Slow, and it never stops launching fighters
-        // (the story spawns them). Two gun batteries are bolted on by the story (spawnPenumbra).
+        // (whoever puts it in a battle launches them: the story's chapters, a multiplayer match's
+        // hangars). Two gun batteries are bolted on the same way.
         nameKey: 'ship.penumbra', faction: FACTION.UMBRA, behavior: 'capital', kind: 'capital',
         model: 'eclipse', radius: 1700,
         hitBoxes: ECLIPSE_HIT_BOXES,
+        carrier: Object.freeze({
+            /** Where its two gun batteries ('eclipseCannon') sit, one on each blade (two of the Eclipse's four mounts). */
+            cannonMounts: Object.freeze([Object.freeze([-795, 250, -700]), Object.freeze([795, 250, -700])]),
+            /** Under its aft hull, where its fighters come out. */
+            hangar: Object.freeze([0, -650, 500]),
+        }),
         hull: 2300, shield: 1000, shieldRegen: 9, shieldDelay: 7,
         maxSpeed: 14, turnRate: 0.025, acceleration: 3,
         // One beam of its own, for ships of the line only: against fighters its teeth are the

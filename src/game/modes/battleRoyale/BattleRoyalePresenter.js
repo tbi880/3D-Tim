@@ -189,7 +189,10 @@ export class BattleRoyalePresenter {
             .slice(0, timing.pilots)
             .map((player) => ({ classId: playerClass(player.classId), options: { faction: player.faction, pilotId: player.id, callsign: player.name, local: false } }));
         for (const faction of NPC_FACTIONS.filter(lost)) {
-            const fleet = BATTLE_ROYALE.garrisons.gate[faction].flatMap(([classId, count]) => Array(count).fill(classId));
+            // A mothership is too big to crowd at the gate with the rest: it is left out of the picture.
+            const fleet = BATTLE_ROYALE.garrisons.gate[faction]
+                .filter(([classId]) => classId !== BATTLE_ROYALE.carrier.classId)
+                .flatMap(([classId, count]) => Array(count).fill(classId));
             for (const classId of fleet.slice(0, timing.fleet)) cast.push({ classId, options: { faction } });
         }
         // Small craft near the eye, big hulls behind them: where there is room, and where the ruin starts.
