@@ -1593,10 +1593,11 @@ test('the gravity shield comes on by itself and keeps the black hole off for thi
     assert.equal(game.who('bo').alive, false, 'Bo, beside her, had none');
     applyDamage(game.world(INNERMOST), ship, 40, {});
     assert.ok(ship.shield < ship.maxShield, 'a hit is still a hit');
-    assert.equal(game.state('ann').you.jump.trapped, true, 'and the shield does not make the drive work');
+    assert.equal(game.state('ann').you.jump.trapped, false, 'and while it is on the drive is free');
 
     game.run(GEAR.gravityShieldSeconds - BATTLE_ROYALE.collapse.swallowedSeconds - 2 + 1);
     assert.equal(game.state('ann').you.effects.gravityShield, 0);
+    assert.equal(game.state('ann').you.jump.trapped, true, 'once it is off, the drive is held again');
     assert.ok(ship.hull + ship.shield < ship.maxHull + ship.maxShield - 5, 'then the pull is back');
     game.run(BATTLE_ROYALE.collapse.swallowedSeconds);
     assert.equal(game.who('ann').alive, false);
@@ -1613,18 +1614,36 @@ test('holding the station is no reason for the gravity shield to stay off: it co
     assert.deepEqual(game.told('ann', BR_EVENT.EQUIPMENT_USED), [{ item: EQUIPMENT.GRAVITY_SHIELD }]);
 });
 
-test('a gravity shield buys time at a swallowed planet, never a way out: its station cannot be taken and the drive stays locked', () => {
+test('while a gravity shield is on, a pilot can jump out of a swallowed planet - but not take its station', () => {
     const game = arrange({ ann: [DAWN, INNERMOST], bex: [UMBRA, GATE] });
     game.empty(INNERMOST);
     game.equip('ann', EQUIPMENT.GRAVITY_SHIELD);
     game.place(INNERMOST).owner = UMBRA;
     game.skipTo(goneAt(game, 0));
     game.dock('ann');
-
     assert.equal(game.who('ann').dock, null);
     assert.equal(game.place(INNERMOST).owner, null);
-    assert.equal(game.state('ann').you.jump.trapped, true);
-    game.run(GEAR.gravityShieldSeconds + BATTLE_ROYALE.collapse.swallowedSeconds + 1);
+
+    assert.equal(game.state('ann').you.jump.trapped, false);
+    game.chargeJump('ann');
+    game.ask('ann', BR_REQUEST.JUMP, { to: SECOND });
+    game.run(BATTLE_ROYALE.jump.spool + 0.3);
+    assert.equal(game.pilot('ann').zone.id, SECOND);
+    assert.equal(game.ship('ann').alive, true);
+});
+
+test('a gravity shield that has run out frees nothing: the drive is held and the pull is back', () => {
+    const game = arrange({ ann: [DAWN, INNERMOST], bex: [UMBRA, GATE] });
+    game.empty(INNERMOST);
+    game.equip('ann', EQUIPMENT.GRAVITY_SHIELD);
+    game.skipTo(goneAt(game, 0));
+    game.run(GEAR.gravityShieldSeconds + 0.5);
+    game.chargeJump('ann');
+    game.ask('ann', BR_REQUEST.JUMP, { to: SECOND });
+
+    assert.equal(game.who('ann').jump, null);
+    assert.deepEqual(game.told('ann', BR_EVENT.JUMP_REFUSED), [{ reason: JUMP_REFUSAL.TRAPPED }]);
+    game.run(BATTLE_ROYALE.collapse.swallowedSeconds + 1);
     assert.equal(game.who('ann').alive, false);
 });
 
@@ -2026,6 +2045,20 @@ test('a bot at a station its side holds jumps outwards before the planet falls i
     bot.jumpReadyAt = 0;
     game.skipTo(game.mode.clock.schedule[0].startsAt - BOTS.fleeAhead + 2);
     game.run(BATTLE_ROYALE.jump.spool + 2);
+
+    assert.equal(bot.pilot.zone.id, SECOND);
+    assert.equal(bot.alive, true);
+});
+
+test('a bot whose gravity shield is on gets out of a swallowed planet while it lasts', () => {
+    const game = withBots(['ann']);
+    const [bot] = game.bots;
+    game.alone(bot, INNERMOST);
+    bot.inventory.counts[EQUIPMENT.GRAVITY_SHIELD] = 1;
+    game.skipTo(game.mode.clock.schedule[0].goneAt + 0.1);
+    assert.ok(bot.gravityShieldUntil > game.server.time, 'the shield came on with the pull');
+    bot.jumpReadyAt = 0;
+    game.run(BOTS.thinkInterval + BATTLE_ROYALE.jump.spool + 1);
 
     assert.equal(bot.pilot.zone.id, SECOND);
     assert.equal(bot.alive, true);

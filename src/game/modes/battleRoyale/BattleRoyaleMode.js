@@ -506,9 +506,17 @@ export class BattleRoyaleMode {
         const orbits = this.map.distance(here.planet.id, to);
         if (orbits < 1 || orbits > this.jumpReach(contestant)) return JUMP_REFUSAL.NOT_ADJACENT;
         if (this.server.time < contestant.jumpReadyAt) return JUMP_REFUSAL.CHARGING;
-        // A swallowed planet lets nothing go, whoever held its station.
-        if (here.status === PLANET_STATUS.SWALLOWED) return JUMP_REFUSAL.TRAPPED;
+        if (this.isTrapped(contestant, here)) return JUMP_REFUSAL.TRAPPED;
         return null;
+    }
+
+    /**
+     * True when the black hole holds a contestant's drive at `here`: a swallowed planet lets
+     * nothing go, whoever held its station - unless the pilot's gravity shield is on, holding
+     * the pull off while it lasts.
+     */
+    isTrapped(contestant, here) {
+        return Boolean(here) && here.status === PLANET_STATUS.SWALLOWED && this.server.time >= contestant.gravityShieldUntil;
     }
 
     /** Orbits a contestant's next jump can cross: one, or more with an overdrive chip aboard. */
@@ -1195,7 +1203,7 @@ export class BattleRoyaleMode {
                     cooldown: Math.max(0, Math.ceil(you.jumpReadyAt - time)),
                     to: you.jump?.to ?? null,
                     spool: you.jump ? Math.max(0, you.jump.left) : null,
-                    trapped: Boolean(here) && here.status === PLANET_STATUS.SWALLOWED,
+                    trapped: this.isTrapped(you, here),
                     reach: this.jumpReach(you),
                 },
                 dock: this.describeDock(you, here),

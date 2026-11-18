@@ -229,17 +229,18 @@ export class BotPilot {
 
     /**
      * Where to jump now, if anywhere (a planet id; whether the drive allows it is the rules' to say).
-     * First, out of a planet that is falling in - or about to - whoever holds its station: always
-     * outwards, where the collapse comes last. Then towards the planet its side's
+     * First, out of a planet that is falling in - or about to, or swallowed already, if its gravity
+     * shield lets the drive work - whoever holds its station: always outwards, where the collapse
+     * comes last. Then towards the planet its side's
      * war council gives it: at once for something urgent (and as far as an overdrive chip
      * reaches), otherwise once nothing has been in reach for a moment - not out of a dogfight.
      */
     nextJump(place) {
         const { mode, contestant } = this;
         if (contestant.jump) return null;
-        if (place.orbit < mode.map.count - 1 && place.status !== PLANET_STATUS.SWALLOWED) {
+        if (place.orbit < mode.map.count - 1) {
             const wait = mode.clock.secondsToChange(place.orbit);
-            if (place.status === PLANET_STATUS.COLLAPSING || (wait !== null && wait < TUNING.fleeAhead)) return mode.map.planets[place.orbit + 1].id;
+            if (place.status !== PLANET_STATUS.SAFE || (wait !== null && wait < TUNING.fleeAhead)) return mode.map.planets[place.orbit + 1].id;
         }
         if (contestant.dock) return null;
         const order = this.order;

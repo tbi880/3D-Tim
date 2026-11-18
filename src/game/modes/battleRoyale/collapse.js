@@ -10,7 +10,7 @@ export const PLANET_STATUS = Object.freeze({
     SAFE: 'safe',
     /** Falling in: ships bleed, but can still jump away. */
     COLLAPSING: 'collapsing',
-    /** Gone: nothing jumps out, and nothing lives long - whoever held its station included. */
+    /** Gone: nothing jumps out (but under a gravity shield), and nothing lives long - whoever held its station included. */
     SWALLOWED: 'swallowed',
 });
 

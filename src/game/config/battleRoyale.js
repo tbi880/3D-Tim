@@ -141,7 +141,7 @@ export const BATTLE_ROYALE = Object.freeze({
          * Seconds an undamaged ship lasts at a planet that has been swallowed: the black hole takes
          * shield and hull at a steady rate that nothing softens - holding the planet's station
          * included (it goes down with the planet: nobody holds or docks at it any more) - and
-         * nothing jumps out.
+         * nothing jumps out, but a pilot whose gravity shield is on (equipment.js) while it lasts.
          */
         swallowedSeconds: 20,
         /**
